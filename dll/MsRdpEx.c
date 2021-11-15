@@ -114,7 +114,7 @@ void MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll)
 void MsRdpEx_Load()
 {
     g_mstscax = MsRdpEx_AxDll_New("C:\\Windows\\System32\\mstscax.dll");
-    g_rdclientax = MsRdpEx_AxDll_New("C:\\Program Files\\Remote Desktop\\rdclientax.dll");
+    //g_rdclientax = MsRdpEx_AxDll_New("C:\\Program Files\\Remote Desktop\\rdclientax.dll");
 
     g_AxDll = g_mstscax;
 

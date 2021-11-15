@@ -41,4 +41,4 @@ endif()
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/msrdpex")
 
-add_subdirectory(msrdpex)
+add_subdirectory(dll)
