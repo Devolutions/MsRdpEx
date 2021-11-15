@@ -1,0 +1,13 @@
+LIBRARY			"msrdpex"
+EXPORTS
+    DllCanUnloadNow     PRIVATE
+    DllGetClassObject   PRIVATE
+    DllRegisterServer   PRIVATE
+    DllUnregisterServer PRIVATE
+    DllGetTscCtlVer
+    DllSetAuthProperties
+    DllGetClaimsToken
+    DllSetClaimsToken
+    DllLogoffClaimsToken
+    DllCancelAuthentication
+    DllDeleteSavedCreds
