@@ -11,26 +11,26 @@
 extern "C" {
 #endif
 
-typedef HRESULT (WINAPI * fnDllCanUnloadNow)(void);
+typedef HRESULT (WINAPI * fnDllCanUnloadNow)();
 
 typedef HRESULT (WINAPI * fnDllGetClassObject)(REFCLSID rclsid, REFIID riid, LPVOID* ppv);
 
-typedef HRESULT (WINAPI * fnDllRegisterServer)(void);
+typedef HRESULT (WINAPI * fnDllRegisterServer)();
 
-typedef HRESULT (WINAPI * fnDllUnregisterServer)(void);
+typedef HRESULT (WINAPI * fnDllUnregisterServer)();
 
-typedef uint64_t (WINAPI * fnDllGetTscCtlVer)(void);
+typedef uint64_t (WINAPI * fnDllGetTscCtlVer)();
 
 typedef HRESULT (WINAPI * fnDllSetAuthProperties)(uint64_t properties);
 
 typedef HRESULT (WINAPI * fnDllSetClaimsToken)(uint64_t a1, uint64_t a2, WCHAR* p3);
 
 typedef HRESULT (WINAPI * fnDllGetClaimsToken)(WCHAR* a1, WCHAR* a2, WCHAR* a3,
-    uint64_t a4, HWND a5, WCHAR** a6, WCHAR** a7, RECT* a8, WCHAR* a9);
+    uint64_t a4, HWND a5, WCHAR** a6, WCHAR** a7, WCHAR* a8, WCHAR* a9);
 
 typedef HRESULT (WINAPI * fnDllLogoffClaimsToken)(WCHAR* a1);
 
-typedef HRESULT (WINAPI * fnDllCancelAuthentication)(void);
+typedef HRESULT (WINAPI * fnDllCancelAuthentication)();
 
 typedef HRESULT (WINAPI * fnDllDeleteSavedCreds)(WCHAR* a1, WCHAR* a2);
 
