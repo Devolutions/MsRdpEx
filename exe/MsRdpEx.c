@@ -29,17 +29,35 @@ int main(int argc, char** argv)
 
     ZeroMemory(&ProcessInfo, sizeof(ProcessInfo));
 
-    fSuccess = CreateProcessA(
-        NULL,
-        szCommandLine,
-        NULL,
-        NULL,
-        FALSE,
-        CREATE_SUSPENDED,
-        NULL,
-        NULL,
-        &StartupInfo,
-        &ProcessInfo);
+    const char* lpApplicationName = "C:\\Windows\\System32\\mstsc.exe";
+    char* lpCommandLine = szCommandLine;
+    DWORD dwCreationFlags = CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED;
+
+    char ModuleFileName[1024];
+    GetModuleFileNameA(NULL, ModuleFileName, 1024);
+    
+    size_t length = strlen(ModuleFileName);
+    
+    if (length > 4) {
+        strcpy(&ModuleFileName[length - 4], ".dll");
+    }
+
+    const char* lpDllName = ModuleFileName;
+
+    fSuccess = DetourCreateProcessWithDllExA(
+        lpApplicationName, /* lpApplicationName */
+        lpCommandLine, /* lpCommandLine */
+        NULL, /* lpProcessAttributes */
+        NULL, /* lpThreadAttributes */
+        TRUE, /* bInheritHandles */
+        dwCreationFlags, /* dwCreationFlags */
+        NULL, /* lpEnvironment */
+        NULL, /* lpCurrentDirectory */
+        &StartupInfo, /* lpStartupInfo */
+        &ProcessInfo, /* lpProcessInformation */
+        lpDllName, /* lpDllName */
+        NULL /* pfCreateProcessW */
+    );
 
     if (!fSuccess)
     {

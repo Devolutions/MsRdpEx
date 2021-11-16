@@ -160,7 +160,7 @@ void MsRdpEx_Load()
     fprintf(g_LogFile, "ModuleFileName: %s (%s)\n", filename, ModuleVersion);
 
     g_mstscax = MsRdpEx_AxDll_New("C:\\Windows\\System32\\mstscax.dll");
-    //g_rdclientax = MsRdpEx_AxDll_New("C:\\Program Files\\Remote Desktop\\rdclientax.dll");
+    g_rdclientax = MsRdpEx_AxDll_New("C:\\Program Files\\Remote Desktop\\rdclientax.dll");
 
     g_AxDll = g_mstscax;
 
