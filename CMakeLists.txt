@@ -39,6 +39,26 @@ if(WIN32)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_FLAGS}")
 endif()
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/msrdpex")
+set(DEPENDENCIES_DIR "${CMAKE_SOURCE_DIR}/dependencies")
+set(DETOURS_ROOT_DIR "${DEPENDENCIES_DIR}/detours")
+
+include_directories("${DETOURS_ROOT_DIR}")
+
+add_library(detours STATIC IMPORTED)
+
+if(CMAKE_GENERATOR_PLATFORM MATCHES "ARM64")
+    set(MSVC_PLATFORM_TARGET "arm64")
+elseif(CMAKE_GENERATOR_PLATFORM MATCHES "Win32")
+    set(MSVC_PLATFORM_TARGET "x86")
+else()
+    set(MSVC_PLATFORM_TARGET "x64")
+endif()
+
+message(STATUS "MSVC_PLATFORM_TARGET: ${MSVC_PLATFORM_TARGET}")
+
+set_property(TARGET detours PROPERTY
+    IMPORTED_LOCATION "${DETOURS_ROOT_DIR}/lib/${MSVC_PLATFORM_TARGET}/Release/detours.lib")
+set_property(TARGET detours PROPERTY
+    IMPORTED_LOCATION_DEBUG "${DETOURS_ROOT_DIR}/lib/${MSVC_PLATFORM_TARGET}/Debug/detours.lib")
 
 add_subdirectory(dll)

@@ -7,4 +7,4 @@ add_library(MsRdpEx SHARED
 	MsRdpEx.h
     MsRdpEx.def)
 
-target_link_libraries(MsRdpEx version.lib)
+target_link_libraries(MsRdpEx detours version.lib)
