@@ -44,8 +44,6 @@ set(DETOURS_ROOT_DIR "${DEPENDENCIES_DIR}/detours")
 
 include_directories("${DETOURS_ROOT_DIR}/include")
 
-message(STATUS "DETOURS_ROOT_DIR: ${DETOURS_ROOT_DIR}")
-
 add_library(detours STATIC IMPORTED)
 
 if(CMAKE_GENERATOR_PLATFORM MATCHES "ARM64")
@@ -62,6 +60,9 @@ set_property(TARGET detours PROPERTY
     IMPORTED_LOCATION "${DETOURS_ROOT_DIR}/lib/${MSVC_PLATFORM_TARGET}/Release/detours.lib")
 set_property(TARGET detours PROPERTY
     IMPORTED_LOCATION_DEBUG "${DETOURS_ROOT_DIR}/lib/${MSVC_PLATFORM_TARGET}/Debug/detours.lib")
+
+include_directories("${CMAKE_SOURCE_DIR}/utils")
+add_subdirectory(utils)
 
 add_subdirectory(dll)
 add_subdirectory(exe)
