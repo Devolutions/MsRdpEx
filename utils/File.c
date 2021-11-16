@@ -1,7 +1,7 @@
 
-#include "MreUtils.h"
+#include "Utils.h"
 
-const char* MreFile_Base(const char* filename)
+const char* MsRdpEx_FileBase(const char* filename)
 {
     size_t length;
     char* separator;
@@ -25,12 +25,25 @@ const char* MreFile_Base(const char* filename)
     return filename;
 }
 
-bool MreFile_GetVersion(const char* filename, char* version)
+bool MsRdpEx_IsFile(const char* filename)
+{
+    FILE* fp = fopen(filename, "rb");
+
+    if (!fp)
+        return false;
+
+    fclose(fp);
+    
+    return true;
+}
+
+bool MsRdpEx_GetFileVersion(const char* filename, char* version)
 {
     DWORD dwHandle;
     char* buffer = NULL;
     bool success = false;
     VS_FIXEDFILEINFO* pvi;
+    
     DWORD size = GetFileVersionInfoSizeA(filename, &dwHandle);
 
     if (size < 1)

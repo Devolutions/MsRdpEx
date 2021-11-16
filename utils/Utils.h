@@ -14,8 +14,9 @@ extern "C" {
 
 // File Utils
 
-const char* MreFile_Base(const char* filename);
-bool MreFile_GetModuleVersion(const char* filename, char* version);
+const char* MsRdpEx_FileBase(const char* filename);
+bool MsRdpEx_IsFile(const char* filename);
+bool MsRdpEx_GetFileVersion(const char* filename, char* version);
 
 #ifdef __cplusplus
 }

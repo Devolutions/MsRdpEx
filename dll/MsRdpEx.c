@@ -1,7 +1,7 @@
 
 #include "MsRdpEx.h"
 
-#include "MreUtils.h"
+#include "Utils.h"
 
 static FILE* g_LogFile = NULL;
 
@@ -128,14 +128,14 @@ void MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll)
 
 // Logger
 
-void MreLog_Open()
+void MsRdpEx_LogOpen()
 {
     char filename[1024];
     strcpy_s(filename, 1024, "C:\\Windows\\Temp\\MsRdpEx.log");
     g_LogFile = fopen(filename, "wb");
 }
 
-void MreLog_Close()
+void MsRdpEx_LogClose()
 {
     if (g_LogFile) {
         fclose(g_LogFile);
@@ -152,10 +152,10 @@ void MsRdpEx_Load()
     char ModuleVersion[64];
 
     GetModuleFileNameA(NULL, ModuleFileName, 1024);
-    MreFile_GetVersion(ModuleFileName, ModuleVersion);
-    filename = MreFile_Base(ModuleFileName);
+    MsRdpEx_GetFileVersion(ModuleFileName, ModuleVersion);
+    filename = MsRdpEx_FileBase(ModuleFileName);
 
-    MreLog_Open();
+    MsRdpEx_LogOpen();
 
     fprintf(g_LogFile, "ModuleFileName: %s (%s)\n", filename, ModuleVersion);
 
@@ -182,7 +182,7 @@ void MsRdpEx_Unload()
     }
 
     g_AxDll = NULL;
-    MreLog_Close();
+    MsRdpEx_LogClose();
 }
 
 BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID reserved)
