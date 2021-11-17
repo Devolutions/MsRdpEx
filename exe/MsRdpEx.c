@@ -7,10 +7,12 @@
 
 int main(int argc, char** argv)
 {
+    BOOL fSuccess;
     char szCommandLine[2048];
     STARTUPINFOA StartupInfo;
     PROCESS_INFORMATION ProcessInfo;
-    BOOL fSuccess;
+
+    MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
 
     ZeroMemory(szCommandLine, sizeof(szCommandLine));
 
@@ -29,7 +31,7 @@ int main(int argc, char** argv)
 
     ZeroMemory(&ProcessInfo, sizeof(ProcessInfo));
 
-    const char* lpApplicationName = "C:\\Windows\\System32\\mstsc.exe";
+    const char* lpApplicationName = MsRdpEx_GetPath(MSRDPEX_MSTSC_EXE_PATH);
     char* lpCommandLine = szCommandLine;
     DWORD dwCreationFlags = CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED;
 

@@ -96,26 +96,20 @@ void MsRdpEx_LogClose()
 
 // DLL Main
 
-EXTERN_C IMAGE_DOS_HEADER __ImageBase;
-
 void MsRdpEx_Load()
 {
-    const char* filename;
-    char ModuleFileName[MSRDPEX_MAX_PATH];
-
-    GetModuleFileNameA(NULL, ModuleFileName, MSRDPEX_MAX_PATH);
-    filename = MsRdpEx_FileBase(ModuleFileName);
-
     MsRdpEx_LogOpen();
 
-    fprintf(g_LogFile, "ModuleFileName: %s\n", filename);
+    MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
 
-    char LibraryFileName[MSRDPEX_MAX_PATH];
-    GetModuleFileNameA((HINSTANCE)&__ImageBase, LibraryFileName, MSRDPEX_MAX_PATH);
+    const char* ModuleFileName = MsRdpEx_GetPath(MSRDPEX_CURRENT_MODULE_PATH);
+    fprintf(g_LogFile, "ModuleFileName: %s\n", ModuleFileName);
+
+    const char* LibraryFileName = MsRdpEx_GetPath(MSRDPEX_CURRENT_LIBRARY_PATH);
     fprintf(g_LogFile, "LibraryFileName: %s\n", LibraryFileName);
 
-    g_mstscax = MsRdpEx_AxDll_New("C:\\Windows\\System32\\mstscax.dll");
-    //g_rdclientax = MsRdpEx_AxDll_New("C:\\Program Files\\Remote Desktop\\rdclientax.dll");
+    g_mstscax = MsRdpEx_AxDll_New(MsRdpEx_GetPath(MSRDPEX_MSTSCAX_DLL_PATH));
+    //g_rdclientax = MsRdpEx_AxDll_New(MsRdpEx_GetPath(MSRDPEX_RDCLIENTAX_DLL_PATH));
 
     g_AxDll = g_mstscax;
 
