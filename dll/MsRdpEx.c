@@ -6,8 +6,6 @@
 FILE* g_LogFile = NULL;
 
 static MsRdpEx_AxDll* g_AxDll = NULL;
-static MsRdpEx_AxDll* g_mstscax = NULL;
-static MsRdpEx_AxDll* g_rdclientax = NULL;
 
 HRESULT DllCanUnloadNow()
 {
@@ -102,20 +100,20 @@ void MsRdpEx_Load()
 
     MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
 
-    const char* ModuleFileName = MsRdpEx_GetPath(MSRDPEX_CURRENT_MODULE_PATH);
-    fprintf(g_LogFile, "ModuleFileName: %s\n", ModuleFileName);
+    const char* ModuleFilePath = MsRdpEx_GetPath(MSRDPEX_CURRENT_MODULE_PATH);
+    const char* ModuleFileName = MsRdpEx_FileBase(ModuleFilePath);
 
-    const char* LibraryFileName = MsRdpEx_GetPath(MSRDPEX_CURRENT_LIBRARY_PATH);
-    fprintf(g_LogFile, "LibraryFileName: %s\n", LibraryFileName);
+    fprintf(g_LogFile, "ModuleFilePath: %s\n", ModuleFilePath);
 
-    g_mstscax = MsRdpEx_AxDll_New(MsRdpEx_GetPath(MSRDPEX_MSTSCAX_DLL_PATH));
-    //g_rdclientax = MsRdpEx_AxDll_New(MsRdpEx_GetPath(MSRDPEX_RDCLIENTAX_DLL_PATH));
+    uint32_t pathId = MSRDPEX_MSTSCAX_DLL_PATH;
 
-    g_AxDll = g_mstscax;
-
-    if (g_rdclientax) {
-        g_AxDll = g_rdclientax;
+    if (MsRdpEx_StringIEquals(ModuleFileName, "mstsc.exe")) {
+        pathId = MSRDPEX_MSTSCAX_DLL_PATH;
+    } else if (MsRdpEx_StringIEquals(ModuleFileName, "msrdc.exe")) {
+        pathId = MSRDPEX_RDCLIENTAX_DLL_PATH;
     }
+
+    g_AxDll = MsRdpEx_AxDll_New(MsRdpEx_GetPath(pathId));
 
     MsRdpEx_AttachHooks();
 }
@@ -124,17 +122,10 @@ void MsRdpEx_Unload()
 {
     MsRdpEx_DetachHooks();
 
-    if (g_mstscax) {
-        MsRdpEx_AxDll_Free(g_mstscax);
-        g_mstscax = NULL;
+    if (g_AxDll) {
+        MsRdpEx_AxDll_Free(g_AxDll);
+        g_AxDll = NULL;
     }
-
-    if (g_rdclientax) {
-        MsRdpEx_AxDll_Free(g_rdclientax);
-        g_rdclientax = NULL;
-    }
-
-    g_AxDll = NULL;
 
     MsRdpEx_LogClose();
 }

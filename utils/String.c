@@ -111,3 +111,13 @@ int MsRdpEx_ConvertToUnicode(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr
 
     return status;
 }
+
+bool MsRdpEx_StringEquals(const char* str1, const char* str2)
+{
+	return strcmp(str1, str2) == 0;
+}
+
+bool MsRdpEx_StringIEquals(const char* str1, const char* str2)
+{
+	return _stricmp(str1, str2) == 0;
+}

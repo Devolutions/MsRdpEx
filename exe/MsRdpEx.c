@@ -16,9 +16,12 @@ int main(int argc, char** argv)
 
     ZeroMemory(szCommandLine, sizeof(szCommandLine));
 
+    const char* lpApplicationName = MsRdpEx_GetPath(MSRDPEX_MSTSC_EXE_PATH);
+
     if ((argc == 1) || (argv[1][0] == '/') || MsRdpEx_IsFile(argv[1]))
     {
-        strcpy(szCommandLine, "mstsc.exe ");
+        sprintf_s(szCommandLine, sizeof(szCommandLine), "%s ",
+                MsRdpEx_FileBase(lpApplicationName));
     }
     for (int i = 1; i < argc; i++)
     {
@@ -31,20 +34,9 @@ int main(int argc, char** argv)
 
     ZeroMemory(&ProcessInfo, sizeof(ProcessInfo));
 
-    const char* lpApplicationName = MsRdpEx_GetPath(MSRDPEX_MSTSC_EXE_PATH);
     char* lpCommandLine = szCommandLine;
     DWORD dwCreationFlags = CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED;
-
-    char ModuleFileName[1024];
-    GetModuleFileNameA(NULL, ModuleFileName, 1024);
-    
-    size_t length = strlen(ModuleFileName);
-    
-    if (length > 4) {
-        strcpy(&ModuleFileName[length - 4], ".dll");
-    }
-
-    const char* lpDllName = ModuleFileName;
+    const char* lpDllName = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
 
     fSuccess = DetourCreateProcessWithDllExA(
         lpApplicationName, /* lpApplicationName */

@@ -24,6 +24,8 @@ bool MsRdpEx_GetFileBuildVersion(const char* filename, uint64_t* version);
 
 #define MSRDPEX_CURRENT_MODULE_PATH     0x00000001
 #define MSRDPEX_CURRENT_LIBRARY_PATH    0x00000002
+#define MSRDPEX_EXECUTABLE_PATH         0x00000004
+#define MSRDPEX_LIBRARY_PATH            0x00000008
 #define MSRDPEX_MSTSC_EXE_PATH          0x00000100
 #define MSRDPEX_MSTSCAX_DLL_PATH        0x00000200
 #define MSRDPEX_MSRDC_EXE_PATH          0x00000400
@@ -33,6 +35,8 @@ bool MsRdpEx_GetFileBuildVersion(const char* filename, uint64_t* version);
 bool MsRdpEx_InitPaths(uint32_t pathIds);
 const char* MsRdpEx_GetPath(uint32_t pathId);
 
+bool MsRdpEx_PathCchRenameExtension(char* pszPath, size_t cchPath, const char* pszExt);
+
 // String Utils
 
 int MsRdpEx_ConvertFromUnicode(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar,
@@ -41,6 +45,9 @@ int MsRdpEx_ConvertFromUnicode(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharS
 
 int MsRdpEx_ConvertToUnicode(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr, int cbMultiByte,
                      LPWSTR* lpWideCharStr, int cchWideChar);
+
+bool MsRdpEx_StringEquals(const char* str1, const char* str2);
+bool MsRdpEx_StringIEquals(const char* str1, const char* str2);
 
 #ifdef __cplusplus
 }
