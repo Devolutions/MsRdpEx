@@ -1,13 +1,11 @@
 
 #include "MsRdpEx.h"
 
-#include "MreUtils.h"
+#include "Utils.h"
 
-static FILE* g_LogFile = NULL;
+FILE* g_LogFile = NULL;
 
 static MsRdpEx_AxDll* g_AxDll = NULL;
-static MsRdpEx_AxDll* g_mstscax = NULL;
-static MsRdpEx_AxDll* g_rdclientax = NULL;
 
 HRESULT DllCanUnloadNow()
 {
@@ -35,8 +33,10 @@ HRESULT DllUnregisterServer()
 
 uint64_t DllGetTscCtlVer()
 {
-    fprintf(g_LogFile, "DllGetTscCtlVer\n");
-    return g_AxDll->DllGetTscCtlVer();
+    uint64_t version;
+    version = g_AxDll->DllGetTscCtlVer();
+    fprintf(g_LogFile, "DllGetTscCtlVer: 0x%04X\n", (unsigned int) version);
+    return version;
 }
 
 HRESULT DllSetAuthProperties(uint64_t properties)
@@ -75,67 +75,16 @@ HRESULT DllDeleteSavedCreds(WCHAR* a1, WCHAR* a2)
     return g_AxDll->DllDeleteSavedCreds(a1, a2);
 }
 
-// MsRdpEx_AxDll
-
-MsRdpEx_AxDll* MsRdpEx_AxDll_New(const char* filename)
-{
-	HMODULE hModule;
-	MsRdpEx_AxDll* dll;
-
-	hModule = LoadLibraryA(filename);
-
-	if (!hModule)
-		return NULL;
-
-	dll = (MsRdpEx_AxDll*) malloc(sizeof(MsRdpEx_AxDll));
-
-	if (!dll)
-		return NULL;
-
-	ZeroMemory(dll, sizeof(MsRdpEx_AxDll));
-
-	dll->hModule = hModule;
-
-    dll->DllCanUnloadNow = (fnDllCanUnloadNow) GetProcAddress(hModule, "DllCanUnloadNow");
-    dll->DllGetClassObject = (fnDllGetClassObject) GetProcAddress(hModule, "DllGetClassObject");
-    dll->DllRegisterServer = (fnDllRegisterServer) GetProcAddress(hModule, "DllRegisterServer");
-    dll->DllUnregisterServer = (fnDllUnregisterServer) GetProcAddress(hModule, "DllUnregisterServer");
-    dll->DllGetTscCtlVer = (fnDllGetTscCtlVer) GetProcAddress(hModule, "DllGetTscCtlVer");
-    dll->DllSetAuthProperties = (fnDllSetAuthProperties) GetProcAddress(hModule, "DllSetAuthProperties");
-    dll->DllGetClaimsToken = (fnDllGetClaimsToken) GetProcAddress(hModule, "DllGetClaimsToken");
-    dll->DllSetClaimsToken = (fnDllSetClaimsToken) GetProcAddress(hModule, "DllSetClaimsToken");
-    dll->DllLogoffClaimsToken = (fnDllLogoffClaimsToken) GetProcAddress(hModule, "DllLogoffClaimsToken");
-    dll->DllCancelAuthentication = (fnDllCancelAuthentication) GetProcAddress(hModule, "DllCancelAuthentication");
-    dll->DllDeleteSavedCreds = (fnDllDeleteSavedCreds) GetProcAddress(hModule, "DllDeleteSavedCreds");
-
-	return dll;
-}
-
-void MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll)
-{
-    if (!dll)
-        return;
-    
-    if (dll->hModule) {
-        FreeLibrary(dll->hModule);
-        dll->hModule = NULL;
-    }
-
-    ZeroMemory(dll, sizeof(MsRdpEx_AxDll));
-    
-    free(dll);
-}
-
 // Logger
 
-void MreLog_Open()
+void MsRdpEx_LogOpen()
 {
-    char filename[1024];
-    strcpy_s(filename, 1024, "C:\\Windows\\Temp\\MsRdpEx.log");
+    char filename[MSRDPEX_MAX_PATH];
+    strcpy_s(filename, MSRDPEX_MAX_PATH, "C:\\Windows\\Temp\\MsRdpEx.log");
     g_LogFile = fopen(filename, "wb");
 }
 
-void MreLog_Close()
+void MsRdpEx_LogClose()
 {
     if (g_LogFile) {
         fclose(g_LogFile);
@@ -147,49 +96,53 @@ void MreLog_Close()
 
 void MsRdpEx_Load()
 {
-    const char* filename;
-    char ModuleFileName[1024];
-    char ModuleVersion[64];
+    MsRdpEx_LogOpen();
 
-    GetModuleFileNameA(NULL, ModuleFileName, 1024);
-    MreFile_GetVersion(ModuleFileName, ModuleVersion);
-    filename = MreFile_Base(ModuleFileName);
+    MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
 
-    MreLog_Open();
+    const char* ModuleFilePath = MsRdpEx_GetPath(MSRDPEX_CURRENT_MODULE_PATH);
+    const char* ModuleFileName = MsRdpEx_FileBase(ModuleFilePath);
 
-    fprintf(g_LogFile, "ModuleFileName: %s (%s)\n", filename, ModuleVersion);
+    fprintf(g_LogFile, "ModuleFilePath: %s\n", ModuleFilePath);
 
-    g_mstscax = MsRdpEx_AxDll_New("C:\\Windows\\System32\\mstscax.dll");
-    //g_rdclientax = MsRdpEx_AxDll_New("C:\\Program Files\\Remote Desktop\\rdclientax.dll");
+    uint32_t pathId = MSRDPEX_MSTSCAX_DLL_PATH;
 
-    g_AxDll = g_mstscax;
-
-    if (g_rdclientax) {
-        g_AxDll = g_rdclientax;
+    if (MsRdpEx_StringIEquals(ModuleFileName, "mstsc.exe")) {
+        pathId = MSRDPEX_MSTSCAX_DLL_PATH;
+    } else if (MsRdpEx_StringIEquals(ModuleFileName, "msrdc.exe")) {
+        pathId = MSRDPEX_RDCLIENTAX_DLL_PATH;
     }
+
+    g_AxDll = MsRdpEx_AxDll_New(MsRdpEx_GetPath(pathId));
+
+    MsRdpEx_AttachHooks();
 }
 
 void MsRdpEx_Unload()
 {
-    if (g_mstscax) {
-        MsRdpEx_AxDll_Free(g_mstscax);
-        g_mstscax = NULL;
+    MsRdpEx_DetachHooks();
+
+    if (g_AxDll) {
+        MsRdpEx_AxDll_Free(g_AxDll);
+        g_AxDll = NULL;
     }
 
-    if (g_rdclientax) {
-        MsRdpEx_AxDll_Free(g_rdclientax);
-        g_rdclientax = NULL;
-    }
-
-    g_AxDll = NULL;
-    MreLog_Close();
+    MsRdpEx_LogClose();
 }
 
-BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID reserved)
+static HMODULE g_hModule = NULL;
+
+BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID reserved)
 {
+    if (DetourIsHelperProcess()) {
+        return TRUE;
+    }
+
     switch (dwReason) 
     { 
         case DLL_PROCESS_ATTACH:
+            g_hModule = hModule;
+            DisableThreadLibraryCalls(hModule);
             MsRdpEx_Load();
             break;
 

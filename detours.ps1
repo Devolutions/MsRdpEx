@@ -20,8 +20,9 @@ $TargetConfs = @('Release', 'Debug')
 
 foreach ($TargetArch in $TargetArchs) {
     foreach ($TargetConf in $TargetConfs) {
-        $Env:DETOURS_TARGET_PROCESSOR="$TargetArch"
+        $Env:DETOURS_TARGET_PROCESSOR="$($TargetArch.ToUpper())"
         $Env:DETOURS_CONFIG="$TargetConf"
+        & nmake clean
         & nmake
     }
 }

@@ -42,7 +42,7 @@ endif()
 set(DEPENDENCIES_DIR "${CMAKE_SOURCE_DIR}/dependencies")
 set(DETOURS_ROOT_DIR "${DEPENDENCIES_DIR}/detours")
 
-include_directories("${DETOURS_ROOT_DIR}")
+include_directories("${DETOURS_ROOT_DIR}/include")
 
 add_library(detours STATIC IMPORTED)
 
@@ -61,4 +61,8 @@ set_property(TARGET detours PROPERTY
 set_property(TARGET detours PROPERTY
     IMPORTED_LOCATION_DEBUG "${DETOURS_ROOT_DIR}/lib/${MSVC_PLATFORM_TARGET}/Debug/detours.lib")
 
+include_directories("${CMAKE_SOURCE_DIR}/utils")
+add_subdirectory(utils)
+
 add_subdirectory(dll)
+add_subdirectory(exe)
