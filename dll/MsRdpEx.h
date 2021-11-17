@@ -55,6 +55,9 @@ typedef struct _MsRdpEx_AxDll MsRdpEx_AxDll;
 MsRdpEx_AxDll* MsRdpEx_AxDll_New(const char* filename);
 void MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll);
 
+LONG MsRdpEx_AttachHooks();
+LONG MsRdpEx_DetachHooks();
+
 #ifdef __cplusplus
 }
 #endif

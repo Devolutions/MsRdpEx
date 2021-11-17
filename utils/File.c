@@ -37,9 +37,9 @@ bool MsRdpEx_IsFile(const char* filename)
     return true;
 }
 
-bool MsRdpEx_GetFileVersion(const char* filename, char* version)
+bool MsRdpEx_GetFileBuildVersion(const char* filename, uint64_t* version)
 {
-    DWORD dwHandle;
+    DWORD dwHandle = 0;
     char* buffer = NULL;
     bool success = false;
     VS_FIXEDFILEINFO* pvi;
@@ -62,11 +62,7 @@ bool MsRdpEx_GetFileVersion(const char* filename, char* version)
     if (!VerQueryValueA(buffer, "\\", (LPVOID*) &pvi, (UINT*) &size))
         goto exit;
 
-    sprintf(version, "%d.%d.%d.%d",
-        pvi->dwProductVersionMS >> 16,
-        pvi->dwFileVersionMS & 0xFFFF,
-        pvi->dwFileVersionLS >> 16,
-        pvi->dwFileVersionLS & 0xFFFF);
+    *version = (uint64_t)(pvi->dwFileVersionLS >> 16);
 
     success = true;
 
