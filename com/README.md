@@ -22,3 +22,9 @@ Generate C# import library:
 AxImp.exe /source .\mstscax.dll
 (Get-Content AxMSTSCLib.cs | Select-Object -Skip 10) | Set-Content AxMSTSCLib.cs
 ```
+
+Generate interface definition file (IDL) from type library:
+
+ * Launch OleView.exe from an elevated command prompt
+ * File -> View TypeLib, then select mstscax.dll
+ * File -> Save As..., use file name mstscax.idl
