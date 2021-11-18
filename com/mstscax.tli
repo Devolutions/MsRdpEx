@@ -1,0 +1,3442 @@
+#pragma once
+
+//
+// dispinterface IMsTscAxEvents wrapper method implementations
+//
+
+inline HRESULT IMsTscAxEvents::OnConnecting ( ) {
+    return _com_dispatch_method(this, 0x1, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnConnected ( ) {
+    return _com_dispatch_method(this, 0x2, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnLoginComplete ( ) {
+    return _com_dispatch_method(this, 0x3, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnDisconnected ( long discReason ) {
+    return _com_dispatch_method(this, 0x4, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003", discReason);
+}
+
+inline HRESULT IMsTscAxEvents::OnEnterFullScreenMode ( ) {
+    return _com_dispatch_method(this, 0x5, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnLeaveFullScreenMode ( ) {
+    return _com_dispatch_method(this, 0x6, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnChannelReceivedData ( _bstr_t chanName, _bstr_t data ) {
+    return _com_dispatch_method(this, 0x7, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0008\x0008", (BSTR)chanName, (BSTR)data);
+}
+
+inline HRESULT IMsTscAxEvents::OnRequestGoFullScreen ( ) {
+    return _com_dispatch_method(this, 0x8, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnRequestLeaveFullScreen ( ) {
+    return _com_dispatch_method(this, 0x9, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnFatalError ( long errorCode ) {
+    return _com_dispatch_method(this, 0xa, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003", errorCode);
+}
+
+inline HRESULT IMsTscAxEvents::OnWarning ( long warningCode ) {
+    return _com_dispatch_method(this, 0xb, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003", warningCode);
+}
+
+inline HRESULT IMsTscAxEvents::OnRemoteDesktopSizeChange ( long width, long height ) {
+    return _com_dispatch_method(this, 0xc, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003\x0003", width, height);
+}
+
+inline HRESULT IMsTscAxEvents::OnIdleTimeoutNotification ( ) {
+    return _com_dispatch_method(this, 0xd, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnRequestContainerMinimize ( ) {
+    return _com_dispatch_method(this, 0xe, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnConfirmClose ( VARIANT_BOOL * pfAllowClose ) {
+    return _com_dispatch_method(this, 0xf, DISPATCH_METHOD, VT_BOOL, (void*)pfAllowClose, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnReceivedTSPublicKey ( _bstr_t publicKey, VARIANT_BOOL * pfContinueLogon ) {
+    return _com_dispatch_method(this, 0x10, DISPATCH_METHOD, VT_BOOL, (void*)pfContinueLogon, 
+        L"\x0008", (BSTR)publicKey);
+}
+
+inline HRESULT IMsTscAxEvents::OnAutoReconnecting ( long disconnectReason, long attemptCount, AutoReconnectContinueState * pArcContinueStatus ) {
+    return _com_dispatch_method(this, 0x11, DISPATCH_METHOD, VT_I4, (void*)pArcContinueStatus, 
+        L"\x0003\x0003", disconnectReason, attemptCount);
+}
+
+inline HRESULT IMsTscAxEvents::OnAuthenticationWarningDisplayed ( ) {
+    return _com_dispatch_method(this, 0x12, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnAuthenticationWarningDismissed ( ) {
+    return _com_dispatch_method(this, 0x13, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnRemoteProgramResult ( _bstr_t bstrRemoteProgram, RemoteProgramResult lError, VARIANT_BOOL vbIsExecutable ) {
+    return _com_dispatch_method(this, 0x14, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0008\x0003\x000b", (BSTR)bstrRemoteProgram, lError, vbIsExecutable);
+}
+
+inline HRESULT IMsTscAxEvents::OnRemoteProgramDisplayed ( VARIANT_BOOL vbDisplayed, unsigned long uDisplayInformation ) {
+    return _com_dispatch_method(this, 0x15, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x000b\x0003", vbDisplayed, uDisplayInformation);
+}
+
+inline HRESULT IMsTscAxEvents::OnRemoteWindowDisplayed ( VARIANT_BOOL vbDisplayed, wireHWND hwnd, RemoteWindowDisplayedAttribute windowAttribute ) {
+    return _com_dispatch_method(this, 0x1d, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x000b\x4024\x0003", vbDisplayed, hwnd, windowAttribute);
+}
+
+inline HRESULT IMsTscAxEvents::OnLogonError ( long lError ) {
+    return _com_dispatch_method(this, 0x16, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003", lError);
+}
+
+inline HRESULT IMsTscAxEvents::OnFocusReleased ( int iDirection ) {
+    return _com_dispatch_method(this, 0x17, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003", iDirection);
+}
+
+inline HRESULT IMsTscAxEvents::OnUserNameAcquired ( _bstr_t bstrUserName ) {
+    return _com_dispatch_method(this, 0x18, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0008", (BSTR)bstrUserName);
+}
+
+inline HRESULT IMsTscAxEvents::OnMouseInputModeChanged ( VARIANT_BOOL fMouseModeRelative ) {
+    return _com_dispatch_method(this, 0x1a, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x000b", fMouseModeRelative);
+}
+
+inline HRESULT IMsTscAxEvents::OnServiceMessageReceived ( _bstr_t serviceMessage ) {
+    return _com_dispatch_method(this, 0x1c, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0008", (BSTR)serviceMessage);
+}
+
+inline HRESULT IMsTscAxEvents::OnConnectionBarPullDown ( ) {
+    return _com_dispatch_method(this, 0x1e, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnNetworkStatusChanged ( unsigned long qualityLevel, long bandwidth, long rtt ) {
+    return _com_dispatch_method(this, 0x20, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003\x0003\x0003", qualityLevel, bandwidth, rtt);
+}
+
+inline HRESULT IMsTscAxEvents::OnDevicesButtonPressed ( ) {
+    return _com_dispatch_method(this, 0x23, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnAutoReconnected ( ) {
+    return _com_dispatch_method(this, 0x21, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IMsTscAxEvents::OnAutoReconnecting2 ( long disconnectReason, VARIANT_BOOL networkAvailable, long attemptCount, long maxAttemptCount ) {
+    return _com_dispatch_method(this, 0x22, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003\x000b\x0003\x0003", disconnectReason, networkAvailable, attemptCount, maxAttemptCount);
+}
+
+//
+// interface IMsTscSecuredSettings wrapper method implementations
+//
+
+inline void IMsTscSecuredSettings::PutStartProgram ( _bstr_t pStartProgram ) {
+    HRESULT _hr = put_StartProgram(pStartProgram);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscSecuredSettings::GetStartProgram ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_StartProgram(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscSecuredSettings::PutWorkDir ( _bstr_t pWorkDir ) {
+    HRESULT _hr = put_WorkDir(pWorkDir);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscSecuredSettings::GetWorkDir ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_WorkDir(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscSecuredSettings::PutFullScreen ( long pfFullScreen ) {
+    HRESULT _hr = put_FullScreen(pfFullScreen);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscSecuredSettings::GetFullScreen ( ) {
+    long _result = 0;
+    HRESULT _hr = get_FullScreen(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsTscAdvancedSettings wrapper method implementations
+//
+
+inline void IMsTscAdvancedSettings::PutCompress ( long pcompress ) {
+    HRESULT _hr = put_Compress(pcompress);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscAdvancedSettings::GetCompress ( ) {
+    long _result = 0;
+    HRESULT _hr = get_Compress(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscAdvancedSettings::PutBitmapPeristence ( long pbitmapPeristence ) {
+    HRESULT _hr = put_BitmapPeristence(pbitmapPeristence);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscAdvancedSettings::GetBitmapPeristence ( ) {
+    long _result = 0;
+    HRESULT _hr = get_BitmapPeristence(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscAdvancedSettings::PutallowBackgroundInput ( long pallowBackgroundInput ) {
+    HRESULT _hr = put_allowBackgroundInput(pallowBackgroundInput);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscAdvancedSettings::GetallowBackgroundInput ( ) {
+    long _result = 0;
+    HRESULT _hr = get_allowBackgroundInput(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscAdvancedSettings::PutKeyBoardLayoutStr ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_KeyBoardLayoutStr(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void IMsTscAdvancedSettings::PutPluginDlls ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_PluginDlls(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void IMsTscAdvancedSettings::PutIconFile ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_IconFile(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void IMsTscAdvancedSettings::PutIconIndex ( long _arg1 ) {
+    HRESULT _hr = put_IconIndex(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void IMsTscAdvancedSettings::PutContainerHandledFullScreen ( long pContainerHandledFullScreen ) {
+    HRESULT _hr = put_ContainerHandledFullScreen(pContainerHandledFullScreen);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscAdvancedSettings::GetContainerHandledFullScreen ( ) {
+    long _result = 0;
+    HRESULT _hr = get_ContainerHandledFullScreen(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscAdvancedSettings::PutDisableRdpdr ( long pDisableRdpdr ) {
+    HRESULT _hr = put_DisableRdpdr(pDisableRdpdr);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscAdvancedSettings::GetDisableRdpdr ( ) {
+    long _result = 0;
+    HRESULT _hr = get_DisableRdpdr(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsTscDebug wrapper method implementations
+//
+
+inline void IMsTscDebug::PutHatchBitmapPDU ( long phatchBitmapPDU ) {
+    HRESULT _hr = put_HatchBitmapPDU(phatchBitmapPDU);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetHatchBitmapPDU ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HatchBitmapPDU(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutHatchSSBOrder ( long phatchSSBOrder ) {
+    HRESULT _hr = put_HatchSSBOrder(phatchSSBOrder);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetHatchSSBOrder ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HatchSSBOrder(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutHatchMembltOrder ( long phatchMembltOrder ) {
+    HRESULT _hr = put_HatchMembltOrder(phatchMembltOrder);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetHatchMembltOrder ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HatchMembltOrder(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutHatchIndexPDU ( long phatchIndexPDU ) {
+    HRESULT _hr = put_HatchIndexPDU(phatchIndexPDU);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetHatchIndexPDU ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HatchIndexPDU(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutLabelMemblt ( long plabelMemblt ) {
+    HRESULT _hr = put_LabelMemblt(plabelMemblt);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetLabelMemblt ( ) {
+    long _result = 0;
+    HRESULT _hr = get_LabelMemblt(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutBitmapCacheMonitor ( long pbitmapCacheMonitor ) {
+    HRESULT _hr = put_BitmapCacheMonitor(pbitmapCacheMonitor);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetBitmapCacheMonitor ( ) {
+    long _result = 0;
+    HRESULT _hr = get_BitmapCacheMonitor(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutMallocFailuresPercent ( long pmallocFailuresPercent ) {
+    HRESULT _hr = put_MallocFailuresPercent(pmallocFailuresPercent);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetMallocFailuresPercent ( ) {
+    long _result = 0;
+    HRESULT _hr = get_MallocFailuresPercent(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutMallocHugeFailuresPercent ( long pmallocHugeFailuresPercent ) {
+    HRESULT _hr = put_MallocHugeFailuresPercent(pmallocHugeFailuresPercent);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetMallocHugeFailuresPercent ( ) {
+    long _result = 0;
+    HRESULT _hr = get_MallocHugeFailuresPercent(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutNetThroughput ( long NetThroughput ) {
+    HRESULT _hr = put_NetThroughput(NetThroughput);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetNetThroughput ( ) {
+    long _result = 0;
+    HRESULT _hr = get_NetThroughput(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutCLXCmdLine ( _bstr_t pCLXCmdLine ) {
+    HRESULT _hr = put_CLXCmdLine(pCLXCmdLine);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscDebug::GetCLXCmdLine ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_CLXCmdLine(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscDebug::PutCLXDll ( _bstr_t pCLXDll ) {
+    HRESULT _hr = put_CLXDll(pCLXDll);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscDebug::GetCLXDll ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_CLXDll(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscDebug::PutRemoteProgramsHatchVisibleRegion ( long pcbHatch ) {
+    HRESULT _hr = put_RemoteProgramsHatchVisibleRegion(pcbHatch);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetRemoteProgramsHatchVisibleRegion ( ) {
+    long _result = 0;
+    HRESULT _hr = get_RemoteProgramsHatchVisibleRegion(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutRemoteProgramsHatchVisibleNoDataRegion ( long pcbHatch ) {
+    HRESULT _hr = put_RemoteProgramsHatchVisibleNoDataRegion(pcbHatch);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetRemoteProgramsHatchVisibleNoDataRegion ( ) {
+    long _result = 0;
+    HRESULT _hr = get_RemoteProgramsHatchVisibleNoDataRegion(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutRemoteProgramsHatchNonVisibleRegion ( long pcbHatch ) {
+    HRESULT _hr = put_RemoteProgramsHatchNonVisibleRegion(pcbHatch);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetRemoteProgramsHatchNonVisibleRegion ( ) {
+    long _result = 0;
+    HRESULT _hr = get_RemoteProgramsHatchNonVisibleRegion(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutRemoteProgramsHatchWindow ( long pcbHatch ) {
+    HRESULT _hr = put_RemoteProgramsHatchWindow(pcbHatch);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetRemoteProgramsHatchWindow ( ) {
+    long _result = 0;
+    HRESULT _hr = get_RemoteProgramsHatchWindow(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutRemoteProgramsStayConnectOnBadCaps ( long pcbStayConnected ) {
+    HRESULT _hr = put_RemoteProgramsStayConnectOnBadCaps(pcbStayConnected);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscDebug::GetRemoteProgramsStayConnectOnBadCaps ( ) {
+    long _result = 0;
+    HRESULT _hr = get_RemoteProgramsStayConnectOnBadCaps(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline unsigned int IMsTscDebug::GetControlType ( ) {
+    unsigned int _result = 0;
+    HRESULT _hr = get_ControlType(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscDebug::PutDecodeGfx ( VARIANT_BOOL _arg1 ) {
+    HRESULT _hr = put_DecodeGfx(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+//
+// interface IMsTscAx wrapper method implementations
+//
+
+inline void IMsTscAx::PutServer ( _bstr_t pServer ) {
+    HRESULT _hr = put_Server(pServer);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscAx::GetServer ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_Server(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscAx::PutDomain ( _bstr_t pDomain ) {
+    HRESULT _hr = put_Domain(pDomain);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscAx::GetDomain ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_Domain(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscAx::PutUserName ( _bstr_t pUserName ) {
+    HRESULT _hr = put_UserName(pUserName);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscAx::GetUserName ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_UserName(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscAx::PutDisconnectedText ( _bstr_t pDisconnectedText ) {
+    HRESULT _hr = put_DisconnectedText(pDisconnectedText);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscAx::GetDisconnectedText ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_DisconnectedText(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscAx::PutConnectingText ( _bstr_t pConnectingText ) {
+    HRESULT _hr = put_ConnectingText(pConnectingText);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscAx::GetConnectingText ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_ConnectingText(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline short IMsTscAx::GetConnected ( ) {
+    short _result = 0;
+    HRESULT _hr = get_Connected(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscAx::PutDesktopWidth ( long pVal ) {
+    HRESULT _hr = put_DesktopWidth(pVal);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscAx::GetDesktopWidth ( ) {
+    long _result = 0;
+    HRESULT _hr = get_DesktopWidth(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscAx::PutDesktopHeight ( long pVal ) {
+    HRESULT _hr = put_DesktopHeight(pVal);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscAx::GetDesktopHeight ( ) {
+    long _result = 0;
+    HRESULT _hr = get_DesktopHeight(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscAx::PutStartConnected ( long pfStartConnected ) {
+    HRESULT _hr = put_StartConnected(pfStartConnected);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscAx::GetStartConnected ( ) {
+    long _result = 0;
+    HRESULT _hr = get_StartConnected(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline long IMsTscAx::GetHorizontalScrollBarVisible ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HorizontalScrollBarVisible(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline long IMsTscAx::GetVerticalScrollBarVisible ( ) {
+    long _result = 0;
+    HRESULT _hr = get_VerticalScrollBarVisible(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsTscAx::PutFullScreenTitle ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_FullScreenTitle(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsTscAx::GetCipherStrength ( ) {
+    long _result = 0;
+    HRESULT _hr = get_CipherStrength(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline _bstr_t IMsTscAx::GetVersion ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_Version(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline long IMsTscAx::GetSecuredSettingsEnabled ( ) {
+    long _result = 0;
+    HRESULT _hr = get_SecuredSettingsEnabled(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline IMsTscSecuredSettingsPtr IMsTscAx::GetSecuredSettings ( ) {
+    struct IMsTscSecuredSettings * _result = 0;
+    HRESULT _hr = get_SecuredSettings(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsTscSecuredSettingsPtr(_result, false);
+}
+
+inline IMsTscAdvancedSettingsPtr IMsTscAx::GetAdvancedSettings ( ) {
+    struct IMsTscAdvancedSettings * _result = 0;
+    HRESULT _hr = get_AdvancedSettings(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsTscAdvancedSettingsPtr(_result, false);
+}
+
+inline IMsTscDebugPtr IMsTscAx::GetDebugger ( ) {
+    struct IMsTscDebug * _result = 0;
+    HRESULT _hr = get_Debugger(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsTscDebugPtr(_result, false);
+}
+
+inline HRESULT IMsTscAx::Connect ( ) {
+    HRESULT _hr = raw_Connect();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IMsTscAx::Disconnect ( ) {
+    HRESULT _hr = raw_Disconnect();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IMsTscAx::CreateVirtualChannels ( _bstr_t newVal ) {
+    HRESULT _hr = raw_CreateVirtualChannels(newVal);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IMsTscAx::SendOnVirtualChannel ( _bstr_t chanName, _bstr_t ChanData ) {
+    HRESULT _hr = raw_SendOnVirtualChannel(chanName, ChanData);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+//
+// interface IMsRdpClientAdvancedSettings wrapper method implementations
+//
+
+inline void IMsRdpClientAdvancedSettings::PutSmoothScroll ( long psmoothScroll ) {
+    HRESULT _hr = put_SmoothScroll(psmoothScroll);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetSmoothScroll ( ) {
+    long _result = 0;
+    HRESULT _hr = get_SmoothScroll(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutAcceleratorPassthrough ( long pacceleratorPassthrough ) {
+    HRESULT _hr = put_AcceleratorPassthrough(pacceleratorPassthrough);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetAcceleratorPassthrough ( ) {
+    long _result = 0;
+    HRESULT _hr = get_AcceleratorPassthrough(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutShadowBitmap ( long pshadowBitmap ) {
+    HRESULT _hr = put_ShadowBitmap(pshadowBitmap);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetShadowBitmap ( ) {
+    long _result = 0;
+    HRESULT _hr = get_ShadowBitmap(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutTransportType ( long ptransportType ) {
+    HRESULT _hr = put_TransportType(ptransportType);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetTransportType ( ) {
+    long _result = 0;
+    HRESULT _hr = get_TransportType(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutSasSequence ( long psasSequence ) {
+    HRESULT _hr = put_SasSequence(psasSequence);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetSasSequence ( ) {
+    long _result = 0;
+    HRESULT _hr = get_SasSequence(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutEncryptionEnabled ( long pencryptionEnabled ) {
+    HRESULT _hr = put_EncryptionEnabled(pencryptionEnabled);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetEncryptionEnabled ( ) {
+    long _result = 0;
+    HRESULT _hr = get_EncryptionEnabled(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutDedicatedTerminal ( long pdedicatedTerminal ) {
+    HRESULT _hr = put_DedicatedTerminal(pdedicatedTerminal);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetDedicatedTerminal ( ) {
+    long _result = 0;
+    HRESULT _hr = get_DedicatedTerminal(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutRDPPort ( long prdpPort ) {
+    HRESULT _hr = put_RDPPort(prdpPort);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetRDPPort ( ) {
+    long _result = 0;
+    HRESULT _hr = get_RDPPort(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutEnableMouse ( long penableMouse ) {
+    HRESULT _hr = put_EnableMouse(penableMouse);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetEnableMouse ( ) {
+    long _result = 0;
+    HRESULT _hr = get_EnableMouse(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutDisableCtrlAltDel ( long pdisableCtrlAltDel ) {
+    HRESULT _hr = put_DisableCtrlAltDel(pdisableCtrlAltDel);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetDisableCtrlAltDel ( ) {
+    long _result = 0;
+    HRESULT _hr = get_DisableCtrlAltDel(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutEnableWindowsKey ( long penableWindowsKey ) {
+    HRESULT _hr = put_EnableWindowsKey(penableWindowsKey);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetEnableWindowsKey ( ) {
+    long _result = 0;
+    HRESULT _hr = get_EnableWindowsKey(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutDoubleClickDetect ( long pdoubleClickDetect ) {
+    HRESULT _hr = put_DoubleClickDetect(pdoubleClickDetect);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetDoubleClickDetect ( ) {
+    long _result = 0;
+    HRESULT _hr = get_DoubleClickDetect(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutMaximizeShell ( long pmaximizeShell ) {
+    HRESULT _hr = put_MaximizeShell(pmaximizeShell);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetMaximizeShell ( ) {
+    long _result = 0;
+    HRESULT _hr = get_MaximizeShell(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutHotKeyFullScreen ( long photKeyFullScreen ) {
+    HRESULT _hr = put_HotKeyFullScreen(photKeyFullScreen);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetHotKeyFullScreen ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HotKeyFullScreen(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutHotKeyCtrlEsc ( long photKeyCtrlEsc ) {
+    HRESULT _hr = put_HotKeyCtrlEsc(photKeyCtrlEsc);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetHotKeyCtrlEsc ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HotKeyCtrlEsc(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutHotKeyAltEsc ( long photKeyAltEsc ) {
+    HRESULT _hr = put_HotKeyAltEsc(photKeyAltEsc);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetHotKeyAltEsc ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HotKeyAltEsc(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutHotKeyAltTab ( long photKeyAltTab ) {
+    HRESULT _hr = put_HotKeyAltTab(photKeyAltTab);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetHotKeyAltTab ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HotKeyAltTab(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutHotKeyAltShiftTab ( long photKeyAltShiftTab ) {
+    HRESULT _hr = put_HotKeyAltShiftTab(photKeyAltShiftTab);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetHotKeyAltShiftTab ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HotKeyAltShiftTab(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutHotKeyAltSpace ( long photKeyAltSpace ) {
+    HRESULT _hr = put_HotKeyAltSpace(photKeyAltSpace);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetHotKeyAltSpace ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HotKeyAltSpace(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutHotKeyCtrlAltDel ( long photKeyCtrlAltDel ) {
+    HRESULT _hr = put_HotKeyCtrlAltDel(photKeyCtrlAltDel);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetHotKeyCtrlAltDel ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HotKeyCtrlAltDel(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutorderDrawThreshold ( long porderDrawThreshold ) {
+    HRESULT _hr = put_orderDrawThreshold(porderDrawThreshold);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetorderDrawThreshold ( ) {
+    long _result = 0;
+    HRESULT _hr = get_orderDrawThreshold(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutBitmapCacheSize ( long pbitmapCacheSize ) {
+    HRESULT _hr = put_BitmapCacheSize(pbitmapCacheSize);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetBitmapCacheSize ( ) {
+    long _result = 0;
+    HRESULT _hr = get_BitmapCacheSize(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutBitmapVirtualCacheSize ( long pbitmapVirtualCacheSize ) {
+    HRESULT _hr = put_BitmapVirtualCacheSize(pbitmapVirtualCacheSize);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetBitmapVirtualCacheSize ( ) {
+    long _result = 0;
+    HRESULT _hr = get_BitmapVirtualCacheSize(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutScaleBitmapCachesByBPP ( long pbScale ) {
+    HRESULT _hr = put_ScaleBitmapCachesByBPP(pbScale);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetScaleBitmapCachesByBPP ( ) {
+    long _result = 0;
+    HRESULT _hr = get_ScaleBitmapCachesByBPP(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutNumBitmapCaches ( long pnumBitmapCaches ) {
+    HRESULT _hr = put_NumBitmapCaches(pnumBitmapCaches);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetNumBitmapCaches ( ) {
+    long _result = 0;
+    HRESULT _hr = get_NumBitmapCaches(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutCachePersistenceActive ( long pcachePersistenceActive ) {
+    HRESULT _hr = put_CachePersistenceActive(pcachePersistenceActive);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetCachePersistenceActive ( ) {
+    long _result = 0;
+    HRESULT _hr = get_CachePersistenceActive(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutPersistCacheDirectory ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_PersistCacheDirectory(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void IMsRdpClientAdvancedSettings::PutbrushSupportLevel ( long pbrushSupportLevel ) {
+    HRESULT _hr = put_brushSupportLevel(pbrushSupportLevel);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetbrushSupportLevel ( ) {
+    long _result = 0;
+    HRESULT _hr = get_brushSupportLevel(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutminInputSendInterval ( long pminInputSendInterval ) {
+    HRESULT _hr = put_minInputSendInterval(pminInputSendInterval);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetminInputSendInterval ( ) {
+    long _result = 0;
+    HRESULT _hr = get_minInputSendInterval(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutInputEventsAtOnce ( long pinputEventsAtOnce ) {
+    HRESULT _hr = put_InputEventsAtOnce(pinputEventsAtOnce);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetInputEventsAtOnce ( ) {
+    long _result = 0;
+    HRESULT _hr = get_InputEventsAtOnce(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutmaxEventCount ( long pmaxEventCount ) {
+    HRESULT _hr = put_maxEventCount(pmaxEventCount);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetmaxEventCount ( ) {
+    long _result = 0;
+    HRESULT _hr = get_maxEventCount(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutkeepAliveInterval ( long pkeepAliveInterval ) {
+    HRESULT _hr = put_keepAliveInterval(pkeepAliveInterval);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetkeepAliveInterval ( ) {
+    long _result = 0;
+    HRESULT _hr = get_keepAliveInterval(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutshutdownTimeout ( long pshutdownTimeout ) {
+    HRESULT _hr = put_shutdownTimeout(pshutdownTimeout);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetshutdownTimeout ( ) {
+    long _result = 0;
+    HRESULT _hr = get_shutdownTimeout(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutoverallConnectionTimeout ( long poverallConnectionTimeout ) {
+    HRESULT _hr = put_overallConnectionTimeout(poverallConnectionTimeout);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetoverallConnectionTimeout ( ) {
+    long _result = 0;
+    HRESULT _hr = get_overallConnectionTimeout(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutsingleConnectionTimeout ( long psingleConnectionTimeout ) {
+    HRESULT _hr = put_singleConnectionTimeout(psingleConnectionTimeout);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetsingleConnectionTimeout ( ) {
+    long _result = 0;
+    HRESULT _hr = get_singleConnectionTimeout(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutKeyboardType ( long pkeyboardType ) {
+    HRESULT _hr = put_KeyboardType(pkeyboardType);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetKeyboardType ( ) {
+    long _result = 0;
+    HRESULT _hr = get_KeyboardType(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutKeyboardSubType ( long pkeyboardSubType ) {
+    HRESULT _hr = put_KeyboardSubType(pkeyboardSubType);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetKeyboardSubType ( ) {
+    long _result = 0;
+    HRESULT _hr = get_KeyboardSubType(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutKeyboardFunctionKey ( long pkeyboardFunctionKey ) {
+    HRESULT _hr = put_KeyboardFunctionKey(pkeyboardFunctionKey);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetKeyboardFunctionKey ( ) {
+    long _result = 0;
+    HRESULT _hr = get_KeyboardFunctionKey(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutWinceFixedPalette ( long pwinceFixedPalette ) {
+    HRESULT _hr = put_WinceFixedPalette(pwinceFixedPalette);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetWinceFixedPalette ( ) {
+    long _result = 0;
+    HRESULT _hr = get_WinceFixedPalette(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutConnectToServerConsole ( VARIANT_BOOL pConnectToConsole ) {
+    HRESULT _hr = put_ConnectToServerConsole(pConnectToConsole);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings::GetConnectToServerConsole ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_ConnectToServerConsole(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutBitmapPersistence ( long pbitmapPersistence ) {
+    HRESULT _hr = put_BitmapPersistence(pbitmapPersistence);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetBitmapPersistence ( ) {
+    long _result = 0;
+    HRESULT _hr = get_BitmapPersistence(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutMinutesToIdleTimeout ( long pminutesToIdleTimeout ) {
+    HRESULT _hr = put_MinutesToIdleTimeout(pminutesToIdleTimeout);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetMinutesToIdleTimeout ( ) {
+    long _result = 0;
+    HRESULT _hr = get_MinutesToIdleTimeout(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutSmartSizing ( VARIANT_BOOL pfSmartSizing ) {
+    HRESULT _hr = put_SmartSizing(pfSmartSizing);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings::GetSmartSizing ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_SmartSizing(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutRdpdrLocalPrintingDocName ( _bstr_t pLocalPrintingDocName ) {
+    HRESULT _hr = put_RdpdrLocalPrintingDocName(pLocalPrintingDocName);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientAdvancedSettings::GetRdpdrLocalPrintingDocName ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_RdpdrLocalPrintingDocName(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientAdvancedSettings::PutRdpdrClipCleanTempDirString ( _bstr_t clipCleanTempDirString ) {
+    HRESULT _hr = put_RdpdrClipCleanTempDirString(clipCleanTempDirString);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientAdvancedSettings::GetRdpdrClipCleanTempDirString ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_RdpdrClipCleanTempDirString(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientAdvancedSettings::PutRdpdrClipPasteInfoString ( _bstr_t clipPasteInfoString ) {
+    HRESULT _hr = put_RdpdrClipPasteInfoString(clipPasteInfoString);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientAdvancedSettings::GetRdpdrClipPasteInfoString ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_RdpdrClipPasteInfoString(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientAdvancedSettings::PutClearTextPassword ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_ClearTextPassword(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void IMsRdpClientAdvancedSettings::PutDisplayConnectionBar ( VARIANT_BOOL pDisplayConnectionBar ) {
+    HRESULT _hr = put_DisplayConnectionBar(pDisplayConnectionBar);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings::GetDisplayConnectionBar ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_DisplayConnectionBar(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutPinConnectionBar ( VARIANT_BOOL pPinConnectionBar ) {
+    HRESULT _hr = put_PinConnectionBar(pPinConnectionBar);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings::GetPinConnectionBar ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_PinConnectionBar(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutGrabFocusOnConnect ( VARIANT_BOOL pfGrabFocusOnConnect ) {
+    HRESULT _hr = put_GrabFocusOnConnect(pfGrabFocusOnConnect);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings::GetGrabFocusOnConnect ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_GrabFocusOnConnect(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutLoadBalanceInfo ( _bstr_t pLBInfo ) {
+    HRESULT _hr = put_LoadBalanceInfo(pLBInfo);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientAdvancedSettings::GetLoadBalanceInfo ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_LoadBalanceInfo(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientAdvancedSettings::PutRedirectDrives ( VARIANT_BOOL pRedirectDrives ) {
+    HRESULT _hr = put_RedirectDrives(pRedirectDrives);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings::GetRedirectDrives ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectDrives(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutRedirectPrinters ( VARIANT_BOOL pRedirectPrinters ) {
+    HRESULT _hr = put_RedirectPrinters(pRedirectPrinters);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings::GetRedirectPrinters ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectPrinters(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutRedirectPorts ( VARIANT_BOOL pRedirectPorts ) {
+    HRESULT _hr = put_RedirectPorts(pRedirectPorts);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings::GetRedirectPorts ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectPorts(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutRedirectSmartCards ( VARIANT_BOOL pRedirectSmartCards ) {
+    HRESULT _hr = put_RedirectSmartCards(pRedirectSmartCards);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings::GetRedirectSmartCards ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectSmartCards(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutBitmapVirtualCache16BppSize ( long pBitmapVirtualCache16BppSize ) {
+    HRESULT _hr = put_BitmapVirtualCache16BppSize(pBitmapVirtualCache16BppSize);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetBitmapVirtualCache16BppSize ( ) {
+    long _result = 0;
+    HRESULT _hr = get_BitmapVirtualCache16BppSize(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutBitmapVirtualCache24BppSize ( long pBitmapVirtualCache24BppSize ) {
+    HRESULT _hr = put_BitmapVirtualCache24BppSize(pBitmapVirtualCache24BppSize);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetBitmapVirtualCache24BppSize ( ) {
+    long _result = 0;
+    HRESULT _hr = get_BitmapVirtualCache24BppSize(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutPerformanceFlags ( long pDisableList ) {
+    HRESULT _hr = put_PerformanceFlags(pDisableList);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings::GetPerformanceFlags ( ) {
+    long _result = 0;
+    HRESULT _hr = get_PerformanceFlags(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings::PutConnectWithEndpoint ( VARIANT * _arg1 ) {
+    HRESULT _hr = put_ConnectWithEndpoint(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void IMsRdpClientAdvancedSettings::PutNotifyTSPublicKey ( VARIANT_BOOL pfNotify ) {
+    HRESULT _hr = put_NotifyTSPublicKey(pfNotify);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings::GetNotifyTSPublicKey ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_NotifyTSPublicKey(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClientSecuredSettings wrapper method implementations
+//
+
+inline void IMsRdpClientSecuredSettings::PutKeyboardHookMode ( long pkeyboardHookMode ) {
+    HRESULT _hr = put_KeyboardHookMode(pkeyboardHookMode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientSecuredSettings::GetKeyboardHookMode ( ) {
+    long _result = 0;
+    HRESULT _hr = get_KeyboardHookMode(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientSecuredSettings::PutAudioRedirectionMode ( long pAudioRedirectionMode ) {
+    HRESULT _hr = put_AudioRedirectionMode(pAudioRedirectionMode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientSecuredSettings::GetAudioRedirectionMode ( ) {
+    long _result = 0;
+    HRESULT _hr = get_AudioRedirectionMode(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClient wrapper method implementations
+//
+
+inline void IMsRdpClient::PutColorDepth ( long pcolorDepth ) {
+    HRESULT _hr = put_ColorDepth(pcolorDepth);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClient::GetColorDepth ( ) {
+    long _result = 0;
+    HRESULT _hr = get_ColorDepth(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline IMsRdpClientAdvancedSettingsPtr IMsRdpClient::GetAdvancedSettings2 ( ) {
+    struct IMsRdpClientAdvancedSettings * _result = 0;
+    HRESULT _hr = get_AdvancedSettings2(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientAdvancedSettingsPtr(_result, false);
+}
+
+inline IMsRdpClientSecuredSettingsPtr IMsRdpClient::GetSecuredSettings2 ( ) {
+    struct IMsRdpClientSecuredSettings * _result = 0;
+    HRESULT _hr = get_SecuredSettings2(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientSecuredSettingsPtr(_result, false);
+}
+
+inline ExtendedDisconnectReasonCode IMsRdpClient::GetExtendedDisconnectReason ( ) {
+    ExtendedDisconnectReasonCode _result;
+    HRESULT _hr = get_ExtendedDisconnectReason(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClient::PutFullScreen ( VARIANT_BOOL pfFullScreen ) {
+    HRESULT _hr = put_FullScreen(pfFullScreen);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClient::GetFullScreen ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_FullScreen(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline HRESULT IMsRdpClient::SetVirtualChannelOptions ( _bstr_t chanName, long chanOptions ) {
+    HRESULT _hr = raw_SetVirtualChannelOptions(chanName, chanOptions);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline long IMsRdpClient::GetVirtualChannelOptions ( _bstr_t chanName ) {
+    long _result = 0;
+    HRESULT _hr = raw_GetVirtualChannelOptions(chanName, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline ControlCloseStatus IMsRdpClient::RequestClose ( ) {
+    ControlCloseStatus _result;
+    HRESULT _hr = raw_RequestClose(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsTscNonScriptable wrapper method implementations
+//
+
+inline void IMsTscNonScriptable::PutClearTextPassword ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_ClearTextPassword(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void IMsTscNonScriptable::PutPortablePassword ( _bstr_t pPortablePass ) {
+    HRESULT _hr = put_PortablePassword(pPortablePass);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscNonScriptable::GetPortablePassword ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_PortablePassword(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscNonScriptable::PutPortableSalt ( _bstr_t pPortableSalt ) {
+    HRESULT _hr = put_PortableSalt(pPortableSalt);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscNonScriptable::GetPortableSalt ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_PortableSalt(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscNonScriptable::PutBinaryPassword ( _bstr_t pBinaryPassword ) {
+    HRESULT _hr = put_BinaryPassword(pBinaryPassword);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscNonScriptable::GetBinaryPassword ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_BinaryPassword(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsTscNonScriptable::PutBinarySalt ( _bstr_t pSalt ) {
+    HRESULT _hr = put_BinarySalt(pSalt);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsTscNonScriptable::GetBinarySalt ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_BinarySalt(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline HRESULT IMsTscNonScriptable::ResetPassword ( ) {
+    HRESULT _hr = raw_ResetPassword();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+//
+// interface IMsRdpClientNonScriptable wrapper method implementations
+//
+
+inline HRESULT IMsRdpClientNonScriptable::NotifyRedirectDeviceChange ( UINT_PTR wParam, LONG_PTR lParam ) {
+    HRESULT _hr = raw_NotifyRedirectDeviceChange(wParam, lParam);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IMsRdpClientNonScriptable::SendKeys ( long numKeys, VARIANT_BOOL * pbArrayKeyUp, long * plKeyData ) {
+    HRESULT _hr = raw_SendKeys(numKeys, pbArrayKeyUp, plKeyData);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+//
+// interface IMsRdpClientAdvancedSettings2 wrapper method implementations
+//
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings2::GetCanAutoReconnect ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_CanAutoReconnect(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings2::PutEnableAutoReconnect ( VARIANT_BOOL pfEnableAutoReconnect ) {
+    HRESULT _hr = put_EnableAutoReconnect(pfEnableAutoReconnect);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings2::GetEnableAutoReconnect ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_EnableAutoReconnect(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings2::PutMaxReconnectAttempts ( long pMaxReconnectAttempts ) {
+    HRESULT _hr = put_MaxReconnectAttempts(pMaxReconnectAttempts);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings2::GetMaxReconnectAttempts ( ) {
+    long _result = 0;
+    HRESULT _hr = get_MaxReconnectAttempts(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClient2 wrapper method implementations
+//
+
+inline IMsRdpClientAdvancedSettings2Ptr IMsRdpClient2::GetAdvancedSettings3 ( ) {
+    struct IMsRdpClientAdvancedSettings2 * _result = 0;
+    HRESULT _hr = get_AdvancedSettings3(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientAdvancedSettings2Ptr(_result, false);
+}
+
+inline void IMsRdpClient2::PutConnectedStatusText ( _bstr_t pConnectedStatusText ) {
+    HRESULT _hr = put_ConnectedStatusText(pConnectedStatusText);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClient2::GetConnectedStatusText ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_ConnectedStatusText(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+//
+// interface IMsRdpClientAdvancedSettings3 wrapper method implementations
+//
+
+inline void IMsRdpClientAdvancedSettings3::PutConnectionBarShowMinimizeButton ( VARIANT_BOOL pfShowMinimize ) {
+    HRESULT _hr = put_ConnectionBarShowMinimizeButton(pfShowMinimize);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings3::GetConnectionBarShowMinimizeButton ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_ConnectionBarShowMinimizeButton(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings3::PutConnectionBarShowRestoreButton ( VARIANT_BOOL pfShowRestore ) {
+    HRESULT _hr = put_ConnectionBarShowRestoreButton(pfShowRestore);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings3::GetConnectionBarShowRestoreButton ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_ConnectionBarShowRestoreButton(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClient3 wrapper method implementations
+//
+
+inline IMsRdpClientAdvancedSettings3Ptr IMsRdpClient3::GetAdvancedSettings4 ( ) {
+    struct IMsRdpClientAdvancedSettings3 * _result = 0;
+    HRESULT _hr = get_AdvancedSettings4(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientAdvancedSettings3Ptr(_result, false);
+}
+
+//
+// interface IMsRdpClientAdvancedSettings4 wrapper method implementations
+//
+
+inline void IMsRdpClientAdvancedSettings4::PutAuthenticationLevel ( unsigned int puiAuthLevel ) {
+    HRESULT _hr = put_AuthenticationLevel(puiAuthLevel);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned int IMsRdpClientAdvancedSettings4::GetAuthenticationLevel ( ) {
+    unsigned int _result = 0;
+    HRESULT _hr = get_AuthenticationLevel(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClient4 wrapper method implementations
+//
+
+inline IMsRdpClientAdvancedSettings4Ptr IMsRdpClient4::GetAdvancedSettings5 ( ) {
+    struct IMsRdpClientAdvancedSettings4 * _result = 0;
+    HRESULT _hr = get_AdvancedSettings5(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientAdvancedSettings4Ptr(_result, false);
+}
+
+//
+// interface IMsRdpClientNonScriptable2 wrapper method implementations
+//
+
+inline void IMsRdpClientNonScriptable2::PutUIParentWindowHandle ( wireHWND phwndUIParentWindowHandle ) {
+    HRESULT _hr = put_UIParentWindowHandle(phwndUIParentWindowHandle);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline wireHWND IMsRdpClientNonScriptable2::GetUIParentWindowHandle ( ) {
+    wireHWND _result;
+    HRESULT _hr = get_UIParentWindowHandle(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClientTransportSettings wrapper method implementations
+//
+
+inline void IMsRdpClientTransportSettings::PutGatewayHostname ( _bstr_t pProxyHostname ) {
+    HRESULT _hr = put_GatewayHostname(pProxyHostname);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientTransportSettings::GetGatewayHostname ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_GatewayHostname(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientTransportSettings::PutGatewayUsageMethod ( unsigned long pulProxyUsageMethod ) {
+    HRESULT _hr = put_GatewayUsageMethod(pulProxyUsageMethod);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IMsRdpClientTransportSettings::GetGatewayUsageMethod ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_GatewayUsageMethod(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientTransportSettings::PutGatewayProfileUsageMethod ( unsigned long pulProxyProfileUsageMethod ) {
+    HRESULT _hr = put_GatewayProfileUsageMethod(pulProxyProfileUsageMethod);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IMsRdpClientTransportSettings::GetGatewayProfileUsageMethod ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_GatewayProfileUsageMethod(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientTransportSettings::PutGatewayCredsSource ( unsigned long pulProxyCredsSource ) {
+    HRESULT _hr = put_GatewayCredsSource(pulProxyCredsSource);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IMsRdpClientTransportSettings::GetGatewayCredsSource ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_GatewayCredsSource(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientTransportSettings::PutGatewayUserSelectedCredsSource ( unsigned long pulProxyCredsSource ) {
+    HRESULT _hr = put_GatewayUserSelectedCredsSource(pulProxyCredsSource);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IMsRdpClientTransportSettings::GetGatewayUserSelectedCredsSource ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_GatewayUserSelectedCredsSource(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline long IMsRdpClientTransportSettings::GetGatewayIsSupported ( ) {
+    long _result = 0;
+    HRESULT _hr = get_GatewayIsSupported(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline unsigned long IMsRdpClientTransportSettings::GetGatewayDefaultUsageMethod ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_GatewayDefaultUsageMethod(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClientAdvancedSettings5 wrapper method implementations
+//
+
+inline void IMsRdpClientAdvancedSettings5::PutRedirectClipboard ( VARIANT_BOOL pfRedirectClipboard ) {
+    HRESULT _hr = put_RedirectClipboard(pfRedirectClipboard);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings5::GetRedirectClipboard ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectClipboard(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings5::PutAudioRedirectionMode ( unsigned int puiAudioRedirectionMode ) {
+    HRESULT _hr = put_AudioRedirectionMode(puiAudioRedirectionMode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned int IMsRdpClientAdvancedSettings5::GetAudioRedirectionMode ( ) {
+    unsigned int _result = 0;
+    HRESULT _hr = get_AudioRedirectionMode(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings5::PutConnectionBarShowPinButton ( VARIANT_BOOL pfShowPin ) {
+    HRESULT _hr = put_ConnectionBarShowPinButton(pfShowPin);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings5::GetConnectionBarShowPinButton ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_ConnectionBarShowPinButton(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings5::PutPublicMode ( VARIANT_BOOL pfPublicMode ) {
+    HRESULT _hr = put_PublicMode(pfPublicMode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings5::GetPublicMode ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_PublicMode(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings5::PutRedirectDevices ( VARIANT_BOOL pfRedirectPnPDevices ) {
+    HRESULT _hr = put_RedirectDevices(pfRedirectPnPDevices);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings5::GetRedirectDevices ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectDevices(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings5::PutRedirectPOSDevices ( VARIANT_BOOL pfRedirectPOSDevices ) {
+    HRESULT _hr = put_RedirectPOSDevices(pfRedirectPOSDevices);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings5::GetRedirectPOSDevices ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectPOSDevices(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings5::PutBitmapVirtualCache32BppSize ( long pBitmapVirtualCache32BppSize ) {
+    HRESULT _hr = put_BitmapVirtualCache32BppSize(pBitmapVirtualCache32BppSize);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings5::GetBitmapVirtualCache32BppSize ( ) {
+    long _result = 0;
+    HRESULT _hr = get_BitmapVirtualCache32BppSize(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface ITSRemoteProgram wrapper method implementations
+//
+
+inline void ITSRemoteProgram::PutRemoteProgramMode ( VARIANT_BOOL pvboolRemoteProgramMode ) {
+    HRESULT _hr = put_RemoteProgramMode(pvboolRemoteProgramMode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL ITSRemoteProgram::GetRemoteProgramMode ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RemoteProgramMode(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline HRESULT ITSRemoteProgram::ServerStartProgram ( _bstr_t bstrExecutablePath, _bstr_t bstrFilePath, _bstr_t bstrWorkingDirectory, VARIANT_BOOL vbExpandEnvVarInWorkingDirectoryOnServer, _bstr_t bstrArguments, VARIANT_BOOL vbExpandEnvVarInArgumentsOnServer ) {
+    HRESULT _hr = raw_ServerStartProgram(bstrExecutablePath, bstrFilePath, bstrWorkingDirectory, vbExpandEnvVarInWorkingDirectoryOnServer, bstrArguments, vbExpandEnvVarInArgumentsOnServer);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+//
+// interface IMsRdpClientShell wrapper method implementations
+//
+
+inline HRESULT IMsRdpClientShell::Launch ( ) {
+    HRESULT _hr = raw_Launch();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline void IMsRdpClientShell::PutRdpFileContents ( _bstr_t pszRdpFile ) {
+    HRESULT _hr = put_RdpFileContents(pszRdpFile);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientShell::GetRdpFileContents ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_RdpFileContents(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline HRESULT IMsRdpClientShell::SetRdpProperty ( _bstr_t szProperty, const _variant_t & Value ) {
+    HRESULT _hr = raw_SetRdpProperty(szProperty, Value);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline _variant_t IMsRdpClientShell::GetRdpProperty ( _bstr_t szProperty ) {
+    VARIANT _result;
+    VariantInit(&_result);
+    HRESULT _hr = raw_GetRdpProperty(szProperty, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _variant_t(_result, false);
+}
+
+inline VARIANT_BOOL IMsRdpClientShell::GetIsRemoteProgramClientInstalled ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_IsRemoteProgramClientInstalled(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientShell::PutPublicMode ( VARIANT_BOOL pfPublicMode ) {
+    HRESULT _hr = put_PublicMode(pfPublicMode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientShell::GetPublicMode ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_PublicMode(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline HRESULT IMsRdpClientShell::ShowTrustedSitesManagementDialog ( ) {
+    HRESULT _hr = raw_ShowTrustedSitesManagementDialog();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+//
+// interface IMsRdpClient5 wrapper method implementations
+//
+
+inline IMsRdpClientTransportSettingsPtr IMsRdpClient5::GetTransportSettings ( ) {
+    struct IMsRdpClientTransportSettings * _result = 0;
+    HRESULT _hr = get_TransportSettings(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientTransportSettingsPtr(_result, false);
+}
+
+inline IMsRdpClientAdvancedSettings5Ptr IMsRdpClient5::GetAdvancedSettings6 ( ) {
+    struct IMsRdpClientAdvancedSettings5 * _result = 0;
+    HRESULT _hr = get_AdvancedSettings6(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientAdvancedSettings5Ptr(_result, false);
+}
+
+inline _bstr_t IMsRdpClient5::GetErrorDescription ( unsigned int disconnectReason, unsigned int ExtendedDisconnectReason ) {
+    BSTR _result = 0;
+    HRESULT _hr = raw_GetErrorDescription(disconnectReason, ExtendedDisconnectReason, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline ITSRemoteProgramPtr IMsRdpClient5::GetRemoteProgram ( ) {
+    struct ITSRemoteProgram * _result = 0;
+    HRESULT _hr = get_RemoteProgram(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return ITSRemoteProgramPtr(_result, false);
+}
+
+inline IMsRdpClientShellPtr IMsRdpClient5::GetMsRdpClientShell ( ) {
+    struct IMsRdpClientShell * _result = 0;
+    HRESULT _hr = get_MsRdpClientShell(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientShellPtr(_result, false);
+}
+
+//
+// interface IMsRdpDevice wrapper method implementations
+//
+
+inline _bstr_t IMsRdpDevice::GetDeviceInstanceId ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_DeviceInstanceId(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline _bstr_t IMsRdpDevice::GetFriendlyName ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_FriendlyName(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline _bstr_t IMsRdpDevice::GetDeviceDescription ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_DeviceDescription(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpDevice::PutRedirectionState ( VARIANT_BOOL pvboolRedirState ) {
+    HRESULT _hr = put_RedirectionState(pvboolRedirState);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpDevice::GetRedirectionState ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectionState(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpDeviceCollection wrapper method implementations
+//
+
+inline HRESULT IMsRdpDeviceCollection::RescanDevices ( VARIANT_BOOL vboolDynRedir ) {
+    HRESULT _hr = raw_RescanDevices(vboolDynRedir);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline IMsRdpDevicePtr IMsRdpDeviceCollection::GetDeviceByIndex ( unsigned long index ) {
+    struct IMsRdpDevice * _result = 0;
+    HRESULT _hr = get_DeviceByIndex(index, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpDevicePtr(_result, false);
+}
+
+inline IMsRdpDevicePtr IMsRdpDeviceCollection::GetDeviceById ( _bstr_t devInstanceId ) {
+    struct IMsRdpDevice * _result = 0;
+    HRESULT _hr = get_DeviceById(devInstanceId, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpDevicePtr(_result, false);
+}
+
+inline unsigned long IMsRdpDeviceCollection::GetDeviceCount ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_DeviceCount(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpDrive wrapper method implementations
+//
+
+inline _bstr_t IMsRdpDrive::GetName ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_Name(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpDrive::PutRedirectionState ( VARIANT_BOOL pvboolRedirState ) {
+    HRESULT _hr = put_RedirectionState(pvboolRedirState);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpDrive::GetRedirectionState ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectionState(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpDriveCollection wrapper method implementations
+//
+
+inline HRESULT IMsRdpDriveCollection::RescanDrives ( VARIANT_BOOL vboolDynRedir ) {
+    HRESULT _hr = raw_RescanDrives(vboolDynRedir);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline IMsRdpDrivePtr IMsRdpDriveCollection::GetDriveByIndex ( unsigned long index ) {
+    struct IMsRdpDrive * _result = 0;
+    HRESULT _hr = get_DriveByIndex(index, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpDrivePtr(_result, false);
+}
+
+inline unsigned long IMsRdpDriveCollection::GetDriveCount ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_DriveCount(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClientNonScriptable3 wrapper method implementations
+//
+
+inline void IMsRdpClientNonScriptable3::PutShowRedirectionWarningDialog ( VARIANT_BOOL pfShowRdrDlg ) {
+    HRESULT _hr = put_ShowRedirectionWarningDialog(pfShowRdrDlg);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable3::GetShowRedirectionWarningDialog ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_ShowRedirectionWarningDialog(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable3::PutPromptForCredentials ( VARIANT_BOOL pfPrompt ) {
+    HRESULT _hr = put_PromptForCredentials(pfPrompt);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable3::GetPromptForCredentials ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_PromptForCredentials(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable3::PutNegotiateSecurityLayer ( VARIANT_BOOL pfNegotiate ) {
+    HRESULT _hr = put_NegotiateSecurityLayer(pfNegotiate);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable3::GetNegotiateSecurityLayer ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_NegotiateSecurityLayer(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable3::PutEnableCredSspSupport ( VARIANT_BOOL pfEnableSupport ) {
+    HRESULT _hr = put_EnableCredSspSupport(pfEnableSupport);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable3::GetEnableCredSspSupport ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_EnableCredSspSupport(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable3::PutRedirectDynamicDrives ( VARIANT_BOOL pfRedirectDynamicDrives ) {
+    HRESULT _hr = put_RedirectDynamicDrives(pfRedirectDynamicDrives);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable3::GetRedirectDynamicDrives ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectDynamicDrives(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable3::PutRedirectDynamicDevices ( VARIANT_BOOL pfRedirectDynamicDevices ) {
+    HRESULT _hr = put_RedirectDynamicDevices(pfRedirectDynamicDevices);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable3::GetRedirectDynamicDevices ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectDynamicDevices(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline IMsRdpDeviceCollectionPtr IMsRdpClientNonScriptable3::GetDeviceCollection ( ) {
+    struct IMsRdpDeviceCollection * _result = 0;
+    HRESULT _hr = get_DeviceCollection(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpDeviceCollectionPtr(_result, false);
+}
+
+inline IMsRdpDriveCollectionPtr IMsRdpClientNonScriptable3::GetDriveCollection ( ) {
+    struct IMsRdpDriveCollection * _result = 0;
+    HRESULT _hr = get_DriveCollection(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpDriveCollectionPtr(_result, false);
+}
+
+inline void IMsRdpClientNonScriptable3::PutWarnAboutSendingCredentials ( VARIANT_BOOL pfWarn ) {
+    HRESULT _hr = put_WarnAboutSendingCredentials(pfWarn);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable3::GetWarnAboutSendingCredentials ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_WarnAboutSendingCredentials(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable3::PutWarnAboutClipboardRedirection ( VARIANT_BOOL pfWarn ) {
+    HRESULT _hr = put_WarnAboutClipboardRedirection(pfWarn);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable3::GetWarnAboutClipboardRedirection ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_WarnAboutClipboardRedirection(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable3::PutConnectionBarText ( _bstr_t pConnectionBarText ) {
+    HRESULT _hr = put_ConnectionBarText(pConnectionBarText);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientNonScriptable3::GetConnectionBarText ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_ConnectionBarText(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+//
+// interface IMsRdpClientAdvancedSettings6 wrapper method implementations
+//
+
+inline void IMsRdpClientAdvancedSettings6::PutRelativeMouseMode ( VARIANT_BOOL pfRelativeMouseMode ) {
+    HRESULT _hr = put_RelativeMouseMode(pfRelativeMouseMode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings6::GetRelativeMouseMode ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RelativeMouseMode(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline _bstr_t IMsRdpClientAdvancedSettings6::GetAuthenticationServiceClass ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_AuthenticationServiceClass(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientAdvancedSettings6::PutAuthenticationServiceClass ( _bstr_t pbstrAuthServiceClass ) {
+    HRESULT _hr = put_AuthenticationServiceClass(pbstrAuthServiceClass);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientAdvancedSettings6::GetPCB ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_PCB(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientAdvancedSettings6::PutPCB ( _bstr_t bstrPCB ) {
+    HRESULT _hr = put_PCB(bstrPCB);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void IMsRdpClientAdvancedSettings6::PutHotKeyFocusReleaseLeft ( long HotKeyFocusReleaseLeft ) {
+    HRESULT _hr = put_HotKeyFocusReleaseLeft(HotKeyFocusReleaseLeft);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings6::GetHotKeyFocusReleaseLeft ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HotKeyFocusReleaseLeft(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings6::PutHotKeyFocusReleaseRight ( long HotKeyFocusReleaseRight ) {
+    HRESULT _hr = put_HotKeyFocusReleaseRight(HotKeyFocusReleaseRight);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline long IMsRdpClientAdvancedSettings6::GetHotKeyFocusReleaseRight ( ) {
+    long _result = 0;
+    HRESULT _hr = get_HotKeyFocusReleaseRight(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings6::PutEnableCredSspSupport ( VARIANT_BOOL pfEnableSupport ) {
+    HRESULT _hr = put_EnableCredSspSupport(pfEnableSupport);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings6::GetEnableCredSspSupport ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_EnableCredSspSupport(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline unsigned int IMsRdpClientAdvancedSettings6::GetAuthenticationType ( ) {
+    unsigned int _result = 0;
+    HRESULT _hr = get_AuthenticationType(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings6::PutConnectToAdministerServer ( VARIANT_BOOL pConnectToAdministerServer ) {
+    HRESULT _hr = put_ConnectToAdministerServer(pConnectToAdministerServer);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings6::GetConnectToAdministerServer ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_ConnectToAdministerServer(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClientTransportSettings2 wrapper method implementations
+//
+
+inline void IMsRdpClientTransportSettings2::PutGatewayCredSharing ( unsigned long pulProxyCredSharing ) {
+    HRESULT _hr = put_GatewayCredSharing(pulProxyCredSharing);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IMsRdpClientTransportSettings2::GetGatewayCredSharing ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_GatewayCredSharing(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientTransportSettings2::PutGatewayPreAuthRequirement ( unsigned long pulProxyPreAuthRequirement ) {
+    HRESULT _hr = put_GatewayPreAuthRequirement(pulProxyPreAuthRequirement);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IMsRdpClientTransportSettings2::GetGatewayPreAuthRequirement ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_GatewayPreAuthRequirement(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientTransportSettings2::PutGatewayPreAuthServerAddr ( _bstr_t pbstrProxyPreAuthServerAddr ) {
+    HRESULT _hr = put_GatewayPreAuthServerAddr(pbstrProxyPreAuthServerAddr);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientTransportSettings2::GetGatewayPreAuthServerAddr ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_GatewayPreAuthServerAddr(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientTransportSettings2::PutGatewaySupportUrl ( _bstr_t pbstrProxySupportUrl ) {
+    HRESULT _hr = put_GatewaySupportUrl(pbstrProxySupportUrl);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientTransportSettings2::GetGatewaySupportUrl ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_GatewaySupportUrl(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientTransportSettings2::PutGatewayEncryptedOtpCookie ( _bstr_t pbstrEncryptedOtpCookie ) {
+    HRESULT _hr = put_GatewayEncryptedOtpCookie(pbstrEncryptedOtpCookie);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientTransportSettings2::GetGatewayEncryptedOtpCookie ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_GatewayEncryptedOtpCookie(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientTransportSettings2::PutGatewayEncryptedOtpCookieSize ( unsigned long pulEncryptedOtpCookieSize ) {
+    HRESULT _hr = put_GatewayEncryptedOtpCookieSize(pulEncryptedOtpCookieSize);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IMsRdpClientTransportSettings2::GetGatewayEncryptedOtpCookieSize ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_GatewayEncryptedOtpCookieSize(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientTransportSettings2::PutGatewayUsername ( _bstr_t pProxyUsername ) {
+    HRESULT _hr = put_GatewayUsername(pProxyUsername);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientTransportSettings2::GetGatewayUsername ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_GatewayUsername(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientTransportSettings2::PutGatewayDomain ( _bstr_t pProxyDomain ) {
+    HRESULT _hr = put_GatewayDomain(pProxyDomain);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientTransportSettings2::GetGatewayDomain ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_GatewayDomain(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientTransportSettings2::PutGatewayPassword ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_GatewayPassword(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+//
+// interface IMsRdpClient6 wrapper method implementations
+//
+
+inline IMsRdpClientAdvancedSettings6Ptr IMsRdpClient6::GetAdvancedSettings7 ( ) {
+    struct IMsRdpClientAdvancedSettings6 * _result = 0;
+    HRESULT _hr = get_AdvancedSettings7(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientAdvancedSettings6Ptr(_result, false);
+}
+
+inline IMsRdpClientTransportSettings2Ptr IMsRdpClient6::GetTransportSettings2 ( ) {
+    struct IMsRdpClientTransportSettings2 * _result = 0;
+    HRESULT _hr = get_TransportSettings2(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientTransportSettings2Ptr(_result, false);
+}
+
+//
+// interface IMsRdpClientNonScriptable4 wrapper method implementations
+//
+
+inline void IMsRdpClientNonScriptable4::PutRedirectionWarningType ( RedirectionWarningType pWrnType ) {
+    HRESULT _hr = put_RedirectionWarningType(pWrnType);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline RedirectionWarningType IMsRdpClientNonScriptable4::GetRedirectionWarningType ( ) {
+    RedirectionWarningType _result;
+    HRESULT _hr = get_RedirectionWarningType(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable4::PutMarkRdpSettingsSecure ( VARIANT_BOOL pfRdpSecure ) {
+    HRESULT _hr = put_MarkRdpSettingsSecure(pfRdpSecure);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable4::GetMarkRdpSettingsSecure ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_MarkRdpSettingsSecure(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable4::PutPublisherCertificateChain ( VARIANT * pVarCert ) {
+    HRESULT _hr = put_PublisherCertificateChain(pVarCert);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _variant_t IMsRdpClientNonScriptable4::GetPublisherCertificateChain ( ) {
+    VARIANT _result;
+    VariantInit(&_result);
+    HRESULT _hr = get_PublisherCertificateChain(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _variant_t(_result, false);
+}
+
+inline void IMsRdpClientNonScriptable4::PutWarnAboutPrinterRedirection ( VARIANT_BOOL pfWarn ) {
+    HRESULT _hr = put_WarnAboutPrinterRedirection(pfWarn);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable4::GetWarnAboutPrinterRedirection ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_WarnAboutPrinterRedirection(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable4::PutAllowCredentialSaving ( VARIANT_BOOL pfAllowSave ) {
+    HRESULT _hr = put_AllowCredentialSaving(pfAllowSave);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable4::GetAllowCredentialSaving ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_AllowCredentialSaving(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable4::PutPromptForCredsOnClient ( VARIANT_BOOL pfPromptForCredsOnClient ) {
+    HRESULT _hr = put_PromptForCredsOnClient(pfPromptForCredsOnClient);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable4::GetPromptForCredsOnClient ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_PromptForCredsOnClient(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable4::PutLaunchedViaClientShellInterface ( VARIANT_BOOL pfLaunchedViaClientShellInterface ) {
+    HRESULT _hr = put_LaunchedViaClientShellInterface(pfLaunchedViaClientShellInterface);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable4::GetLaunchedViaClientShellInterface ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_LaunchedViaClientShellInterface(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable4::PutTrustedZoneSite ( VARIANT_BOOL pfIsTrustedZone ) {
+    HRESULT _hr = put_TrustedZoneSite(pfIsTrustedZone);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable4::GetTrustedZoneSite ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_TrustedZoneSite(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClientAdvancedSettings7 wrapper method implementations
+//
+
+inline void IMsRdpClientAdvancedSettings7::PutAudioCaptureRedirectionMode ( VARIANT_BOOL pfRedir ) {
+    HRESULT _hr = put_AudioCaptureRedirectionMode(pfRedir);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings7::GetAudioCaptureRedirectionMode ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_AudioCaptureRedirectionMode(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings7::PutVideoPlaybackMode ( unsigned int pVideoPlaybackMode ) {
+    HRESULT _hr = put_VideoPlaybackMode(pVideoPlaybackMode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned int IMsRdpClientAdvancedSettings7::GetVideoPlaybackMode ( ) {
+    unsigned int _result = 0;
+    HRESULT _hr = get_VideoPlaybackMode(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings7::PutEnableSuperPan ( VARIANT_BOOL pfEnableSuperPan ) {
+    HRESULT _hr = put_EnableSuperPan(pfEnableSuperPan);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings7::GetEnableSuperPan ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_EnableSuperPan(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings7::PutSuperPanAccelerationFactor ( unsigned long puAccelFactor ) {
+    HRESULT _hr = put_SuperPanAccelerationFactor(puAccelFactor);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IMsRdpClientAdvancedSettings7::GetSuperPanAccelerationFactor ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_SuperPanAccelerationFactor(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings7::PutNegotiateSecurityLayer ( VARIANT_BOOL pfNegotiate ) {
+    HRESULT _hr = put_NegotiateSecurityLayer(pfNegotiate);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings7::GetNegotiateSecurityLayer ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_NegotiateSecurityLayer(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings7::PutAudioQualityMode ( unsigned int pAudioQualityMode ) {
+    HRESULT _hr = put_AudioQualityMode(pAudioQualityMode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned int IMsRdpClientAdvancedSettings7::GetAudioQualityMode ( ) {
+    unsigned int _result = 0;
+    HRESULT _hr = get_AudioQualityMode(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings7::PutRedirectDirectX ( VARIANT_BOOL pfRedirectDirectX ) {
+    HRESULT _hr = put_RedirectDirectX(pfRedirectDirectX);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings7::GetRedirectDirectX ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectDirectX(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings7::PutNetworkConnectionType ( unsigned int pConnectionType ) {
+    HRESULT _hr = put_NetworkConnectionType(pConnectionType);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned int IMsRdpClientAdvancedSettings7::GetNetworkConnectionType ( ) {
+    unsigned int _result = 0;
+    HRESULT _hr = get_NetworkConnectionType(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClientTransportSettings3 wrapper method implementations
+//
+
+inline void IMsRdpClientTransportSettings3::PutGatewayCredSourceCookie ( unsigned long pulProxyCredSourceCookie ) {
+    HRESULT _hr = put_GatewayCredSourceCookie(pulProxyCredSourceCookie);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IMsRdpClientTransportSettings3::GetGatewayCredSourceCookie ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_GatewayCredSourceCookie(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientTransportSettings3::PutGatewayAuthCookieServerAddr ( _bstr_t pbstrProxyAuthCookieServerAddr ) {
+    HRESULT _hr = put_GatewayAuthCookieServerAddr(pbstrProxyAuthCookieServerAddr);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientTransportSettings3::GetGatewayAuthCookieServerAddr ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_GatewayAuthCookieServerAddr(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientTransportSettings3::PutGatewayEncryptedAuthCookie ( _bstr_t pbstrEncryptedAuthCookie ) {
+    HRESULT _hr = put_GatewayEncryptedAuthCookie(pbstrEncryptedAuthCookie);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientTransportSettings3::GetGatewayEncryptedAuthCookie ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_GatewayEncryptedAuthCookie(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientTransportSettings3::PutGatewayEncryptedAuthCookieSize ( unsigned long pulEncryptedAuthCookieSize ) {
+    HRESULT _hr = put_GatewayEncryptedAuthCookieSize(pulEncryptedAuthCookieSize);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IMsRdpClientTransportSettings3::GetGatewayEncryptedAuthCookieSize ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_GatewayEncryptedAuthCookieSize(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientTransportSettings3::PutGatewayAuthLoginPage ( _bstr_t pbstrProxyAuthLoginPage ) {
+    HRESULT _hr = put_GatewayAuthLoginPage(pbstrProxyAuthLoginPage);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _bstr_t IMsRdpClientTransportSettings3::GetGatewayAuthLoginPage ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_GatewayAuthLoginPage(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+//
+// interface IMsRdpClientSecuredSettings2 wrapper method implementations
+//
+
+inline _bstr_t IMsRdpClientSecuredSettings2::GetPCB ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_PCB(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpClientSecuredSettings2::PutPCB ( _bstr_t bstrPCB ) {
+    HRESULT _hr = put_PCB(bstrPCB);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+//
+// interface ITSRemoteProgram2 wrapper method implementations
+//
+
+inline void ITSRemoteProgram2::PutRemoteApplicationName ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_RemoteApplicationName(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void ITSRemoteProgram2::PutRemoteApplicationProgram ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_RemoteApplicationProgram(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void ITSRemoteProgram2::PutRemoteApplicationArgs ( _bstr_t _arg1 ) {
+    HRESULT _hr = put_RemoteApplicationArgs(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+//
+// interface IMsRdpClient7 wrapper method implementations
+//
+
+inline IMsRdpClientAdvancedSettings7Ptr IMsRdpClient7::GetAdvancedSettings8 ( ) {
+    struct IMsRdpClientAdvancedSettings7 * _result = 0;
+    HRESULT _hr = get_AdvancedSettings8(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientAdvancedSettings7Ptr(_result, false);
+}
+
+inline IMsRdpClientTransportSettings3Ptr IMsRdpClient7::GetTransportSettings3 ( ) {
+    struct IMsRdpClientTransportSettings3 * _result = 0;
+    HRESULT _hr = get_TransportSettings3(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientTransportSettings3Ptr(_result, false);
+}
+
+inline _bstr_t IMsRdpClient7::GetStatusText ( unsigned int statusCode ) {
+    BSTR _result = 0;
+    HRESULT _hr = raw_GetStatusText(statusCode, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline IMsRdpClientSecuredSettings2Ptr IMsRdpClient7::GetSecuredSettings3 ( ) {
+    struct IMsRdpClientSecuredSettings2 * _result = 0;
+    HRESULT _hr = get_SecuredSettings3(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientSecuredSettings2Ptr(_result, false);
+}
+
+inline ITSRemoteProgram2Ptr IMsRdpClient7::GetRemoteProgram2 ( ) {
+    struct ITSRemoteProgram2 * _result = 0;
+    HRESULT _hr = get_RemoteProgram2(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return ITSRemoteProgram2Ptr(_result, false);
+}
+
+//
+// interface IMsRdpClientNonScriptable5 wrapper method implementations
+//
+
+inline void IMsRdpClientNonScriptable5::PutUseMultimon ( VARIANT_BOOL pfUseMultimon ) {
+    HRESULT _hr = put_UseMultimon(pfUseMultimon);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable5::GetUseMultimon ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_UseMultimon(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline unsigned long IMsRdpClientNonScriptable5::GetRemoteMonitorCount ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_RemoteMonitorCount(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline HRESULT IMsRdpClientNonScriptable5::GetRemoteMonitorsBoundingBox ( long * pLeft, long * pTop, long * pRight, long * pBottom ) {
+    HRESULT _hr = raw_GetRemoteMonitorsBoundingBox(pLeft, pTop, pRight, pBottom);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable5::GetRemoteMonitorLayoutMatchesLocal ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RemoteMonitorLayoutMatchesLocal(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable5::PutDisableConnectionBar ( VARIANT_BOOL _arg1 ) {
+    HRESULT _hr = put_DisableConnectionBar(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline void IMsRdpClientNonScriptable5::PutDisableRemoteAppCapsCheck ( VARIANT_BOOL pfDisableRemoteAppCapsCheck ) {
+    HRESULT _hr = put_DisableRemoteAppCapsCheck(pfDisableRemoteAppCapsCheck);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable5::GetDisableRemoteAppCapsCheck ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_DisableRemoteAppCapsCheck(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable5::PutWarnAboutDirectXRedirection ( VARIANT_BOOL pfWarn ) {
+    HRESULT _hr = put_WarnAboutDirectXRedirection(pfWarn);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable5::GetWarnAboutDirectXRedirection ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_WarnAboutDirectXRedirection(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientNonScriptable5::PutAllowPromptingForCredentials ( VARIANT_BOOL pfAllow ) {
+    HRESULT _hr = put_AllowPromptingForCredentials(pfAllow);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientNonScriptable5::GetAllowPromptingForCredentials ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_AllowPromptingForCredentials(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpPreferredRedirectionInfo wrapper method implementations
+//
+
+inline void IMsRdpPreferredRedirectionInfo::PutUseRedirectionServerName ( VARIANT_BOOL pVal ) {
+    HRESULT _hr = put_UseRedirectionServerName(pVal);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpPreferredRedirectionInfo::GetUseRedirectionServerName ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_UseRedirectionServerName(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpExtendedSettings wrapper method implementations
+//
+
+inline void IMsRdpExtendedSettings::PutProperty ( _bstr_t bstrPropertyName, VARIANT * pValue ) {
+    HRESULT _hr = put_Property(bstrPropertyName, pValue);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline _variant_t IMsRdpExtendedSettings::GetProperty ( _bstr_t bstrPropertyName ) {
+    VARIANT _result;
+    VariantInit(&_result);
+    HRESULT _hr = get_Property(bstrPropertyName, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _variant_t(_result, false);
+}
+
+//
+// interface IMsRdpClientAdvancedSettings8 wrapper method implementations
+//
+
+inline void IMsRdpClientAdvancedSettings8::PutBandwidthDetection ( VARIANT_BOOL pfAutodetect ) {
+    HRESULT _hr = put_BandwidthDetection(pfAutodetect);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpClientAdvancedSettings8::GetBandwidthDetection ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_BandwidthDetection(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpClientAdvancedSettings8::PutClientProtocolSpec ( ClientSpec pClientMode ) {
+    HRESULT _hr = put_ClientProtocolSpec(pClientMode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline ClientSpec IMsRdpClientAdvancedSettings8::GetClientProtocolSpec ( ) {
+    ClientSpec _result;
+    HRESULT _hr = get_ClientProtocolSpec(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClient8 wrapper method implementations
+//
+
+inline HRESULT IMsRdpClient8::SendRemoteAction ( RemoteSessionActionType actionType ) {
+    HRESULT _hr = raw_SendRemoteAction(actionType);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline IMsRdpClientAdvancedSettings8Ptr IMsRdpClient8::GetAdvancedSettings9 ( ) {
+    struct IMsRdpClientAdvancedSettings8 * _result = 0;
+    HRESULT _hr = get_AdvancedSettings9(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientAdvancedSettings8Ptr(_result, false);
+}
+
+inline ControlReconnectStatus IMsRdpClient8::Reconnect ( unsigned long ulWidth, unsigned long ulHeight ) {
+    ControlReconnectStatus _result;
+    HRESULT _hr = raw_Reconnect(ulWidth, ulHeight, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClientTransportSettings4 wrapper method implementations
+//
+
+inline void IMsRdpClientTransportSettings4::PutGatewayBrokeringType ( unsigned long _arg1 ) {
+    HRESULT _hr = put_GatewayBrokeringType(_arg1);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+//
+// interface IMsRdpClient9 wrapper method implementations
+//
+
+inline IMsRdpClientTransportSettings4Ptr IMsRdpClient9::GetTransportSettings4 ( ) {
+    struct IMsRdpClientTransportSettings4 * _result = 0;
+    HRESULT _hr = get_TransportSettings4(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClientTransportSettings4Ptr(_result, false);
+}
+
+inline HRESULT IMsRdpClient9::SyncSessionDisplaySettings ( ) {
+    HRESULT _hr = raw_SyncSessionDisplaySettings();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IMsRdpClient9::UpdateSessionDisplaySettings ( unsigned long ulDesktopWidth, unsigned long ulDesktopHeight, unsigned long ulPhysicalWidth, unsigned long ulPhysicalHeight, unsigned long ulOrientation, unsigned long ulDesktopScaleFactor, unsigned long ulDeviceScaleFactor ) {
+    HRESULT _hr = raw_UpdateSessionDisplaySettings(ulDesktopWidth, ulDesktopHeight, ulPhysicalWidth, ulPhysicalHeight, ulOrientation, ulDesktopScaleFactor, ulDeviceScaleFactor);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IMsRdpClient9::attachEvent ( _bstr_t eventName, IDispatch * callback ) {
+    HRESULT _hr = raw_attachEvent(eventName, callback);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IMsRdpClient9::detachEvent ( _bstr_t eventName, IDispatch * callback ) {
+    HRESULT _hr = raw_detachEvent(eventName, callback);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+//
+// interface ITSRemoteProgram3 wrapper method implementations
+//
+
+inline HRESULT ITSRemoteProgram3::ServerStartApp ( _bstr_t bstrAppUserModelId, _bstr_t bstrArguments, VARIANT_BOOL vbExpandEnvVarInArgumentsOnServer ) {
+    HRESULT _hr = raw_ServerStartApp(bstrAppUserModelId, bstrArguments, vbExpandEnvVarInArgumentsOnServer);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+//
+// interface IMsRdpClient10 wrapper method implementations
+//
+
+inline ITSRemoteProgram3Ptr IMsRdpClient10::GetRemoteProgram3 ( ) {
+    struct ITSRemoteProgram3 * _result = 0;
+    HRESULT _hr = get_RemoteProgram3(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return ITSRemoteProgram3Ptr(_result, false);
+}
+
+//
+// interface IMsRdpClientNonScriptable6 wrapper method implementations
+//
+
+inline HRESULT IMsRdpClientNonScriptable6::SendLocation2D ( double latitude, double longitude ) {
+    HRESULT _hr = raw_SendLocation2D(latitude, longitude);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IMsRdpClientNonScriptable6::SendLocation3D ( double latitude, double longitude, int altitude ) {
+    HRESULT _hr = raw_SendLocation3D(latitude, longitude, altitude);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+//
+// interface IMsRdpCameraRedirConfig wrapper method implementations
+//
+
+inline _bstr_t IMsRdpCameraRedirConfig::GetFriendlyName ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_FriendlyName(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline _bstr_t IMsRdpCameraRedirConfig::GetSymbolicLink ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_SymbolicLink(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline _bstr_t IMsRdpCameraRedirConfig::GetInstanceId ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_InstanceId(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline _bstr_t IMsRdpCameraRedirConfig::GetParentInstanceId ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = get_ParentInstanceId(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline void IMsRdpCameraRedirConfig::PutRedirected ( VARIANT_BOOL pfRedirected ) {
+    HRESULT _hr = put_Redirected(pfRedirected);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpCameraRedirConfig::GetRedirected ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_Redirected(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline VARIANT_BOOL IMsRdpCameraRedirConfig::GetDeviceExists ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_DeviceExists(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpCameraRedirConfigCollection wrapper method implementations
+//
+
+inline HRESULT IMsRdpCameraRedirConfigCollection::Rescan ( ) {
+    HRESULT _hr = raw_Rescan();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline unsigned long IMsRdpCameraRedirConfigCollection::GetCount ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_Count(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline IMsRdpCameraRedirConfigPtr IMsRdpCameraRedirConfigCollection::GetByIndex ( unsigned long index ) {
+    struct IMsRdpCameraRedirConfig * _result = 0;
+    HRESULT _hr = get_ByIndex(index, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpCameraRedirConfigPtr(_result, false);
+}
+
+inline IMsRdpCameraRedirConfigPtr IMsRdpCameraRedirConfigCollection::GetBySymbolicLink ( _bstr_t SymbolicLink ) {
+    struct IMsRdpCameraRedirConfig * _result = 0;
+    HRESULT _hr = get_BySymbolicLink(SymbolicLink, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpCameraRedirConfigPtr(_result, false);
+}
+
+inline IMsRdpCameraRedirConfigPtr IMsRdpCameraRedirConfigCollection::GetByInstanceId ( _bstr_t InstanceId ) {
+    struct IMsRdpCameraRedirConfig * _result = 0;
+    HRESULT _hr = get_ByInstanceId(InstanceId, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpCameraRedirConfigPtr(_result, false);
+}
+
+inline HRESULT IMsRdpCameraRedirConfigCollection::AddConfig ( _bstr_t SymbolicLink, VARIANT_BOOL fRedirected ) {
+    HRESULT _hr = raw_AddConfig(SymbolicLink, fRedirected);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline void IMsRdpCameraRedirConfigCollection::PutRedirectByDefault ( VARIANT_BOOL pfRedirect ) {
+    HRESULT _hr = put_RedirectByDefault(pfRedirect);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpCameraRedirConfigCollection::GetRedirectByDefault ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_RedirectByDefault(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpCameraRedirConfigCollection::PutEncodeVideo ( VARIANT_BOOL pfEncode ) {
+    HRESULT _hr = put_EncodeVideo(pfEncode);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IMsRdpCameraRedirConfigCollection::GetEncodeVideo ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_EncodeVideo(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IMsRdpCameraRedirConfigCollection::PutEncodingQuality ( CameraRedirEncodingQuality pEncodingQuality ) {
+    HRESULT _hr = put_EncodingQuality(pEncodingQuality);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline CameraRedirEncodingQuality IMsRdpCameraRedirConfigCollection::GetEncodingQuality ( ) {
+    CameraRedirEncodingQuality _result;
+    HRESULT _hr = get_EncodingQuality(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IMsRdpClipboard wrapper method implementations
+//
+
+inline VARIANT_BOOL IMsRdpClipboard::CanSyncLocalClipboardToRemoteSession ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = raw_CanSyncLocalClipboardToRemoteSession(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline HRESULT IMsRdpClipboard::SyncLocalClipboardToRemoteSession ( ) {
+    HRESULT _hr = raw_SyncLocalClipboardToRemoteSession();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline VARIANT_BOOL IMsRdpClipboard::CanSyncRemoteClipboardToLocalSession ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = raw_CanSyncRemoteClipboardToLocalSession(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline HRESULT IMsRdpClipboard::SyncRemoteClipboardToLocalSession ( ) {
+    HRESULT _hr = raw_SyncRemoteClipboardToLocalSession();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+//
+// interface IMsRdpClientNonScriptable7 wrapper method implementations
+//
+
+inline IMsRdpCameraRedirConfigCollectionPtr IMsRdpClientNonScriptable7::GetCameraRedirConfigCollection ( ) {
+    struct IMsRdpCameraRedirConfigCollection * _result = 0;
+    HRESULT _hr = get_CameraRedirConfigCollection(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpCameraRedirConfigCollectionPtr(_result, false);
+}
+
+inline HRESULT IMsRdpClientNonScriptable7::DisableDpiCursorScalingForProcess ( ) {
+    HRESULT _hr = raw_DisableDpiCursorScalingForProcess();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline IMsRdpClipboardPtr IMsRdpClientNonScriptable7::GetClipboard ( ) {
+    struct IMsRdpClipboard * _result = 0;
+    HRESULT _hr = get_Clipboard(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IMsRdpClipboardPtr(_result, false);
+}
+
+//
+// dispinterface IRemoteDesktopClientEvents wrapper method implementations
+//
+
+inline HRESULT IRemoteDesktopClientEvents::OnConnecting ( ) {
+    return _com_dispatch_method(this, 0x2ee, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnConnected ( ) {
+    return _com_dispatch_method(this, 0x2ef, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnLoginCompleted ( ) {
+    return _com_dispatch_method(this, 0x2f0, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnDisconnected ( long disconnectReason, long ExtendedDisconnectReason, _bstr_t disconnectErrorMessage ) {
+    return _com_dispatch_method(this, 0x2f1, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003\x0003\x0008", disconnectReason, ExtendedDisconnectReason, (BSTR)disconnectErrorMessage);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnStatusChanged ( long statusCode, _bstr_t statusMessage ) {
+    return _com_dispatch_method(this, 0x2f2, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003\x0008", statusCode, (BSTR)statusMessage);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnAutoReconnecting ( long disconnectReason, long ExtendedDisconnectReason, _bstr_t disconnectErrorMessage, VARIANT_BOOL networkAvailable, long attemptCount, long maxAttemptCount ) {
+    return _com_dispatch_method(this, 0x2f3, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003\x0003\x0008\x000b\x0003\x0003", disconnectReason, ExtendedDisconnectReason, (BSTR)disconnectErrorMessage, networkAvailable, attemptCount, maxAttemptCount);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnAutoReconnected ( ) {
+    return _com_dispatch_method(this, 0x2f4, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnDialogDisplaying ( ) {
+    return _com_dispatch_method(this, 0x2f5, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnDialogDismissed ( ) {
+    return _com_dispatch_method(this, 0x2f6, DISPATCH_METHOD, VT_EMPTY, NULL, NULL);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnNetworkStatusChanged ( unsigned long qualityLevel, long bandwidth, long rtt ) {
+    return _com_dispatch_method(this, 0x2f7, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003\x0003\x0003", qualityLevel, bandwidth, rtt);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnAdminMessageReceived ( _bstr_t adminMessage ) {
+    return _com_dispatch_method(this, 0x2f8, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0008", (BSTR)adminMessage);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnKeyCombinationPressed ( long keyCombination ) {
+    return _com_dispatch_method(this, 0x2f9, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003", keyCombination);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnRemoteDesktopSizeChanged ( long width, long height ) {
+    return _com_dispatch_method(this, 0x2fa, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003\x0003", width, height);
+}
+
+inline HRESULT IRemoteDesktopClientEvents::OnTouchPointerCursorMoved ( long x, long y ) {
+    return _com_dispatch_method(this, 0x320, DISPATCH_METHOD, VT_EMPTY, NULL, 
+        L"\x0003\x0003", x, y);
+}
+
+//
+// interface IRemoteDesktopClientSettings wrapper method implementations
+//
+
+inline HRESULT IRemoteDesktopClientSettings::ApplySettings ( _bstr_t RdpFileContents ) {
+    HRESULT _hr = raw_ApplySettings(RdpFileContents);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline _bstr_t IRemoteDesktopClientSettings::RetrieveSettings ( ) {
+    BSTR _result = 0;
+    HRESULT _hr = raw_RetrieveSettings(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+inline _variant_t IRemoteDesktopClientSettings::GetRdpProperty ( _bstr_t propertyName ) {
+    VARIANT _result;
+    VariantInit(&_result);
+    HRESULT _hr = raw_GetRdpProperty(propertyName, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _variant_t(_result, false);
+}
+
+inline HRESULT IRemoteDesktopClientSettings::SetRdpProperty ( _bstr_t propertyName, const _variant_t & Value ) {
+    HRESULT _hr = raw_SetRdpProperty(propertyName, Value);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+//
+// interface IRemoteDesktopClientActions wrapper method implementations
+//
+
+inline HRESULT IRemoteDesktopClientActions::SuspendScreenUpdates ( ) {
+    HRESULT _hr = raw_SuspendScreenUpdates();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IRemoteDesktopClientActions::ResumeScreenUpdates ( ) {
+    HRESULT _hr = raw_ResumeScreenUpdates();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IRemoteDesktopClientActions::ExecuteRemoteAction ( RemoteActionType remoteAction ) {
+    HRESULT _hr = raw_ExecuteRemoteAction(remoteAction);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline _bstr_t IRemoteDesktopClientActions::GetSnapshot ( SnapshotEncodingType snapshotEncoding, SnapshotFormatType snapshotFormat, unsigned long snapshotWidth, unsigned long snapshotHeight ) {
+    BSTR _result = 0;
+    HRESULT _hr = raw_GetSnapshot(snapshotEncoding, snapshotFormat, snapshotWidth, snapshotHeight, &_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _bstr_t(_result, false);
+}
+
+//
+// interface IRemoteDesktopClientTouchPointer wrapper method implementations
+//
+
+inline void IRemoteDesktopClientTouchPointer::PutEnabled ( VARIANT_BOOL Enabled ) {
+    HRESULT _hr = put_Enabled(Enabled);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IRemoteDesktopClientTouchPointer::GetEnabled ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_Enabled(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IRemoteDesktopClientTouchPointer::PutEventsEnabled ( VARIANT_BOOL EventsEnabled ) {
+    HRESULT _hr = put_EventsEnabled(EventsEnabled);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline VARIANT_BOOL IRemoteDesktopClientTouchPointer::GetEventsEnabled ( ) {
+    VARIANT_BOOL _result = 0;
+    HRESULT _hr = get_EventsEnabled(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+inline void IRemoteDesktopClientTouchPointer::PutPointerSpeed ( unsigned long PointerSpeed ) {
+    HRESULT _hr = put_PointerSpeed(PointerSpeed);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+}
+
+inline unsigned long IRemoteDesktopClientTouchPointer::GetPointerSpeed ( ) {
+    unsigned long _result = 0;
+    HRESULT _hr = get_PointerSpeed(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _result;
+}
+
+//
+// interface IRemoteDesktopClient wrapper method implementations
+//
+
+inline HRESULT IRemoteDesktopClient::Connect ( ) {
+    HRESULT _hr = raw_Connect();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IRemoteDesktopClient::Disconnect ( ) {
+    HRESULT _hr = raw_Disconnect();
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IRemoteDesktopClient::Reconnect ( unsigned long width, unsigned long height ) {
+    HRESULT _hr = raw_Reconnect(width, height);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline IRemoteDesktopClientSettingsPtr IRemoteDesktopClient::GetSettings ( ) {
+    struct IRemoteDesktopClientSettings * _result = 0;
+    HRESULT _hr = get_Settings(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IRemoteDesktopClientSettingsPtr(_result, false);
+}
+
+inline IRemoteDesktopClientActionsPtr IRemoteDesktopClient::GetActions ( ) {
+    struct IRemoteDesktopClientActions * _result = 0;
+    HRESULT _hr = get_Actions(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IRemoteDesktopClientActionsPtr(_result, false);
+}
+
+inline IRemoteDesktopClientTouchPointerPtr IRemoteDesktopClient::GetTouchPointer ( ) {
+    struct IRemoteDesktopClientTouchPointer * _result = 0;
+    HRESULT _hr = get_TouchPointer(&_result);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return IRemoteDesktopClientTouchPointerPtr(_result, false);
+}
+
+inline HRESULT IRemoteDesktopClient::DeleteSavedCredentials ( _bstr_t serverName ) {
+    HRESULT _hr = raw_DeleteSavedCredentials(serverName);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IRemoteDesktopClient::UpdateSessionDisplaySettings ( unsigned long width, unsigned long height ) {
+    HRESULT _hr = raw_UpdateSessionDisplaySettings(width, height);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IRemoteDesktopClient::attachEvent ( _bstr_t eventName, IDispatch * callback ) {
+    HRESULT _hr = raw_attachEvent(eventName, callback);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
+
+inline HRESULT IRemoteDesktopClient::detachEvent ( _bstr_t eventName, IDispatch * callback ) {
+    HRESULT _hr = raw_detachEvent(eventName, callback);
+    if (FAILED(_hr)) _com_issue_errorex(_hr, this, __uuidof(this));
+    return _hr;
+}
