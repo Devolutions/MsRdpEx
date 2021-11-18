@@ -4395,7 +4395,7 @@ extern "C" const GUID __declspec(selectany) IID_IRemoteDesktopClient =
 // Wrapper method implementations
 //
 
-#include "C:\wayk\dev\MsRdpEx\com\mstscax.tli"
+#include "mstscax.tli"
 
 } // namespace MSTSCLib
 

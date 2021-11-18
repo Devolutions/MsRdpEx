@@ -30,3 +30,7 @@ Generate interface definition file (IDL) from type library:
  * File -> Save As..., use file name mstscax.idl
 
 The resulting .IDL file needs to be manually edited to fix type declaration ordering before midl.exe can compile it again into a .tlb file.
+
+```powershell
+midl.exe .\mstscax.idl /notlb /header mstscax.h /iid mstscax_i.c
+```
