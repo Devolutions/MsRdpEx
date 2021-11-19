@@ -73,6 +73,18 @@ HRESULT DllDeleteSavedCreds(WCHAR* a1, WCHAR* a2)
     return g_AxDll->DllDeleteSavedCreds(a1, a2);
 }
 
+uint64_t DllPreCleanUp()
+{
+    uint64_t status = S_OK;
+
+    MsRdpEx_Log("DllPreCleanUp");
+
+    if (g_AxDll->DllPreCleanUp)
+        status = g_AxDll->DllPreCleanUp();
+
+    return status;
+}
+
 // DLL Main
 
 void MsRdpEx_Load()

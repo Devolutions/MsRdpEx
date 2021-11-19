@@ -49,6 +49,7 @@ MsRdpEx_AxDll* CDECL MsRdpEx_AxDll_New(const char* filename)
     dll->DllLogoffClaimsToken = (fnDllLogoffClaimsToken) GetProcAddress(hModule, "DllLogoffClaimsToken");
     dll->DllCancelAuthentication = (fnDllCancelAuthentication) GetProcAddress(hModule, "DllCancelAuthentication");
     dll->DllDeleteSavedCreds = (fnDllDeleteSavedCreds) GetProcAddress(hModule, "DllDeleteSavedCreds");
+    dll->DllPreCleanUp = (fnDllPreCleanUp) GetProcAddress(hModule, "DllPreCleanUp"); // rdclientax.dll
 
     return dll;
 }

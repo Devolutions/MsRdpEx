@@ -380,17 +380,6 @@ public:
             pMsRdpClientNonScriptable3->PutConnectionBarText("MsRdpEx Client");
             pMsRdpClientNonScriptable3->Release();
         }
-#if 0
-        IMsRdpExtendedSettings* pIMsRdpExtendedSettings = NULL;
-        hr = m_pMsTscAx->QueryInterface(IID_IMsRdpExtendedSettings, (LPVOID*)&pIMsRdpExtendedSettings);
-        if (hr == S_OK)
-        {
-            VARIANT UsingSavedCreds;
-            UsingSavedCreds.vt = VT_BOOL;
-            UsingSavedCreds.boolVal = false;
-            pIMsRdpExtendedSettings->PutProperty("UsingSavedCreds", &UsingSavedCreds);
-        }
-#endif
         //DumpMsTscProperties(m_pUnknown);
         return m_pMsTscAx->raw_Connect();
     }
