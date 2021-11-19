@@ -1,5 +1,5 @@
-#ifndef MSRDPEX_UTILS_H
-#define MSRDPEX_UTILS_H
+#ifndef MSRDPEX_CORE_H
+#define MSRDPEX_CORE_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,8 +49,15 @@ int MsRdpEx_ConvertToUnicode(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr
 bool MsRdpEx_StringEquals(const char* str1, const char* str2);
 bool MsRdpEx_StringIEquals(const char* str1, const char* str2);
 
+// Log Utils
+
+bool MsRdpEx_Log(const char* format, ...);
+
+void MsRdpEx_LogOpen();
+void MsRdpEx_LogClose();
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* MSRDPEX_UTILS_H */
+#endif /* MSRDPEX_CORE_H */

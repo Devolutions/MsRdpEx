@@ -1,33 +1,31 @@
 
 #include "MsRdpEx.h"
 
-#include "Utils.h"
-
-FILE* g_LogFile = NULL;
+#include <MsRdpEx/MsRdpEx.h>
 
 static MsRdpEx_AxDll* g_AxDll = NULL;
 
 HRESULT DllCanUnloadNow()
 {
-    fprintf(g_LogFile, "DllCanUnloadNow\n");
+    MsRdpEx_Log("DllCanUnloadNow");
     return g_AxDll->DllCanUnloadNow();
 }
 
 HRESULT DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
-    fprintf(g_LogFile, "DllGetClassObject\n");
+    MsRdpEx_Log("DllGetClassObject");
     return MsRdpEx_AxDll_DllGetClassObject(g_AxDll, rclsid, riid, ppv);
 }
 
 HRESULT DllRegisterServer()
 {
-    fprintf(g_LogFile, "DllRegisterServer\n");
+    MsRdpEx_Log("DllRegisterServer");
     return g_AxDll->DllRegisterServer();
 }
 
 HRESULT DllUnregisterServer()
 {
-    fprintf(g_LogFile, "DllUnregisterServer\n");
+    MsRdpEx_Log("DllUnregisterServer");
     return g_AxDll->DllUnregisterServer();
 }
 
@@ -35,61 +33,44 @@ uint64_t DllGetTscCtlVer()
 {
     uint64_t version;
     version = g_AxDll->DllGetTscCtlVer();
-    fprintf(g_LogFile, "DllGetTscCtlVer: 0x%04X\n", (unsigned int) version);
+    MsRdpEx_Log("DllGetTscCtlVer: 0x%04X", (unsigned int) version);
     return version;
 }
 
 HRESULT DllSetAuthProperties(uint64_t properties)
 {
-    fprintf(g_LogFile, "DllSetAuthProperties\n");
+    MsRdpEx_Log("DllSetAuthProperties");
     return g_AxDll->DllSetAuthProperties(properties);
 }
 
 HRESULT DllSetClaimsToken(uint64_t a1, uint64_t a2, WCHAR* a3)
 {
-    fprintf(g_LogFile, "DllSetClaimsToken\n");
+    MsRdpEx_Log("DllSetClaimsToken");
     return g_AxDll->DllSetClaimsToken(a1, a2, a3);
 }
 
 HRESULT DllGetClaimsToken(WCHAR* a1, WCHAR* a2, WCHAR* a3, uint64_t a4, HWND a5, WCHAR** a6, WCHAR** a7, WCHAR* a8, WCHAR* a9)
 {
-    fprintf(g_LogFile, "DllGetClaimsToken\n");
+    MsRdpEx_Log("DllGetClaimsToken");
     return g_AxDll->DllGetClaimsToken(a1, a2, a3, a4, a5, a6, a7, a8, a9);
 }
 
 HRESULT DllLogoffClaimsToken(WCHAR* a1)
 {
-    fprintf(g_LogFile, "DllLogoffClaimsToken\n");
+    MsRdpEx_Log("DllLogoffClaimsToken");
     return g_AxDll->DllLogoffClaimsToken(a1);
 }
 
 HRESULT DllCancelAuthentication()
 {
-    fprintf(g_LogFile, "DllCancelAuthentication\n");
+    MsRdpEx_Log("DllCancelAuthentication");
     return g_AxDll->DllCancelAuthentication();
 }
 
 HRESULT DllDeleteSavedCreds(WCHAR* a1, WCHAR* a2)
 {
-    fprintf(g_LogFile, "DllDeleteSavedCreds\n");
+    MsRdpEx_Log("DllDeleteSavedCreds");
     return g_AxDll->DllDeleteSavedCreds(a1, a2);
-}
-
-// Logger
-
-void MsRdpEx_LogOpen()
-{
-    char filename[MSRDPEX_MAX_PATH];
-    strcpy_s(filename, MSRDPEX_MAX_PATH, "C:\\Windows\\Temp\\MsRdpEx.log");
-    g_LogFile = fopen(filename, "wb");
-}
-
-void MsRdpEx_LogClose()
-{
-    if (g_LogFile) {
-        fclose(g_LogFile);
-        g_LogFile = NULL;
-    }
 }
 
 // DLL Main
@@ -103,7 +84,7 @@ void MsRdpEx_Load()
     const char* ModuleFilePath = MsRdpEx_GetPath(MSRDPEX_CURRENT_MODULE_PATH);
     const char* ModuleFileName = MsRdpEx_FileBase(ModuleFilePath);
 
-    fprintf(g_LogFile, "ModuleFilePath: %s\n", ModuleFilePath);
+    MsRdpEx_Log("ModuleFilePath: %s", ModuleFilePath);
 
     uint32_t pathId = MSRDPEX_MSTSCAX_DLL_PATH;
 

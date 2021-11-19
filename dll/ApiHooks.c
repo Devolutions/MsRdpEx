@@ -1,9 +1,7 @@
 
 #include "MsRdpEx.h"
 
-#include "Utils.h"
-
-extern FILE* g_LogFile;
+#include <MsRdpEx/MsRdpEx.h>
 
 HMODULE (WINAPI * Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
 
@@ -16,7 +14,7 @@ HMODULE Hook_LoadLibraryW(LPCWSTR lpLibFileName)
 
     filename = MsRdpEx_FileBase(lpLibFileNameA);
 
-    fprintf(g_LogFile, "LoadLibraryW: %s\n", lpLibFileNameA);
+    MsRdpEx_Log("LoadLibraryW: %s", lpLibFileNameA);
 
     if (MsRdpEx_StringIEquals(filename, "mstscax.dll")) {
         hModule = LoadLibraryA(MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH));

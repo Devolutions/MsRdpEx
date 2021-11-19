@@ -61,8 +61,8 @@ set_property(TARGET detours PROPERTY
 set_property(TARGET detours PROPERTY
     IMPORTED_LOCATION_DEBUG "${DETOURS_ROOT_DIR}/lib/${MSVC_PLATFORM_TARGET}/Debug/detours.lib")
 
-include_directories("${CMAKE_SOURCE_DIR}/utils")
-add_subdirectory(utils)
+include_directories("${CMAKE_SOURCE_DIR}/include")
+add_subdirectory(core)
 
 include_directories("${CMAKE_SOURCE_DIR}/com")
 

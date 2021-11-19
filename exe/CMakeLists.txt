@@ -5,4 +5,4 @@ add_executable(MsRdpEx_Exe
 
 set_target_properties(MsRdpEx_Exe PROPERTIES OUTPUT_NAME "MsRdpEx")
 
-target_link_libraries(MsRdpEx_Exe MsRdpEx_Utils)
+target_link_libraries(MsRdpEx_Exe MsRdpEx_Core)

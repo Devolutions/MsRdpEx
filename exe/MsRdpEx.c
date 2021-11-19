@@ -1,13 +1,14 @@
 
 #include "MsRdpEx.h"
 
-#include "Utils.h"
+#include <MsRdpEx/MsRdpEx.h>
 
 #include <detours.h>
 
 int main(int argc, char** argv)
 {
     BOOL fSuccess;
+    DWORD exitCode = 0;
     char szCommandLine[2048];
     STARTUPINFOA StartupInfo;
     PROCESS_INFORMATION ProcessInfo;
@@ -47,7 +48,7 @@ int main(int argc, char** argv)
         lpCommandLine, /* lpCommandLine */
         NULL, /* lpProcessAttributes */
         NULL, /* lpThreadAttributes */
-        TRUE, /* bInheritHandles */
+        FALSE, /* bInheritHandles */
         dwCreationFlags, /* dwCreationFlags */
         NULL, /* lpEnvironment */
         NULL, /* lpCurrentDirectory */
@@ -63,10 +64,18 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    printf("lpApplicationName: %s\n", lpApplicationName);
+    printf("lpCommandLine: %s\n", lpCommandLine);
+    printf("lpDllName: %s\n", lpDllName);
+
     ResumeThread(ProcessInfo.hThread);
     WaitForSingleObject(ProcessInfo.hProcess, INFINITE);
+    GetExitCodeProcess(ProcessInfo.hProcess, &exitCode);
+
     CloseHandle(ProcessInfo.hProcess);
     CloseHandle(ProcessInfo.hThread);
+
+    printf("child process terminated with exit code: %d\n", exitCode);
 
     return 0;
 }

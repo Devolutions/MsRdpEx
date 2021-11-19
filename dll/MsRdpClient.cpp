@@ -1,7 +1,7 @@
 
 #include "MsRdpClient.h"
 
-#include "Utils.h"
+#include <MsRdpEx/MsRdpEx.h>
 
 #pragma warning (disable : 26812)
 
@@ -9,11 +9,6 @@
 #include "mstscax.tli"
 
 using namespace MSTSCLib;
-
-static VOID WriteLog(LPCSTR szFormat, ...)
-{
-
-}
 
 static VOID WriteCLSID(REFCLSID rclsid)
 {
@@ -34,11 +29,11 @@ static VOID WriteCLSID(REFCLSID rclsid)
         lStatus = RegQueryValueA(HKEY_CLASSES_ROOT, szSubKey, szValue, &cbValue);
         if ((lStatus == ERROR_SUCCESS) && (strlen(szValue) > 0))
         {
-            WriteLog("--> CLSID=%s (%s)", (LPCSTR)bstrCLSID, szValue);
+            MsRdpEx_Log("--> CLSID=%s (%s)", (LPCSTR)bstrCLSID, szValue);
         }
         else
         {
-            WriteLog("--> CLSID=%s", (LPCSTR)bstrCLSID);
+            MsRdpEx_Log("--> CLSID=%s", (LPCSTR)bstrCLSID);
         }
         CoTaskMemFree(polestrCLSID);
     }
@@ -64,17 +59,17 @@ static VOID WriteIID(REFIID riid)
         lStatus = RegQueryValueA(HKEY_CLASSES_ROOT, szSubKey, szValue, &cbValue);
         if ((lStatus == ERROR_SUCCESS) && (strlen(szValue) > 0))
         {
-            WriteLog("--> IID=%s (%s)", (LPCSTR)bstrIID, szValue);
+            MsRdpEx_Log("--> IID=%s (%s)", (LPCSTR)bstrIID, szValue);
         }
         else
         {
-            WriteLog("--> IID=%s", (LPCSTR)bstrIID);
+            MsRdpEx_Log("--> IID=%s", (LPCSTR)bstrIID);
         }
         CoTaskMemFree(polestrIID);
     }
 }
 
-class CMsRdpClient : public IMsRdpClient9
+class CMsRdpClient : public IMsRdpClient10
 {
 public:
     CMsRdpClient(IUnknown* pUnknown)
@@ -93,6 +88,7 @@ public:
         pUnknown->QueryInterface(IID_IMsRdpClient7, (LPVOID*)&m_pMsRdpClient7);
         pUnknown->QueryInterface(IID_IMsRdpClient8, (LPVOID*)&m_pMsRdpClient8);
         pUnknown->QueryInterface(IID_IMsRdpClient9, (LPVOID*)&m_pMsRdpClient9);
+        pUnknown->QueryInterface(IID_IMsRdpClient10, (LPVOID*)&m_pMsRdpClient10);
     }
 
     ~CMsRdpClient()
@@ -109,6 +105,7 @@ public:
         if (m_pMsRdpClient7) m_pMsRdpClient7->Release();
         if (m_pMsRdpClient8) m_pMsRdpClient8->Release();
         if (m_pMsRdpClient9) m_pMsRdpClient9->Release();
+        if (m_pMsRdpClient10) m_pMsRdpClient10->Release();
     }
 
     // IUnknown interface
@@ -119,7 +116,7 @@ public:
     )
     {
         HRESULT hr;
-        WriteLog("CMsRdpClient::QueryInterface");
+        MsRdpEx_Log("CMsRdpClient::QueryInterface");
         WriteIID(riid);
 
         if (riid == IID_IUnknown)
@@ -194,28 +191,34 @@ public:
             m_refCount++;
             return S_OK;
         }
+        if ((riid == IID_IMsRdpClient10) && m_pMsRdpClient10)
+        {
+            *ppvObject = (LPVOID)((IMsRdpClient10*)this);
+            m_refCount++;
+            return S_OK;
+        }
 
         hr = m_pUnknown->QueryInterface(riid, ppvObject);
-        WriteLog("--> hr=%x", hr);
+        MsRdpEx_Log("--> hr=%x", hr);
         return hr;
     }
 
     ULONG STDMETHODCALLTYPE AddRef()
     {
-        WriteLog("CMsRdpClient::AddRef");
+        MsRdpEx_Log("CMsRdpClient::AddRef");
         return ++m_refCount;
     }
 
     ULONG STDMETHODCALLTYPE Release()
     {
-        WriteLog("CMsRdpClient::Release");
+        MsRdpEx_Log("CMsRdpClient::Release");
         if (--m_refCount == 0)
         {
-            WriteLog("--> deleting object");
+            MsRdpEx_Log("--> deleting object");
             delete this;
             return 0;
         }
-        WriteLog("--> refCount=%d", m_refCount);
+        MsRdpEx_Log("--> refCount=%d", m_refCount);
         return m_refCount;
     }
 
@@ -223,7 +226,7 @@ public:
 public:
     HRESULT STDMETHODCALLTYPE GetTypeInfoCount(__RPC__out UINT* pctinfo)
     {
-        WriteLog("CMsRdpClient::GetTypeInfoCount");
+        MsRdpEx_Log("CMsRdpClient::GetTypeInfoCount");
         return m_pDispatch->GetTypeInfoCount(pctinfo);
     }
 
@@ -232,7 +235,7 @@ public:
         LCID lcid,
         ITypeInfo** ppTInfo)
     {
-        WriteLog("CMsRdpClient::GetTypeInfo");
+        MsRdpEx_Log("CMsRdpClient::GetTypeInfo");
         return m_pDispatch->GetTypeInfo(iTInfo, lcid, ppTInfo);
     }
 
@@ -243,7 +246,7 @@ public:
         LCID lcid,
         DISPID* rgDispId)
     {
-        WriteLog("CMsRdpClient::GetIDsOfNames");
+        MsRdpEx_Log("CMsRdpClient::GetIDsOfNames");
         return m_pDispatch->GetIDsOfNames(riid, rgszNames, cNames, lcid, rgDispId);
     }
 
@@ -257,7 +260,7 @@ public:
         EXCEPINFO* pExcepInfo,
         UINT* puArgErr)
     {
-        WriteLog("CMsRdpClient::Invoke");
+        MsRdpEx_Log("CMsRdpClient::Invoke");
         return m_pDispatch->Invoke(dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
     }
 
@@ -368,14 +371,26 @@ public:
     }
 
     HRESULT __stdcall raw_Connect() {
-        WriteLog("CMsRdpClient::Connect");
-        IMsRdpClientNonScriptable3* pMsRdpClientNonScriptable3;
-        HRESULT hr = m_pMsTscAx->QueryInterface(IID_IMsRdpClientNonScriptable3, (LPVOID*)&pMsRdpClientNonScriptable3);
+        HRESULT hr;
+        MsRdpEx_Log("CMsRdpClient::Connect");
+        IMsRdpClientNonScriptable3* pMsRdpClientNonScriptable3 = NULL;
+        hr = m_pMsTscAx->QueryInterface(IID_IMsRdpClientNonScriptable3, (LPVOID*)&pMsRdpClientNonScriptable3);
         if (hr == S_OK)
         {
             pMsRdpClientNonScriptable3->PutConnectionBarText("MsRdpEx Client");
             pMsRdpClientNonScriptable3->Release();
         }
+#if 0
+        IMsRdpExtendedSettings* pIMsRdpExtendedSettings = NULL;
+        hr = m_pMsTscAx->QueryInterface(IID_IMsRdpExtendedSettings, (LPVOID*)&pIMsRdpExtendedSettings);
+        if (hr == S_OK)
+        {
+            VARIANT UsingSavedCreds;
+            UsingSavedCreds.vt = VT_BOOL;
+            UsingSavedCreds.boolVal = false;
+            pIMsRdpExtendedSettings->PutProperty("UsingSavedCreds", &UsingSavedCreds);
+        }
+#endif
         //DumpMsTscProperties(m_pUnknown);
         return m_pMsTscAx->raw_Connect();
     }
@@ -572,6 +587,12 @@ public:
         return m_pMsRdpClient9->raw_detachEvent(eventName, callback);
     }
 
+    // IMsRdpClient10 interface
+public:
+    HRESULT __stdcall get_RemoteProgram3(struct ITSRemoteProgram3** ppRemoteProgram) {
+        return m_pMsRdpClient10->get_RemoteProgram3(ppRemoteProgram);
+    }
+
 private:
     ULONG m_refCount;
     IUnknown* m_pUnknown;
@@ -586,6 +607,7 @@ private:
     IMsRdpClient7* m_pMsRdpClient7;
     IMsRdpClient8* m_pMsRdpClient8;
     IMsRdpClient9* m_pMsRdpClient9;
+    IMsRdpClient10* m_pMsRdpClient10;
 };
 
 class CClassFactory : IClassFactory
@@ -610,19 +632,19 @@ public:
         LPVOID* ppvObject
     )
     {
-        WriteLog("CClassFactory::QueryInterface");
+        MsRdpEx_Log("CClassFactory::QueryInterface");
         return m_pDelegate->QueryInterface(riid, ppvObject);
     }
 
     ULONG STDMETHODCALLTYPE AddRef()
     {
-        WriteLog("CClassFactory::AddRef");
+        MsRdpEx_Log("CClassFactory::AddRef");
         return ++m_refCount;
     }
 
     ULONG STDMETHODCALLTYPE Release()
     {
-        WriteLog("CClassFactory::Release");
+        MsRdpEx_Log("CClassFactory::Release");
         if (--m_refCount == 0)
         {
             delete this;
@@ -639,7 +661,7 @@ public:
         LPVOID* ppvObject
     )
     {
-        WriteLog("CClassFactory::CreateInstance");
+        MsRdpEx_Log("CClassFactory::CreateInstance");
         WriteCLSID(m_clsid);
         WriteIID(riid);
 
@@ -661,7 +683,7 @@ public:
         BOOL fLock
     )
     {
-        WriteLog("CClassFactory::LockServer");
+        MsRdpEx_Log("CClassFactory::LockServer");
         return m_pDelegate->LockServer(fLock);
     }
 

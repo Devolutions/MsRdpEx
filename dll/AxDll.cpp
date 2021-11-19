@@ -3,7 +3,7 @@
 
 #include "MsRdpClient.h"
 
-#include "Utils.h"
+#include <MsRdpEx/MsRdpEx.h>
 
 HRESULT CDECL MsRdpEx_AxDll_DllGetClassObject(MsRdpEx_AxDll* axDll, REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
