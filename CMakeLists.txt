@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(msrdpex C CXX)
+project(MsRdpEx C CXX)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -63,6 +63,8 @@ set_property(TARGET detours PROPERTY
 
 include_directories("${CMAKE_SOURCE_DIR}/utils")
 add_subdirectory(utils)
+
+include_directories("${CMAKE_SOURCE_DIR}/com")
 
 add_subdirectory(dll)
 add_subdirectory(exe)

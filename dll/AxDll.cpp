@@ -1,9 +1,26 @@
 
 #include "MsRdpEx.h"
 
+#include "MsRdpClient.h"
+
 #include "Utils.h"
 
-MsRdpEx_AxDll* MsRdpEx_AxDll_New(const char* filename)
+HRESULT CDECL MsRdpEx_AxDll_DllGetClassObject(MsRdpEx_AxDll* axDll, REFCLSID rclsid, REFIID riid, LPVOID* ppv)
+{
+    HRESULT hr = axDll->DllGetClassObject(rclsid, riid, ppv);
+
+    if (riid == IID_IClassFactory)
+    {
+        if (hr == S_OK)
+        {
+            *ppv = MsRdpEx_CClassFactory_New(rclsid, (IClassFactory*) *ppv);
+        }
+    }
+
+    return hr;
+}
+
+MsRdpEx_AxDll* CDECL MsRdpEx_AxDll_New(const char* filename)
 {
     HMODULE hModule;
     MsRdpEx_AxDll* dll;
@@ -36,7 +53,7 @@ MsRdpEx_AxDll* MsRdpEx_AxDll_New(const char* filename)
     return dll;
 }
 
-void MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll)
+void CDECL MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll)
 {
     if (!dll)
         return;

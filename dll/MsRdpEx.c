@@ -16,7 +16,7 @@ HRESULT DllCanUnloadNow()
 HRESULT DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
     fprintf(g_LogFile, "DllGetClassObject\n");
-    return g_AxDll->DllGetClassObject(rclsid, riid, ppv);
+    return MsRdpEx_AxDll_DllGetClassObject(g_AxDll, rclsid, riid, ppv);
 }
 
 HRESULT DllRegisterServer()

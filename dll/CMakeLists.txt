@@ -1,7 +1,9 @@
 
 add_library(MsRdpEx_Dll SHARED
-    AxDll.c
-    Hooks.c
+    MsRdpClient.cpp
+    MsRdpClient.h
+    AxDll.cpp
+    ApiHooks.c
 	MsRdpEx.c
 	MsRdpEx.h
     MsRdpEx.def)

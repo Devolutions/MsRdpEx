@@ -16,7 +16,11 @@ int main(int argc, char** argv)
 
     ZeroMemory(szCommandLine, sizeof(szCommandLine));
 
-    const char* lpApplicationName = MsRdpEx_GetPath(MSRDPEX_MSTSC_EXE_PATH);
+    uint32_t appPathId = MSRDPEX_MSTSC_EXE_PATH;
+    
+    //appPathId = MSRDPEX_MSRDC_EXE_PATH;
+
+    const char* lpApplicationName = MsRdpEx_GetPath(appPathId);
 
     if ((argc == 1) || (argv[1][0] == '/') || MsRdpEx_IsFile(argv[1]))
     {
