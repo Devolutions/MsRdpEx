@@ -1,4 +1,4 @@
-LIBRARY			"msrdpex"
+LIBRARY			"MsRdpEx"
 EXPORTS
     DllCanUnloadNow     PRIVATE
     DllGetClassObject   PRIVATE
@@ -11,3 +11,4 @@ EXPORTS
     DllLogoffClaimsToken
     DllCancelAuthentication
     DllDeleteSavedCreds
+    DllPreCleanUp

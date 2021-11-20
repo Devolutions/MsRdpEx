@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(msrdpex C CXX)
+project(MsRdpEx C CXX)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -61,8 +61,10 @@ set_property(TARGET detours PROPERTY
 set_property(TARGET detours PROPERTY
     IMPORTED_LOCATION_DEBUG "${DETOURS_ROOT_DIR}/lib/${MSVC_PLATFORM_TARGET}/Debug/detours.lib")
 
-include_directories("${CMAKE_SOURCE_DIR}/utils")
-add_subdirectory(utils)
+include_directories("${CMAKE_SOURCE_DIR}/include")
+add_subdirectory(core)
+
+include_directories("${CMAKE_SOURCE_DIR}/com")
 
 add_subdirectory(dll)
 add_subdirectory(exe)

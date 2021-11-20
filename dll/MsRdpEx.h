@@ -35,6 +35,8 @@ typedef HRESULT (WINAPI * fnDllCancelAuthentication)();
 
 typedef HRESULT (WINAPI * fnDllDeleteSavedCreds)(WCHAR* a1, WCHAR* a2);
 
+typedef uint64_t (WINAPI * fnDllPreCleanUp)();
+
 struct _MsRdpEx_AxDll
 {
     HMODULE hModule;
@@ -49,8 +51,11 @@ struct _MsRdpEx_AxDll
     fnDllLogoffClaimsToken DllLogoffClaimsToken;
     fnDllCancelAuthentication DllCancelAuthentication;
     fnDllDeleteSavedCreds DllDeleteSavedCreds;
+    fnDllPreCleanUp DllPreCleanUp;
 };
 typedef struct _MsRdpEx_AxDll MsRdpEx_AxDll;
+
+HRESULT MsRdpEx_AxDll_DllGetClassObject(MsRdpEx_AxDll* axDll, REFCLSID rclsid, REFIID riid, LPVOID* ppv);
 
 MsRdpEx_AxDll* MsRdpEx_AxDll_New(const char* filename);
 void MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll);
