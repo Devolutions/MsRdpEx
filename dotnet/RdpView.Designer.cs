@@ -33,15 +33,15 @@ namespace MsRdpEx
             this.m_MsRdpClient = new AxMSTSCLib.AxMsRdpClient9NotSafeForScripting();
             ((System.ComponentModel.ISupportInitialize)(this.m_MsRdpClient)).BeginInit();
             this.SuspendLayout();
-
             // 
-            // axMsRdpClient
+            // m_MsRdpClient
             // 
+            this.m_MsRdpClient.Dock = System.Windows.Forms.DockStyle.Fill;
             this.m_MsRdpClient.Enabled = true;
-            this.m_MsRdpClient.Location = new System.Drawing.Point(12, 12);
-            this.m_MsRdpClient.Name = "axMsRdpClient";
-            this.m_MsRdpClient.OcxState = ((System.Windows.Forms.AxHost.State)(resources.GetObject("axMsRdpClient.OcxState")));
-            this.m_MsRdpClient.Size = new System.Drawing.Size(1083, 479);
+            this.m_MsRdpClient.Location = new System.Drawing.Point(0, 0);
+            this.m_MsRdpClient.Name = "m_MsRdpClient";
+            this.m_MsRdpClient.OcxState = ((System.Windows.Forms.AxHost.State)(resources.GetObject("m_MsRdpClient.OcxState")));
+            this.m_MsRdpClient.Size = new System.Drawing.Size(1107, 503);
             this.m_MsRdpClient.TabIndex = 0;
             // 
             // RdpView
@@ -51,7 +51,7 @@ namespace MsRdpEx
             this.ClientSize = new System.Drawing.Size(1107, 503);
             this.Controls.Add(this.m_MsRdpClient);
             this.Name = "RdpView";
-            this.Text = "RDP View";
+            this.Text = "Remote Desktop Client";
             ((System.ComponentModel.ISupportInitialize)(this.m_MsRdpClient)).EndInit();
             this.ResumeLayout(false);
 

@@ -17,25 +17,47 @@ namespace MsRdpEx
         public MainDlg()
         {
             InitializeComponent();
+            LoadEnvironment();
+        }
+
+        private void LoadEnvironment()
+        {
+            string rdpHostname = Environment.GetEnvironmentVariable("RDP_HOSTNAME");
+            string rdpUsername = Environment.GetEnvironmentVariable("RDP_USERNAME");
+            string rdpPassword = Environment.GetEnvironmentVariable("RDP_PASSWORD");
+
+            if (rdpHostname != null)
+            {
+                this.txtComputer.Text = rdpHostname;
+            }
+
+            if (rdpUsername != null)
+            {
+                this.txtUserName.Text = rdpUsername;
+            }
+
+            if (rdpPassword != null)
+            {
+                this.txtPassword.Text = rdpPassword;
+            }
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
         {
             RdpView rdpView = new RdpView();
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.m_MsRdpClient;
-            rdp.Server = "RDP-SERVER";
-            rdp.UserName = "Administrator";
-            rdp.Domain = "DOMAIN";
+            rdp.Server = this.txtComputer.Text;
+            rdp.UserName = this.txtUserName.Text;
             rdp.AdvancedSettings9.EnableCredSspSupport = true;
             IMsTscNonScriptable secured = (IMsTscNonScriptable)rdp.GetOcx();
-            secured.ClearTextPassword = "Password123!";
+            secured.ClearTextPassword = this.txtPassword.Text;
+            Size DesktopSize = new Size(1024, 768);
+            rdp.DesktopWidth = DesktopSize.Width;
+            rdp.DesktopHeight = DesktopSize.Height;
+            rdpView.ClientSize = DesktopSize;
             rdp.Connect();
             rdpView.Show();
-        }
-
-        private void btnDisconnect_Click(object sender, EventArgs e)
-        {
-
+            this.Hide();
         }
     }
 }
