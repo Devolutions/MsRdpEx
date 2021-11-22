@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.8)
 
-project(MsRdpEx C CXX)
+project(MsRdpEx C CXX CSharp)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
+include(CSharpUtilities)
 include(CMakePackageConfigHelpers)
 
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" VERSION_STRINGS)
@@ -68,3 +69,5 @@ include_directories("${CMAKE_SOURCE_DIR}/com")
 
 add_subdirectory(dll)
 add_subdirectory(exe)
+
+add_subdirectory(dotnet)
