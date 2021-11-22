@@ -26,6 +26,8 @@ add_executable(MsRdpEx_App
 set_property(TARGET MsRdpEx_App PROPERTY
     VS_DOTNET_TARGET_FRAMEWORK_VERSION "v4.7.2")
 
+set_property(TARGET MsRdpEx_App PROPERTY WIN32_EXECUTABLE TRUE)
+
 set(CMAKE_CSharp_FLAGS "/langversion:latest")
 
 csharp_set_windows_forms_properties(
