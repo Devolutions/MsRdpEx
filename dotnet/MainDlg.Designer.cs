@@ -1,5 +1,5 @@
 ﻿
-namespace MsRdpEx
+namespace MsRdpEx_App
 {
     partial class MainDlg
     {
@@ -142,4 +142,3 @@ namespace MsRdpEx
         private System.Windows.Forms.TextBox txtComputer;
     }
 }
-

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace MsRdpEx
+namespace MsRdpEx_App
 {
     static class Program
     {
@@ -16,6 +16,9 @@ namespace MsRdpEx
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+
+            //RdpLoader rdpLoader = new RdpLoader();
+
             Application.Run(new MainDlg());
         }
     }
