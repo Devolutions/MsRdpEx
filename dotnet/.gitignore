@@ -2,3 +2,4 @@ bin/
 obj/
 *.csproj.user
 Directory.Build.props
+launchSettings.json
