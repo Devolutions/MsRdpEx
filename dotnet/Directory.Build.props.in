@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <CMakeSourceDir>@CMAKE_SOURCE_DIR@</CMakeSourceDir>
+    <CMakeBinaryDir>@CMAKE_BINARY_DIR@</CMakeBinaryDir>
+    <CMakeOutputPath>$(CMakeBinaryDir)\$(Configuration)</CMakeOutputPath>
+  </PropertyGroup>
+</Project>

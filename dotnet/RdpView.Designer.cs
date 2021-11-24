@@ -1,5 +1,5 @@
 ﻿
-namespace MsRdpEx
+namespace MsRdpEx_App
 {
     partial class RdpView
     {

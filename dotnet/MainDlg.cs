@@ -10,7 +10,7 @@ using System.Windows.Forms;
 
 using MSTSCLib;
 
-namespace MsRdpEx
+namespace MsRdpEx_App
 {
     public partial class MainDlg : Form
     {
