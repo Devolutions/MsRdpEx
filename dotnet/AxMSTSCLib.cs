@@ -1,40 +1,5 @@
 
 namespace AxMSTSCLib {
-
-    using System;
-    using System.Runtime.InteropServices;
-    
-    public class AxHostEx : System.Windows.Forms.AxHost
-    {
-        [DllImport("combase.dll", ExactSpelling = true)]
-        private static extern UInt32 CoCreateInstance(
-            ref Guid rclsid,
-            IntPtr punkOuter,
-            UInt32 dwClsContext,
-            ref Guid riid,
-            [MarshalAs(UnmanagedType.Interface)] out object ppv);
-
-        private static Guid IID_IUnknown = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
-
-        public static object CreateInstanceEx(Guid clsid)
-        {
-            UInt32 hr = AxHostEx.CoCreateInstance(ref clsid,
-                IntPtr.Zero, // pUnkOuter
-                1, // CLSCTX_INPROC_SERVER
-                ref AxHostEx.IID_IUnknown,
-                out object instance);
-
-            return instance;
-        }
-
-        protected override object CreateInstanceCore(Guid clsid)
-        {
-            return CreateInstanceEx(clsid);
-        }
-
-        public AxHostEx(string clsid): base(clsid) { }
-    }
-    
     
     [System.Windows.Forms.AxHost.ClsidAttribute("{a41a4187-5a86-4e26-b40a-856f9035d9cb}")]
     [System.ComponentModel.DesignTimeVisibleAttribute(true)]
