@@ -126,6 +126,8 @@ namespace AxMSTSCLib {
 
     public class AxHostEx : System.Windows.Forms.AxHost
     {
+        public string axName = "latest";
+
         public static string RdpGetAxDllPath(string axName)
         {
             string mstscax = Environment.ExpandEnvironmentVariables("%SystemRoot%\\System32\\mstscax.dll");
@@ -172,9 +174,9 @@ namespace AxMSTSCLib {
             return obj;
         }
 
-        public static object RdpCreateInstance(Guid clsid)
+        public object RdpCreateInstance(Guid clsid)
         {
-            return RdpGetClassObject(clsid, "latest");
+            return RdpGetClassObject(clsid, this.axName);
         }
 
         protected override object CreateInstanceCore(Guid clsid)
