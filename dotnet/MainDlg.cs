@@ -17,7 +17,7 @@ namespace MsRdpEx_App
         public MainDlg()
         {
             InitializeComponent();
-            this.cboRdpClient.SelectedIndex = 0;
+            this.cboRdpClient.SelectedIndex = 1;
             this.cboLaunchMode.SelectedIndex = 0;
             LoadEnvironment();
         }
@@ -50,7 +50,8 @@ namespace MsRdpEx_App
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
 
             RdpView rdpView = new RdpView(axName);
-            AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.m_MsRdpClient;
+            AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
+
             rdp.Server = this.txtComputer.Text;
             rdp.UserName = this.txtUserName.Text;
             rdp.AdvancedSettings9.EnableCredSspSupport = true;
@@ -60,9 +61,9 @@ namespace MsRdpEx_App
             rdp.DesktopWidth = DesktopSize.Width;
             rdp.DesktopHeight = DesktopSize.Height;
             rdpView.ClientSize = DesktopSize;
+            rdpView.Text = String.Format("{0} ({1})", rdp.Server, axName);
             rdp.Connect();
             rdpView.Show();
-            this.Hide();
         }
     }
 }
