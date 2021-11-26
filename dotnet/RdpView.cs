@@ -12,8 +12,11 @@ namespace MsRdpEx_App
 {
     public partial class RdpView : Form
     {
-        public RdpView()
+        public string axName = "latest";
+
+        public RdpView(string axName)
         {
+            this.axName = axName;
             InitializeComponent();
         }
     }

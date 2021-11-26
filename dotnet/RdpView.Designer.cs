@@ -31,6 +31,7 @@ namespace MsRdpEx_App
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(RdpView));
             this.m_MsRdpClient = new AxMSTSCLib.AxMsRdpClient9NotSafeForScripting();
+            this.m_MsRdpClient.axName = this.axName;
             ((System.ComponentModel.ISupportInitialize)(this.m_MsRdpClient)).BeginInit();
             this.SuspendLayout();
             // 

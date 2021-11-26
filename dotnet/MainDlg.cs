@@ -17,6 +17,8 @@ namespace MsRdpEx_App
         public MainDlg()
         {
             InitializeComponent();
+            this.cboRdpClient.SelectedIndex = 0;
+            this.cboLaunchMode.SelectedIndex = 0;
             LoadEnvironment();
         }
 
@@ -44,7 +46,10 @@ namespace MsRdpEx_App
 
         private void btnConnect_Click(object sender, EventArgs e)
         {
-            RdpView rdpView = new RdpView();
+            string axName = this.cboRdpClient.Text;
+            bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
+
+            RdpView rdpView = new RdpView(axName);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.m_MsRdpClient;
             rdp.Server = this.txtComputer.Text;
             rdp.UserName = this.txtUserName.Text;
