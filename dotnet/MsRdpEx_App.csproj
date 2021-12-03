@@ -2,9 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <Platform>x64</Platform>
-    <PlatformTarget>x64</PlatformTarget>
-    <Platforms>x86;x64;ARM64</Platforms>
+    <Platforms>Win32;x64;ARM64</Platforms>
     <TargetFramework>net6.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>

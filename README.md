@@ -1,6 +1,28 @@
-# Microsoft RDP Extensions (msrdpex)
+# Microsoft RDP Extensions (MsRdpEx)
 
 The official Microsoft RDP client is the only one with an exhaustive implementation of the [entire feature set](https://docs.microsoft.com/en-us/windows-server/remote/remote-desktop-services/clients/remote-desktop-app-compare). While FreeRDP is open source and available on all platforms, most vendors offering RDP support on Windows use the [Microsoft RDP ActiveX interface](https://docs.microsoft.com/en-us/windows/win32/termserv/remote-desktop-activex-control) instead. The solution is not to choose between FreeRDP and the Microsoft ActiveX, but to support them both while extending the Microsoft RDP client. In addition to this, Microsoft has been pushing for its "modern" remote desktop client (msrdc.exe) over the "classic" terminal services client (mstsc.exe) without providing the means to fully migrate to it. While both remote desktop clients use essentially the same RDP engine, they have multiple differences and limitations imposed by their user interfaces.
+
+# Getting Started
+
+From a [Visual Studio developer shell](https://www.powershellgallery.com/packages/VsDevShell), build the [Detours](https://github.com/Microsoft/Detours) library. Repeat the process once per target architecture (x64, arm64):
+
+```powershell
+Enter-VsDevShell x64
+.\detours.ps1
+```
+
+Generate the Visual Studio project files for your target platform (x86, x64, ARM64):
+
+```powershell
+mkdir build-x64 && cd build-x64
+cmake -G "Visual Studio 17 2022" -A x64 ..
+```
+
+You can open the Visual Studio solution or build it from the command-line:
+
+```powershell
+cmake --build . --config Release
+```
 
 # Initial Goals
 
