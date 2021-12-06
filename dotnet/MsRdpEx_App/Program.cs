@@ -16,9 +16,6 @@ namespace MsRdpEx_App
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-
-            //RdpLoader rdpLoader = new RdpLoader();
-
             Application.Run(new MainDlg());
         }
     }
