@@ -28,10 +28,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../AxMSTSCLib/AxMSTSCLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="MSTSCLib">
       <Name>MSTSCLib</Name>
       <Private>True</Private>
-      <HintPath>..\com\MSTSCLib.dll</HintPath>
+      <HintPath>..\..\com\MSTSCLib.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
