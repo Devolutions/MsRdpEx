@@ -19,23 +19,22 @@
     <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <Optimize>False</Optimize>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>True</Optimize>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../AxMSTSCLib/AxMSTSCLib.csproj" />
+    <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="MSTSCLib">
-      <Name>MSTSCLib</Name>
+    <Reference Include="Interop.MSTSCLib">
       <Private>True</Private>
-      <HintPath>..\..\com\MSTSCLib.dll</HintPath>
+      <HintPath>..\Interop.MSTSCLib\Interop.MSTSCLib.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
