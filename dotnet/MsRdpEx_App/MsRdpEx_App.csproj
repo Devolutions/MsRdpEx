@@ -30,4 +30,11 @@
   <ItemGroup>
     <ProjectReference Include="../AxMSTSCLib/AxMSTSCLib.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Interop.MSTSCLib">
+      <Private>True</Private>
+      <HintPath>../AxMSTSCLib/Interop.MSTSCLib.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>

@@ -12,6 +12,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>none</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -26,7 +27,8 @@
     <Reference Include="Interop.MSTSCLib">
       <Name>Interop.MSTSCLib</Name>
       <Private>True</Private>
-      <HintPath>..\..\com\MSTSCLib.dll</HintPath>
+      <HintPath>Interop.MSTSCLib.dll</HintPath>
+      <CopyLocal>True</CopyLocal>
     </Reference>
   </ItemGroup>
 </Project>
