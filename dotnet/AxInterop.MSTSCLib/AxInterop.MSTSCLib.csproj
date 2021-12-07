@@ -25,10 +25,9 @@
 
   <ItemGroup>
     <Reference Include="Interop.MSTSCLib">
-      <Name>Interop.MSTSCLib</Name>
       <Private>True</Private>
-      <HintPath>Interop.MSTSCLib.dll</HintPath>
-      <CopyLocal>True</CopyLocal>
+      <HintPath>..\Interop.MSTSCLib\Interop.MSTSCLib.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
   </ItemGroup>
 </Project>

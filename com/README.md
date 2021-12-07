@@ -19,8 +19,9 @@ cl.exe /c /nologo .\import.cpp && rm .\import.*
 Generate C# import library:
 
 ```powershell
-AxImp.exe /source .\mstscax.dll
-(Get-Content AxMSTSCLib.cs | Select-Object -Skip 10) | Set-Content AxMSTSCLib.cs
+tlbimp.exe /machine:Agnostic /out:Interop.MSTSCLib.dll /namespace:MSTSCLib .\mstscax.dll
+aximp.exe /source /rcw:Interop.MSTSCLib.dll /out:AxInterop.MSTSCLib.dll .\mstscax.dll
+(Get-Content AxInterop.MSTSCLib.cs | Select-Object -Skip 10) | Set-Content AxInterop.MSTSCLib.cs
 ```
 
 Generate interface definition file (IDL) from type library:

@@ -28,13 +28,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../AxMSTSCLib/AxMSTSCLib.csproj" />
+    <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="Interop.MSTSCLib">
       <Private>True</Private>
-      <HintPath>../AxMSTSCLib/Interop.MSTSCLib.dll</HintPath>
+      <HintPath>..\Interop.MSTSCLib\Interop.MSTSCLib.dll</HintPath>
     </Reference>
   </ItemGroup>
 </Project>
