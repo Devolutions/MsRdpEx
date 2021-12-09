@@ -41,7 +41,7 @@ BOOL Hook_BitBlt(
 {
     BOOL status;
 
-    //MsRdpEx_Log("BitBlt: %d,%d %dx%d %d,%d", x, y, cx, cx, x1, y1);
+    MsRdpEx_Log("BitBlt: %d,%d %dx%d %d,%d", x, y, cx, cx, x1, y1);
 
     status = Real_BitBlt(hdc, x, y, cx, cy, hdcSrc, x1, y1, rop);
 
@@ -59,54 +59,11 @@ BOOL Hook_StretchBlt(
 {
     BOOL status;
 
-    //MsRdpEx_Log("StretchBlt: %d,%d %dx%d %d,%d %dx%d", xDest, yDest, wDest, hDest, xSrc, ySrc, wSrc, hSrc);
+    MsRdpEx_Log("StretchBlt: %d,%d %dx%d %d,%d %dx%d", xDest, yDest, wDest, hDest, xSrc, ySrc, wSrc, hSrc);
 
     status = Real_StretchBlt(hdcDest, xDest, yDest, wDest, hDest, hdcSrc, xSrc, ySrc, wSrc, hSrc, rop);
 
     return status;
-}
-
-HWND (WINAPI * Real_CreateWindowExW)(
-    DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName,
-    DWORD dwStyle, int x, int y, int nWidth, int nHeight,
-    HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam
-    ) = CreateWindowExW;
-
-HWND Hook_CreateWindowExW(
-    DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName,
-    DWORD dwStyle, int x, int y, int nWidth, int nHeight,
-    HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
-{
-    HWND hWnd;
-#if 0
-    char* lpClassNameA = NULL;
-    char* lpWindowNameA = NULL;
-
-    if (lpClassName)
-        MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, lpClassName, -1, &lpClassNameA, 0, NULL, NULL);
-
-    if (lpWindowName)
-        MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, lpWindowName, -1, &lpWindowNameA, 0, NULL, NULL);
-    
-    MsRdpEx_Log("CreateWindowExW: ClassName: %s WindowName: %s x: %d y: %d width: %d height: %d",
-        lpClassNameA, lpWindowNameA, x, y, nWidth, nHeight);
-#endif
-
-    hWnd = Real_CreateWindowExW(dwExStyle, lpClassName, lpWindowName,
-        dwStyle, x, y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
-
-    //free(lpClassNameA);
-    //free(lpWindowNameA);
-
-    return hWnd;
-}
-
-BOOL (WINAPI * Real_DestroyWindow)(HWND hWnd) = DestroyWindow;
-
-BOOL Hook_DestroyWindow(HWND hWnd)
-{
-    BOOL success = Real_DestroyWindow(hWnd);
-    return success;
 }
 
 const char* MsRdpEx_GetWindowMessageName(uint32_t uMsg)
@@ -463,53 +420,6 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
     return wndClassAtom;
 }
 
-static HHOOK g_CbtHook = NULL;
-
-LRESULT MsRdpEx_CbtHook(int nCode, WPARAM wParam, LPARAM lParam)
-{
-    LRESULT result = 0;
-
-    MsRdpEx_Log("CbtHook: %d", nCode);
-
-    switch (nCode)
-    {
-        case HCBT_CREATEWND:
-            MsRdpEx_Log("HCBT_CREATEWND");
-            break;
-
-        case HCBT_DESTROYWND:
-            MsRdpEx_Log("HCBT_DESTROYWND");
-            break;
-    }
-
-    return CallNextHookEx(NULL, nCode, wParam, lParam);
-}
-
-EXTERN_C IMAGE_DOS_HEADER __ImageBase;
-
-bool MsRdpEx_HookWindows()
-{
-    HINSTANCE hInstance = GetModuleHandle(NULL);
-
-    hInstance = ((HINSTANCE)&__ImageBase);
-
-    g_CbtHook = SetWindowsHookExW(WH_CBT, MsRdpEx_CbtHook, hInstance, 0);
-
-    if (!g_CbtHook) {
-        MsRdpEx_Log("SetWindowsHookExW failure: 0x%08X", GetLastError());
-        return false;
-    }
-
-    return true;
-}
-
-bool MsRdpEx_UnhookWindows()
-{
-    UnhookWindowsHookEx(g_CbtHook);
-    g_CbtHook = NULL;
-    return true;
-}
-
 LONG MsRdpEx_AttachHooks()
 {
     LONG error;
@@ -520,23 +430,19 @@ LONG MsRdpEx_AttachHooks()
     DetourAttach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
     DetourAttach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
     DetourAttach((PVOID*)(&Real_RegisterClassExW), Hook_RegisterClassExW);
-    //DetourAttach((PVOID*)(&Real_CreateWindowExW), CreateWindowExW);
     error = DetourTransactionCommit();
-    //MsRdpEx_HookWindows();
     return error;
 }
 
 LONG MsRdpEx_DetachHooks()
 {
     LONG error;
-    //MsRdpEx_UnhookWindows();
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourDetach((PVOID*)(&Real_LoadLibraryW), Hook_LoadLibraryW);
     DetourDetach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
     DetourDetach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
     DetourDetach((PVOID*)(&Real_RegisterClassExW), Hook_RegisterClassExW);
-    //DetourDetach((PVOID*)(&Real_CreateWindowExW), CreateWindowExW);
     error = DetourTransactionCommit();
     return error;
 }

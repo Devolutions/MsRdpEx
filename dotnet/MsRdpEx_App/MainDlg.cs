@@ -57,6 +57,9 @@ namespace MsRdpEx_App
             rdp.AdvancedSettings9.EnableCredSspSupport = true;
             IMsTscNonScriptable secured = (IMsTscNonScriptable)rdp.GetOcx();
             secured.ClearTextPassword = this.txtPassword.Text;
+            IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)rdp.GetOcx();
+            object boolValue = false;
+            extendedSettings.set_Property("EnableHardwareMode", ref boolValue);
             Size DesktopSize = new Size(1024, 768);
             rdp.DesktopWidth = DesktopSize.Width;
             rdp.DesktopHeight = DesktopSize.Height;
