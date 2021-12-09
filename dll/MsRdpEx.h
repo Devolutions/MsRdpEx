@@ -63,6 +63,13 @@ void MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll);
 LONG MsRdpEx_AttachHooks();
 LONG MsRdpEx_DetachHooks();
 
+LONG MsRdpEx_GetRectWidth(LPRECT rect);
+LONG MsRdpEx_GetRectHeight(LPRECT rect);
+
+const char* MsRdpEx_GetWindowMessageName(uint32_t uMsg);
+
+bool MsRdpEx_WriteBitmapFile(const char* filename, uint8_t* data, int width, int height, int bpp);
+
 #ifdef __cplusplus
 }
 #endif
