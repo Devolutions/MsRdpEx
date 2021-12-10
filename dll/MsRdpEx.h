@@ -65,6 +65,7 @@ LONG MsRdpEx_DetachHooks();
 
 LONG MsRdpEx_GetRectWidth(LPRECT rect);
 LONG MsRdpEx_GetRectHeight(LPRECT rect);
+void MsRdpEx_GetRectSize(LPRECT rect, LONG* pWidth, LONG* pHeight);
 
 const char* MsRdpEx_GetWindowMessageName(uint32_t uMsg);
 

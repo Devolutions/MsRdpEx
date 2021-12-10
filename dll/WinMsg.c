@@ -13,6 +13,12 @@ LONG MsRdpEx_GetRectHeight(LPRECT rect)
 	return rect->bottom - rect->top;
 }
 
+void MsRdpEx_GetRectSize(LPRECT rect, LONG* pWidth, LONG* pHeight)
+{
+    *pWidth = MsRdpEx_GetRectWidth(rect);
+    *pHeight = MsRdpEx_GetRectHeight(rect);
+}
+
 const char* MsRdpEx_GetWindowMessageName(uint32_t uMsg)
 {
 	switch (uMsg)

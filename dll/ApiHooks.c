@@ -3,7 +3,7 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
-#include "Recorder.h"
+#include "OutputMirror.h"
 
 HMODULE (WINAPI * Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
 
@@ -38,43 +38,66 @@ BOOL (WINAPI * Real_BitBlt)(
     ) = BitBlt;
 
 static HWND g_hOutputPresenterWnd = NULL;
-static MsRdpEx_Recorder* g_Recorder = NULL;
+static MsRdpEx_OutputMirror* g_OutputMirror = NULL;
+
+bool MsRdpEx_CaptureBlt(
+    HDC hdcDst, int dstX, int dstY, int width, int height,
+    HDC hdcSrc, int srcX, int srcY)
+{
+    RECT rect = { 0 };
+    bool captured = false;
+
+    HWND  hWnd = WindowFromDC(hdcDst);
+
+    if (!hWnd)
+        goto end;
+
+    if (hWnd != g_hOutputPresenterWnd)
+        goto end;
+
+    if (!GetClientRect(hWnd, &rect))
+        goto end;
+
+    LONG bitmapWidth = MsRdpEx_GetRectWidth(&rect);
+    LONG bitmapHeight = MsRdpEx_GetRectHeight(&rect);
+
+    if (!g_OutputMirror) {
+        g_OutputMirror = MsRdpEx_OutputMirror_New();
+    }
+
+    if ((g_OutputMirror->bitmapWidth != bitmapWidth) || (g_OutputMirror->bitmapHeight != bitmapHeight))
+    {
+        MsRdpEx_OutputMirror_Uninit(g_OutputMirror);
+        MsRdpEx_OutputMirror_SetSourceDC(g_OutputMirror, hdcSrc);
+        MsRdpEx_OutputMirror_SetFrameSize(g_OutputMirror, bitmapWidth, bitmapHeight);
+        MsRdpEx_OutputMirror_Init(g_OutputMirror);
+    }
+
+    HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(g_OutputMirror);
+    BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
+    MsRdpEx_OutputMirror_DumpFrame(g_OutputMirror);
+
+    captured = true;
+end:
+    return captured;
+}
 
 BOOL Hook_BitBlt(
     HDC hdcDst, int dstX, int dstY, int width, int height,
     HDC hdcSrc, int srcX, int srcY, DWORD rop)
 {
     BOOL status;
-    RECT rect = { 0 };
-	HWND hWnd = WindowFromDC(hdcDst);
 
-	if (!hWnd)
-		goto real;
+    MsRdpEx_Log("BitBlt: %d,%d %dx%d %d,%d", dstX, dstY, width, height, srcX, srcY);
 
-	if (hWnd != g_hOutputPresenterWnd)
-		goto real;
+    status = Real_BitBlt(hdcDst, dstX, dstY, width, height, hdcSrc, srcX, srcY, rop);
 
-    if (!GetClientRect(hWnd, &rect))
-        goto real;
-
-    LONG bitmapWidth = MsRdpEx_GetRectWidth(&rect);
-    LONG bitmapHeight = MsRdpEx_GetRectHeight(&rect);
-
-    if (!g_Recorder) {
-        g_Recorder = MsRdpEx_Recorder_New();
-        MsRdpEx_Recorder_SetSourceDC(g_Recorder, hdcSrc);
-        MsRdpEx_Recorder_SetFrameSize(g_Recorder, bitmapWidth, bitmapHeight);
-        MsRdpEx_Recorder_Init(g_Recorder);
+    bool captured = MsRdpEx_CaptureBlt(hdcDst, dstX, dstY, width, height, hdcSrc, srcX, srcY);
+    
+    if (captured) {
+        MsRdpEx_Log("BitBlt: %d,%d %dx%d %d,%d", dstX, dstY, width, height, srcX, srcY);
     }
 
-    HDC hShadowDC = MsRdpEx_Recorder_GetShadowDC(g_Recorder);
-    BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
-    MsRdpEx_Recorder_DumpFrame(g_Recorder);
-
-    MsRdpEx_Log("BitBlt: %d,%d %dx%d %d,%d hWnd: %p", dstX, dstY, width, height, srcX, srcY, hWnd);
-
-real:
-    status = Real_BitBlt(hdcDst, dstX, dstY, width, height, hdcSrc, dstX, dstY, rop);
     return status;
 }
 
@@ -84,15 +107,20 @@ BOOL (WINAPI * Real_StretchBlt)(
     ) = StretchBlt;
 
 BOOL Hook_StretchBlt(
-    HDC hdcDest, int xDest, int yDest, int wDest, int hDest,
-    HDC hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, DWORD rop)
+    HDC hdcDst, int dstX, int dstY, int dstW, int dstH,
+    HDC hdcSrc, int srcX, int srcY, int srcW, int srcH, DWORD rop)
 {
     BOOL status;
 
-    MsRdpEx_Log("StretchBlt: %d,%d %dx%d %d,%d %dx%d", xDest, yDest, wDest, hDest, xSrc, ySrc, wSrc, hSrc);
+    status = Real_StretchBlt(hdcDst, dstX, dstY, dstW, dstH, hdcSrc, srcX, srcY, srcW, srcH, rop);
 
-    status = Real_StretchBlt(hdcDest, xDest, yDest, wDest, hDest, hdcSrc, xSrc, ySrc, wSrc, hSrc, rop);
+    bool captured = MsRdpEx_CaptureBlt(hdcDst, srcX, srcY, srcW, srcH, hdcSrc, srcX, srcY);
 
+    if (captured) {
+        MsRdpEx_Log("StretchBlt: %d,%d %dx%d %d,%d %dx%d", dstX, dstY, dstW, dstH, srcX, srcY, srcW, srcH);
+    }
+
+end:
     return status;
 }
 
