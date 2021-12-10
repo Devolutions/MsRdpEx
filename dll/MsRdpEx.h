@@ -68,6 +68,7 @@ LONG MsRdpEx_GetRectHeight(LPRECT rect);
 
 const char* MsRdpEx_GetWindowMessageName(uint32_t uMsg);
 
+HBITMAP MsRdpEx_CreateDIBSection(HDC hDC, int width, int height, int bpp, uint8_t** ppPixelData);
 bool MsRdpEx_WriteBitmapFile(const char* filename, uint8_t* data, int width, int height, int bpp);
 
 #ifdef __cplusplus
