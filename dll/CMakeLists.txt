@@ -4,10 +4,16 @@ add_library(MsRdpEx_Dll SHARED
     MsRdpClient.h
     AxDll.cpp
     ApiHooks.c
+    OutputMirror.c
+    OutputMirror.h
+    VideoRecorder.c
+    VideoRecorder.h
+    Bitmap.c
+    WinMsg.c
 	MsRdpEx.c
 	MsRdpEx.h
     MsRdpEx.def)
 
 set_target_properties(MsRdpEx_Dll PROPERTIES OUTPUT_NAME "MsRdpEx")
 
-target_link_libraries(MsRdpEx_Dll MsRdpEx_Core ws2_32.lib secur32.lib advapi32.lib)
+target_link_libraries(MsRdpEx_Dll MsRdpEx_Core user32.lib ws2_32.lib secur32.lib advapi32.lib)

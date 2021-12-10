@@ -3,6 +3,8 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+static HMODULE g_hModule = NULL;
+
 static MsRdpEx_AxDll* g_AxDll = NULL;
 
 HRESULT DllCanUnloadNow()
@@ -122,8 +124,6 @@ void MsRdpEx_Unload()
 
     MsRdpEx_LogClose();
 }
-
-static HMODULE g_hModule = NULL;
 
 BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID reserved)
 {

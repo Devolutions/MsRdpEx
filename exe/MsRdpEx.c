@@ -19,7 +19,7 @@ int main(int argc, char** argv)
 
     uint32_t appPathId = MSRDPEX_MSTSC_EXE_PATH;
     
-    appPathId = MSRDPEX_MSRDC_EXE_PATH;
+    //appPathId = MSRDPEX_MSRDC_EXE_PATH;
 
     const char* lpApplicationName = MsRdpEx_GetPath(appPathId);
 
