@@ -3,6 +3,8 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include "Recorder.h"
+
 HMODULE (WINAPI * Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
 
 HMODULE Hook_LoadLibraryW(LPCWSTR lpLibFileName)
@@ -35,8 +37,8 @@ BOOL (WINAPI * Real_BitBlt)(
     HDC hdcSrc, int x1, int y1, DWORD rop
     ) = BitBlt;
 
-static int g_CaptureIndex = 0;
 static HWND g_hOutputPresenterWnd = NULL;
+static MsRdpEx_Recorder* g_Recorder = NULL;
 
 BOOL Hook_BitBlt(
     HDC hdcDst, int dstX, int dstY, int width, int height,
@@ -58,28 +60,16 @@ BOOL Hook_BitBlt(
     LONG bitmapWidth = MsRdpEx_GetRectWidth(&rect);
     LONG bitmapHeight = MsRdpEx_GetRectHeight(&rect);
 
-    uint8_t* bitmapData = NULL;
-    HDC hShadowDC = CreateCompatibleDC(hdcDst);
-    HBITMAP hShadowBitmap = MsRdpEx_CreateDIBSection(hdcSrc, bitmapWidth, bitmapHeight, 32, &bitmapData);
-
-    if (!hShadowBitmap)
-    {
-        MsRdpEx_Log("bitmap width: %d height: %d", bitmapWidth, bitmapHeight);
-        goto real;
+    if (!g_Recorder) {
+        g_Recorder = MsRdpEx_Recorder_New();
+        MsRdpEx_Recorder_SetSourceDC(g_Recorder, hdcSrc);
+        MsRdpEx_Recorder_SetFrameSize(g_Recorder, bitmapWidth, bitmapHeight);
+        MsRdpEx_Recorder_Init(g_Recorder);
     }
 
-    HGDIOBJ hShadowObject = SelectObject(hShadowDC, hShadowBitmap);
+    HDC hShadowDC = MsRdpEx_Recorder_GetShadowDC(g_Recorder);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
-
-    char filename[MSRDPEX_MAX_PATH];
-    sprintf_s(filename, MSRDPEX_MAX_PATH, "C:\\Windows\\Temp\\MsRdpEx\\image_%04d.bmp", g_CaptureIndex);
-    MsRdpEx_WriteBitmapFile(filename, bitmapData, bitmapWidth, bitmapHeight, 32);
-    g_CaptureIndex++;
-
-    SelectObject(hShadowDC, hShadowObject);
-    DeleteObject(hShadowBitmap);
-    ReleaseDC(NULL, hShadowDC);
-    DeleteDC(hShadowDC);
+    MsRdpEx_Recorder_DumpFrame(g_Recorder);
 
     MsRdpEx_Log("BitBlt: %d,%d %dx%d %d,%d hWnd: %p", dstX, dstY, width, height, srcX, srcY, hWnd);
 

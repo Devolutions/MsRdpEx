@@ -4,6 +4,8 @@ add_library(MsRdpEx_Dll SHARED
     MsRdpClient.h
     AxDll.cpp
     ApiHooks.c
+    Recorder.c
+    Recorder.h
     Bitmap.c
     WinMsg.c
 	MsRdpEx.c
