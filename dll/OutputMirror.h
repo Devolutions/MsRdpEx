@@ -13,6 +13,7 @@ struct _MsRdpEx_OutputMirror
 	uint32_t bitmapWidth;
 	uint32_t bitmapHeight;
 	uint32_t bitsPerPixel;
+	uint32_t bitmapStep;
 
 	HDC hSourceDC;
 	HDC hShadowDC;
