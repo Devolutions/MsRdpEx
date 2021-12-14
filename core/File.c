@@ -70,3 +70,18 @@ exit:
     free(buffer);
     return success;
 }
+
+bool MsRdpEx_MakePath(const char* path, LPSECURITY_ATTRIBUTES lpAttributes)
+{
+    bool result;
+    result = SHCreateDirectoryExA(NULL, path, lpAttributes) == ERROR_SUCCESS;
+    return result;
+}
+
+uint64_t MsRdpEx_GetUnixTime()
+{
+    uint64_t unixTime;
+    // number of seconds since Epoch (1970-01-01 00:00:00 +0000 UTC)
+    unixTime = (uint64_t)time(NULL);
+    return unixTime;
+}
