@@ -91,9 +91,9 @@ uint64_t DllPreCleanUp()
 
 void MsRdpEx_Load()
 {
-    MsRdpEx_LogOpen();
-
     MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
+
+    MsRdpEx_LogOpen();
 
     const char* ModuleFilePath = MsRdpEx_GetPath(MSRDPEX_CURRENT_MODULE_PATH);
     const char* ModuleFileName = MsRdpEx_FileBase(ModuleFilePath);

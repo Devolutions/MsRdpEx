@@ -29,15 +29,12 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 	char filename[MSRDPEX_MAX_PATH];
 
 	if (g_VideoRecorder) {
-		size_t size = MsRdpEx_VideoRecorder_GetPath(g_VideoRecorder, filename, MSRDPEX_MAX_PATH);
-		filename[size - 1] = '\0';
-		MsRdpEx_Log("DumpFrame: %s", filename);
-		MsRdpEx_VideoRecorder_Update(g_VideoRecorder, ctx->bitmapData,
+		MsRdpEx_VideoRecorder_UpdateFrame(g_VideoRecorder, ctx->bitmapData,
 			0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
 		MsRdpEx_VideoRecorder_Timeout(g_VideoRecorder);
 	} else {
-		sprintf_s(filename, MSRDPEX_MAX_PATH, "C:\\Windows\\Temp\\MsRdpEx\\image_%04d.bmp", ctx->captureIndex);
-		MsRdpEx_Log("DumpFrame: %s", filename);
+		const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
+		sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\image_%04d.bmp", appDataPath, ctx->captureIndex);
 		MsRdpEx_WriteBitmapFile(filename, ctx->bitmapData, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitsPerPixel);
 	}
 
@@ -55,9 +52,12 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 	g_VideoRecorder = MsRdpEx_VideoRecorder_New();
 	
 	if (g_VideoRecorder) {
+		char filename[MSRDPEX_MAX_PATH];
+		uint64_t timestamp = MsRdpEx_GetUnixTime();
+		const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
+		sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\%llu.webm", appDataPath, timestamp);
 		MsRdpEx_VideoRecorder_SetFrameSize(g_VideoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
-		MsRdpEx_VideoRecorder_SetDirectory(g_VideoRecorder, "C:\\Windows\\Temp\\MsRdpEx");
-		MsRdpEx_VideoRecorder_SetFileName(g_VideoRecorder, "MsRdpEx.webm");
+		MsRdpEx_VideoRecorder_SetFilename(g_VideoRecorder, filename);
 	}
 
 	return true;

@@ -19,6 +19,9 @@ extern "C" {
 const char* MsRdpEx_FileBase(const char* filename);
 bool MsRdpEx_IsFile(const char* filename);
 bool MsRdpEx_GetFileBuildVersion(const char* filename, uint64_t* version);
+bool MsRdpEx_MakePath(const char* path, LPSECURITY_ATTRIBUTES lpAttributes);
+
+int64_t MsRdpEx_GetUnixTime();
 
 // Paths Utils
 
@@ -26,6 +29,7 @@ bool MsRdpEx_GetFileBuildVersion(const char* filename, uint64_t* version);
 #define MSRDPEX_CURRENT_LIBRARY_PATH    0x00000002
 #define MSRDPEX_EXECUTABLE_PATH         0x00000004
 #define MSRDPEX_LIBRARY_PATH            0x00000008
+#define MSRDPEX_APP_DATA_PATH           0x00000010
 #define MSRDPEX_MSTSC_EXE_PATH          0x00000100
 #define MSRDPEX_MSTSCAX_DLL_PATH        0x00000200
 #define MSRDPEX_MSRDC_EXE_PATH          0x00000400

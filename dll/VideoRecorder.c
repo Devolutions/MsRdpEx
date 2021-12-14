@@ -3,11 +3,21 @@
 
 #include "VideoRecorder.h"
 
+void* MsRdpEx_LoadFunc(HMODULE hModule, const char* name, void** ppFunc)
+{
+    void* pFunc = GetProcAddress(hModule, name);
+    *ppFunc = pFunc;
+    if (!pFunc) {
+        MsRdpEx_Log("LoadFunc(%s): not found", name);
+    }
+    return pFunc;
+}
+
 MsRdpEx_VideoRecorder* MsRdpEx_VideoRecorder_New()
 {
     HMODULE hModule;
     MsRdpEx_VideoRecorder* ctx;
-    const char* filename = "librecording.dll";
+    const char* filename = "libxmf.dll";
 
     hModule = LoadLibraryA(filename);
 
@@ -22,72 +32,57 @@ MsRdpEx_VideoRecorder* MsRdpEx_VideoRecorder_New()
     ZeroMemory(ctx, sizeof(MsRdpEx_VideoRecorder));
 
     ctx->hModule = hModule;
-    ctx->Recording_New = (fnRecording_New) GetProcAddress(hModule, "NowRecording_New");
-    ctx->Recording_SetSize = (fnRecording_SetSize) GetProcAddress(hModule, "NowRecording_SetSize");
-    ctx->Recording_SetFileName = (fnRecording_SetFileName) GetProcAddress(hModule, "NowRecording_SetFileName");
-    ctx->Recording_SetDirectory = (fnRecording_SetDirectory)GetProcAddress(hModule, "NowRecording_SetDirectory");
-    ctx->Recording_Update = (fnRecording_Update) GetProcAddress(hModule, "NowRecording_Update");
-    ctx->Recording_Timeout = (fnRecording_Timeout) GetProcAddress(hModule, "NowRecording_Timeout");
-    ctx->Recording_GetTimeout = (fnRecording_GetTimeout) GetProcAddress(hModule, "NowRecording_GetTimeout");
-    ctx->Recording_GetPath = (fnRecording_GetPath) GetProcAddress(hModule, "NowRecording_GetPath");
-    ctx->Recording_Free = (fnRecording_Free) GetProcAddress(hModule, "NowRecording_Free");
+    MsRdpEx_LoadFunc(hModule, "XmfRecorder_New", (void**)&ctx->Recorder_New);
+    MsRdpEx_LoadFunc(hModule, "XmfRecorder_SetFrameSize", (void**)&ctx->Recorder_SetFrameSize);
+    MsRdpEx_LoadFunc(hModule, "XmfRecorder_SetFilename", (void**)&ctx->Recorder_SetFilename);
+    MsRdpEx_LoadFunc(hModule, "XmfRecorder_UpdateFrame", (void**)&ctx->Recorder_UpdateFrame);
+    MsRdpEx_LoadFunc(hModule, "XmfRecorder_Timeout", (void**)&ctx->Recorder_Timeout);
+    MsRdpEx_LoadFunc(hModule, "XmfRecorder_GetTimeout", (void**)&ctx->Recorder_GetTimeout);
+    MsRdpEx_LoadFunc(hModule, "XmfRecorder_Free", (void**)&ctx->Recorder_Free);
 
-    ctx->recording = ctx->Recording_New();
+    ctx->recorder = ctx->Recorder_New();
+
+    if (!ctx->recorder)
+        return NULL;
 
     return ctx;
 }
 
 void MsRdpEx_VideoRecorder_SetFrameSize(MsRdpEx_VideoRecorder* ctx, uint32_t width, uint32_t height)
 {
-    if (ctx->Recording_SetSize) {
-        ctx->Recording_SetSize(ctx->recording, width, height);
+    if (ctx->Recorder_SetFrameSize) {
+        ctx->Recorder_SetFrameSize(ctx->recorder, width, height);
     }
 }
 
-void MsRdpEx_VideoRecorder_SetFileName(MsRdpEx_VideoRecorder* ctx, const char* filename)
+void MsRdpEx_VideoRecorder_SetFilename(MsRdpEx_VideoRecorder* ctx, const char* filename)
 {
-    if (ctx->Recording_SetFileName) {
-        ctx->Recording_SetFileName(ctx->recording, filename);
+    if (ctx->Recorder_SetFilename) {
+        ctx->Recorder_SetFilename(ctx->recorder, filename);
     }
 }
 
-void MsRdpEx_VideoRecorder_SetDirectory(MsRdpEx_VideoRecorder* ctx, const char* directory)
-{
-    if (ctx->Recording_SetDirectory) {
-        ctx->Recording_SetDirectory(ctx->recording, directory);
-    }
-}
-
-void MsRdpEx_VideoRecorder_Update(MsRdpEx_VideoRecorder* ctx,
+void MsRdpEx_VideoRecorder_UpdateFrame(MsRdpEx_VideoRecorder* ctx,
     uint8_t* buffer, uint32_t updateX, uint32_t updateY,
     uint32_t updateWidth, uint32_t updateHeight, uint32_t surfaceStep)
 {
-    if (ctx->Recording_Update) {
-        ctx->Recording_Update(ctx->recording, buffer,
+    if (ctx->Recorder_UpdateFrame) {
+        ctx->Recorder_UpdateFrame(ctx->recorder, buffer,
             updateX, updateY, updateWidth, updateHeight, surfaceStep);
     }
 }
 
 void MsRdpEx_VideoRecorder_Timeout(MsRdpEx_VideoRecorder* ctx)
 {
-    if (ctx->Recording_Timeout) {
-        ctx->Recording_Timeout(ctx->recording);
+    if (ctx->Recorder_Timeout) {
+        ctx->Recorder_Timeout(ctx->recorder);
     }
 }
 
 uint32_t MsRdpEx_VideoRecorder_GetTimeout(MsRdpEx_VideoRecorder* ctx)
 {
-    if (ctx->Recording_GetTimeout) {
-        return ctx->Recording_GetTimeout(ctx->recording);
-    }
-
-    return 0;
-}
-
-size_t MsRdpEx_VideoRecorder_GetPath(MsRdpEx_VideoRecorder* ctx, char* path, size_t size)
-{
-    if (ctx->Recording_GetPath) {
-        return ctx->Recording_GetPath(ctx->recording, path, size);
+    if (ctx->Recorder_GetTimeout) {
+        return ctx->Recorder_GetTimeout(ctx->recorder);
     }
 
     return 0;
@@ -98,9 +93,9 @@ void MsRdpEx_VideoRecorder_Free(MsRdpEx_VideoRecorder* ctx)
     if (!ctx)
         return;
 
-    if (ctx->recording) {
-        ctx->Recording_Free(ctx->recording);
-        ctx->recording = NULL;
+    if (ctx->recorder) {
+        ctx->Recorder_Free(ctx->recorder);
+        ctx->recorder = NULL;
     }
     
     if (ctx->hModule) {

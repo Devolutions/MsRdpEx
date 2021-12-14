@@ -9,6 +9,8 @@ static char g_CURRENT_LIBRARY_PATH[MSRDPEX_MAX_PATH] = { 0 };
 static char g_MSRDPEX_EXE_PATH[MSRDPEX_MAX_PATH] = { 0 };
 static char g_MSRDPEX_DLL_PATH[MSRDPEX_MAX_PATH] = { 0 };
 
+static char g_MSRDPEX_APP_DATA_PATH[MSRDPEX_MAX_PATH] = { 0 };
+
 static char g_MSTSC_EXE_PATH[MSRDPEX_MAX_PATH] = { 0 };
 static char g_MSTSCAX_DLL_PATH[MSRDPEX_MAX_PATH] = { 0 };
 
@@ -69,6 +71,11 @@ bool MsRdpEx_InitPaths(uint32_t pathIds)
         }
     }
 
+    if (pathIds & MSRDPEX_APP_DATA_PATH) {
+        ExpandEnvironmentStringsA("%LocalAppData%\\MsRdpEx", g_MSRDPEX_APP_DATA_PATH, MSRDPEX_MAX_PATH);
+        MsRdpEx_MakePath(g_MSRDPEX_APP_DATA_PATH, NULL);
+    }
+
     if (pathIds & MSRDPEX_MSTSC_EXE_PATH) {
         ExpandEnvironmentStringsA("%SystemRoot%\\System32\\mstsc.exe", g_MSTSC_EXE_PATH, MSRDPEX_MAX_PATH);
     }
@@ -109,6 +116,10 @@ const char* MsRdpEx_GetPath(uint32_t pathId)
         case MSRDPEX_LIBRARY_PATH:
                 path = (const char*) g_MSRDPEX_DLL_PATH;
                 break;
+
+        case MSRDPEX_APP_DATA_PATH:
+            path = (const char*) g_MSRDPEX_APP_DATA_PATH;
+            break;
 
         case MSRDPEX_MSTSC_EXE_PATH:
             path = (const char*) g_MSTSC_EXE_PATH;

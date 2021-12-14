@@ -27,7 +27,8 @@ bool MsRdpEx_Log(const char* format, ...)
 void MsRdpEx_LogOpen()
 {
     char filename[MSRDPEX_MAX_PATH];
-    strcpy_s(filename, MSRDPEX_MAX_PATH, "C:\\Windows\\Temp\\MsRdpEx.log");
+    const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
+    sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\MsRdpEx.log", appDataPath);
     g_LogFile = fopen(filename, "wb");
 }
 
