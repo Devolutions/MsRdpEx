@@ -3,6 +3,8 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <MsRdpEx/RdpFile.h>
+
 #pragma warning (disable : 26812)
 
 #include "mstscax.tlh"
@@ -373,6 +375,19 @@ public:
     HRESULT __stdcall raw_Connect() {
         HRESULT hr;
         MsRdpEx_Log("CMsRdpClient::Connect");
+
+        char* filename = MsRdpEx_GetRdpFilenameFromCommandLine();
+
+        if (filename) {
+            MsRdpEx_Log("Loading %s RDP", filename);
+            MsRdpEx_RdpFile* rdpFile = MsRdpEx_RdpFile_New();
+            if (MsRdpEx_RdpFile_Load(rdpFile, filename)) {
+                
+            }
+            MsRdpEx_RdpFile_Free(rdpFile);
+            free(filename);
+        }
+
         IMsRdpClientNonScriptable3* pMsRdpClientNonScriptable3 = NULL;
         hr = m_pMsTscAx->QueryInterface(IID_IMsRdpClientNonScriptable3, (LPVOID*)&pMsRdpClientNonScriptable3);
         if (hr == S_OK)

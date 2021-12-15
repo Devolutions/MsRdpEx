@@ -2,6 +2,7 @@
 #include "MsRdpEx.h"
 
 #include <MsRdpEx/MsRdpEx.h>
+#include <MsRdpEx/RdpFile.h>
 
 #include <detours.h>
 
@@ -23,8 +24,12 @@ int main(int argc, char** argv)
 
     const char* lpApplicationName = MsRdpEx_GetPath(appPathId);
 
-    if ((argc == 1) || (argv[1][0] == '/') || MsRdpEx_IsFile(argv[1]))
+    if ((argc > 1) || (argv[2][0] == '/') || MsRdpEx_IsFile(argv[2]))
     {
+        const char* filename = argv[2];
+        MsRdpEx_RdpFile* rdpFile = MsRdpEx_RdpFile_New();
+        MsRdpEx_RdpFile_Load(rdpFile, filename);
+
         sprintf_s(szCommandLine, sizeof(szCommandLine), "%s ",
                 MsRdpEx_FileBase(lpApplicationName));
     }
