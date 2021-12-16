@@ -376,25 +376,63 @@ public:
         HRESULT hr;
         MsRdpEx_Log("CMsRdpClient::Connect");
 
+        IMsRdpExtendedSettings* pMsRdpExtendedSettings = NULL;
+        hr = m_pMsTscAx->QueryInterface(IID_IMsRdpExtendedSettings, (LPVOID*)&pMsRdpExtendedSettings);
+
+        IMsRdpClientNonScriptable3* pMsRdpClientNonScriptable3 = NULL;
+        hr = m_pMsTscAx->QueryInterface(IID_IMsRdpClientNonScriptable3, (LPVOID*)&pMsRdpClientNonScriptable3);
+
         char* filename = MsRdpEx_GetRdpFilenameFromCommandLine();
 
         if (filename) {
             MsRdpEx_Log("Loading %s RDP", filename);
             MsRdpEx_RdpFile* rdpFile = MsRdpEx_RdpFile_New();
             if (MsRdpEx_RdpFile_Load(rdpFile, filename)) {
-                
+                MsRdpEx_ArrayListIt* it = NULL;
+                MsRdpEx_RdpFileEntry* entry = NULL;
+
+                it = MsRdpEx_ArrayList_It(rdpFile->entries, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+                while (!MsRdpEx_ArrayListIt_Done(it))
+                {
+                    entry = (MsRdpEx_RdpFileEntry*) MsRdpEx_ArrayListIt_Next(it);
+
+                    if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableHardwareMode")) {
+                        MsRdpEx_Log("found EnableHardwareMode!");
+                        bool EnableHardwareMode = false;
+                        if (MsRdpEx_RdpFileEntry_GetBoolValue(entry, &EnableHardwareMode)) {
+                            VARIANT value;
+                            VariantInit(&value);
+                            value.vt = VT_BOOL;
+                            value.bVal = EnableHardwareMode;
+                            MsRdpEx_Log("Setting EnableHardwareMode: %s", EnableHardwareMode ? "true" : "false");
+                            pMsRdpExtendedSettings->PutProperty("EnableHardwareMode", &value);
+                        }
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {
+                        bstr_t ClearTextPassword = _com_util::ConvertStringToBSTR(entry->value);
+                        pMsRdpClientNonScriptable3->PutClearTextPassword(ClearTextPassword);
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ConnectionBarText")) {
+                        bstr_t ConnectionBarText = _com_util::ConvertStringToBSTR(entry->value);
+                        pMsRdpClientNonScriptable3->PutConnectionBarText(ConnectionBarText);
+                    }
+                }
+
+                MsRdpEx_ArrayListIt_Finish(it);
             }
             MsRdpEx_RdpFile_Free(rdpFile);
             free(filename);
         }
 
-        IMsRdpClientNonScriptable3* pMsRdpClientNonScriptable3 = NULL;
-        hr = m_pMsTscAx->QueryInterface(IID_IMsRdpClientNonScriptable3, (LPVOID*)&pMsRdpClientNonScriptable3);
-        if (hr == S_OK)
-        {
-            pMsRdpClientNonScriptable3->PutConnectionBarText("MsRdpEx Client");
+        if (pMsRdpExtendedSettings) {
+            pMsRdpExtendedSettings->Release();
+        }
+
+        if (pMsRdpClientNonScriptable3) {
             pMsRdpClientNonScriptable3->Release();
         }
+
         //DumpMsTscProperties(m_pUnknown);
         return m_pMsTscAx->raw_Connect();
     }

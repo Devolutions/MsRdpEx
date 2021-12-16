@@ -1,13 +1,75 @@
 
-#include <MsRdpEx/ArrayList.h>
-#include <MsRdpEx/HashTable.h>
-
 #include <MsRdpEx/RdpFile.h>
 
-struct _MsRdpEx_RdpFile
+MsRdpEx_RdpFileEntry* MsRdpEx_RdpFileEntry_New(char type, const char* name, const char* value)
 {
-	void* dummy;
-};
+	MsRdpEx_RdpFileEntry* entry;
+	
+	if ((type != 'i') && (type != 's')) {
+		return NULL;
+	}
+
+	entry = (MsRdpEx_RdpFileEntry*) calloc(1, sizeof(MsRdpEx_RdpFileEntry));
+
+	if (!entry)
+		return NULL;
+
+	entry->type = type;
+	entry->name = _strdup(name);
+	entry->value = _strdup(value);
+
+	if (!entry->name || !entry->value)
+		goto error;
+
+	return entry;
+error:
+	MsRdpEx_RdpFileEntry_Free(entry);
+	return NULL;
+}
+
+bool MsRdpEx_RdpFileEntry_IsMatch(MsRdpEx_RdpFileEntry* entry, char type, const char* name)
+{
+	if (entry->type != type)
+		return false;
+
+	if (!MsRdpEx_StringIEquals(entry->name, name)) {
+		return false;
+	}
+
+	return true;
+}
+
+bool MsRdpEx_RdpFileEntry_GetBoolValue(MsRdpEx_RdpFileEntry* entry, bool* pValue)
+{
+	if (entry->type != 'i')
+		return false;
+
+	int iValue = atoi(entry->value);
+
+	bool bValue = (iValue != 0) ? true : false;
+
+	*pValue = bValue;
+
+	return true;
+}
+
+void MsRdpEx_RdpFileEntry_Free(MsRdpEx_RdpFileEntry* entry)
+{
+	if (!entry)
+		return;
+
+	if (entry->name) {
+		free(entry->name);
+		entry->name = NULL;
+	}
+
+	if (entry->value) {
+		free(entry->value);
+		entry->value = NULL;
+	}
+	
+	free(entry);
+}
 
 #include <shellapi.h>
 
@@ -95,6 +157,7 @@ bool MsRdpEx_RdpFile_Load(MsRdpEx_RdpFile* ctx, const char* filename)
 	char* name;
 	char* value;
 	char* tokctx = NULL;
+	MsRdpEx_RdpFileEntry* entry;
 
 	buffer = MsRdpEx_RdpFile_LoadBuffer(ctx, filename);
 
@@ -136,14 +199,24 @@ bool MsRdpEx_RdpFile_Load(MsRdpEx_RdpFile* ctx, const char* filename)
 			if (*type == 'i') /* integer type */
 			{
 				MsRdpEx_Log("RDP(i): %s = %s", name, value);
+				entry = MsRdpEx_RdpFileEntry_New(*type, name, value);
+
+				if (entry) {
+					MsRdpEx_ArrayList_Add(ctx->entries, entry);
+				}
 			}
 			else if (*type == 's') /* string type */
 			{
 				MsRdpEx_Log("RDP(s): %s = %s", name, value);
+				entry = MsRdpEx_RdpFileEntry_New(*type, name, value);
+
+				if (entry) {
+					MsRdpEx_ArrayList_Add(ctx->entries, entry);
+				}
 			}
 			else if (*type == 'b') /* binary type */
 			{
-
+				
 			}
 		}
 
@@ -165,11 +238,27 @@ MsRdpEx_RdpFile* MsRdpEx_RdpFile_New()
 	if (!ctx)
 		return NULL;
 
+	ctx->entries = MsRdpEx_ArrayList_New(true);
+
+	if (!ctx->entries)
+		goto error;
+
+	MsRdpEx_ArrayList_Object(ctx->entries)->fnObjectFree =
+		(MSRDPEX_OBJECT_FREE_FN) MsRdpEx_RdpFileEntry_Free;
+
 	return ctx;
+error:
+	MsRdpEx_RdpFile_Free(ctx);
+	return NULL;
 }
 
 void MsRdpEx_RdpFile_Free(MsRdpEx_RdpFile* ctx)
 {
 	if (!ctx)
 		return;
+
+	if (ctx->entries) {
+		MsRdpEx_ArrayList_Free(ctx->entries);
+		ctx->entries = NULL;
+	}
 }
