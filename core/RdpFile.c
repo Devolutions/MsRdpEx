@@ -1,4 +1,7 @@
 
+#include <MsRdpEx/ArrayList.h>
+#include <MsRdpEx/HashTable.h>
+
 #include <MsRdpEx/RdpFile.h>
 
 struct _MsRdpEx_RdpFile
