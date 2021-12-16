@@ -397,16 +397,28 @@ public:
                 {
                     entry = (MsRdpEx_RdpFileEntry*) MsRdpEx_ArrayListIt_Next(it);
 
-                    if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableHardwareMode")) {
-                        MsRdpEx_Log("found EnableHardwareMode!");
-                        bool EnableHardwareMode = false;
-                        if (MsRdpEx_RdpFileEntry_GetBoolValue(entry, &EnableHardwareMode)) {
-                            VARIANT value;
-                            VariantInit(&value);
-                            value.vt = VT_BOOL;
-                            value.bVal = EnableHardwareMode;
-                            MsRdpEx_Log("Setting EnableHardwareMode: %s", EnableHardwareMode ? "true" : "false");
-                            pMsRdpExtendedSettings->PutProperty("EnableHardwareMode", &value);
+                    if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableCredentialsDelegation")) {
+                        VARIANT value;
+                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                            pMsRdpExtendedSettings->PutProperty("DisableCredentialsDelegation", &value);
+                        }
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RedirectedAuthentication")) {
+                        VARIANT value;
+                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                            pMsRdpExtendedSettings->PutProperty("RedirectedAuthentication", &value);
+                        }
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RestrictedLogon")) {
+                        VARIANT value;
+                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                            pMsRdpExtendedSettings->PutProperty("RestrictedLogon", &value);
+                        }
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "AutoLogon")) {
+                        VARIANT value;
+                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                            pMsRdpExtendedSettings->PutProperty("AutoLogon", &value);
                         }
                     }
                     else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {

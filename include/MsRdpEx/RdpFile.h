@@ -5,6 +5,8 @@
 
 #include <MsRdpEx/ArrayList.h>
 
+#include <oleauto.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,6 +22,7 @@ typedef struct _MsRdpEx_RdpFileEntry MsRdpEx_RdpFileEntry;
 bool MsRdpEx_RdpFileEntry_IsMatch(MsRdpEx_RdpFileEntry* entry, char type, const char* name);
 
 bool MsRdpEx_RdpFileEntry_GetBoolValue(MsRdpEx_RdpFileEntry* entry, bool* pValue);
+bool MsRdpEx_RdpFileEntry_GetVBoolValue(MsRdpEx_RdpFileEntry* entry, VARIANT* pVariant);
 
 MsRdpEx_RdpFileEntry* MsRdpEx_RdpFileEntry_New(char type, const char* name, const char* value);
 void MsRdpEx_RdpFileEntry_Free(MsRdpEx_RdpFileEntry* entry);

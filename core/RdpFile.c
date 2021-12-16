@@ -53,6 +53,20 @@ bool MsRdpEx_RdpFileEntry_GetBoolValue(MsRdpEx_RdpFileEntry* entry, bool* pValue
 	return true;
 }
 
+bool MsRdpEx_RdpFileEntry_GetVBoolValue(MsRdpEx_RdpFileEntry* entry, VARIANT* pVariant)
+{
+	bool bVal = false;
+
+	if (!MsRdpEx_RdpFileEntry_GetBoolValue(entry, &bVal))
+		return false;
+
+	VariantInit(pVariant);
+	pVariant->vt = VT_BOOL;
+	pVariant->bVal = bVal;
+
+	return true;
+}
+
 void MsRdpEx_RdpFileEntry_Free(MsRdpEx_RdpFileEntry* entry)
 {
 	if (!entry)
