@@ -4,11 +4,19 @@
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/RdpFile.h>
+#include <MsRdpEx/NameResolver.h>
 
 #pragma warning (disable : 26812)
 
 #include "mstscax.tlh"
 #include "mstscax.tli"
+
+extern "C" const GUID __declspec(selectany) IID_ITSPropertySet =
+    { 0x7272B10D,0xC627,0x90DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
+extern "C" const GUID __declspec(selectany) IID_ITSNameResolver =
+    { 0x7272B10D,0xC627,0x40DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
+extern "C" const GUID __declspec(selectany) IID_ITSTransport =
+    { 0x7272B10E,0xC627,0x40DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
 
 using namespace MSTSCLib;
 
@@ -428,6 +436,13 @@ public:
                     else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ConnectionBarText")) {
                         bstr_t ConnectionBarText = _com_util::ConvertStringToBSTR(entry->value);
                         pMsRdpClientNonScriptable3->PutConnectionBarText(ConnectionBarText);
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ServerNameUsedForAuthentication")) {
+                        char* oldServerName = NULL;
+                        bstr_t ServerNameUsedForAuthentication = _com_util::ConvertStringToBSTR(entry->value);
+                        MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, m_pMsTscAx->GetServer().GetBSTR(), -1, &oldServerName, 0, NULL, NULL);
+                        m_pMsTscAx->PutServer(ServerNameUsedForAuthentication);
+                        MsRdpEx_NameResolver_RemapName(entry->value, oldServerName);
                     }
                 }
 
