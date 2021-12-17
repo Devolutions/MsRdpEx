@@ -1,7 +1,7 @@
 
 #include "MsRdpEx.h"
 
-#include "VideoRecorder.h"
+#include <MsRdpEx/VideoRecorder.h>
 
 void* MsRdpEx_LoadFunc(HMODULE hModule, const char* name, void** ppFunc)
 {

@@ -6,7 +6,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#include <winsock2.h>
 #include <windows.h>
+#include <ws2tcpip.h>
 
 #ifdef __cplusplus
 extern "C" {

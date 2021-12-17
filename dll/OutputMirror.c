@@ -1,11 +1,8 @@
 
 #include "MsRdpEx.h"
 
-#include "VideoRecorder.h"
-
-#include "OutputMirror.h"
-
-static MsRdpEx_VideoRecorder* g_VideoRecorder = NULL;
+#include <MsRdpEx/VideoRecorder.h>
+#include <MsRdpEx/OutputMirror.h>
 
 void MsRdpEx_OutputMirror_SetSourceDC(MsRdpEx_OutputMirror* ctx, HDC hSourceDC)
 {
@@ -28,10 +25,10 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 {
 	char filename[MSRDPEX_MAX_PATH];
 
-	if (g_VideoRecorder) {
-		MsRdpEx_VideoRecorder_UpdateFrame(g_VideoRecorder, ctx->bitmapData,
+	if (ctx->videoRecorder) {
+		MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
 			0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
-		MsRdpEx_VideoRecorder_Timeout(g_VideoRecorder);
+		MsRdpEx_VideoRecorder_Timeout(ctx->videoRecorder);
 	} else {
 		const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
 		sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\image_%04d.bmp", appDataPath, ctx->captureIndex);
@@ -49,15 +46,15 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 		ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitsPerPixel, &ctx->bitmapData);
 	ctx->hShadowObject = SelectObject(ctx->hShadowDC, ctx->hShadowBitmap);
 
-	g_VideoRecorder = MsRdpEx_VideoRecorder_New();
+	ctx->videoRecorder = MsRdpEx_VideoRecorder_New();
 	
-	if (g_VideoRecorder) {
+	if (ctx->videoRecorder) {
 		char filename[MSRDPEX_MAX_PATH];
 		uint64_t timestamp = MsRdpEx_GetUnixTime();
 		const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
 		sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\%llu.webm", appDataPath, timestamp);
-		MsRdpEx_VideoRecorder_SetFrameSize(g_VideoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
-		MsRdpEx_VideoRecorder_SetFilename(g_VideoRecorder, filename);
+		MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
+		MsRdpEx_VideoRecorder_SetFilename(ctx->videoRecorder, filename);
 	}
 
 	return true;
@@ -79,9 +76,9 @@ bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx)
 		ctx->hShadowDC = NULL;
 	}
 
-	if (g_VideoRecorder) {
-		MsRdpEx_VideoRecorder_Free(g_VideoRecorder);
-		g_VideoRecorder = NULL;
+	if (ctx->videoRecorder) {
+		MsRdpEx_VideoRecorder_Free(ctx->videoRecorder);
+		ctx->videoRecorder = NULL;
 	}
 	
 	return true;

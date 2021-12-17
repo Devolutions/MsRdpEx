@@ -3,6 +3,8 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <MsRdpEx/VideoRecorder.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -20,6 +22,8 @@ struct _MsRdpEx_OutputMirror
 	HBITMAP hShadowBitmap;
 	HGDIOBJ hShadowObject;
 	uint32_t captureIndex;
+
+	MsRdpEx_VideoRecorder* videoRecorder;
 };
 typedef struct _MsRdpEx_OutputMirror MsRdpEx_OutputMirror;
 

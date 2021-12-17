@@ -3,7 +3,10 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
-#include "OutputMirror.h"
+#include <MsRdpEx/NameResolver.h>
+#include <MsRdpEx/RdpSession.h>
+
+#include <MsRdpEx/OutputMirror.h>
 
 HMODULE (WINAPI * Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
 
@@ -32,13 +35,52 @@ HMODULE Hook_LoadLibraryW(LPCWSTR lpLibFileName)
     return hModule;
 }
 
+INT (WINAPI* Real_GetAddrInfoW)(PCWSTR pNodeName, PCWSTR pServiceName,
+    const ADDRINFOW* pHints, PADDRINFOW* ppResult) = GetAddrInfoW;
+
+INT WINAPI Hook_GetAddrInfoW(PCWSTR pNodeNameW, PCWSTR pServiceName,
+    const ADDRINFOW* pHints, PADDRINFOW* ppResult)
+{
+    int status;
+    char* newNameA = NULL;
+    WCHAR* newNameW = NULL;
+    char* pNodeNameA = NULL;
+
+    MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pNodeNameW, -1, &pNodeNameA, 0, NULL, NULL);
+
+    MsRdpEx_Log("GetAddrInfoW: %s", pNodeNameA);
+
+    if (MsRdpEx_NameResolver_GetMapping(pNodeNameA, &newNameA)) {
+        MsRdpEx_ConvertToUnicode(CP_UTF8, 0, newNameA, -1, &newNameW, 0);
+        pNodeNameW = newNameW;
+        free(newNameA);
+    }
+
+    status = Real_GetAddrInfoW(pNodeNameW, pServiceName, pHints, ppResult);
+
+    free(pNodeNameA);
+    free(newNameW);
+    return status;
+}
+
+INT (WINAPI* Real_GetAddrInfoExW)(
+    PCWSTR pName, PCWSTR pServiceName, DWORD dwNameSpace, LPGUID lpNspId, const ADDRINFOEXW* hints,
+    PADDRINFOEXW* ppResult, struct timeval* timeout, LPOVERLAPPED lpOverlapped,
+    LPLOOKUPSERVICE_COMPLETION_ROUTINE lpCompletionRoutine, LPHANDLE lpHandle) = GetAddrInfoExW;
+
+INT WINAPI Hook_GetAddrInfoExW(
+    PCWSTR pName, PCWSTR pServiceName, DWORD dwNameSpace, LPGUID lpNspId, const ADDRINFOEXW* hints,
+    PADDRINFOEXW* ppResult, struct timeval* timeout, LPOVERLAPPED lpOverlapped,
+    LPLOOKUPSERVICE_COMPLETION_ROUTINE lpCompletionRoutine, LPHANDLE lpHandle)
+{
+    return Real_GetAddrInfoExW(pName, pServiceName, dwNameSpace, lpNspId, hints,
+        ppResult, timeout, lpOverlapped, lpCompletionRoutine, lpHandle);
+}
+
 BOOL (WINAPI * Real_BitBlt)(
     HDC hdc, int x, int y, int cx, int cy,
     HDC hdcSrc, int x1, int y1, DWORD rop
     ) = BitBlt;
-
-static HWND g_hOutputPresenterWnd = NULL;
-static MsRdpEx_OutputMirror* g_OutputMirror = NULL;
 
 bool MsRdpEx_CaptureBlt(
     HDC hdcDst, int dstX, int dstY, int width, int height,
@@ -46,13 +88,16 @@ bool MsRdpEx_CaptureBlt(
 {
     RECT rect = { 0 };
     bool captured = false;
+    MsRdpEx_RdpSession* session;
 
-    HWND  hWnd = WindowFromDC(hdcDst);
+    HWND hWnd = WindowFromDC(hdcDst);
 
     if (!hWnd)
         goto end;
 
-    if (hWnd != g_hOutputPresenterWnd)
+    session = MsRdpEx_SessionManager_FindByOutputPresenterHwnd(hWnd);
+
+    if (!session)
         goto end;
 
     if (!GetClientRect(hWnd, &rect))
@@ -61,21 +106,22 @@ bool MsRdpEx_CaptureBlt(
     LONG bitmapWidth = MsRdpEx_GetRectWidth(&rect);
     LONG bitmapHeight = MsRdpEx_GetRectHeight(&rect);
 
-    if (!g_OutputMirror) {
-        g_OutputMirror = MsRdpEx_OutputMirror_New();
+    if (!session->outputMirror) {
+        session->outputMirror = MsRdpEx_OutputMirror_New();
     }
 
-    if ((g_OutputMirror->bitmapWidth != bitmapWidth) || (g_OutputMirror->bitmapHeight != bitmapHeight))
+    if ((session->outputMirror->bitmapWidth != bitmapWidth) ||
+        (session->outputMirror->bitmapHeight != bitmapHeight))
     {
-        MsRdpEx_OutputMirror_Uninit(g_OutputMirror);
-        MsRdpEx_OutputMirror_SetSourceDC(g_OutputMirror, hdcSrc);
-        MsRdpEx_OutputMirror_SetFrameSize(g_OutputMirror, bitmapWidth, bitmapHeight);
-        MsRdpEx_OutputMirror_Init(g_OutputMirror);
+        MsRdpEx_OutputMirror_Uninit(session->outputMirror);
+        MsRdpEx_OutputMirror_SetSourceDC(session->outputMirror, hdcSrc);
+        MsRdpEx_OutputMirror_SetFrameSize(session->outputMirror, bitmapWidth, bitmapHeight);
+        MsRdpEx_OutputMirror_Init(session->outputMirror);
     }
 
-    HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(g_OutputMirror);
+    HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(session->outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
-    MsRdpEx_OutputMirror_DumpFrame(g_OutputMirror);
+    MsRdpEx_OutputMirror_DumpFrame(session->outputMirror);
 
     captured = true;
 end:
@@ -126,14 +172,6 @@ end:
 
 static WNDPROC Real_OPWndProc = NULL;
 
-typedef struct
-{
-	void* param1;
-	void* param2;
-	void* name;
-	void* marker;
-} COPWnd;
-
 LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result;
@@ -148,9 +186,9 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, createStruct->lpszName, -1, &lpWindowNameA, 0, NULL, NULL);
 
-		g_hOutputPresenterWnd = hWnd;
-		COPWnd* pOPWnd = (COPWnd*) lpCreateParams;
-		MsRdpEx_Log("Window Create: %s name: %s hWnd: %p", lpWindowNameA, pOPWnd->name, hWnd);
+        MsRdpEx_RdpSession* session = MsRdpEx_RdpSession_New();
+        session->hOutputPresenterWnd = hWnd;
+        MsRdpEx_SessionManager_Add(session);
 	}
 
 	result = Real_OPWndProc(hWnd, uMsg, wParam, lParam);
@@ -161,7 +199,11 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	}
 	else if (uMsg == WM_NCDESTROY)
 	{
+        MsRdpEx_RdpSession* session = MsRdpEx_SessionManager_FindByOutputPresenterHwnd(hWnd);
 
+        if (session) {
+            MsRdpEx_SessionManager_Remove(session, true);
+        }
 	}
 
 	free(lpWindowNameA);
@@ -192,13 +234,28 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
     return wndClassAtom;
 }
 
+void MsRdpEx_GlobalInit()
+{
+    MsRdpEx_NameResolver_Get();
+    MsRdpEx_SessionManager_Get();
+}
+
+void MsRdpEx_GlobalUninit()
+{
+    MsRdpEx_NameResolver_Release();
+    MsRdpEx_SessionManager_Release();
+}
+
 LONG MsRdpEx_AttachHooks()
 {
     LONG error;
+    MsRdpEx_GlobalInit();
     DetourRestoreAfterWith();
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)(&Real_LoadLibraryW), Hook_LoadLibraryW);
+    DetourAttach((PVOID*)(&Real_GetAddrInfoW), Hook_GetAddrInfoW);
+    //DetourAttach((PVOID*)(&Real_GetAddrInfoExW), Hook_GetAddrInfoExW);
     DetourAttach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
     DetourAttach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
     DetourAttach((PVOID*)(&Real_RegisterClassExW), Hook_RegisterClassExW);
@@ -212,9 +269,12 @@ LONG MsRdpEx_DetachHooks()
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourDetach((PVOID*)(&Real_LoadLibraryW), Hook_LoadLibraryW);
+    DetourDetach((PVOID*)(&Real_GetAddrInfoW), Hook_GetAddrInfoW);
+    //DetourDetach((PVOID*)(&Real_GetAddrInfoExW), Hook_GetAddrInfoExW);
     DetourDetach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
     DetourDetach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
     DetourDetach((PVOID*)(&Real_RegisterClassExW), Hook_RegisterClassExW);
     error = DetourTransactionCommit();
+    MsRdpEx_GlobalUninit();
     return error;
 }
