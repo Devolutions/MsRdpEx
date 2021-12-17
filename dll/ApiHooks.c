@@ -185,7 +185,6 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		void* lpCreateParams = createStruct->lpCreateParams;
 
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, createStruct->lpszName, -1, &lpWindowNameA, 0, NULL, NULL);
-
         MsRdpEx_RdpSession* session = MsRdpEx_RdpSession_New();
         session->hOutputPresenterWnd = hWnd;
         MsRdpEx_SessionManager_Add(session);
