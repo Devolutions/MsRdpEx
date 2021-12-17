@@ -3,6 +3,8 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <MsRdpEx/RdpFile.h>
+
 #pragma warning (disable : 26812)
 
 #include "mstscax.tlh"
@@ -373,13 +375,76 @@ public:
     HRESULT __stdcall raw_Connect() {
         HRESULT hr;
         MsRdpEx_Log("CMsRdpClient::Connect");
+
+        IMsRdpExtendedSettings* pMsRdpExtendedSettings = NULL;
+        hr = m_pMsTscAx->QueryInterface(IID_IMsRdpExtendedSettings, (LPVOID*)&pMsRdpExtendedSettings);
+
         IMsRdpClientNonScriptable3* pMsRdpClientNonScriptable3 = NULL;
         hr = m_pMsTscAx->QueryInterface(IID_IMsRdpClientNonScriptable3, (LPVOID*)&pMsRdpClientNonScriptable3);
-        if (hr == S_OK)
-        {
-            pMsRdpClientNonScriptable3->PutConnectionBarText("MsRdpEx Client");
+
+        char* filename = MsRdpEx_GetRdpFilenameFromCommandLine();
+
+        if (filename) {
+            MsRdpEx_Log("Loading %s RDP", filename);
+            MsRdpEx_RdpFile* rdpFile = MsRdpEx_RdpFile_New();
+            if (MsRdpEx_RdpFile_Load(rdpFile, filename)) {
+                MsRdpEx_ArrayListIt* it = NULL;
+                MsRdpEx_RdpFileEntry* entry = NULL;
+
+                it = MsRdpEx_ArrayList_It(rdpFile->entries, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+                while (!MsRdpEx_ArrayListIt_Done(it))
+                {
+                    entry = (MsRdpEx_RdpFileEntry*) MsRdpEx_ArrayListIt_Next(it);
+
+                    if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableCredentialsDelegation")) {
+                        VARIANT value;
+                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                            pMsRdpExtendedSettings->PutProperty("DisableCredentialsDelegation", &value);
+                        }
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RedirectedAuthentication")) {
+                        VARIANT value;
+                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                            pMsRdpExtendedSettings->PutProperty("RedirectedAuthentication", &value);
+                        }
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RestrictedLogon")) {
+                        VARIANT value;
+                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                            pMsRdpExtendedSettings->PutProperty("RestrictedLogon", &value);
+                        }
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "AutoLogon")) {
+                        VARIANT value;
+                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                            pMsRdpExtendedSettings->PutProperty("AutoLogon", &value);
+                        }
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {
+                        bstr_t ClearTextPassword = _com_util::ConvertStringToBSTR(entry->value);
+                        pMsRdpClientNonScriptable3->PutClearTextPassword(ClearTextPassword);
+                    }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ConnectionBarText")) {
+                        bstr_t ConnectionBarText = _com_util::ConvertStringToBSTR(entry->value);
+                        pMsRdpClientNonScriptable3->PutConnectionBarText(ConnectionBarText);
+                    }
+                }
+
+                MsRdpEx_ArrayListIt_Finish(it);
+            }
+            MsRdpEx_RdpFile_Free(rdpFile);
+            free(filename);
+        }
+
+        if (pMsRdpExtendedSettings) {
+            pMsRdpExtendedSettings->Release();
+        }
+
+        if (pMsRdpClientNonScriptable3) {
             pMsRdpClientNonScriptable3->Release();
         }
+
         //DumpMsTscProperties(m_pUnknown);
         return m_pMsTscAx->raw_Connect();
     }
