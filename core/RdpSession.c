@@ -19,6 +19,11 @@ void MsRdpEx_RdpSession_Free(MsRdpEx_RdpSession* session)
 {
 	if (!session)
 		return;
+
+	if (session->outputMirror) {
+		MsRdpEx_OutputMirror_Free(session->outputMirror);
+		session->outputMirror = NULL;
+	}
 	
 	free(session);
 }
@@ -69,9 +74,6 @@ MsRdpEx_RdpSession* MsRdpEx_SessionManager_FindByOutputPresenterHwnd(HWND hWnd)
 	MsRdpEx_ArrayListIt* it = NULL;
 
 	it = MsRdpEx_ArrayList_It(ctx->sessions, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
-
-	MsRdpEx_Log("FindByOutputPresenterHwnd: hWnd: %p count: %d",
-		hWnd, MsRdpEx_ArrayListIt_Count(it));
 
 	while (!MsRdpEx_ArrayListIt_Done(it))
 	{

@@ -3,6 +3,8 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <MsRdpEx/OutputMirror.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -10,6 +12,7 @@ extern "C" {
 struct _MsRdpEx_RdpSession
 {
 	HWND hOutputPresenterWnd;
+	MsRdpEx_OutputMirror* outputMirror;
 };
 typedef struct _MsRdpEx_RdpSession MsRdpEx_RdpSession;
 

@@ -6,7 +6,7 @@
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/RdpSession.h>
 
-#include "OutputMirror.h"
+#include <MsRdpEx/OutputMirror.h>
 
 HMODULE (WINAPI * Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
 
@@ -82,8 +82,6 @@ BOOL (WINAPI * Real_BitBlt)(
     HDC hdcSrc, int x1, int y1, DWORD rop
     ) = BitBlt;
 
-static MsRdpEx_OutputMirror* g_OutputMirror = NULL;
-
 bool MsRdpEx_CaptureBlt(
     HDC hdcDst, int dstX, int dstY, int width, int height,
     HDC hdcSrc, int srcX, int srcY)
@@ -108,21 +106,22 @@ bool MsRdpEx_CaptureBlt(
     LONG bitmapWidth = MsRdpEx_GetRectWidth(&rect);
     LONG bitmapHeight = MsRdpEx_GetRectHeight(&rect);
 
-    if (!g_OutputMirror) {
-        g_OutputMirror = MsRdpEx_OutputMirror_New();
+    if (!session->outputMirror) {
+        session->outputMirror = MsRdpEx_OutputMirror_New();
     }
 
-    if ((g_OutputMirror->bitmapWidth != bitmapWidth) || (g_OutputMirror->bitmapHeight != bitmapHeight))
+    if ((session->outputMirror->bitmapWidth != bitmapWidth) ||
+        (session->outputMirror->bitmapHeight != bitmapHeight))
     {
-        MsRdpEx_OutputMirror_Uninit(g_OutputMirror);
-        MsRdpEx_OutputMirror_SetSourceDC(g_OutputMirror, hdcSrc);
-        MsRdpEx_OutputMirror_SetFrameSize(g_OutputMirror, bitmapWidth, bitmapHeight);
-        MsRdpEx_OutputMirror_Init(g_OutputMirror);
+        MsRdpEx_OutputMirror_Uninit(session->outputMirror);
+        MsRdpEx_OutputMirror_SetSourceDC(session->outputMirror, hdcSrc);
+        MsRdpEx_OutputMirror_SetFrameSize(session->outputMirror, bitmapWidth, bitmapHeight);
+        MsRdpEx_OutputMirror_Init(session->outputMirror);
     }
 
-    HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(g_OutputMirror);
+    HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(session->outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
-    MsRdpEx_OutputMirror_DumpFrame(g_OutputMirror);
+    MsRdpEx_OutputMirror_DumpFrame(session->outputMirror);
 
     captured = true;
 end:
