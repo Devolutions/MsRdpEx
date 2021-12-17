@@ -7,6 +7,7 @@ add_library(MsRdpEx_Core STATIC
     Log.c
     Paths.c
     RdpFile.c
+    RdpSession.c
     String.c)
 
 target_link_libraries(MsRdpEx_Core detours version.lib)

@@ -4,6 +4,7 @@
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/NameResolver.h>
+#include <MsRdpEx/RdpSession.h>
 
 #include "OutputMirror.h"
 
@@ -81,7 +82,6 @@ BOOL (WINAPI * Real_BitBlt)(
     HDC hdcSrc, int x1, int y1, DWORD rop
     ) = BitBlt;
 
-static HWND g_hOutputPresenterWnd = NULL;
 static MsRdpEx_OutputMirror* g_OutputMirror = NULL;
 
 bool MsRdpEx_CaptureBlt(
@@ -90,13 +90,16 @@ bool MsRdpEx_CaptureBlt(
 {
     RECT rect = { 0 };
     bool captured = false;
+    MsRdpEx_RdpSession* session;
 
-    HWND  hWnd = WindowFromDC(hdcDst);
+    HWND hWnd = WindowFromDC(hdcDst);
 
     if (!hWnd)
         goto end;
 
-    if (hWnd != g_hOutputPresenterWnd)
+    session = MsRdpEx_SessionManager_FindByOutputPresenterHwnd(hWnd);
+
+    if (!session)
         goto end;
 
     if (!GetClientRect(hWnd, &rect))
@@ -184,7 +187,9 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, createStruct->lpszName, -1, &lpWindowNameA, 0, NULL, NULL);
 
-		g_hOutputPresenterWnd = hWnd;
+        MsRdpEx_RdpSession* session = MsRdpEx_RdpSession_New();
+        session->hOutputPresenterWnd = hWnd;
+        MsRdpEx_SessionManager_Add(session);
 	}
 
 	result = Real_OPWndProc(hWnd, uMsg, wParam, lParam);
@@ -195,7 +200,11 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	}
 	else if (uMsg == WM_NCDESTROY)
 	{
+        MsRdpEx_RdpSession* session = MsRdpEx_SessionManager_FindByOutputPresenterHwnd(hWnd);
 
+        if (session) {
+            MsRdpEx_SessionManager_Remove(session, true);
+        }
 	}
 
 	free(lpWindowNameA);
@@ -229,11 +238,13 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
 void MsRdpEx_GlobalInit()
 {
     MsRdpEx_NameResolver_Get();
+    MsRdpEx_SessionManager_Get();
 }
 
 void MsRdpEx_GlobalUninit()
 {
     MsRdpEx_NameResolver_Release();
+    MsRdpEx_SessionManager_Release();
 }
 
 LONG MsRdpEx_AttachHooks()
