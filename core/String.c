@@ -1,6 +1,8 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <shellapi.h>
+
 int MsRdpEx_ConvertFromUnicode(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar,
                        LPSTR* lpMultiByteStr, int cbMultiByte, LPCSTR lpDefaultChar,
                        LPBOOL lpUsedDefaultChar)
@@ -314,4 +316,54 @@ bool MsRdpEx_GuidStrToBin(const char* str, GUID* guid, uint32_t flags)
 	guid->Data4[7] = ((bin[34] << 4) | bin[35]);
 
 	return true;
+}
+
+char** MsRdpEx_GetArgumentVector(int* argc)
+{
+	int index;
+	char* arg = NULL;
+    char** args = NULL;
+	LPWSTR* argsW = NULL;
+	LPCWSTR cmdlineW = GetCommandLineW();
+
+	if (!cmdlineW)
+		return NULL;
+
+	argsW = CommandLineToArgvW(cmdlineW, argc);
+
+	if (!argsW)
+		goto exit;
+
+    args = (char**) calloc(*argc, sizeof(char*));
+
+    if (!args)
+        goto exit;
+
+    for (index = 0; index < *argc; index++) {
+        arg = NULL;
+
+        if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, argsW[index], -1, &arg, 0, NULL, NULL) < 0) {
+            goto exit;
+        }
+
+        args[index] = arg;
+    }
+
+exit:
+	LocalFree(argsW);
+	return args;
+}
+
+void MsRdpEx_FreeArgumentVector(int argc, char** argv)
+{
+    int index;
+
+    if (!argv)
+        return;
+
+    for (index = 0; index < argc; index++) {
+        free(argv[index]);
+    }
+
+    free(argv);
 }

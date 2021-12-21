@@ -12,4 +12,5 @@ EXPORTS
     DllCancelAuthentication
     DllDeleteSavedCreds
     DllPreCleanUp
+    MsRdpEx_LaunchProcessMain
     MsRdpEx_GetShadowBitmap
