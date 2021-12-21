@@ -1,5 +1,5 @@
 
-#include <MsRdpEx/ProcessLauncher.h>
+#include <MsRdpEx/Process.h>
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nShowCmd)
 {

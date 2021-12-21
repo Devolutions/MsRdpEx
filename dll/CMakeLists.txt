@@ -7,7 +7,7 @@ add_library(MsRdpEx_Dll SHARED
     ApiExports.c
     OutputMirror.c
     VideoRecorder.c
-    ProcessLauncher.c
+    Process.c
     Bitmap.c
     WinMsg.c
 	MsRdpEx.c

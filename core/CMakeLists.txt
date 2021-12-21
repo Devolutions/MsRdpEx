@@ -6,6 +6,7 @@ set(MSRDPEX_CORE_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/HashTable.h"
     "${MSRDPEX_INCLUDE_DIR}/NameResolver.h"
     "${MSRDPEX_INCLUDE_DIR}/OutputMirror.h"
+    "${MSRDPEX_INCLUDE_DIR}/Process.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpFile.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpSession.h"
     "${MSRDPEX_INCLUDE_DIR}/VideoRecorder.h"
