@@ -84,6 +84,20 @@ bool MsRdpEx_StringIEquals(const char* str1, const char* str2);
 bool MsRdpEx_StringEndsWith(const char* str, const char* val);
 bool MsRdpEx_IStringEndsWith(const char* str, const char* val);
 
+#define MSRDPEX_STRING_FLAG_UPPERCASE       0x00000001
+#define MSRDPEX_STRING_FLAG_NO_TERMINATOR   0x00000002
+#define MSRDPEX_GUID_STRING_SIZE            37 /* enough space for a GUID string + null terminator */
+
+bool MsRdpEx_GuidGenerate(GUID* guid);
+void MsRdpEx_GuidCopy(GUID* dst, const GUID* src);
+int MsRdpEx_GuidCompare(const GUID* guid1, const GUID* guid2);
+bool MsRdpEx_GuidIsEqual(const GUID* guid1, const GUID* guid2);
+bool MsRdpEx_GuidIsNil(const GUID* guid);
+bool MsRdpEx_GuidSetNil(GUID* guid);
+
+bool MsRdpEx_GuidBinToStr(const GUID* guid, char* str, uint32_t flags);
+bool MsRdpEx_GuidStrToBin(const char* str, GUID* guid, uint32_t flags);
+
 // Log Utils
 
 bool MsRdpEx_Log(const char* format, ...);

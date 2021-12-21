@@ -17,6 +17,24 @@ extern "C" const GUID __declspec(selectany) IID_ITSNameResolver =
     { 0x7272B10D,0xC627,0x40DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
 extern "C" const GUID __declspec(selectany) IID_ITSTransport =
     { 0x7272B10E,0xC627,0x40DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
+extern "C" const GUID __declspec(selectany) IID_IMstscAxInternal =
+    { 0x7272B1A7,0xC627,0x40DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
+
+typedef struct _IMstscAxInternal IMstscAxInternal;
+
+typedef struct IMstscAxInternalVtbl
+{
+    HRESULT(STDMETHODCALLTYPE* QueryInterface)(IMstscAxInternal* This, REFIID riid, void** ppvObject);
+    ULONG(STDMETHODCALLTYPE* AddRef)(IMstscAxInternal* This);
+    ULONG(STDMETHODCALLTYPE* Release)(IMstscAxInternal* This);
+    HRESULT(STDMETHODCALLTYPE* GetVChannels)(IMstscAxInternal* This, void** pChannels);
+    HRESULT(STDMETHODCALLTYPE* GetCorrelationId)(IMstscAxInternal* This, GUID* pGuidCorrelationId);
+} IMstscAxInternalVtbl;
+
+struct _IMstscAxInternal
+{
+    IMstscAxInternalVtbl* vtbl;
+};
 
 using namespace MSTSCLib;
 
@@ -390,6 +408,18 @@ public:
         IMsRdpClientNonScriptable3* pMsRdpClientNonScriptable3 = NULL;
         hr = m_pMsTscAx->QueryInterface(IID_IMsRdpClientNonScriptable3, (LPVOID*)&pMsRdpClientNonScriptable3);
 
+        IMstscAxInternal* pMstscAxInternal = NULL;
+        hr = m_pMsTscAx->QueryInterface(IID_IMstscAxInternal, (LPVOID*)&pMstscAxInternal);
+
+        if (pMstscAxInternal)
+        {
+            GUID guidCorrelationId = GUID_NULL;
+            char correlationId[MSRDPEX_GUID_STRING_SIZE];
+
+            hr = pMstscAxInternal->vtbl->GetCorrelationId(pMstscAxInternal, &guidCorrelationId);
+            MsRdpEx_GuidBinToStr(&guidCorrelationId, correlationId, 0);
+        }
+
         char* filename = MsRdpEx_GetRdpFilenameFromCommandLine();
 
         if (filename) {
@@ -458,6 +488,10 @@ public:
 
         if (pMsRdpClientNonScriptable3) {
             pMsRdpClientNonScriptable3->Release();
+        }
+
+        if (pMstscAxInternal) {
+            pMstscAxInternal->vtbl->Release(pMstscAxInternal);
         }
 
         //DumpMsTscProperties(m_pUnknown);

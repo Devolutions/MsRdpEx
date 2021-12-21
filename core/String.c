@@ -1,6 +1,8 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <shellapi.h>
+
 int MsRdpEx_ConvertFromUnicode(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar,
                        LPSTR* lpMultiByteStr, int cbMultiByte, LPCSTR lpDefaultChar,
                        LPBOOL lpUsedDefaultChar)
@@ -172,4 +174,196 @@ bool MsRdpEx_IStringEndsWith(const char* str, const char* val)
         return true;
 
     return false;
+}
+
+static GUID GUID_NIL =
+{
+	0x00000000, 0x0000, 0x0000,
+	{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }
+};
+
+bool MsRdpEx_GuidGenerate(GUID* guid)
+{
+	if (!guid)
+		return false;
+
+    CoCreateGuid(guid);
+
+	return true;
+}
+
+void MsRdpEx_GuidCopy(GUID* dst, const GUID* src)
+{
+	CopyMemory(dst, src, sizeof(GUID));
+}
+
+int MsRdpEx_GuidCompare(const GUID* guid1, const GUID* guid2)
+{
+	int index;
+
+	if (!guid1)
+		guid1 = &GUID_NIL;
+
+	if (!guid2)
+		guid2 = &GUID_NIL;
+
+	if (guid1->Data1 != guid2->Data1)
+		return (guid1->Data1 < guid2->Data1) ? -1 : 1;
+
+	if (guid1->Data2 != guid2->Data2)
+		return (guid1->Data2 < guid2->Data2) ? -1 : 1;
+
+	if (guid1->Data3 != guid2->Data3)
+		return (guid1->Data3 < guid2->Data3) ? -1 : 1;
+
+	for (index = 0; index < 8; index++)
+	{
+		if (guid1->Data4[index] != guid2->Data4[index])
+			return (guid1->Data4[index] < guid2->Data4[index]) ? -1 : 1;
+	}
+
+	return 0;
+}
+
+bool MsRdpEx_GuidIsEqual(const GUID* guid1, const GUID* guid2)
+{
+	return ((MsRdpEx_GuidCompare(guid1, guid2) == 0) ? true : false);
+}
+
+bool MsRdpEx_GuidIsNil(const GUID* guid)
+{
+	return MsRdpEx_GuidIsEqual(guid, &GUID_NIL);
+}
+
+bool MsRdpEx_GuidSetNil(GUID* guid)
+{
+	if (!guid)
+		return false;
+
+	CopyMemory((void*) guid, (void*) &GUID_NIL, 16);
+
+	return true;
+}
+
+bool MsRdpEx_GuidBinToStr(const GUID* guid, char* str, uint32_t flags)
+{
+    const char* fmt_lc = "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x";
+    const char* fmt_uc = "%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X";
+    const char* fmt = (flags & MSRDPEX_STRING_FLAG_UPPERCASE) ? fmt_uc : fmt_lc;
+
+    if (!str || !guid)
+        return false;
+
+    /**
+     * Format is 32 hex digits partitioned in 5 groups:
+     * xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+     */
+    sprintf_s(str, 37, fmt,
+        guid->Data1, guid->Data2, guid->Data3,
+        guid->Data4[0], guid->Data4[1],
+        guid->Data4[2], guid->Data4[3], guid->Data4[4],
+        guid->Data4[5], guid->Data4[6], guid->Data4[7]);
+
+    if (!(flags & MSRDPEX_STRING_FLAG_NO_TERMINATOR))
+        str[36] = '\0';
+
+    return true;
+}
+
+bool MsRdpEx_GuidStrToBin(const char* str, GUID* guid, uint32_t flags)
+{
+	int index;
+	uint8_t bin[36];
+
+	if (!str || !guid)
+		return false;
+
+	if (strlen(str) != 36)
+		return false;
+
+	if ((str[8] != '-') || (str[13] != '-') ||
+		(str[18] != '-') || (str[23] != '-'))
+	{
+		return false;
+	}
+
+	for (index = 0; index < 36; index++)
+	{
+		if ((index == 8) || (index == 13) || (index == 18) || (index == 23))
+			continue;
+
+		if ((str[index] >= '0') && (str[index] <= '9'))
+			bin[index] = str[index] - '0';
+		else if ((str[index] >= 'a') && (str[index] <= 'f'))
+			bin[index] = str[index] - 'a' + 10;
+		else if ((str[index] >= 'A') && (str[index] <= 'F'))
+			bin[index] = str[index] - 'A' + 10;
+		else
+			return false;
+	}
+
+	guid->Data1 = ((bin[0] << 28) | (bin[1] << 24) | (bin[2] << 20) |
+		       (bin[3] << 16) | (bin[4] << 12) | (bin[5] << 8) | (bin[6] << 4) | bin[7]);
+	guid->Data2 = ((bin[9] << 12) | (bin[10] << 8) | (bin[11] << 4) | bin[12]);
+	guid->Data3 = ((bin[14] << 12) | (bin[15] << 8) | (bin[16] << 4) | bin[17]);
+	guid->Data4[0] = ((bin[19] << 4) | bin[20]);
+	guid->Data4[1] = ((bin[21] << 4) | bin[22]);
+	guid->Data4[2] = ((bin[24] << 4) | bin[25]);
+	guid->Data4[3] = ((bin[26] << 4) | bin[27]);
+	guid->Data4[4] = ((bin[28] << 4) | bin[29]);
+	guid->Data4[5] = ((bin[30] << 4) | bin[31]);
+	guid->Data4[6] = ((bin[32] << 4) | bin[33]);
+	guid->Data4[7] = ((bin[34] << 4) | bin[35]);
+
+	return true;
+}
+
+char** MsRdpEx_GetArgumentVector(int* argc)
+{
+	int index;
+	char* arg = NULL;
+    char** args = NULL;
+	LPWSTR* argsW = NULL;
+	LPCWSTR cmdlineW = GetCommandLineW();
+
+	if (!cmdlineW)
+		return NULL;
+
+	argsW = CommandLineToArgvW(cmdlineW, argc);
+
+	if (!argsW)
+		goto exit;
+
+    args = (char**) calloc(*argc, sizeof(char*));
+
+    if (!args)
+        goto exit;
+
+    for (index = 0; index < *argc; index++) {
+        arg = NULL;
+
+        if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, argsW[index], -1, &arg, 0, NULL, NULL) < 0) {
+            goto exit;
+        }
+
+        args[index] = arg;
+    }
+
+exit:
+	LocalFree(argsW);
+	return args;
+}
+
+void MsRdpEx_FreeArgumentVector(int argc, char** argv)
+{
+    int index;
+
+    if (!argv)
+        return;
+
+    for (index = 0; index < argc; index++) {
+        free(argv[index]);
+    }
+
+    free(argv);
 }

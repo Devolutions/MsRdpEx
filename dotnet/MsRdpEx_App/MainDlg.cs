@@ -10,6 +10,8 @@ using System.Windows.Forms;
 
 using MSTSCLib;
 
+using MsRdpEx;
+
 namespace MsRdpEx_App
 {
     public partial class MainDlg : Form
@@ -48,6 +50,8 @@ namespace MsRdpEx_App
         {
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
+
+            Bindings.DllPreCleanUp();
 
             RdpView rdpView = new RdpView(axName);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
