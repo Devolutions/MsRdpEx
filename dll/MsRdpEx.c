@@ -9,25 +9,21 @@ static MsRdpEx_AxDll* g_AxDll = NULL;
 
 HRESULT DllCanUnloadNow()
 {
-    MsRdpEx_Log("DllCanUnloadNow");
     return g_AxDll->DllCanUnloadNow();
 }
 
 HRESULT DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
-    MsRdpEx_Log("DllGetClassObject");
     return MsRdpEx_AxDll_DllGetClassObject(g_AxDll, rclsid, riid, ppv);
 }
 
 HRESULT DllRegisterServer()
 {
-    MsRdpEx_Log("DllRegisterServer");
     return g_AxDll->DllRegisterServer();
 }
 
 HRESULT DllUnregisterServer()
 {
-    MsRdpEx_Log("DllUnregisterServer");
     return g_AxDll->DllUnregisterServer();
 }
 

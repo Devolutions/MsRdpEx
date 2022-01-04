@@ -6,6 +6,8 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO;
+using System.Diagnostics;
 using System.Windows.Forms;
 
 using MSTSCLib;
@@ -51,7 +53,15 @@ namespace MsRdpEx_App
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
 
-            Bindings.DllPreCleanUp();
+            var process = Process.GetCurrentProcess();
+            string processFileName = process.MainModule.FileName;
+            string processFileDir = Path.GetDirectoryName(processFileName);
+            string axNameEx = Path.Combine(processFileDir, "MsRdpEx.dll");
+
+            if (File.Exists(axNameEx))
+            {
+                axName = axNameEx;
+            }
 
             RdpView rdpView = new RdpView(axName);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;

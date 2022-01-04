@@ -35,10 +35,13 @@ namespace MsRdpEx_App
 
             InitializeComponent();
 
-            Timer CaptureTimer = new Timer();
-            CaptureTimer.Interval = (1000); // 1 second
-            CaptureTimer.Tick += new EventHandler(CaptureTimer_Tick);
-            CaptureTimer.Start();
+            if (false)
+            {
+                Timer CaptureTimer = new Timer();
+                CaptureTimer.Interval = (1000); // 1 second
+                CaptureTimer.Tick += new EventHandler(CaptureTimer_Tick);
+                CaptureTimer.Start();
+            }
         }
 
         private enum TernaryRasterOperations : uint
@@ -69,7 +72,6 @@ namespace MsRdpEx_App
         public IntPtr GetOutputPresenterHwnd()
         {
             IntPtr clientHandle = this.rdpClient.Handle;
-            Debug.WriteLine("RdpClientHandle: {0}", clientHandle);
 
             // UIMainClass ""
             // UIContainerClass ""

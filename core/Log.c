@@ -10,7 +10,12 @@ bool MsRdpEx_LogVA(const char* format, va_list args)
     char message[MSRDPEX_LOG_MAX_LINE];
     vsnprintf_s(message, MSRDPEX_LOG_MAX_LINE - 1, _TRUNCATE, format, args);
     strcat_s(message, MSRDPEX_LOG_MAX_LINE - 1, "\n");
-    fprintf(g_LogFile, message);
+
+    if (g_LogFile) {
+        fprintf(g_LogFile, message);
+        fflush(g_LogFile); // WARNING: performance drag
+    }
+
     return true;
 }
 
