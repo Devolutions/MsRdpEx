@@ -1015,6 +1015,18 @@ public:
         MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
         MsRdpEx_Log("CClassFactory::QueryInterface(%s)", iid);
+
+        if (riid == IID_IUnknown) {
+            *ppvObject = (LPVOID)((IUnknown*)this);
+            m_refCount++;
+            return S_OK;
+        }
+        if (riid == IID_IClassFactory) {
+            *ppvObject = (LPVOID)((IClassFactory*)this);
+            m_refCount++;
+            return S_OK;
+        }
+
         return m_pDelegate->QueryInterface(riid, ppvObject);
     }
 
@@ -1043,15 +1055,28 @@ public:
         LPVOID* ppvObject
     )
     {
-        MsRdpEx_Log("CClassFactory::CreateInstance");
+        char iid[MSRDPEX_GUID_STRING_SIZE];
+        MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
+
+        MsRdpEx_Log("CClassFactory::CreateInstance(%s)", iid);
         WriteCLSID(m_clsid);
         WriteIID(riid);
 
         HRESULT hr = m_pDelegate->CreateInstance(pUnkOuter, riid, ppvObject);
+
         if (hr == S_OK)
         {
             if ((m_clsid == CLSID_MsRdpClientNotSafeForScripting) ||
-                (m_clsid == CLSID_MsRdpClient6NotSafeForScripting))
+                (m_clsid == CLSID_MsRdpClient2NotSafeForScripting) || 
+                (m_clsid == CLSID_MsRdpClient3NotSafeForScripting) || 
+                (m_clsid == CLSID_MsRdpClient4NotSafeForScripting) || 
+                (m_clsid == CLSID_MsRdpClient5NotSafeForScripting) || 
+                (m_clsid == CLSID_MsRdpClient6NotSafeForScripting) ||
+                (m_clsid == CLSID_MsRdpClient7NotSafeForScripting) ||
+                (m_clsid == CLSID_MsRdpClient8NotSafeForScripting) ||
+                (m_clsid == CLSID_MsRdpClient9NotSafeForScripting) ||
+                (m_clsid == CLSID_MsRdpClient10NotSafeForScripting) ||
+                (m_clsid == CLSID_MsRdpClient11NotSafeForScripting))
             {
                 CMsRdpClient* pMsRdpClient = new CMsRdpClient((IUnknown*)*ppvObject);
                 hr = pMsRdpClient->QueryInterface(riid, ppvObject);
