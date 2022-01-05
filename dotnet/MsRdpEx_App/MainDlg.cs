@@ -14,6 +14,9 @@ using MSTSCLib;
 
 using MsRdpEx;
 
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
 namespace MsRdpEx_App
 {
     public partial class MainDlg : Form
@@ -80,6 +83,20 @@ namespace MsRdpEx_App
             rdpView.ClientSize = DesktopSize;
             rdpView.Text = String.Format("{0} ({1})", rdp.Server, axName);
             rdp.Connect();
+
+            object corePropsVal = extendedSettings.get_Property("CoreProperties");
+            IMsRdpExtendedSettings coreProps = (IMsRdpExtendedSettings)corePropsVal;
+
+            object basePropsVal = extendedSettings.get_Property("BaseProperties");
+            IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
+
+            object transportPropsVal = extendedSettings.get_Property("TransportProperties");
+            IMsRdpExtendedSettings transportProps = (IMsRdpExtendedSettings)transportPropsVal;
+
+            object strVal = "MySmartCardReader";
+            coreProps.set_Property("SmartCardReaderName", ref strVal);
+            string readerName = (string) coreProps.get_Property("SmartCardReaderName");
+
             rdpView.Show();
         }
     }

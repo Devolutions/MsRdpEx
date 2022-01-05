@@ -93,6 +93,19 @@ typedef struct ITSPropertySetVtbl
     HRESULT(STDMETHODCALLTYPE* SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
     HRESULT(STDMETHODCALLTYPE* SetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
     HRESULT(STDMETHODCALLTYPE* SetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR propValue);
+    HRESULT(STDMETHODCALLTYPE* GetProperty1)(ITSPropertySet* This, const char* propName, WCHAR* a1, int a2);
+    HRESULT(STDMETHODCALLTYPE* GetProperty2)(ITSPropertySet* This, const char* propName, uint32_t* a1);
+    HRESULT(STDMETHODCALLTYPE* GetIntProperty)(ITSPropertySet* This, const char* propName, int* propValue);
+    HRESULT(STDMETHODCALLTYPE* GetIUnknownProperty)(ITSPropertySet* This, const char* propName, IUnknown** propValue);
+    HRESULT(STDMETHODCALLTYPE* GetBoolProperty)(ITSPropertySet* This, const char* propName, bool* propValue);
+    HRESULT(STDMETHODCALLTYPE* GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
+    HRESULT(STDMETHODCALLTYPE* GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* a1, uint32_t* a2);
+    HRESULT(STDMETHODCALLTYPE* GetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR* propValue);
+    HRESULT(STDMETHODCALLTYPE* EnterReadLock)(ITSPropertySet* This);
+    HRESULT(STDMETHODCALLTYPE* LeaveReadLock)(ITSPropertySet* This);
+    HRESULT(STDMETHODCALLTYPE* EnterWriteLock)(ITSPropertySet* This);
+    HRESULT(STDMETHODCALLTYPE* LeaveWriteLock)(ITSPropertySet* This);
+    HRESULT(STDMETHODCALLTYPE* RevertToDefaults)(ITSPropertySet* This);
 } ITSPropertySetVtbl;
 
 struct _ITSPropertySet
@@ -137,6 +150,8 @@ struct _ITSCoreApi
 };
 
 using namespace MSTSCLib;
+
+class CMsRdpClient;
 
 static VOID WriteCLSID(REFCLSID rclsid)
 {
@@ -196,6 +211,146 @@ static VOID WriteIID(REFIID riid)
         CoTaskMemFree(polestrIID);
     }
 }
+
+class CMsRdpPropertySet : public IMsRdpExtendedSettings
+{
+public:
+    CMsRdpPropertySet(IUnknown* pUnknown)
+    {
+        m_refCount = 0;
+        m_pUnknown = pUnknown;
+        pUnknown->QueryInterface(IID_ITSPropertySet, (LPVOID*)&m_pTSPropertySet);
+    }
+
+    ~CMsRdpPropertySet()
+    {
+        m_pUnknown->Release();
+        if (m_pTSPropertySet) m_pTSPropertySet->vtbl->Release(m_pTSPropertySet);
+    }
+
+    // IUnknown interface
+public:
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+        REFIID riid,
+        LPVOID* ppvObject
+    )
+    {
+        HRESULT hr;
+        MsRdpEx_Log("CMsRdpPropertySet::QueryInterface");
+        WriteIID(riid);
+
+        if (riid == IID_IUnknown)
+        {
+            *ppvObject = (LPVOID)((IUnknown*)this);
+            m_refCount++;
+            return S_OK;
+        }
+        if ((riid == IID_IMsRdpExtendedSettings) && m_pTSPropertySet)
+        {
+            *ppvObject = (LPVOID)((IMsRdpExtendedSettings*)this);
+            m_refCount++;
+            return S_OK;
+        }
+
+        hr = m_pUnknown->QueryInterface(riid, ppvObject);
+        MsRdpEx_Log("--> hr=%x", hr);
+        return hr;
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef()
+    {
+        MsRdpEx_Log("CMsRdpPropertySet::AddRef");
+        return ++m_refCount;
+    }
+
+    ULONG STDMETHODCALLTYPE Release()
+    {
+        MsRdpEx_Log("CMsRdpPropertySet::Release");
+        if (--m_refCount == 0)
+        {
+            MsRdpEx_Log("--> deleting object");
+            delete this;
+            return 0;
+        }
+        MsRdpEx_Log("--> refCount=%d", m_refCount);
+        return m_refCount;
+    }
+
+    // IMsRdpExtendedSettings
+public:
+    HRESULT __stdcall put_Property(BSTR bstrPropertyName, VARIANT* pValue) {
+        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
+        MsRdpEx_Log("CMsRdpPropertySet::put_Property(%s)", propName);
+        
+        if (pValue->vt == VT_BOOL)
+        {
+            return SetVBoolProperty(propName, pValue->boolVal);
+        }
+        else if (pValue->vt == VT_UI4)
+        {
+            return SetIntProperty(propName, pValue->uintVal);
+        }
+        else if (pValue->vt == VT_BSTR)
+        {
+            return SetBStrProperty(propName, pValue->bstrVal);
+        }
+
+        return E_INVALIDARG;
+    }
+
+    HRESULT __stdcall get_Property(BSTR bstrPropertyName, VARIANT* pValue) {
+        HRESULT hr = S_OK;
+        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
+        MsRdpEx_Log("CMsRdpPropertySet::get_Property(%s)", propName);
+
+        VariantInit(pValue);
+
+        // TODO: use property map to find type
+
+        if (MsRdpEx_StringEquals(propName, "SmartCardReaderName"))
+        {            
+            hr = GetBStrProperty(propName, &pValue->bstrVal);
+
+            if (hr == S_OK) {
+                pValue->vt = VT_BSTR;
+            }
+        }
+
+        return hr;
+    }
+
+    HRESULT __stdcall SetVBoolProperty(const char* propName, VARIANT_BOOL propValue) {
+        return m_pTSPropertySet->vtbl->SetBoolProperty(m_pTSPropertySet, propName, propValue ? true : false);
+    }
+
+    HRESULT __stdcall SetIntProperty(const char* propName, uint32_t propValue) {
+        return m_pTSPropertySet->vtbl->SetIntProperty(m_pTSPropertySet, propName, propValue);
+    }
+
+    HRESULT __stdcall SetBStrProperty(const char* propName, BSTR propValue) {
+        return m_pTSPropertySet->vtbl->SetStringProperty(m_pTSPropertySet, propName, propValue);
+    }
+
+    HRESULT __stdcall GetBStrProperty(const char* propName, BSTR* propValue) {
+        HRESULT hr;
+        BSTR bstrVal = NULL;
+        WCHAR* wstrVal = NULL;
+
+        hr = m_pTSPropertySet->vtbl->GetStringProperty(m_pTSPropertySet, propName, &wstrVal);
+
+        if (hr != S_OK)
+            return hr;
+
+        *propValue = SysAllocString(wstrVal);
+
+        return hr;
+    }
+
+private:
+    ULONG m_refCount;
+    IUnknown* m_pUnknown;
+    ITSPropertySet* m_pTSPropertySet;
+};
 
 class CMsRdpExtendedSettings : public IMsRdpExtendedSettings
 {
@@ -272,13 +427,144 @@ public:
     HRESULT __stdcall get_Property(BSTR bstrPropertyName, VARIANT* pValue) {
         char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
         MsRdpEx_Log("CMsRdpExtendedSettings::get_Property(%s)", propName);
+
+        VariantInit(pValue);
+
+        if (MsRdpEx_StringEquals(propName, "CoreProperties")) {
+            if (!m_CoreProps) {
+                return E_UNEXPECTED;
+            }
+
+            pValue->vt = VT_UNKNOWN;
+            pValue->punkVal = NULL;
+            return m_CoreProps->QueryInterface(IID_IUnknown, (LPVOID*) &pValue->punkVal);
+        }
+        else if (MsRdpEx_StringEquals(propName, "BaseProperties")) {
+            if (!m_BaseProps) {
+                return E_UNEXPECTED;
+            }
+
+            pValue->vt = VT_UNKNOWN;
+            pValue->punkVal = NULL;
+            return m_BaseProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
+        }
+        else if (MsRdpEx_StringEquals(propName, "TransportProperties")) {
+            if (!m_TransportProps) {
+                return E_UNEXPECTED;
+            }
+
+            pValue->vt = VT_UNKNOWN;
+            pValue->punkVal = NULL;
+            return m_TransportProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
+        }
+
         return m_pMsRdpExtendedSettings->get_Property(bstrPropertyName, pValue);
     }
 
+    // additional functions
+
+    HRESULT AttachRdpClient(CMsRdpClient* rdpClient, IMsTscAx* pMsTscAx)
+    {
+        HRESULT hr;
+
+        m_rdpClient = rdpClient;
+        m_pMsTscAx = pMsTscAx;
+
+        size_t memStatus;
+        MEMORY_BASIC_INFORMATION memInfo;
+
+        size_t maxPtrCount = 1000;
+        ITSObjectBase* pTSWin32CoreApi = NULL;
+        ITSPropertySet* pTSPropertySet1 = NULL;
+        ITSPropertySet* pTSPropertySet2 = NULL;
+        ITSPropertySet* pTSPropertySet3 = NULL;
+
+        for (int i = 0; i < maxPtrCount; i++) {
+            ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)m_pMsTscAx)[i];
+            memStatus = VirtualQuery(ppTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
+            if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize >= 8)) {
+                ITSObjectBase* pTSObject = *ppTSObject;
+                if (pTSObject) {
+                    memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
+                    if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
+                        if (pTSObject->marker == 0xDBCAABCD) {
+                            MsRdpEx_Log("MsTscAx(%d): 0x%08X name: %s refCount: %d",
+                                i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
+
+                            if (!strcmp(pTSObject->name, "CTSPropertySet")) {
+                                if (!pTSPropertySet1) {
+                                    pTSPropertySet1 = (ITSPropertySet*)pTSObject;
+                                }
+                                else if (!pTSPropertySet2 && ((void*)pTSPropertySet1 != pTSObject)) {
+                                    pTSPropertySet2 = (ITSPropertySet*)pTSObject;
+                                }
+                            }
+                            else if (!strcmp(pTSObject->name, "CTSWin32CoreApi")) {
+                                pTSWin32CoreApi = pTSObject;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < maxPtrCount; i++) {
+            ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)pTSWin32CoreApi)[i];
+            memStatus = VirtualQuery(ppTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
+            if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize >= 8)) {
+                ITSObjectBase* pTSObject = *ppTSObject;
+                if (pTSObject) {
+                    memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
+                    if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
+                        if (pTSObject->marker == 0xDBCAABCD) {
+                            MsRdpEx_Log("TSWin32CoreApi(%d): 0x%08X name: %s refCount: %d",
+                                i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
+
+                            if (!strcmp(pTSObject->name, "CTSPropertySet")) {
+                                if (((void*)pTSPropertySet1 != pTSObject) && ((void*)pTSPropertySet2 != pTSObject)) {
+                                    pTSPropertySet3 = (ITSPropertySet*)pTSObject;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        m_CoreProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet1);
+        m_BaseProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet2);
+        m_TransportProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet3);
+
+        DumpPropertyMap(pTSPropertySet1);
+        DumpPropertyMap(pTSPropertySet2);
+        DumpPropertyMap(pTSPropertySet3);
+
+        return S_OK;
+    }
+
+    void DumpPropertyMap(ITSPropertySet* pTSPropertySet)
+    {
+        uint32_t propCount = pTSPropertySet->propCount;
+        PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
+
+        MsRdpEx_Log("TSPropertySet(%d)", propCount);
+
+        for (int i = 0; i < propCount; i++)
+        {
+            PROPERTY_ENTRY_EX* prop = &propMap[i];
+            MsRdpEx_Log("name: %s type: %d", prop->propName, (int)prop->propType);
+        }
+    }
+
 private:
-    ULONG m_refCount;
-    IUnknown* m_pUnknown;
-    IMsRdpExtendedSettings* m_pMsRdpExtendedSettings;
+    ULONG m_refCount = 0;
+    IUnknown* m_pUnknown = NULL;
+    IMsTscAx* m_pMsTscAx = NULL;
+    CMsRdpClient* m_rdpClient = NULL;
+    IMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
+    CMsRdpPropertySet* m_CoreProps = NULL;
+    CMsRdpPropertySet* m_BaseProps = NULL;
+    CMsRdpPropertySet* m_TransportProps = NULL;
 };
 
 class CMsRdpClient : public IMsRdpClient10
@@ -303,6 +589,7 @@ public:
         pUnknown->QueryInterface(IID_IMsRdpClient10, (LPVOID*)&m_pMsRdpClient10);
 
         m_MsRdpExtendedSettings = new CMsRdpExtendedSettings(pUnknown);
+        m_MsRdpExtendedSettings->AttachRdpClient(this, m_pMsTscAx);
     }
 
     ~CMsRdpClient()
@@ -603,91 +890,6 @@ public:
 
         IMstscAxInternal* pMstscAxInternal = NULL;
         hr = m_pMsTscAx->QueryInterface(IID_IMstscAxInternal, (LPVOID*)&pMstscAxInternal);
-
-        size_t memStatus;
-        MEMORY_BASIC_INFORMATION memInfo;
-
-        size_t pMsTscAx = (size_t)(void*)m_pMsTscAx;
-        size_t maxPtrCount = 1200;
-
-        memStatus = VirtualQuery((void*)m_pMsTscAx, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-
-        if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
-            maxPtrCount = (memInfo.RegionSize / 8);
-            MsRdpEx_Log("pMsTscAx: 0x%08X, size: %d ptrCount: %d", (size_t)pMsTscAx, memInfo.RegionSize, (int)maxPtrCount);
-        }
-
-        ITSPropertySet* pTSPropertySet1 = NULL;
-        ITSPropertySet* pTSPropertySet2 = NULL;
-
-        for (int i = 0; i < maxPtrCount; i++) {
-            ITSObjectBase** ppTSObject = (ITSObjectBase**) &((size_t*)m_pMsTscAx)[i];
-            memStatus = VirtualQuery(ppTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-            if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize >= 8)) {
-                ITSObjectBase* pTSObject = *ppTSObject;
-                if (pTSObject) {
-                    memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-                    if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
-                        if (pTSObject->marker == 0xDBCAABCD) {
-                            MsRdpEx_Log("MsTscAx(%d): 0x%08X name: %s refCount: %d",
-                                i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
-
-                            if (!strcmp(pTSObject->name, "CTSPropertySet")) {
-                                if (!pTSPropertySet1) {
-                                    pTSPropertySet1 = (ITSPropertySet*)pTSObject;
-                                } else if (!pTSPropertySet2 && ((void*) pTSPropertySet1 != pTSObject)) {
-                                    pTSPropertySet2 = (ITSPropertySet*) pTSObject;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if (pTSPropertySet1) {
-            hr = pTSPropertySet1->vtbl->QueryInterface(pTSPropertySet1, IID_ITSPropertySet, (LPVOID*)&pTSPropertySet1);
-            MsRdpEx_Log("TSPropertySet1::QueryInterface(IID_ITSPropertySet) %s!", (hr == S_OK) ? "success" : "failure");
-        }
-
-        if (pTSPropertySet2) {
-            hr = pTSPropertySet2->vtbl->QueryInterface(pTSPropertySet2, IID_ITSPropertySet, (LPVOID*)&pTSPropertySet2);
-            MsRdpEx_Log("TSPropertySet2::QueryInterface(IID_ITSPropertySet) %s!", (hr == S_OK) ? "success" : "failure");
-        }
-
-        if (pTSPropertySet1) {
-            hr = pTSPropertySet1->vtbl->SetStringProperty(pTSPropertySet1, "UserSpecifiedServerName", L"yolo.contoso.com");
-            MsRdpEx_Log("ITSPropertySet1::SetStringProperty(UserSpecifiedServerName) %s!", (hr == S_OK) ? "success" : "failure");
-
-            hr = pTSPropertySet2->vtbl->SetBoolProperty(pTSPropertySet2, "Fullscreen", true);
-            MsRdpEx_Log("ITSPropertySet1::SetBoolProperty(Fullscreen) %s!", (hr == S_OK) ? "success" : "failure");
-        }
-
-        if (pTSPropertySet1) {
-            uint32_t propCount = pTSPropertySet1->propCount;
-            PROPERTY_ENTRY_EX* propMap = pTSPropertySet1->propMap;
-
-            MsRdpEx_Log("TSPropertySet1(%d)", propCount);
-
-            for (int i = 0; i < propCount; i++)
-            {
-                PROPERTY_ENTRY_EX* prop = &propMap[i];
-                MsRdpEx_Log("name: %s type: %d", prop->propName, (int)prop->propType);
-            }
-        }
-
-        if (pTSPropertySet2) {
-            uint32_t propCount = pTSPropertySet2->propCount;
-            PROPERTY_ENTRY_EX* propMap = pTSPropertySet2->propMap;
-
-            MsRdpEx_Log("TSPropertySet2(%d)", propCount);
-
-            for (int i = 0; i < propCount; i++)
-            {
-                PROPERTY_ENTRY_EX* prop = &propMap[i];
-                MsRdpEx_Log("name: %s type: %d", prop->propName, (int)prop->propType);
-            }
-        }
 
         if (pMstscAxInternal)
         {
