@@ -14,9 +14,6 @@ using MSTSCLib;
 
 using MsRdpEx;
 
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-
 namespace MsRdpEx_App
 {
     public partial class MainDlg : Form
@@ -65,6 +62,9 @@ namespace MsRdpEx_App
             {
                 axName = axNameEx;
             }
+
+            IMsRdpExCoreApi coreApi = Bindings.GetCoreApi();
+            coreApi.Reset();
 
             RdpView rdpView = new RdpView(axName);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;

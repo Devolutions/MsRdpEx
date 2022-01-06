@@ -26,6 +26,9 @@ extern "C" const GUID __declspec(selectany) IID_ITSCoreApiInternal =
 extern "C" const GUID __declspec(selectany) IID_ITSWin32CoreApi =
     { 0x7272B113,0xC627,0x40DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
 
+extern "C" const GUID __declspec(selectany) IID_IMsRdpExCoreApi =
+    {0x13F6E86F, 0xEE7D, 0x44D1, { 0xAA,0x94,0x11,0x36,0xB7,0x84,0x44,0x1D }};
+
 typedef struct _CIUnknown CIUnknown;
 
 typedef struct IUnknownVtbl
@@ -1190,6 +1193,107 @@ private:
     IMsRdpClient10* m_pMsRdpClient10;
     CMsRdpExtendedSettings* m_MsRdpExtendedSettings;
 };
+
+MIDL_INTERFACE("13F6E86F-EE7D-44D1-AA94-1136B784441D")
+IMsRdpExCoreApi : public IUnknown
+{
+public:
+    virtual HRESULT __stdcall Reset(void) = 0;
+};
+
+class CMsRdpExCoreApi : public IMsRdpExCoreApi
+{
+public:
+    CMsRdpExCoreApi()
+    {
+        m_refCount = 0;
+    }
+
+    ~CMsRdpExCoreApi()
+    {
+
+    }
+
+    // IUnknown interface
+public:
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+        REFIID riid,
+        LPVOID* ppvObject
+    )
+    {
+        HRESULT hr = E_NOINTERFACE;
+        MsRdpEx_Log("CMsRdpExCoreApi::QueryInterface");
+        WriteIID(riid);
+
+        if (riid == IID_IUnknown)
+        {
+            *ppvObject = (LPVOID)((IUnknown*)this);
+            m_refCount++;
+            return S_OK;
+        }
+        if (riid == IID_IMsRdpExCoreApi)
+        {
+            *ppvObject = (LPVOID)((IUnknown*)this);
+            m_refCount++;
+            return S_OK;
+        }
+
+        MsRdpEx_Log("--> hr=%x", hr);
+        return hr;
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef()
+    {
+        MsRdpEx_Log("CMsRdpExCoreApi::AddRef");
+        return ++m_refCount;
+    }
+
+    ULONG STDMETHODCALLTYPE Release()
+    {
+        MsRdpEx_Log("CMsRdpExCoreApi::Release");
+        if (--m_refCount == 0)
+        {
+            MsRdpEx_Log("--> deleting object");
+            delete this;
+            return 0;
+        }
+        MsRdpEx_Log("--> refCount=%d", m_refCount);
+        return m_refCount;
+    }
+
+    // IMsRdpExCoreApi
+public:
+    HRESULT STDMETHODCALLTYPE Reset()
+    {
+        MsRdpEx_Log("CMsRdpExCoreApi::Reset");
+        return S_OK;
+    }
+
+private:
+    ULONG m_refCount;
+};
+
+static CMsRdpExCoreApi* g_MsRdpExCoreApi = NULL;
+
+HRESULT CDECL MsRdpEx_QueryInterface(REFCLSID riid, LPVOID* ppvObject)
+{
+    HRESULT hr = E_NOINTERFACE;
+
+    char iid[MSRDPEX_GUID_STRING_SIZE];
+    MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
+
+    MsRdpEx_Log("MsRdpEx_QueryInterface(%s)", iid);
+
+    if (riid == IID_IMsRdpExCoreApi) {
+        if (!g_MsRdpExCoreApi) {
+            g_MsRdpExCoreApi = new CMsRdpExCoreApi();
+        }
+
+        hr = g_MsRdpExCoreApi->QueryInterface(riid, ppvObject);
+    }
+
+    return hr;
+}
 
 class CClassFactory : IClassFactory
 {
