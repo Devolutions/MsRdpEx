@@ -105,6 +105,11 @@ bool MsRdpEx_Log(const char* format, ...);
 void MsRdpEx_LogOpen();
 void MsRdpEx_LogClose();
 
+// DLL Main
+
+void MsRdpEx_Load();
+void MsRdpEx_Unload();
+
 #ifdef __cplusplus
 }
 #endif

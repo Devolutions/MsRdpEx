@@ -89,6 +89,26 @@ uint64_t DllPreCleanUp()
 
 // DLL Main
 
+bool MsRdpEx_ShouldLoad()
+{
+    bool shouldLoad = false;
+    char moduleFilePath[MSRDPEX_MAX_PATH] = { 0 };
+
+    if (!GetModuleFileNameA(NULL, moduleFilePath, MSRDPEX_MAX_PATH))
+        return false;
+
+    const char* moduleFileName = MsRdpEx_FileBase(moduleFilePath);
+
+    if (MsRdpEx_StringIEquals(moduleFileName, "mstsc.exe") ||
+        MsRdpEx_StringIEquals(moduleFileName, "msrdc.exe")) {
+        shouldLoad = true;
+    }
+
+    return shouldLoad;
+}
+
+static bool g_IsLoaded = false;
+
 void MsRdpEx_Load()
 {
     MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
@@ -111,10 +131,15 @@ void MsRdpEx_Load()
     g_AxDll = MsRdpEx_AxDll_New(MsRdpEx_GetPath(pathId));
 
     MsRdpEx_AttachHooks();
+
+    g_IsLoaded = true;
 }
 
 void MsRdpEx_Unload()
 {
+    if (!g_IsLoaded)
+        return;
+
     MsRdpEx_DetachHooks();
 
     if (g_AxDll) {
@@ -123,6 +148,8 @@ void MsRdpEx_Unload()
     }
 
     MsRdpEx_LogClose();
+
+    g_IsLoaded = false;
 }
 
 BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID reserved)
@@ -136,7 +163,9 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID reserved)
         case DLL_PROCESS_ATTACH:
             g_hModule = hModule;
             DisableThreadLibraryCalls(hModule);
-            MsRdpEx_Load();
+            if (MsRdpEx_ShouldLoad()) {
+                MsRdpEx_Load();
+            }
             break;
 
         case DLL_PROCESS_DETACH:

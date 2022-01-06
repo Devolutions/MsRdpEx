@@ -8,7 +8,8 @@ namespace MsRdpEx
     [Guid("13F6E86F-EE7D-44D1-AA94-1136B784441D")]
     public interface IMsRdpExCoreApi
     {
-        int Reset();
+        int Load();
+        int Unload();
     }
 
     public static class Bindings

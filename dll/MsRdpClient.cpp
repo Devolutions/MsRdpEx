@@ -59,15 +59,6 @@ struct _IMstscAxInternal
     IMstscAxInternalVtbl* vtbl;
 };
 
-/**
- * property entry types:
- * 1: int
- * 2: bool
- * 3: string
- * 4: binary
- * 7: IUnknown
- */
-
 #pragma pack(push, 1)
 
 struct tagPROPERTY_ENTRY_EX
@@ -534,15 +525,43 @@ public:
             }
         }
 
-        m_CoreProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet1);
-        m_BaseProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet2);
-        m_TransportProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet3);
+        if (pTSPropertySet1)
+        {
+            m_CoreProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet1);
+            DumpPropertyMap(pTSPropertySet1);
+        }
 
-        DumpPropertyMap(pTSPropertySet1);
-        DumpPropertyMap(pTSPropertySet2);
-        DumpPropertyMap(pTSPropertySet3);
+        if (pTSPropertySet2)
+        {
+            m_BaseProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet2);
+            DumpPropertyMap(pTSPropertySet2);
+        }
+
+        if (pTSPropertySet3)
+        {
+            m_TransportProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet3);
+            DumpPropertyMap(pTSPropertySet3);
+        }
 
         return S_OK;
+    }
+
+    const char* GetPropertyTypeName(uint8_t propType)
+    {
+        const char* name = "none";
+
+        switch (propType)
+        {
+            case 1: name = "ULONG"; break;
+            case 2: name = "INT"; break;
+            case 3: name = "BOOL"; break;
+            case 4: name = "String"; break;
+            case 5: name = "Binary"; break;
+            case 6: name = "SecureString"; break;
+            case 7: name = "IUnknown"; break;
+        }
+
+        return name;
     }
 
     void DumpPropertyMap(ITSPropertySet* pTSPropertySet)
@@ -555,7 +574,7 @@ public:
         for (int i = 0; i < propCount; i++)
         {
             PROPERTY_ENTRY_EX* prop = &propMap[i];
-            MsRdpEx_Log("name: %s type: %d", prop->propName, (int)prop->propType);
+            MsRdpEx_Log("%s (%s)", prop->propName, GetPropertyTypeName(prop->propType));
         }
     }
 
@@ -1194,11 +1213,14 @@ private:
     CMsRdpExtendedSettings* m_MsRdpExtendedSettings;
 };
 
-MIDL_INTERFACE("13F6E86F-EE7D-44D1-AA94-1136B784441D")
+//MIDL_INTERFACE("13F6E86F-EE7D-44D1-AA94-1136B784441D")
+//struct __declspec(uuid("13F6E86F-EE7D-44D1-AA94-1136B784441D")) __declspec(novtable)
+struct __declspec(novtable)
 IMsRdpExCoreApi : public IUnknown
 {
 public:
-    virtual HRESULT __stdcall Reset(void) = 0;
+    virtual HRESULT __stdcall Load(void) = 0;
+    virtual HRESULT __stdcall Unload(void) = 0;
 };
 
 class CMsRdpExCoreApi : public IMsRdpExCoreApi
@@ -1263,9 +1285,17 @@ public:
 
     // IMsRdpExCoreApi
 public:
-    HRESULT STDMETHODCALLTYPE Reset()
+    HRESULT STDMETHODCALLTYPE Load()
     {
-        MsRdpEx_Log("CMsRdpExCoreApi::Reset");
+        MsRdpEx_Load();
+        MsRdpEx_Log("CMsRdpExCoreApi::Load");
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE Unload()
+    {
+        MsRdpEx_Log("CMsRdpExCoreApi::Unload");
+        MsRdpEx_Unload();
         return S_OK;
     }
 
