@@ -53,6 +53,14 @@ namespace MsRdpEx_App
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
 
+            if (externalMode)
+            {
+                string appName = axName;
+                string[] args = new string[0];
+                Bindings.StartProcess(appName, args);
+                return;
+            }
+
             var process = Process.GetCurrentProcess();
             string processFileName = process.MainModule.FileName;
             string processFileDir = Path.GetDirectoryName(processFileName);

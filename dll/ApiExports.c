@@ -5,6 +5,7 @@
 
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/RdpSession.h>
+#include <MsRdpEx/Process.h>
 
 #include <MsRdpEx/OutputMirror.h>
 

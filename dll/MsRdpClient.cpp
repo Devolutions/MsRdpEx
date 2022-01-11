@@ -4,6 +4,7 @@
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/RdpFile.h>
+#include <MsRdpEx/Process.h>
 #include <MsRdpEx/NameResolver.h>
 
 #pragma warning (disable : 26812)
@@ -27,7 +28,9 @@ extern "C" const GUID __declspec(selectany) IID_ITSWin32CoreApi =
     { 0x7272B113,0xC627,0x40DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
 
 extern "C" const GUID __declspec(selectany) IID_IMsRdpExCoreApi =
-    {0x13F6E86F, 0xEE7D, 0x44D1, { 0xAA,0x94,0x11,0x36,0xB7,0x84,0x44,0x1D }};
+    { 0x13F6E86F, 0xEE7D, 0x44D1, { 0xAA,0x94,0x11,0x36,0xB7,0x84,0x44,0x1D }};
+extern "C" const GUID __declspec(selectany) IID_IMsRdpExProcess =
+    { 0x338784B3, 0x3363, 0x45A2, { 0x8E,0xCD,0x80,0xA6,0x5D,0xBA,0xF6,0x36 } };
 
 typedef struct _CIUnknown CIUnknown;
 
@@ -456,6 +459,46 @@ public:
     }
 
     // additional functions
+
+    HRESULT __stdcall put_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue) {
+        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
+        MsRdpEx_Log("CMsRdpExtendedSettings::put_CoreProperty(%s)", propName);
+
+        if (!m_CoreProps)
+            return E_UNEXPECTED;
+
+        return m_CoreProps->put_Property(bstrPropertyName, pValue);
+    }
+
+    HRESULT __stdcall get_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue) {
+        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
+        MsRdpEx_Log("CMsRdpExtendedSettings::get_CoreProperty(%s)", propName);
+
+        if (!m_CoreProps)
+            return E_UNEXPECTED;
+
+        return m_CoreProps->get_Property(bstrPropertyName, pValue);
+    }
+
+    HRESULT __stdcall put_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue) {
+        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
+        MsRdpEx_Log("CMsRdpExtendedSettings::put_BaseProperty(%s)", propName);
+
+        if (!m_BaseProps)
+            return E_UNEXPECTED;
+
+        return m_BaseProps->put_Property(bstrPropertyName, pValue);
+    }
+
+    HRESULT __stdcall get_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue) {
+        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
+        MsRdpEx_Log("CMsRdpExtendedSettings::get_BaseProperty(%s)", propName);
+
+        if (!m_BaseProps)
+            return E_UNEXPECTED;
+
+        return m_BaseProps->get_Property(bstrPropertyName, pValue);
+    }
 
     HRESULT AttachRdpClient(CMsRdpClient* rdpClient, IMsTscAx* pMsTscAx)
     {
@@ -977,6 +1020,13 @@ public:
                         m_pMsTscAx->PutServer(ServerNameUsedForAuthentication);
                         MsRdpEx_NameResolver_RemapName(entry->value, oldServerName);
                     }
+                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableUDPTransport")) {
+                        VARIANT value;
+                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                            bstr_t propName = _com_util::ConvertStringToBSTR(entry->value);
+                            pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+                        }
+                    }
                 }
 
                 MsRdpEx_ArrayListIt_Finish(it);
@@ -1320,6 +1370,9 @@ HRESULT CDECL MsRdpEx_QueryInterface(REFCLSID riid, LPVOID* ppvObject)
         }
 
         hr = g_MsRdpExCoreApi->QueryInterface(riid, ppvObject);
+    }
+    else if (riid == IID_IMsRdpExProcess) {
+        hr = MsRdpExProcess_CreateInstance(ppvObject);
     }
 
     return hr;
