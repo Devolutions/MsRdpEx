@@ -12,15 +12,16 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <DebugType>none</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <Optimize>False</Optimize>
+    <DebugType>Full</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>True</Optimize>
+    <DebugType>None</DebugType>
   </PropertyGroup>
 
   <ItemGroup>

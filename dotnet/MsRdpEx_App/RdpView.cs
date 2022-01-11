@@ -11,6 +11,8 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
+using MSTSCLib;
+
 using MsRdpEx;
 
 namespace MsRdpEx_App
@@ -35,10 +37,13 @@ namespace MsRdpEx_App
 
             InitializeComponent();
 
-            Timer CaptureTimer = new Timer();
-            CaptureTimer.Interval = (1000); // 1 second
-            CaptureTimer.Tick += new EventHandler(CaptureTimer_Tick);
-            CaptureTimer.Start();
+            if (false)
+            {
+                Timer CaptureTimer = new Timer();
+                CaptureTimer.Interval = (1000); // 1 second
+                CaptureTimer.Tick += new EventHandler(CaptureTimer_Tick);
+                CaptureTimer.Start();
+            }
         }
 
         private enum TernaryRasterOperations : uint
@@ -69,7 +74,6 @@ namespace MsRdpEx_App
         public IntPtr GetOutputPresenterHwnd()
         {
             IntPtr clientHandle = this.rdpClient.Handle;
-            Debug.WriteLine("RdpClientHandle: {0}", clientHandle);
 
             // UIMainClass ""
             // UIContainerClass ""
@@ -159,6 +163,21 @@ namespace MsRdpEx_App
             }
         }
 
+        protected void OnConnected(object sender, EventArgs e)
+        {
+            IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)this.rdpClient.GetOcx();
+            object propVal = extendedSettings.get_Property("CorePropertySet");
+            IMsRdpExtendedSettings props = (IMsRdpExtendedSettings)propVal;
+
+            object myTestProperty = true;
+            props.set_Property("MyTestProperty", ref myTestProperty);
+        }
+
+        protected void OnConnecting(object sender, EventArgs e)
+        {
+            
+        }
+
         private System.ComponentModel.IContainer components = null;
         public AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdpClient;
 
@@ -167,6 +186,8 @@ namespace MsRdpEx_App
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(RdpView));
             this.rdpClient = new AxMSTSCLib.AxMsRdpClient9NotSafeForScripting();
             this.rdpClient.axName = this.axName;
+            this.rdpClient.OnConnected += OnConnected;
+            this.rdpClient.OnConnecting += OnConnecting;
             ((System.ComponentModel.ISupportInitialize)(this.rdpClient)).BeginInit();
             this.SuspendLayout();
             // 

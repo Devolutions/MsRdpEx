@@ -334,10 +334,19 @@ char** MsRdpEx_GetArgumentVector(int* argc)
 	if (!argsW)
 		goto exit;
 
-    args = (char**) calloc(*argc, sizeof(char*));
+    args = (char**) calloc(*argc + 1, sizeof(char*));
 
     if (!args)
         goto exit;
+
+    WCHAR moduleFileName[MSRDPEX_MAX_PATH];
+    GetModuleFileNameW(NULL, moduleFileName, MSRDPEX_MAX_PATH);
+
+    if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, moduleFileName, -1, &arg, 0, NULL, NULL) < 0) {
+        goto exit;
+    }
+
+    args[0] = arg;
 
     for (index = 0; index < *argc; index++) {
         arg = NULL;
@@ -346,8 +355,10 @@ char** MsRdpEx_GetArgumentVector(int* argc)
             goto exit;
         }
 
-        args[index] = arg;
+        args[index + 1] = arg;
     }
+
+    *argc = *argc + 1;
 
 exit:
 	LocalFree(argsW);

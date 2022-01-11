@@ -6,6 +6,8 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO;
+using System.Diagnostics;
 using System.Windows.Forms;
 
 using MSTSCLib;
@@ -51,7 +53,18 @@ namespace MsRdpEx_App
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
 
-            Bindings.DllPreCleanUp();
+            var process = Process.GetCurrentProcess();
+            string processFileName = process.MainModule.FileName;
+            string processFileDir = Path.GetDirectoryName(processFileName);
+            string axNameEx = Path.Combine(processFileDir, "MsRdpEx.dll");
+
+            if (File.Exists(axNameEx))
+            {
+                axName = axNameEx;
+            }
+
+            IMsRdpExCoreApi coreApi = Bindings.GetCoreApi();
+            coreApi.Load();
 
             RdpView rdpView = new RdpView(axName);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
@@ -70,6 +83,20 @@ namespace MsRdpEx_App
             rdpView.ClientSize = DesktopSize;
             rdpView.Text = String.Format("{0} ({1})", rdp.Server, axName);
             rdp.Connect();
+
+            object corePropsVal = extendedSettings.get_Property("CoreProperties");
+            IMsRdpExtendedSettings coreProps = (IMsRdpExtendedSettings)corePropsVal;
+
+            object basePropsVal = extendedSettings.get_Property("BaseProperties");
+            IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
+
+            //object transportPropsVal = extendedSettings.get_Property("TransportProperties");
+            //IMsRdpExtendedSettings transportProps = (IMsRdpExtendedSettings)transportPropsVal;
+
+            object strVal = "MySmartCardReader";
+            coreProps.set_Property("SmartCardReaderName", ref strVal);
+            string readerName = (string) coreProps.get_Property("SmartCardReaderName");
+
             rdpView.Show();
         }
     }

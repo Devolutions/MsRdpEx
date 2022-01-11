@@ -103,10 +103,10 @@ char* MsRdpEx_GetRdpFilenameFromCommandLine()
 	if (!argsW)
 		goto exit;
 
-	if (argc < 2)
+	if (argc < 1)
 		goto exit;
 
-	if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, argsW[1], -1, &filename, 0, NULL, NULL) < 0) {
+	if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, argsW[0], -1, &filename, 0, NULL, NULL) < 0) {
 		goto exit;
 	}
 
