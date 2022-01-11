@@ -8,7 +8,9 @@ namespace MsRdpEx
     [Guid("13F6E86F-EE7D-44D1-AA94-1136B784441D")]
     public interface IMsRdpExCoreApi
     {
+        [MethodImpl(MethodImplOptions.PreserveSig)]
         int Load();
+        [MethodImpl(MethodImplOptions.PreserveSig)]
         int Unload();
     }
 
