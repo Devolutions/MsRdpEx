@@ -98,12 +98,9 @@ namespace MsRdpEx_App
             object basePropsVal = extendedSettings.get_Property("BaseProperties");
             IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
 
-            //object transportPropsVal = extendedSettings.get_Property("TransportProperties");
-            //IMsRdpExtendedSettings transportProps = (IMsRdpExtendedSettings)transportPropsVal;
-
-            object strVal = "MySmartCardReader";
-            coreProps.set_Property("SmartCardReaderName", ref strVal);
-            string readerName = (string) coreProps.get_Property("SmartCardReaderName");
+            //object strVal = "MySmartCardReader";
+            //coreProps.set_Property("SmartCardReaderName", ref strVal);
+            //string readerName = (string) coreProps.get_Property("SmartCardReaderName");
 
             rdpView.Show();
         }

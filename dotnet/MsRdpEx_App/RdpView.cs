@@ -165,12 +165,7 @@ namespace MsRdpEx_App
 
         protected void OnConnected(object sender, EventArgs e)
         {
-            IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)this.rdpClient.GetOcx();
-            object propVal = extendedSettings.get_Property("CorePropertySet");
-            IMsRdpExtendedSettings props = (IMsRdpExtendedSettings)propVal;
 
-            object myTestProperty = true;
-            props.set_Property("MyTestProperty", ref myTestProperty);
         }
 
         protected void OnConnecting(object sender, EventArgs e)
