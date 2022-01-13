@@ -1,12 +1,17 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
-FILE* g_LogFile = NULL;
+static FILE* g_LogFile = NULL;
+static bool g_LogEnabled = true;
+static char g_LogFilePath[MSRDPEX_MAX_PATH] = { 0 };
 
 #define MSRDPEX_LOG_MAX_LINE    8192
 
 bool MsRdpEx_LogVA(const char* format, va_list args)
 {
+    if (!g_LogFile)
+        return true;
+
     char message[MSRDPEX_LOG_MAX_LINE];
     vsnprintf_s(message, MSRDPEX_LOG_MAX_LINE - 1, _TRUNCATE, format, args);
     strcat_s(message, MSRDPEX_LOG_MAX_LINE - 1, "\n");
@@ -31,10 +36,15 @@ bool MsRdpEx_Log(const char* format, ...)
 
 void MsRdpEx_LogOpen()
 {
-    char filename[MSRDPEX_MAX_PATH];
-    const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
-    sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\MsRdpEx.log", appDataPath);
-    g_LogFile = fopen(filename, "wb");
+    if (!g_LogEnabled)
+        return;
+
+    if (g_LogFilePath[0] == '\0') {
+        const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
+        sprintf_s(g_LogFilePath, MSRDPEX_MAX_PATH, "%s\\MsRdpEx.log", appDataPath);
+    }
+
+    g_LogFile = fopen(g_LogFilePath, "wb");
 }
 
 void MsRdpEx_LogClose()
@@ -43,4 +53,14 @@ void MsRdpEx_LogClose()
         fclose(g_LogFile);
         g_LogFile = NULL;
     }
+}
+
+void MsRdpEx_SetLogEnabled(bool logEnabled)
+{
+    g_LogEnabled = logEnabled;
+}
+
+void MsRdpEx_SetLogFilePath(const char* logFilePath)
+{
+    strcpy_s(g_LogFilePath, MSRDPEX_MAX_PATH, logFilePath);
 }

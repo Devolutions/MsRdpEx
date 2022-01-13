@@ -66,6 +66,14 @@ struct _IMstscAxInternal
 
 #pragma pack(push, 1)
 
+#define TSPROPERTY_TYPE_ULONG       1
+#define TSPROPERTY_TYPE_INT         2
+#define TSPROPERTY_TYPE_BOOL        3
+#define TSPROPERTY_TYPE_STRING      4
+#define TSPROPERTY_TYPE_BINARY      5
+#define TSPROPERTY_TYPE_SSTRING     6
+#define TSPROPERTY_TYPE_IUNKNOWN    7
+
 struct tagPROPERTY_ENTRY_EX
 {
     const char* propName;
@@ -86,7 +94,7 @@ typedef struct ITSPropertySetVtbl
     ULONG(STDMETHODCALLTYPE* AddRef)(ITSPropertySet* This);
     ULONG(STDMETHODCALLTYPE* Release)(ITSPropertySet* This);
     HRESULT(STDMETHODCALLTYPE* SetProperty)(ITSPropertySet* This, const char* propName, void* propValue);
-    HRESULT(STDMETHODCALLTYPE* SetBoolProperty)(ITSPropertySet* This, const char* propName, bool propValue);
+    HRESULT(STDMETHODCALLTYPE* SetBoolProperty)(ITSPropertySet* This, const char* propName, VARIANT_BOOL propValue);
     HRESULT(STDMETHODCALLTYPE* SetIntProperty)(ITSPropertySet* This, const char* propName, int propValue);
     HRESULT(STDMETHODCALLTYPE* SetIUnknownProperty)(ITSPropertySet* This, const char* propName, void* propValue);
     HRESULT(STDMETHODCALLTYPE* SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
@@ -96,7 +104,7 @@ typedef struct ITSPropertySetVtbl
     HRESULT(STDMETHODCALLTYPE* GetProperty2)(ITSPropertySet* This, const char* propName, uint32_t* a1);
     HRESULT(STDMETHODCALLTYPE* GetIntProperty)(ITSPropertySet* This, const char* propName, int* propValue);
     HRESULT(STDMETHODCALLTYPE* GetIUnknownProperty)(ITSPropertySet* This, const char* propName, IUnknown** propValue);
-    HRESULT(STDMETHODCALLTYPE* GetBoolProperty)(ITSPropertySet* This, const char* propName, bool* propValue);
+    HRESULT(STDMETHODCALLTYPE* GetBoolProperty)(ITSPropertySet* This, const char* propName, VARIANT_BOOL* propValue);
     HRESULT(STDMETHODCALLTYPE* GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
     HRESULT(STDMETHODCALLTYPE* GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* a1, uint32_t* a2);
     HRESULT(STDMETHODCALLTYPE* GetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR* propValue);
@@ -211,6 +219,130 @@ static VOID WriteIID(REFIID riid)
     }
 }
 
+const char* GetTSPropertyTypeName(uint8_t propType)
+{
+    const char* name = "none";
+
+    switch (propType)
+    {
+        case 1: name = "ULONG"; break;
+        case 2: name = "INT"; break;
+        case 3: name = "BOOL"; break;
+        case 4: name = "String"; break;
+        case 5: name = "Binary"; break;
+        case 6: name = "SecureString"; break;
+        case 7: name = "IUnknown"; break;
+    }
+
+    return name;
+}
+
+PROPERTY_ENTRY_EX* FindTSProperty(ITSPropertySet* pTSPropertySet, const char* name)
+{
+    PROPERTY_ENTRY_EX* found = NULL;
+    uint32_t propCount = pTSPropertySet->propCount;
+    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
+
+    for (int i = 0; i < propCount; i++)
+    {
+        PROPERTY_ENTRY_EX* prop = &propMap[i];
+
+        if (MsRdpEx_StringEquals(name, prop->propName)) {
+            found = prop;
+            break;
+        }
+    }
+
+    return found;
+}
+
+bool GetTSPropertyType(ITSPropertySet* pTSPropertySet, const char* name, uint8_t* pPropType)
+{
+    PROPERTY_ENTRY_EX* prop = FindTSProperty(pTSPropertySet, name);
+
+    *pPropType = 0;
+
+    if (prop) {
+        *pPropType = prop->propType;
+    }
+
+    return prop ? true : false;
+}
+
+void DumpTSPropertyMap(ITSPropertySet* pTSPropertySet)
+{
+    uint32_t propCount = pTSPropertySet->propCount;
+    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
+
+    MsRdpEx_Log("TSPropertySet(%d)", propCount);
+
+    for (int i = 0; i < propCount; i++)
+    {
+        PROPERTY_ENTRY_EX* prop = &propMap[i];
+        MsRdpEx_Log("%s (%s)", prop->propName, GetTSPropertyTypeName(prop->propType));
+    }
+}
+
+bool TsPropertyMap_IsCoreProps(ITSPropertySet* pTSPropertySet)
+{
+    uint32_t propCount = pTSPropertySet->propCount;
+    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
+
+    if (propCount < 175)
+        return false;
+
+    for (int i = 0; i < 10; i++)
+    {
+        PROPERTY_ENTRY_EX* prop = &propMap[i];
+  
+        if (MsRdpEx_StringIEquals(prop->propName, "ServerName")) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool TsPropertyMap_IsBaseProps(ITSPropertySet* pTSPropertySet)
+{
+    uint32_t propCount = pTSPropertySet->propCount;
+    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
+
+    if (propCount < 100)
+        return false;
+
+    for (int i = 0; i < 10; i++)
+    {
+        PROPERTY_ENTRY_EX* prop = &propMap[i];
+
+        if (MsRdpEx_StringIEquals(prop->propName, "FullScreen")) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool TsPropertyMap_IsTransportProps(ITSPropertySet* pTSPropertySet)
+{
+    uint32_t propCount = pTSPropertySet->propCount;
+    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
+
+    if (propCount < 25)
+        return false;
+
+    for (int i = 0; i < 10; i++)
+    {
+        PROPERTY_ENTRY_EX* prop = &propMap[i];
+
+        if (MsRdpEx_StringIEquals(prop->propName, "GatewayHostname")) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 class CMsRdpPropertySet : public IMsRdpExtendedSettings
 {
 public:
@@ -298,20 +430,27 @@ public:
     }
 
     HRESULT __stdcall get_Property(BSTR bstrPropertyName, VARIANT* pValue) {
-        HRESULT hr = S_OK;
+        HRESULT hr = E_INVALIDARG;
+        uint8_t propType = 0;
         char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
         MsRdpEx_Log("CMsRdpPropertySet::get_Property(%s)", propName);
 
         VariantInit(pValue);
 
-        // TODO: use property map to find type
+        if (GetTSPropertyType(m_pTSPropertySet, propName, &propType)) {
+            if (propType == TSPROPERTY_TYPE_STRING) {
+                hr = GetBStrProperty(propName, &pValue->bstrVal);
 
-        if (MsRdpEx_StringEquals(propName, "SmartCardReaderName"))
-        {            
-            hr = GetBStrProperty(propName, &pValue->bstrVal);
+                if (hr == S_OK) {
+                    pValue->vt = VT_BSTR;
+                }
+            }
+            else if (propType == TSPROPERTY_TYPE_BOOL) {
+                hr = GetVBoolProperty(propName, &pValue->boolVal);
 
-            if (hr == S_OK) {
-                pValue->vt = VT_BSTR;
+                if (hr == S_OK) {
+                    pValue->vt = VT_BOOL;
+                }
             }
         }
 
@@ -328,6 +467,10 @@ public:
 
     HRESULT __stdcall SetBStrProperty(const char* propName, BSTR propValue) {
         return m_pTSPropertySet->vtbl->SetStringProperty(m_pTSPropertySet, propName, propValue);
+    }
+
+    HRESULT __stdcall GetVBoolProperty(const char* propName, VARIANT_BOOL* propValue) {
+        return m_pTSPropertySet->vtbl->GetBoolProperty(m_pTSPropertySet, propName, propValue);
     }
 
     HRESULT __stdcall GetBStrProperty(const char* propName, BSTR* propValue) {
@@ -573,54 +716,22 @@ public:
         if (pTSPropertySet1)
         {
             m_CoreProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet1);
-            DumpPropertyMap(pTSPropertySet1);
+            DumpTSPropertyMap(pTSPropertySet1);
         }
 
         if (pTSPropertySet2)
         {
             m_BaseProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet2);
-            DumpPropertyMap(pTSPropertySet2);
+            DumpTSPropertyMap(pTSPropertySet2);
         }
 
         if (pTSPropertySet3)
         {
             m_TransportProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet3);
-            DumpPropertyMap(pTSPropertySet3);
+            DumpTSPropertyMap(pTSPropertySet3);
         }
 
         return S_OK;
-    }
-
-    const char* GetPropertyTypeName(uint8_t propType)
-    {
-        const char* name = "none";
-
-        switch (propType)
-        {
-            case 1: name = "ULONG"; break;
-            case 2: name = "INT"; break;
-            case 3: name = "BOOL"; break;
-            case 4: name = "String"; break;
-            case 5: name = "Binary"; break;
-            case 6: name = "SecureString"; break;
-            case 7: name = "IUnknown"; break;
-        }
-
-        return name;
-    }
-
-    void DumpPropertyMap(ITSPropertySet* pTSPropertySet)
-    {
-        uint32_t propCount = pTSPropertySet->propCount;
-        PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
-
-        MsRdpEx_Log("TSPropertySet(%d)", propCount);
-
-        for (int i = 0; i < propCount; i++)
-        {
-            PROPERTY_ENTRY_EX* prop = &propMap[i];
-            MsRdpEx_Log("%s (%s)", prop->propName, GetPropertyTypeName(prop->propType));
-        }
     }
 
 private:
@@ -1376,6 +1487,8 @@ IMsRdpExCoreApi : public IUnknown
 public:
     virtual HRESULT __stdcall Load(void) = 0;
     virtual HRESULT __stdcall Unload(void) = 0;
+    virtual void __stdcall SetLogEnabled(bool enabled) = 0;
+    virtual void __stdcall SetLogFilePath(const char* logFilePath) = 0;
 };
 
 class CMsRdpExCoreApi : public IMsRdpExCoreApi
@@ -1440,18 +1553,28 @@ public:
 
     // IMsRdpExCoreApi
 public:
-    HRESULT STDMETHODCALLTYPE Load()
+    HRESULT __stdcall Load()
     {
         MsRdpEx_Load();
         MsRdpEx_Log("CMsRdpExCoreApi::Load");
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE Unload()
+    HRESULT __stdcall Unload()
     {
         MsRdpEx_Log("CMsRdpExCoreApi::Unload");
         MsRdpEx_Unload();
         return S_OK;
+    }
+
+    void __stdcall SetLogEnabled(bool logEnabled)
+    {
+        MsRdpEx_SetLogEnabled(logEnabled);
+    }
+
+    void __stdcall SetLogFilePath(const char* logFilePath)
+    {
+        MsRdpEx_SetLogFilePath(logFilePath);
     }
 
 private:

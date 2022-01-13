@@ -10,6 +10,12 @@ namespace MsRdpEx
     {
         void Load();
         void Unload();
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetLogEnabled([MarshalAs(UnmanagedType.U1)] bool logEnabled);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetLogFilePath([MarshalAs(UnmanagedType.LPStr)] string logFilePath);
     }
 
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
