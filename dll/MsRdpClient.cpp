@@ -7,11 +7,15 @@
 #include <MsRdpEx/Process.h>
 #include <MsRdpEx/NameResolver.h>
 
+#include "TSObjects.h"
+
 #pragma warning (disable : 26812)
 
 #include "mstscax.tlh"
 #include "mstscax.tli"
 
+extern "C" const GUID __declspec(selectany) IID_ITSInstance =
+    { 0x7272B11A,0xC627,0x40DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
 extern "C" const GUID __declspec(selectany) IID_ITSPropertySet =
     { 0x7272B10D,0xC627,0x90DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
 extern "C" const GUID __declspec(selectany) IID_ITSNameResolver =
@@ -62,84 +66,6 @@ typedef struct IMstscAxInternalVtbl
 struct _IMstscAxInternal
 {
     IMstscAxInternalVtbl* vtbl;
-};
-
-#pragma pack(push, 1)
-
-#define TSPROPERTY_TYPE_ULONG       1
-#define TSPROPERTY_TYPE_INT         2
-#define TSPROPERTY_TYPE_BOOL        3
-#define TSPROPERTY_TYPE_STRING      4
-#define TSPROPERTY_TYPE_BINARY      5
-#define TSPROPERTY_TYPE_SSTRING     6
-#define TSPROPERTY_TYPE_IUNKNOWN    7
-
-struct tagPROPERTY_ENTRY_EX
-{
-    const char* propName;
-    uint8_t propType;
-    uint8_t padding1[23];
-    uint8_t padding2[32];
-    uint64_t padding3;
-};
-typedef struct tagPROPERTY_ENTRY_EX PROPERTY_ENTRY_EX;
-
-#pragma pack(pop)
-
-typedef struct _ITSPropertySet ITSPropertySet;
-
-typedef struct ITSPropertySetVtbl
-{
-    HRESULT(STDMETHODCALLTYPE* QueryInterface)(ITSPropertySet* This, REFIID riid, void** ppvObject);
-    ULONG(STDMETHODCALLTYPE* AddRef)(ITSPropertySet* This);
-    ULONG(STDMETHODCALLTYPE* Release)(ITSPropertySet* This);
-    HRESULT(STDMETHODCALLTYPE* SetProperty)(ITSPropertySet* This, const char* propName, void* propValue);
-    HRESULT(STDMETHODCALLTYPE* SetBoolProperty)(ITSPropertySet* This, const char* propName, VARIANT_BOOL propValue);
-    HRESULT(STDMETHODCALLTYPE* SetIntProperty)(ITSPropertySet* This, const char* propName, int propValue);
-    HRESULT(STDMETHODCALLTYPE* SetIUnknownProperty)(ITSPropertySet* This, const char* propName, void* propValue);
-    HRESULT(STDMETHODCALLTYPE* SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
-    HRESULT(STDMETHODCALLTYPE* SetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
-    HRESULT(STDMETHODCALLTYPE* SetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR propValue);
-    HRESULT(STDMETHODCALLTYPE* GetProperty1)(ITSPropertySet* This, const char* propName, WCHAR* a1, int a2);
-    HRESULT(STDMETHODCALLTYPE* GetProperty2)(ITSPropertySet* This, const char* propName, uint32_t* a1);
-    HRESULT(STDMETHODCALLTYPE* GetIntProperty)(ITSPropertySet* This, const char* propName, int* propValue);
-    HRESULT(STDMETHODCALLTYPE* GetIUnknownProperty)(ITSPropertySet* This, const char* propName, IUnknown** propValue);
-    HRESULT(STDMETHODCALLTYPE* GetBoolProperty)(ITSPropertySet* This, const char* propName, VARIANT_BOOL* propValue);
-    HRESULT(STDMETHODCALLTYPE* GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
-    HRESULT(STDMETHODCALLTYPE* GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* a1, uint32_t* a2);
-    HRESULT(STDMETHODCALLTYPE* GetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR* propValue);
-    HRESULT(STDMETHODCALLTYPE* EnterReadLock)(ITSPropertySet* This);
-    HRESULT(STDMETHODCALLTYPE* LeaveReadLock)(ITSPropertySet* This);
-    HRESULT(STDMETHODCALLTYPE* EnterWriteLock)(ITSPropertySet* This);
-    HRESULT(STDMETHODCALLTYPE* LeaveWriteLock)(ITSPropertySet* This);
-    HRESULT(STDMETHODCALLTYPE* RevertToDefaults)(ITSPropertySet* This);
-} ITSPropertySetVtbl;
-
-struct _ITSPropertySet
-{
-    ITSPropertySetVtbl* vtbl;
-    void* INonDelegatingUnknownVtbl;
-    void* TSObjectVtbl;
-    const char* name;
-    uint32_t marker;
-    uint32_t refCount;
-    void* unknown1;
-    void* unknown2;
-    void* unknown3;
-    PROPERTY_ENTRY_EX* propMap;
-    uint32_t propCount;
-};
-
-typedef struct _ITSObjectBase ITSObjectBase;
-
-struct _ITSObjectBase
-{
-    IUnknown* vtbl;
-    IUnknown* INonDelegatingUnknownVtbl;
-    IUnknown* TSObjectVtbl;
-    const char* name;
-    uint32_t marker;
-    uint32_t refCount;
 };
 
 typedef struct _ITSCoreApi ITSCoreApi;
@@ -217,130 +143,6 @@ static VOID WriteIID(REFIID riid)
         }
         CoTaskMemFree(polestrIID);
     }
-}
-
-const char* GetTSPropertyTypeName(uint8_t propType)
-{
-    const char* name = "none";
-
-    switch (propType)
-    {
-        case 1: name = "ULONG"; break;
-        case 2: name = "INT"; break;
-        case 3: name = "BOOL"; break;
-        case 4: name = "String"; break;
-        case 5: name = "Binary"; break;
-        case 6: name = "SecureString"; break;
-        case 7: name = "IUnknown"; break;
-    }
-
-    return name;
-}
-
-PROPERTY_ENTRY_EX* FindTSProperty(ITSPropertySet* pTSPropertySet, const char* name)
-{
-    PROPERTY_ENTRY_EX* found = NULL;
-    uint32_t propCount = pTSPropertySet->propCount;
-    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
-
-    for (int i = 0; i < propCount; i++)
-    {
-        PROPERTY_ENTRY_EX* prop = &propMap[i];
-
-        if (MsRdpEx_StringEquals(name, prop->propName)) {
-            found = prop;
-            break;
-        }
-    }
-
-    return found;
-}
-
-bool GetTSPropertyType(ITSPropertySet* pTSPropertySet, const char* name, uint8_t* pPropType)
-{
-    PROPERTY_ENTRY_EX* prop = FindTSProperty(pTSPropertySet, name);
-
-    *pPropType = 0;
-
-    if (prop) {
-        *pPropType = prop->propType;
-    }
-
-    return prop ? true : false;
-}
-
-void DumpTSPropertyMap(ITSPropertySet* pTSPropertySet, const char* name)
-{
-    uint32_t propCount = pTSPropertySet->propCount;
-    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
-
-    MsRdpEx_Log("TSPropertySet: %s (%d)", name, propCount);
-
-    for (int i = 0; i < propCount; i++)
-    {
-        PROPERTY_ENTRY_EX* prop = &propMap[i];
-        MsRdpEx_Log("%s (%s)", prop->propName, GetTSPropertyTypeName(prop->propType));
-    }
-}
-
-bool TsPropertyMap_IsCoreProps(ITSPropertySet* pTSPropertySet)
-{
-    uint32_t propCount = pTSPropertySet->propCount;
-    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
-
-    if (propCount < 175)
-        return false;
-
-    for (int i = 0; i < 10; i++)
-    {
-        PROPERTY_ENTRY_EX* prop = &propMap[i];
-  
-        if (MsRdpEx_StringIEquals(prop->propName, "ServerName")) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool TsPropertyMap_IsBaseProps(ITSPropertySet* pTSPropertySet)
-{
-    uint32_t propCount = pTSPropertySet->propCount;
-    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
-
-    if (propCount < 100)
-        return false;
-
-    for (int i = 0; i < 10; i++)
-    {
-        PROPERTY_ENTRY_EX* prop = &propMap[i];
-
-        if (MsRdpEx_StringIEquals(prop->propName, "FullScreen")) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool TsPropertyMap_IsTransportProps(ITSPropertySet* pTSPropertySet)
-{
-    uint32_t propCount = pTSPropertySet->propCount;
-    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
-
-    if (propCount < 25)
-        return false;
-
-    for (int i = 0; i < 10; i++)
-    {
-        PROPERTY_ENTRY_EX* prop = &propMap[i];
-
-        if (MsRdpEx_StringIEquals(prop->propName, "GatewayHostname")) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 class CMsRdpPropertySet : public IMsRdpExtendedSettings
@@ -574,7 +376,7 @@ public:
 
         if (MsRdpEx_StringEquals(propName, "CoreProperties")) {
             if (!m_CoreProps) {
-                return E_UNEXPECTED;
+                return E_INVALIDARG;
             }
 
             pValue->vt = VT_UNKNOWN;
@@ -583,7 +385,7 @@ public:
         }
         else if (MsRdpEx_StringEquals(propName, "BaseProperties")) {
             if (!m_BaseProps) {
-                return E_UNEXPECTED;
+                return E_INVALIDARG;
             }
 
             pValue->vt = VT_UNKNOWN;
@@ -592,7 +394,7 @@ public:
         }
         else if (MsRdpEx_StringEquals(propName, "TransportProperties")) {
             if (!m_TransportProps) {
-                return E_UNEXPECTED;
+                return E_INVALIDARG;
             }
 
             pValue->vt = VT_UNKNOWN;
@@ -610,7 +412,7 @@ public:
         MsRdpEx_Log("CMsRdpExtendedSettings::put_CoreProperty(%s)", propName);
 
         if (!m_CoreProps)
-            return E_UNEXPECTED;
+            return E_INVALIDARG;
 
         return m_CoreProps->put_Property(bstrPropertyName, pValue);
     }
@@ -620,7 +422,7 @@ public:
         MsRdpEx_Log("CMsRdpExtendedSettings::get_CoreProperty(%s)", propName);
 
         if (!m_CoreProps)
-            return E_UNEXPECTED;
+            return E_INVALIDARG;
 
         return m_CoreProps->get_Property(bstrPropertyName, pValue);
     }
@@ -630,7 +432,7 @@ public:
         MsRdpEx_Log("CMsRdpExtendedSettings::put_BaseProperty(%s)", propName);
 
         if (!m_BaseProps)
-            return E_UNEXPECTED;
+            return E_INVALIDARG;
 
         return m_BaseProps->put_Property(bstrPropertyName, pValue);
     }
@@ -640,7 +442,7 @@ public:
         MsRdpEx_Log("CMsRdpExtendedSettings::get_BaseProperty(%s)", propName);
 
         if (!m_BaseProps)
-            return E_UNEXPECTED;
+            return E_INVALIDARG;
 
         return m_BaseProps->get_Property(bstrPropertyName, pValue);
     }
@@ -669,7 +471,7 @@ public:
                 if (pTSObject) {
                     memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
                     if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
-                        if (pTSObject->marker == 0xDBCAABCD) {
+                        if (pTSObject->marker == TSOBJECT_MARKER) {
                             MsRdpEx_Log("MsTscAx(%d): 0x%08X name: %s refCount: %d",
                                 i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
 
@@ -699,7 +501,7 @@ public:
                 if (pTSObject) {
                     memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
                     if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
-                        if (pTSObject->marker == 0xDBCAABCD) {
+                        if (pTSObject->marker == TSOBJECT_MARKER) {
                             MsRdpEx_Log("TSWin32CoreApi(%d): 0x%08X name: %s refCount: %d",
                                 i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
 
@@ -719,19 +521,19 @@ public:
         if (pTSCoreProps)
         {
             m_CoreProps = new CMsRdpPropertySet((IUnknown*)pTSCoreProps);
-            DumpTSPropertyMap(pTSCoreProps, "Core");
+            //DumpTSPropertyMap(pTSCoreProps, "Core");
         }
 
         if (pTSBaseProps)
         {
             m_BaseProps = new CMsRdpPropertySet((IUnknown*)pTSBaseProps);
-            DumpTSPropertyMap(pTSBaseProps, "Base");
+            //DumpTSPropertyMap(pTSBaseProps, "Base");
         }
 
         if (pTSTransportProps)
         {
             m_TransportProps = new CMsRdpPropertySet((IUnknown*)pTSTransportProps);
-            DumpTSPropertyMap(pTSTransportProps, "Transport");
+            //DumpTSPropertyMap(pTSTransportProps, "Transport");
         }
 
         return S_OK;

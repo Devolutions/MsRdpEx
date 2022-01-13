@@ -3,6 +3,8 @@
 
 #include <MsRdpEx/ArrayList.h>
 
+#include "TSObjects.h"
+
 MsRdpEx_RdpSession* MsRdpEx_RdpSession_New()
 {
 	MsRdpEx_RdpSession* session;
@@ -13,6 +15,14 @@ MsRdpEx_RdpSession* MsRdpEx_RdpSession_New()
 		return NULL;
 
 	return session;
+}
+
+void MsRdpEx_RdpSession_AttachWindow(MsRdpEx_RdpSession* session, HWND hWnd, void* pUserData)
+{
+	if (!session)
+		return;
+
+	return;
 }
 
 void MsRdpEx_RdpSession_Free(MsRdpEx_RdpSession* session)
@@ -127,7 +137,7 @@ void MsRdpEx_SessionManager_Free(MsRdpEx_SessionManager* ctx)
 MsRdpEx_SessionManager* MsRdpEx_SessionManager_Get()
 {
 	if (!g_SessionManager)
-		g_SessionManager = MsRdpEx_SessionManager_New(true);
+		g_SessionManager = MsRdpEx_SessionManager_New();
 
 	g_RefCount++;
 

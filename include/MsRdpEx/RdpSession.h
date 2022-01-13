@@ -19,6 +19,8 @@ typedef struct _MsRdpEx_RdpSession MsRdpEx_RdpSession;
 MsRdpEx_RdpSession* MsRdpEx_RdpSession_New();
 void MsRdpEx_RdpSession_Free(MsRdpEx_RdpSession* session);
 
+void MsRdpEx_RdpSession_AttachWindow(MsRdpEx_RdpSession* session, HWND hWnd, void* pUserData);
+
 typedef struct _MsRdpEx_SessionManager MsRdpEx_SessionManager;
 
 bool MsRdpEx_SessionManager_Add(MsRdpEx_RdpSession* session);

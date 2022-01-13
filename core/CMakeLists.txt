@@ -20,7 +20,6 @@ add_library(MsRdpEx_Core STATIC
     Log.c
     Paths.c
     RdpFile.c
-    RdpSession.c
     String.c
     ${MSRDPEX_CORE_HEADERS})
 

@@ -172,10 +172,13 @@ end:
 
 static WNDPROC Real_OPWndProc = NULL;
 
+extern void MsRdpEx_OutputWindow_OnCreate(HWND hWnd, void* pUserData);
+
 LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result;
 	char* lpWindowNameA = NULL;
+    MsRdpEx_RdpSession* session = NULL;
 	
 	MsRdpEx_Log("OPWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
 
@@ -186,7 +189,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, createStruct->lpszName, -1, &lpWindowNameA, 0, NULL, NULL);
 
-        MsRdpEx_RdpSession* session = MsRdpEx_RdpSession_New();
+        session = MsRdpEx_RdpSession_New();
         session->hOutputPresenterWnd = hWnd;
         MsRdpEx_SessionManager_Add(session);
 	}
@@ -196,6 +199,11 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	if (uMsg == WM_NCCREATE)
 	{
 		void* pUserData = (void*) GetWindowLongPtrW(hWnd, GWLP_USERDATA);
+
+        if (session)
+        {
+            MsRdpEx_RdpSession_AttachWindow(session, hWnd, pUserData);
+        }
 	}
 	else if (uMsg == WM_NCDESTROY)
 	{

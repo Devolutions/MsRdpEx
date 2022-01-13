@@ -10,6 +10,9 @@ add_library(MsRdpEx_Dll SHARED
     Process.cpp
     Bitmap.c
     WinMsg.c
+    RdpSession.cpp
+    TSObjects.cpp
+    TSObjects.h
 	MsRdpEx.c
 	MsRdpEx.h
     MsRdpEx.def)
