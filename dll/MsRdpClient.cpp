@@ -269,12 +269,12 @@ bool GetTSPropertyType(ITSPropertySet* pTSPropertySet, const char* name, uint8_t
     return prop ? true : false;
 }
 
-void DumpTSPropertyMap(ITSPropertySet* pTSPropertySet)
+void DumpTSPropertyMap(ITSPropertySet* pTSPropertySet, const char* name)
 {
     uint32_t propCount = pTSPropertySet->propCount;
     PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
 
-    MsRdpEx_Log("TSPropertySet(%d)", propCount);
+    MsRdpEx_Log("TSPropertySet: %s (%d)", name, propCount);
 
     for (int i = 0; i < propCount; i++)
     {
@@ -657,9 +657,9 @@ public:
 
         size_t maxPtrCount = 1000;
         ITSObjectBase* pTSWin32CoreApi = NULL;
-        ITSPropertySet* pTSPropertySet1 = NULL;
-        ITSPropertySet* pTSPropertySet2 = NULL;
-        ITSPropertySet* pTSPropertySet3 = NULL;
+        ITSPropertySet* pTSCoreProps = NULL;
+        ITSPropertySet* pTSBaseProps = NULL;
+        ITSPropertySet* pTSTransportProps = NULL;
 
         for (int i = 0; i < maxPtrCount; i++) {
             ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)m_pMsTscAx)[i];
@@ -674,11 +674,12 @@ public:
                                 i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
 
                             if (!strcmp(pTSObject->name, "CTSPropertySet")) {
-                                if (!pTSPropertySet1) {
-                                    pTSPropertySet1 = (ITSPropertySet*)pTSObject;
-                                }
-                                else if (!pTSPropertySet2 && ((void*)pTSPropertySet1 != pTSObject)) {
-                                    pTSPropertySet2 = (ITSPropertySet*)pTSObject;
+                                ITSPropertySet* pTSProps = (ITSPropertySet*) pTSObject;
+
+                                if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
+                                    pTSCoreProps = pTSProps;
+                                } else if (!pTSBaseProps && TsPropertyMap_IsBaseProps(pTSProps)) {
+                                    pTSBaseProps = pTSProps;
                                 }
                             }
                             else if (!strcmp(pTSObject->name, "CTSWin32CoreApi")) {
@@ -703,8 +704,10 @@ public:
                                 i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
 
                             if (!strcmp(pTSObject->name, "CTSPropertySet")) {
-                                if (((void*)pTSPropertySet1 != pTSObject) && ((void*)pTSPropertySet2 != pTSObject)) {
-                                    pTSPropertySet3 = (ITSPropertySet*)pTSObject;
+                                ITSPropertySet* pTSProps = (ITSPropertySet*)pTSObject;
+
+                                if (!pTSTransportProps && TsPropertyMap_IsTransportProps(pTSProps)) {
+                                    pTSTransportProps = pTSProps;
                                 }
                             }
                         }
@@ -713,22 +716,22 @@ public:
             }
         }
 
-        if (pTSPropertySet1)
+        if (pTSCoreProps)
         {
-            m_CoreProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet1);
-            DumpTSPropertyMap(pTSPropertySet1);
+            m_CoreProps = new CMsRdpPropertySet((IUnknown*)pTSCoreProps);
+            DumpTSPropertyMap(pTSCoreProps, "Core");
         }
 
-        if (pTSPropertySet2)
+        if (pTSBaseProps)
         {
-            m_BaseProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet2);
-            DumpTSPropertyMap(pTSPropertySet2);
+            m_BaseProps = new CMsRdpPropertySet((IUnknown*)pTSBaseProps);
+            DumpTSPropertyMap(pTSBaseProps, "Base");
         }
 
-        if (pTSPropertySet3)
+        if (pTSTransportProps)
         {
-            m_TransportProps = new CMsRdpPropertySet((IUnknown*)pTSPropertySet3);
-            DumpTSPropertyMap(pTSPropertySet3);
+            m_TransportProps = new CMsRdpPropertySet((IUnknown*)pTSTransportProps);
+            DumpTSPropertyMap(pTSTransportProps, "Transport");
         }
 
         return S_OK;
