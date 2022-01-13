@@ -18,13 +18,23 @@ namespace MsRdpEx
     {
         void Start([MarshalAs(UnmanagedType.LPStr)] string filename,
             int argc, ref IntPtr[] argv);
-        void Stop();
+        void Stop(UInt32 exitCode);
+        void Wait(UInt32 milliseconds);
+        void GetExitCode(out UInt32 exitCode);
+    }
+
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [Guid("94CDA65A-EFDF-4453-B8B2-2493A12D31C7")]
+    public interface IMsRdpExContext
+    {
+        void GetRdpClient([MarshalAs(UnmanagedType.IUnknown)] out object rdpClient);
     }
 
     public static class Bindings
     {
         private static Guid IID_IMsRdpExCoreApi = new Guid(0x13F6E86F, 0xEE7D, 0x44D1,0xAA, 0x94, 0x11, 0x36, 0xB7, 0x84, 0x44, 0x1D);
         private static Guid IID_IMsRdpExProcess = new Guid(0x338784B3, 0x3363, 0x45A2, 0x8E, 0xCD, 0x80, 0xA6, 0x5D, 0xBA, 0xF6, 0x36);
+        private static Guid IID_IMsRdpExContext = new Guid(0x94CDA65A, 0xEFDF, 0x4453, 0xB8, 0xB2, 0x24, 0x93, 0xA1, 0x2D, 0x31, 0xC7);
 
         public static IMsRdpExCoreApi GetCoreApi()
         {

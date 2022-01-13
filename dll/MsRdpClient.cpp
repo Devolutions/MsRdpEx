@@ -27,10 +27,12 @@ extern "C" const GUID __declspec(selectany) IID_ITSCoreApiInternal =
 extern "C" const GUID __declspec(selectany) IID_ITSWin32CoreApi =
     { 0x7272B113,0xC627,0x40DC,{0xBB,0x13,0x57,0xDA,0x13,0xC3,0x95,0xF0} };
 
-extern "C" const GUID __declspec(selectany) IID_IMsRdpExCoreApi =
-    { 0x13F6E86F, 0xEE7D, 0x44D1, { 0xAA,0x94,0x11,0x36,0xB7,0x84,0x44,0x1D }};
-extern "C" const GUID __declspec(selectany) IID_IMsRdpExProcess =
-    { 0x338784B3, 0x3363, 0x45A2, { 0x8E,0xCD,0x80,0xA6,0x5D,0xBA,0xF6,0x36 } };
+extern "C" const GUID __declspec(selectany) IID_IMsRdpExCoreApi = // 13F6E86F-EE7D-44D1-AA94-1136B784441D
+    { 0x13F6E86F,0xEE7D,0x44D1,{0xAA,0x94,0x11,0x36,0xB7,0x84,0x44,0x1D} };
+extern "C" const GUID __declspec(selectany) IID_IMsRdpExProcess = // 338784B3-3363-45A2-8ECD-80A65DBAF636
+    { 0x338784B3,0x3363,0x45A2,{0x8E,0xCD,0x80,0xA6,0x5D,0xBA,0xF6,0x36} };
+extern "C" const GUID __declspec(selectany) IID_IMsRdpExContext = // 94CDA65A-EFDF-4453-B8B2-2493A12D31C7
+    { 0x94CDA65A,0xEFDF,0x4453,{0xB8,0xB2,0x24,0x93,0xA1,0x2D,0x31,0xC7} };
 
 typedef struct _CIUnknown CIUnknown;
 
@@ -632,6 +634,17 @@ private:
     CMsRdpPropertySet* m_TransportProps = NULL;
 };
 
+struct __declspec(novtable)
+    IMsRdpExContext : public IUnknown
+{
+public:
+    virtual HRESULT __stdcall GetRdpClient(LPVOID* ppvObject) = 0;
+};
+
+class CMsRdpExContext;
+
+CMsRdpExContext* CMsRdpExContext_New(CMsRdpClient* pMsRdpClient);
+
 class CMsRdpClient : public IMsRdpClient10
 {
 public:
@@ -653,8 +666,12 @@ public:
         pUnknown->QueryInterface(IID_IMsRdpClient9, (LPVOID*)&m_pMsRdpClient9);
         pUnknown->QueryInterface(IID_IMsRdpClient10, (LPVOID*)&m_pMsRdpClient10);
 
-        m_MsRdpExtendedSettings = new CMsRdpExtendedSettings(pUnknown);
-        m_MsRdpExtendedSettings->AttachRdpClient(this, m_pMsTscAx);
+        m_pMsRdpExtendedSettings = new CMsRdpExtendedSettings(pUnknown);
+        m_pMsRdpExtendedSettings->AttachRdpClient(this, m_pMsTscAx);
+        m_pMsRdpExtendedSettings->AddRef();
+
+        m_pMsRdpExContext = CMsRdpExContext_New(this);
+        ((IMsRdpExContext*)m_pMsRdpExContext)->AddRef();
     }
 
     ~CMsRdpClient()
@@ -673,7 +690,12 @@ public:
         if (m_pMsRdpClient9) m_pMsRdpClient9->Release();
         if (m_pMsRdpClient10) m_pMsRdpClient10->Release();
 
-        delete m_MsRdpExtendedSettings;
+        delete m_pMsRdpExtendedSettings;
+        
+        if (m_pMsRdpExContext) {
+            IMsRdpExContext* pMsRdpExContext = (IMsRdpExContext*) m_pMsRdpExContext;
+            pMsRdpExContext->Release();
+        }
     }
 
     // IUnknown interface
@@ -766,10 +788,15 @@ public:
             return S_OK;
         }
 
-        if ((riid == IID_IMsRdpExtendedSettings) && m_MsRdpExtendedSettings)
+        if ((riid == IID_IMsRdpExtendedSettings) && m_pMsRdpExtendedSettings)
         {
-            *ppvObject = (LPVOID)((IMsRdpExtendedSettings*)m_MsRdpExtendedSettings);
-            return S_OK;
+            return m_pMsRdpExtendedSettings->QueryInterface(IID_IMsRdpExtendedSettings, ppvObject);
+        }
+
+        if ((riid == IID_IMsRdpExContext) && m_pMsRdpExContext)
+        {
+            IMsRdpExContext* pMsRdpExContext = (IMsRdpExContext*) m_pMsRdpExContext;
+            return pMsRdpExContext->QueryInterface(IID_IMsRdpExContext, ppvObject);
         }
 
         hr = m_pUnknown->QueryInterface(riid, ppvObject);
@@ -948,7 +975,7 @@ public:
         HRESULT hr;
         MsRdpEx_Log("CMsRdpClient::Connect");
 
-        CMsRdpExtendedSettings* pMsRdpExtendedSettings = m_MsRdpExtendedSettings;
+        CMsRdpExtendedSettings* pMsRdpExtendedSettings = m_pMsRdpExtendedSettings;
 
         IMsRdpClientNonScriptable3* pMsRdpClientNonScriptable3 = NULL;
         hr = m_pMsTscAx->QueryInterface(IID_IMsRdpClientNonScriptable3, (LPVOID*)&pMsRdpClientNonScriptable3);
@@ -1260,8 +1287,86 @@ private:
     IMsRdpClient8* m_pMsRdpClient8;
     IMsRdpClient9* m_pMsRdpClient9;
     IMsRdpClient10* m_pMsRdpClient10;
-    CMsRdpExtendedSettings* m_MsRdpExtendedSettings;
+    CMsRdpExContext* m_pMsRdpExContext;
+    CMsRdpExtendedSettings* m_pMsRdpExtendedSettings;
 };
+
+class CMsRdpExContext : public IMsRdpExContext
+{
+public:
+    CMsRdpExContext(CMsRdpClient* pMsRdpClient)
+    {
+        m_refCount = 0;
+        m_pMsRdpClient = pMsRdpClient;
+    }
+
+    ~CMsRdpExContext()
+    {
+
+    }
+
+    // IUnknown interface
+public:
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+        REFIID riid,
+        LPVOID* ppvObject
+    )
+    {
+        HRESULT hr = E_NOINTERFACE;
+        MsRdpEx_Log("CMsRdpExContext::QueryInterface");
+
+        if (riid == IID_IUnknown)
+        {
+            *ppvObject = (LPVOID)((IUnknown*)this);
+            m_refCount++;
+            return S_OK;
+        }
+        else if (riid == IID_IMsRdpExContext)
+        {
+            *ppvObject = (LPVOID)((IUnknown*)this);
+            m_refCount++;
+            return S_OK;
+        }
+
+        return hr;
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef()
+    {
+        MsRdpEx_Log("CMsRdpExContext::AddRef");
+        return ++m_refCount;
+    }
+
+    ULONG STDMETHODCALLTYPE Release()
+    {
+        MsRdpEx_Log("CMsRdpExContext::Release");
+        if (--m_refCount == 0)
+        {
+            MsRdpEx_Log("--> deleting object");
+            delete this;
+            return 0;
+        }
+        MsRdpEx_Log("--> refCount=%d", m_refCount);
+        return m_refCount;
+    }
+
+    // IMsRdpExContext
+public:
+    HRESULT STDMETHODCALLTYPE GetRdpClient(LPVOID* ppvObject)
+    {
+        IUnknown* pMsRdpClient = (IUnknown*) m_pMsRdpClient;
+        return pMsRdpClient->QueryInterface(IID_IUnknown, ppvObject);
+    }
+
+private:
+    ULONG m_refCount;
+    CMsRdpClient* m_pMsRdpClient;
+};
+
+CMsRdpExContext* CMsRdpExContext_New(CMsRdpClient* pMsRdpClient)
+{
+    return new CMsRdpExContext(pMsRdpClient);
+}
 
 //MIDL_INTERFACE("13F6E86F-EE7D-44D1-AA94-1136B784441D")
 //struct __declspec(uuid("13F6E86F-EE7D-44D1-AA94-1136B784441D")) __declspec(novtable)

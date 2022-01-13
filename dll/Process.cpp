@@ -133,7 +133,9 @@ struct __declspec(novtable)
 {
 public:
     virtual HRESULT __stdcall Start(const char* appName, int argc, char** argv) = 0;
-    virtual HRESULT __stdcall Stop(void) = 0;
+    virtual HRESULT __stdcall Stop(uint32_t exitCode) = 0;
+    virtual HRESULT __stdcall Wait(uint32_t milliseconds) = 0;
+    virtual HRESULT __stdcall GetExitCode(uint32_t* pExitCode) = 0;
 };
 
 class CMsRdpExProcess : public IMsRdpExProcess
@@ -265,8 +267,53 @@ public:
         return hr;
     }
 
-    HRESULT STDMETHODCALLTYPE Stop()
+    HRESULT STDMETHODCALLTYPE Stop(uint32_t exitCode)
     {
+        BOOL fSuccess;
+
+        if (!m_processInfo.hProcess) {
+            return E_HANDLE;
+        }
+
+        fSuccess = TerminateProcess(m_processInfo.hProcess, exitCode);
+
+        if (fSuccess) {
+            CloseHandle(m_processInfo.hProcess);
+            m_processInfo.hProcess = NULL;
+            m_hasExited = true;
+        }
+
+        m_exitCode = exitCode;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE Wait(uint32_t milliseconds)
+    {
+        HRESULT hr = S_OK;
+
+        if (!m_processInfo.hProcess) {
+            return E_HANDLE;
+        }
+
+        DWORD waitStatus = WaitForSingleObject(m_processInfo.hProcess, milliseconds);
+
+        if (waitStatus == WAIT_OBJECT_0) {
+            GetExitCodeProcess(m_processInfo.hProcess, &m_exitCode);
+            CloseHandle(m_processInfo.hProcess);
+            m_processInfo.hProcess = NULL;
+            m_hasExited = true;
+        } else if (waitStatus == WAIT_TIMEOUT) {
+            hr = E_PENDING;
+        } else {
+            hr = E_FAIL;
+        }
+
+        return hr;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetExitCode(uint32_t* pExitCode)
+    {
+        *pExitCode = m_exitCode;
         return S_OK;
     }
 
@@ -275,6 +322,7 @@ private:
     STARTUPINFOA m_startupInfo;
     PROCESS_INFORMATION m_processInfo;
     DWORD m_exitCode;
+    bool m_hasExited;
 };
 
 HRESULT CDECL MsRdpExProcess_CreateInstance(LPVOID* ppvObject)
