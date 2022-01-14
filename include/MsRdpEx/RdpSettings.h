@@ -28,18 +28,21 @@ public:
     HRESULT __stdcall get_Property(BSTR bstrPropertyName, VARIANT* pValue);
 
     // additional functions
+public:
     HRESULT __stdcall put_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue);
     HRESULT __stdcall get_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue);
     HRESULT __stdcall put_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue);
     HRESULT __stdcall get_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue);
-    HRESULT AttachRdpClient(IMsTscAx* pMsTscAx);
-    HRESULT LoadRdpFile(const char* rdpFileName);
+    HRESULT __stdcall AttachRdpClient(IMsTscAx* pMsTscAx);
+    HRESULT __stdcall LoadRdpFile(const char* rdpFileName);
+    HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw);
 
 private:
     ULONG m_refCount = 0;
     IUnknown* m_pUnknown = NULL;
     IMsTscAx* m_pMsTscAx = NULL;
     IMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
+    ITSPropertySet* m_pCorePropsRaw = NULL;
     CMsRdpPropertySet* m_CoreProps = NULL;
     CMsRdpPropertySet* m_BaseProps = NULL;
     CMsRdpPropertySet* m_TransportProps = NULL;

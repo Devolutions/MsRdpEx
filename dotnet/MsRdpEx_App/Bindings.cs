@@ -39,6 +39,10 @@ namespace MsRdpEx
 
         void SetOutputMirror(IntPtr outputMirror);
 
+        void GetCorePropsRawPtr(out IntPtr pCorePropsRaw);
+
+        void SetCorePropsRawPtr(IntPtr pCorePropsRaw);
+
         void AttachOutputWindow(IntPtr hOutputWnd, IntPtr pUserData);
     }
 

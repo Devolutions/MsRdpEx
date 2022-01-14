@@ -5,8 +5,11 @@
 
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/RdpSession.h>
+#include <MsRdpEx/RdpInstance.h>
 
 #include <MsRdpEx/OutputMirror.h>
+
+#include <detours.h>
 
 HMODULE (WINAPI * Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
 
@@ -114,6 +117,7 @@ bool MsRdpEx_CaptureBlt(
         MsRdpEx_RdpSession_SetOutputMirror(session, outputMirror);
     }
 
+#if 0
     if ((outputMirror->bitmapWidth != bitmapWidth) ||
         (outputMirror->bitmapHeight != bitmapHeight))
     {
@@ -122,7 +126,7 @@ bool MsRdpEx_CaptureBlt(
         MsRdpEx_OutputMirror_SetFrameSize(outputMirror, bitmapWidth, bitmapHeight);
         MsRdpEx_OutputMirror_Init(outputMirror);
     }
-
+#endif
     HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
     MsRdpEx_OutputMirror_DumpFrame(outputMirror);
@@ -207,6 +211,12 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         {
             MsRdpEx_RdpSession_AttachWindow(session, hWnd, pUserData);
         }
+
+        CMsRdpExInstance* instance = MsRdpEx_InstanceManager_AttachOutputWindow(hWnd, pUserData);
+
+        if (instance) {
+            MsRdpEx_Log("Much success, much wow!");
+        }
 	}
 	else if (uMsg == WM_NCDESTROY)
 	{
@@ -222,7 +232,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	return result;
 }
 
-ATOM (WINAPI * Real_RegisterClassExW)(WNDCLASSEXW* wndClassEx) = RegisterClassExW;
+ATOM (WINAPI * Real_RegisterClassExW)(const WNDCLASSEXW* wndClassEx) = RegisterClassExW;
 
 ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
 {
@@ -244,9 +254,6 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
 
     return wndClassAtom;
 }
-
-extern void* MsRdpEx_InstanceManager_Get();
-extern void MsRdpEx_InstanceManager_Release();
 
 void MsRdpEx_GlobalInit()
 {

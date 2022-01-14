@@ -359,8 +359,11 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
                         if (!strcmp(pTSObject->name, "CTSPropertySet")) {
                             ITSPropertySet* pTSProps = (ITSPropertySet*)pTSObject;
 
-                            if (!pTSTransportProps && TsPropertyMap_IsTransportProps(pTSProps)) {
-                                pTSTransportProps = pTSProps;
+                            if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
+                                pTSCoreProps = pTSProps;
+                            }
+                            else if (!pTSBaseProps && TsPropertyMap_IsBaseProps(pTSProps)) {
+                                pTSBaseProps = pTSProps;
                             }
                         }
                     }
@@ -373,6 +376,7 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
 
     if (pTSCoreProps)
     {
+        m_pCorePropsRaw = pTSCoreProps;
         m_CoreProps = new CMsRdpPropertySet((IUnknown*)pTSCoreProps);
         //DumpTSPropertyMap(pTSCoreProps, "Core");
     }
@@ -464,6 +468,12 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
     MsRdpEx_RdpFile_Free(rdpFile);
     free(filename);
 
+    return S_OK;
+}
+
+HRESULT CMsRdpExtendedSettings::GetCorePropsRawPtr(LPVOID* ppCorePropsRaw)
+{
+    *ppCorePropsRaw = m_pCorePropsRaw;
     return S_OK;
 }
 

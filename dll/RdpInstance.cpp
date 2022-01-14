@@ -89,47 +89,21 @@ public:
         return S_OK;
     }
 
+    HRESULT STDMETHODCALLTYPE GetCorePropsRawPtr(LPVOID* ppCorePropsRaw)
+    {
+        *ppCorePropsRaw = m_pCorePropsRaw;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE SetCorePropsRawPtr(LPVOID pCorePropsRaw)
+    {
+        m_pCorePropsRaw = (ITSPropertySet*) pCorePropsRaw;
+        return S_OK;
+    }
+
     HRESULT STDMETHODCALLTYPE AttachOutputWindow(HWND hOutputWnd, void* pUserData)
     {
         m_hOutputPresenterWnd = hOutputWnd;
-
-        size_t memStatus;
-        MEMORY_BASIC_INFORMATION memInfo;
-
-        size_t maxPtrCount = 200;
-        ITSPropertySet* pTSCoreProps = NULL;
-        ITSPropertySet* pTSBaseProps = NULL;
-
-        for (int i = 0; i < maxPtrCount; i++) {
-            ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)pUserData)[i];
-            memStatus = VirtualQuery(ppTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-            if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize >= 8)) {
-                ITSObjectBase* pTSObject = *ppTSObject;
-                if (pTSObject) {
-                    memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-                    if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
-                        if (pTSObject->marker == TSOBJECT_MARKER) {
-                            MsRdpEx_Log("COPWnd(%d): 0x%08X name: %s refCount: %d",
-                                i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
-
-                            if (!strcmp(pTSObject->name, "CTSPropertySet")) {
-                                ITSPropertySet* pTSProps = (ITSPropertySet*)pTSObject;
-
-                                if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
-                                    pTSCoreProps = pTSProps;
-                                }
-                                else if (!pTSBaseProps && TsPropertyMap_IsBaseProps(pTSProps)) {
-                                    pTSBaseProps = pTSProps;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        MsRdpEx_Log("pTSCoreProps2: %p", pTSCoreProps);
-
         return S_OK;
     }
 
@@ -138,6 +112,7 @@ public:
     CMsRdpClient* m_pMsRdpClient = NULL;
     HWND m_hOutputPresenterWnd = NULL;
     MsRdpEx_OutputMirror* m_OutputMirror = NULL;
+    ITSPropertySet* m_pCorePropsRaw = NULL;
 };
 
 CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient)
@@ -211,6 +186,83 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(HWND hWnd)
     }
 
     MsRdpEx_ArrayListIt_Finish(it);
+
+    return found ? obj : NULL;
+}
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, void* pUserData)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx)
+        return NULL;
+
+    size_t memStatus;
+    size_t maxPtrCount = 200;
+    MEMORY_BASIC_INFORMATION memInfo;
+    ITSPropertySet* pTSCoreProps = NULL;
+    ITSPropertySet* pTSBaseProps = NULL;
+
+    for (int i = 0; i < maxPtrCount; i++) {
+        ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)pUserData)[i];
+        memStatus = VirtualQuery(ppTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
+        if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize >= 8)) {
+            ITSObjectBase* pTSObject = *ppTSObject;
+            if (pTSObject) {
+                memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
+                if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
+                    if (pTSObject->marker == TSOBJECT_MARKER) {
+                        MsRdpEx_Log("COPWnd(%d): 0x%08X name: %s refCount: %d",
+                            i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
+
+                        if (!strcmp(pTSObject->name, "CTSPropertySet")) {
+                            ITSPropertySet* pTSProps = (ITSPropertySet*)pTSObject;
+
+                            if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
+                                pTSCoreProps = pTSProps;
+                            }
+                            else if (!pTSBaseProps && TsPropertyMap_IsBaseProps(pTSProps)) {
+                                pTSBaseProps = pTSProps;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void* pCorePropsRaw1 = (void*) pTSCoreProps;
+    void* pCorePropsRaw2 = NULL;
+
+    if (!pCorePropsRaw1)
+        return NULL;
+
+    bool found = false;
+    CMsRdpExInstance* obj = NULL;
+    MsRdpEx_ArrayListIt* it = NULL;
+
+    it = MsRdpEx_ArrayList_It(ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        obj = (CMsRdpExInstance*) MsRdpEx_ArrayListIt_Next(it);
+
+        obj->GetCorePropsRawPtr(&pCorePropsRaw2);
+
+        MsRdpEx_Log("pCorePropsRaw: %p == %p", pCorePropsRaw1, pCorePropsRaw2);
+
+        if (pCorePropsRaw1 == pCorePropsRaw2)
+        {
+            found = true;
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+
+    if (found) {
+        obj->m_hOutputPresenterWnd = hOutputWnd;
+    }
 
     return found ? obj : NULL;
 }

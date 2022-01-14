@@ -174,6 +174,10 @@ public:
         m_pMsRdpExInstance = CMsRdpExInstance_New(this);
         ((IMsRdpExInstance*)m_pMsRdpExInstance)->AddRef();
         MsRdpEx_InstanceManager_Add(m_pMsRdpExInstance);
+
+        void* pCorePropsRaw = NULL;
+        m_pMsRdpExtendedSettings->GetCorePropsRawPtr(&pCorePropsRaw);
+        ((IMsRdpExInstance*)m_pMsRdpExInstance)->SetCorePropsRawPtr(pCorePropsRaw);
     }
 
     ~CMsRdpClient()
