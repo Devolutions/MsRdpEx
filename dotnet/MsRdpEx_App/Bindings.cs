@@ -34,6 +34,12 @@ namespace MsRdpEx
     public interface IMsRdpExInstance
     {
         void GetRdpClient([MarshalAs(UnmanagedType.IUnknown)] out object rdpClient);
+
+        void GetOutputMirror(out IntPtr outputMirror);
+
+        void SetOutputMirror(IntPtr outputMirror);
+
+        void AttachOutputWindow(IntPtr hOutputWnd, IntPtr pUserData);
     }
 
     public static class Bindings

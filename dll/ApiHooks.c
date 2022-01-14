@@ -245,16 +245,21 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
     return wndClassAtom;
 }
 
+extern void* MsRdpEx_InstanceManager_Get();
+extern void MsRdpEx_InstanceManager_Release();
+
 void MsRdpEx_GlobalInit()
 {
     MsRdpEx_NameResolver_Get();
     MsRdpEx_SessionManager_Get();
+    MsRdpEx_InstanceManager_Get();
 }
 
 void MsRdpEx_GlobalUninit()
 {
     MsRdpEx_NameResolver_Release();
     MsRdpEx_SessionManager_Release();
+    MsRdpEx_InstanceManager_Release();
 }
 
 LONG MsRdpEx_AttachHooks()

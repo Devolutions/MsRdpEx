@@ -173,6 +173,7 @@ public:
 
         m_pMsRdpExInstance = CMsRdpExInstance_New(this);
         ((IMsRdpExInstance*)m_pMsRdpExInstance)->AddRef();
+        MsRdpEx_InstanceManager_Add(m_pMsRdpExInstance);
     }
 
     ~CMsRdpClient()
@@ -197,6 +198,7 @@ public:
         }
         
         if (m_pMsRdpExInstance) {
+            MsRdpEx_InstanceManager_Remove(m_pMsRdpExInstance, false);
             IMsRdpExInstance* pMsRdpExInstance = (IMsRdpExInstance*) m_pMsRdpExInstance;
             pMsRdpExInstance->Release();
         }
