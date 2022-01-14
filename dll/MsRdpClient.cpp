@@ -7,11 +7,13 @@
 #include <MsRdpEx/Process.h>
 #include <MsRdpEx/NameResolver.h>
 
+#include <MsRdpEx/RdpInstance.h>
+#include <MsRdpEx/RdpSettings.h>
+
 #include "TSObjects.h"
 
 #pragma warning (disable : 26812)
 
-#include "mstscax.tlh"
 #include "mstscax.tli"
 
 extern "C" const GUID __declspec(selectany) IID_ITSInstance =
@@ -145,424 +147,6 @@ static VOID WriteIID(REFIID riid)
     }
 }
 
-class CMsRdpPropertySet : public IMsRdpExtendedSettings
-{
-public:
-    CMsRdpPropertySet(IUnknown* pUnknown)
-    {
-        m_refCount = 0;
-        m_pUnknown = pUnknown;
-        pUnknown->QueryInterface(IID_ITSPropertySet, (LPVOID*)&m_pTSPropertySet);
-    }
-
-    ~CMsRdpPropertySet()
-    {
-        m_pUnknown->Release();
-        if (m_pTSPropertySet) m_pTSPropertySet->vtbl->Release(m_pTSPropertySet);
-    }
-
-    // IUnknown interface
-public:
-    HRESULT STDMETHODCALLTYPE QueryInterface(
-        REFIID riid,
-        LPVOID* ppvObject
-    )
-    {
-        HRESULT hr;
-        MsRdpEx_Log("CMsRdpPropertySet::QueryInterface");
-        WriteIID(riid);
-
-        if (riid == IID_IUnknown)
-        {
-            *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
-        }
-        if ((riid == IID_IMsRdpExtendedSettings) && m_pTSPropertySet)
-        {
-            *ppvObject = (LPVOID)((IMsRdpExtendedSettings*)this);
-            m_refCount++;
-            return S_OK;
-        }
-
-        hr = m_pUnknown->QueryInterface(riid, ppvObject);
-        MsRdpEx_Log("--> hr=%x", hr);
-        return hr;
-    }
-
-    ULONG STDMETHODCALLTYPE AddRef()
-    {
-        MsRdpEx_Log("CMsRdpPropertySet::AddRef");
-        return ++m_refCount;
-    }
-
-    ULONG STDMETHODCALLTYPE Release()
-    {
-        MsRdpEx_Log("CMsRdpPropertySet::Release");
-        if (--m_refCount == 0)
-        {
-            MsRdpEx_Log("--> deleting object");
-            delete this;
-            return 0;
-        }
-        MsRdpEx_Log("--> refCount=%d", m_refCount);
-        return m_refCount;
-    }
-
-    // IMsRdpExtendedSettings
-public:
-    HRESULT __stdcall put_Property(BSTR bstrPropertyName, VARIANT* pValue) {
-        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpPropertySet::put_Property(%s)", propName);
-        
-        if (pValue->vt == VT_BOOL)
-        {
-            return SetVBoolProperty(propName, pValue->boolVal);
-        }
-        else if (pValue->vt == VT_UI4)
-        {
-            return SetIntProperty(propName, pValue->uintVal);
-        }
-        else if (pValue->vt == VT_BSTR)
-        {
-            return SetBStrProperty(propName, pValue->bstrVal);
-        }
-
-        return E_INVALIDARG;
-    }
-
-    HRESULT __stdcall get_Property(BSTR bstrPropertyName, VARIANT* pValue) {
-        HRESULT hr = E_INVALIDARG;
-        uint8_t propType = 0;
-        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpPropertySet::get_Property(%s)", propName);
-
-        VariantInit(pValue);
-
-        if (GetTSPropertyType(m_pTSPropertySet, propName, &propType)) {
-            if (propType == TSPROPERTY_TYPE_STRING) {
-                hr = GetBStrProperty(propName, &pValue->bstrVal);
-
-                if (hr == S_OK) {
-                    pValue->vt = VT_BSTR;
-                }
-            }
-            else if (propType == TSPROPERTY_TYPE_BOOL) {
-                hr = GetVBoolProperty(propName, &pValue->boolVal);
-
-                if (hr == S_OK) {
-                    pValue->vt = VT_BOOL;
-                }
-            }
-        }
-
-        return hr;
-    }
-
-    HRESULT __stdcall SetVBoolProperty(const char* propName, VARIANT_BOOL propValue) {
-        return m_pTSPropertySet->vtbl->SetBoolProperty(m_pTSPropertySet, propName, propValue ? true : false);
-    }
-
-    HRESULT __stdcall SetIntProperty(const char* propName, uint32_t propValue) {
-        return m_pTSPropertySet->vtbl->SetIntProperty(m_pTSPropertySet, propName, propValue);
-    }
-
-    HRESULT __stdcall SetBStrProperty(const char* propName, BSTR propValue) {
-        return m_pTSPropertySet->vtbl->SetStringProperty(m_pTSPropertySet, propName, propValue);
-    }
-
-    HRESULT __stdcall GetVBoolProperty(const char* propName, VARIANT_BOOL* propValue) {
-        return m_pTSPropertySet->vtbl->GetBoolProperty(m_pTSPropertySet, propName, propValue);
-    }
-
-    HRESULT __stdcall GetBStrProperty(const char* propName, BSTR* propValue) {
-        HRESULT hr;
-        BSTR bstrVal = NULL;
-        WCHAR* wstrVal = NULL;
-
-        hr = m_pTSPropertySet->vtbl->GetStringProperty(m_pTSPropertySet, propName, &wstrVal);
-
-        if (hr != S_OK)
-            return hr;
-
-        *propValue = SysAllocString(wstrVal);
-
-        return hr;
-    }
-
-private:
-    ULONG m_refCount;
-    IUnknown* m_pUnknown;
-    ITSPropertySet* m_pTSPropertySet;
-};
-
-class CMsRdpExtendedSettings : public IMsRdpExtendedSettings
-{
-public:
-    CMsRdpExtendedSettings(IUnknown* pUnknown)
-    {
-        m_refCount = 0;
-        m_pUnknown = pUnknown;
-        pUnknown->QueryInterface(IID_IMsRdpExtendedSettings, (LPVOID*)&m_pMsRdpExtendedSettings);
-    }
-
-    ~CMsRdpExtendedSettings()
-    {
-        m_pUnknown->Release();
-        if (m_pMsRdpExtendedSettings) m_pMsRdpExtendedSettings->Release();
-    }
-
-    // IUnknown interface
-public:
-    HRESULT STDMETHODCALLTYPE QueryInterface(
-        REFIID riid,
-        LPVOID* ppvObject
-    )
-    {
-        HRESULT hr;
-        MsRdpEx_Log("CMsRdpExtendedSettings::QueryInterface");
-        WriteIID(riid);
-
-        if (riid == IID_IUnknown)
-        {
-            *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
-        }
-        if ((riid == IID_IMsRdpExtendedSettings) && m_pMsRdpExtendedSettings)
-        {
-            *ppvObject = (LPVOID)((IMsRdpExtendedSettings*)this);
-            m_refCount++;
-            return S_OK;
-        }
-
-        hr = m_pUnknown->QueryInterface(riid, ppvObject);
-        MsRdpEx_Log("--> hr=%x", hr);
-        return hr;
-    }
-
-    ULONG STDMETHODCALLTYPE AddRef()
-    {
-        MsRdpEx_Log("CMsRdpExtendedSettings::AddRef");
-        return ++m_refCount;
-    }
-
-    ULONG STDMETHODCALLTYPE Release()
-    {
-        MsRdpEx_Log("CMsRdpExtendedSettings::Release");
-        if (--m_refCount == 0)
-        {
-            MsRdpEx_Log("--> deleting object");
-            delete this;
-            return 0;
-        }
-        MsRdpEx_Log("--> refCount=%d", m_refCount);
-        return m_refCount;
-    }
-
-    // IMsRdpExtendedSettings
-public:
-    HRESULT __stdcall put_Property(BSTR bstrPropertyName, VARIANT* pValue) {
-        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpExtendedSettings::put_Property(%s)", propName);
-        return m_pMsRdpExtendedSettings->put_Property(bstrPropertyName, pValue);
-    }
-
-    HRESULT __stdcall get_Property(BSTR bstrPropertyName, VARIANT* pValue) {
-        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpExtendedSettings::get_Property(%s)", propName);
-
-        VariantInit(pValue);
-
-        if (MsRdpEx_StringEquals(propName, "CoreProperties")) {
-            if (!m_CoreProps) {
-                return E_INVALIDARG;
-            }
-
-            pValue->vt = VT_UNKNOWN;
-            pValue->punkVal = NULL;
-            return m_CoreProps->QueryInterface(IID_IUnknown, (LPVOID*) &pValue->punkVal);
-        }
-        else if (MsRdpEx_StringEquals(propName, "BaseProperties")) {
-            if (!m_BaseProps) {
-                return E_INVALIDARG;
-            }
-
-            pValue->vt = VT_UNKNOWN;
-            pValue->punkVal = NULL;
-            return m_BaseProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
-        }
-        else if (MsRdpEx_StringEquals(propName, "TransportProperties")) {
-            if (!m_TransportProps) {
-                return E_INVALIDARG;
-            }
-
-            pValue->vt = VT_UNKNOWN;
-            pValue->punkVal = NULL;
-            return m_TransportProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
-        }
-
-        return m_pMsRdpExtendedSettings->get_Property(bstrPropertyName, pValue);
-    }
-
-    // additional functions
-
-    HRESULT __stdcall put_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue) {
-        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpExtendedSettings::put_CoreProperty(%s)", propName);
-
-        if (!m_CoreProps)
-            return E_INVALIDARG;
-
-        return m_CoreProps->put_Property(bstrPropertyName, pValue);
-    }
-
-    HRESULT __stdcall get_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue) {
-        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpExtendedSettings::get_CoreProperty(%s)", propName);
-
-        if (!m_CoreProps)
-            return E_INVALIDARG;
-
-        return m_CoreProps->get_Property(bstrPropertyName, pValue);
-    }
-
-    HRESULT __stdcall put_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue) {
-        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpExtendedSettings::put_BaseProperty(%s)", propName);
-
-        if (!m_BaseProps)
-            return E_INVALIDARG;
-
-        return m_BaseProps->put_Property(bstrPropertyName, pValue);
-    }
-
-    HRESULT __stdcall get_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue) {
-        char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpExtendedSettings::get_BaseProperty(%s)", propName);
-
-        if (!m_BaseProps)
-            return E_INVALIDARG;
-
-        return m_BaseProps->get_Property(bstrPropertyName, pValue);
-    }
-
-    HRESULT AttachRdpClient(CMsRdpClient* rdpClient, IMsTscAx* pMsTscAx)
-    {
-        HRESULT hr;
-
-        m_rdpClient = rdpClient;
-        m_pMsTscAx = pMsTscAx;
-
-        size_t memStatus;
-        MEMORY_BASIC_INFORMATION memInfo;
-
-        size_t maxPtrCount = 1000;
-        ITSObjectBase* pTSWin32CoreApi = NULL;
-        ITSPropertySet* pTSCoreProps = NULL;
-        ITSPropertySet* pTSBaseProps = NULL;
-        ITSPropertySet* pTSTransportProps = NULL;
-
-        for (int i = 0; i < maxPtrCount; i++) {
-            ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)m_pMsTscAx)[i];
-            memStatus = VirtualQuery(ppTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-            if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize >= 8)) {
-                ITSObjectBase* pTSObject = *ppTSObject;
-                if (pTSObject) {
-                    memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-                    if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
-                        if (pTSObject->marker == TSOBJECT_MARKER) {
-                            MsRdpEx_Log("MsTscAx(%d): 0x%08X name: %s refCount: %d",
-                                i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
-
-                            if (!strcmp(pTSObject->name, "CTSPropertySet")) {
-                                ITSPropertySet* pTSProps = (ITSPropertySet*) pTSObject;
-
-                                if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
-                                    pTSCoreProps = pTSProps;
-                                } else if (!pTSBaseProps && TsPropertyMap_IsBaseProps(pTSProps)) {
-                                    pTSBaseProps = pTSProps;
-                                }
-                            }
-                            else if (!strcmp(pTSObject->name, "CTSWin32CoreApi")) {
-                                pTSWin32CoreApi = pTSObject;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        for (int i = 0; i < maxPtrCount; i++) {
-            ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)pTSWin32CoreApi)[i];
-            memStatus = VirtualQuery(ppTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-            if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize >= 8)) {
-                ITSObjectBase* pTSObject = *ppTSObject;
-                if (pTSObject) {
-                    memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-                    if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
-                        if (pTSObject->marker == TSOBJECT_MARKER) {
-                            MsRdpEx_Log("TSWin32CoreApi(%d): 0x%08X name: %s refCount: %d",
-                                i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
-
-                            if (!strcmp(pTSObject->name, "CTSPropertySet")) {
-                                ITSPropertySet* pTSProps = (ITSPropertySet*)pTSObject;
-
-                                if (!pTSTransportProps && TsPropertyMap_IsTransportProps(pTSProps)) {
-                                    pTSTransportProps = pTSProps;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        MsRdpEx_Log("pTSCoreProps1: %p", pTSCoreProps);
-
-        if (pTSCoreProps)
-        {
-            m_CoreProps = new CMsRdpPropertySet((IUnknown*)pTSCoreProps);
-            //DumpTSPropertyMap(pTSCoreProps, "Core");
-        }
-
-        if (pTSBaseProps)
-        {
-            m_BaseProps = new CMsRdpPropertySet((IUnknown*)pTSBaseProps);
-            //DumpTSPropertyMap(pTSBaseProps, "Base");
-        }
-
-        if (pTSTransportProps)
-        {
-            m_TransportProps = new CMsRdpPropertySet((IUnknown*)pTSTransportProps);
-            //DumpTSPropertyMap(pTSTransportProps, "Transport");
-        }
-
-        return S_OK;
-    }
-
-private:
-    ULONG m_refCount = 0;
-    IUnknown* m_pUnknown = NULL;
-    IMsTscAx* m_pMsTscAx = NULL;
-    CMsRdpClient* m_rdpClient = NULL;
-    IMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
-    CMsRdpPropertySet* m_CoreProps = NULL;
-    CMsRdpPropertySet* m_BaseProps = NULL;
-    CMsRdpPropertySet* m_TransportProps = NULL;
-};
-
-struct __declspec(novtable)
-    IMsRdpExInstance : public IUnknown
-{
-public:
-    virtual HRESULT __stdcall GetRdpClient(LPVOID* ppvObject) = 0;
-};
-
-class CMsRdpExInstance;
-
-CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient);
-
 class CMsRdpClient : public IMsRdpClient10
 {
 public:
@@ -584,9 +168,8 @@ public:
         pUnknown->QueryInterface(IID_IMsRdpClient9, (LPVOID*)&m_pMsRdpClient9);
         pUnknown->QueryInterface(IID_IMsRdpClient10, (LPVOID*)&m_pMsRdpClient10);
 
-        m_pMsRdpExtendedSettings = new CMsRdpExtendedSettings(pUnknown);
-        m_pMsRdpExtendedSettings->AttachRdpClient(this, m_pMsTscAx);
-        m_pMsRdpExtendedSettings->AddRef();
+        m_pMsRdpExtendedSettings = CMsRdpExtendedSettings_New(pUnknown, (IUnknown*) m_pMsTscAx);
+        ((IMsRdpExtendedSettings*)m_pMsRdpExtendedSettings)->AddRef();
 
         m_pMsRdpExInstance = CMsRdpExInstance_New(this);
         ((IMsRdpExInstance*)m_pMsRdpExInstance)->AddRef();
@@ -608,7 +191,10 @@ public:
         if (m_pMsRdpClient9) m_pMsRdpClient9->Release();
         if (m_pMsRdpClient10) m_pMsRdpClient10->Release();
 
-        delete m_pMsRdpExtendedSettings;
+        if (m_pMsRdpExtendedSettings) {
+            IMsRdpExtendedSettings* pMsRdpExtendedSettings = (IMsRdpExtendedSettings*) m_pMsRdpExtendedSettings;
+            pMsRdpExtendedSettings->Release();
+        }
         
         if (m_pMsRdpExInstance) {
             IMsRdpExInstance* pMsRdpExInstance = (IMsRdpExInstance*) m_pMsRdpExInstance;
@@ -708,7 +294,8 @@ public:
 
         if ((riid == IID_IMsRdpExtendedSettings) && m_pMsRdpExtendedSettings)
         {
-            return m_pMsRdpExtendedSettings->QueryInterface(IID_IMsRdpExtendedSettings, ppvObject);
+            IMsRdpExtendedSettings* pMsRdpExtendedSettings = (IMsRdpExtendedSettings*) m_pMsRdpExtendedSettings;
+            return pMsRdpExtendedSettings->QueryInterface(IID_IMsRdpExtendedSettings, ppvObject);
         }
 
         if ((riid == IID_IMsRdpExInstance) && m_pMsRdpExInstance)
@@ -901,6 +488,7 @@ public:
         IMstscAxInternal* pMstscAxInternal = NULL;
         hr = m_pMsTscAx->QueryInterface(IID_IMstscAxInternal, (LPVOID*)&pMstscAxInternal);
 
+#if 0
         char* filename = MsRdpEx_GetRdpFilenameFromCommandLine();
 
         if (filename) {
@@ -940,14 +528,6 @@ public:
                             pMsRdpExtendedSettings->PutProperty("AutoLogon", &value);
                         }
                     }
-                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {
-                        bstr_t ClearTextPassword = _com_util::ConvertStringToBSTR(entry->value);
-                        pMsRdpClientNonScriptable3->PutClearTextPassword(ClearTextPassword);
-                    }
-                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ConnectionBarText")) {
-                        bstr_t ConnectionBarText = _com_util::ConvertStringToBSTR(entry->value);
-                        pMsRdpClientNonScriptable3->PutConnectionBarText(ConnectionBarText);
-                    }
                     else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ServerNameUsedForAuthentication")) {
                         char* oldServerName = NULL;
                         bstr_t ServerNameUsedForAuthentication = _com_util::ConvertStringToBSTR(entry->value);
@@ -969,6 +549,7 @@ public:
             MsRdpEx_RdpFile_Free(rdpFile);
             free(filename);
         }
+#endif
 
         if (pMsRdpClientNonScriptable3) {
             pMsRdpClientNonScriptable3->Release();
@@ -1197,83 +778,6 @@ private:
     CMsRdpExInstance* m_pMsRdpExInstance;
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings;
 };
-
-class CMsRdpExInstance : public IMsRdpExInstance
-{
-public:
-    CMsRdpExInstance(CMsRdpClient* pMsRdpClient)
-    {
-        m_refCount = 0;
-        m_pMsRdpClient = pMsRdpClient;
-    }
-
-    ~CMsRdpExInstance()
-    {
-
-    }
-
-    // IUnknown interface
-public:
-    HRESULT STDMETHODCALLTYPE QueryInterface(
-        REFIID riid,
-        LPVOID* ppvObject
-    )
-    {
-        HRESULT hr = E_NOINTERFACE;
-        MsRdpEx_Log("CMsRdpExInstance::QueryInterface");
-
-        if (riid == IID_IUnknown)
-        {
-            *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
-        }
-        else if (riid == IID_IMsRdpExInstance)
-        {
-            *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
-        }
-
-        return hr;
-    }
-
-    ULONG STDMETHODCALLTYPE AddRef()
-    {
-        MsRdpEx_Log("CMsRdpExInstance::AddRef");
-        return ++m_refCount;
-    }
-
-    ULONG STDMETHODCALLTYPE Release()
-    {
-        MsRdpEx_Log("CMsRdpExInstance::Release");
-        if (--m_refCount == 0)
-        {
-            MsRdpEx_Log("--> deleting object");
-            delete this;
-            return 0;
-        }
-        MsRdpEx_Log("--> refCount=%d", m_refCount);
-        return m_refCount;
-    }
-
-    // IMsRdpExInstance
-public:
-    HRESULT STDMETHODCALLTYPE GetRdpClient(LPVOID* ppvObject)
-    {
-        IUnknown* pMsRdpClient = (IUnknown*) m_pMsRdpClient;
-        return pMsRdpClient->QueryInterface(IID_IUnknown, ppvObject);
-    }
-
-private:
-    ULONG m_refCount;
-    CMsRdpClient* m_pMsRdpClient;
-};
-
-CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient)
-{
-    return new CMsRdpExInstance(pMsRdpClient);
-}
 
 //MIDL_INTERFACE("13F6E86F-EE7D-44D1-AA94-1136B784441D")
 //struct __declspec(uuid("13F6E86F-EE7D-44D1-AA94-1136B784441D")) __declspec(novtable)

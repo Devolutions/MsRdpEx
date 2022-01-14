@@ -5,6 +5,10 @@
 
 #include <comdef.h>
 
+#pragma warning (disable : 26812)
+
+#include "mstscax.tlh"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
