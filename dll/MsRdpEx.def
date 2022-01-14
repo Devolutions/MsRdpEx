@@ -13,5 +13,4 @@ EXPORTS
     DllDeleteSavedCreds
     DllPreCleanUp
     MsRdpEx_QueryInterface
-    MsRdpEx_LaunchProcessMain
-    MsRdpEx_GetShadowBitmap
+    MsRdpEx_LaunchProcess

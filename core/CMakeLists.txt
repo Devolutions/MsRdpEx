@@ -8,7 +8,8 @@ set(MSRDPEX_CORE_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/OutputMirror.h"
     "${MSRDPEX_INCLUDE_DIR}/Process.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpFile.h"
-    "${MSRDPEX_INCLUDE_DIR}/RdpSession.h"
+    "${MSRDPEX_INCLUDE_DIR}/RdpInstance.h"
+    "${MSRDPEX_INCLUDE_DIR}/RdpSettings.h"
     "${MSRDPEX_INCLUDE_DIR}/VideoRecorder.h"
     "${MSRDPEX_INCLUDE_DIR}/MsRdpEx.h")
 
@@ -20,7 +21,6 @@ add_library(MsRdpEx_Core STATIC
     Log.c
     Paths.c
     RdpFile.c
-    RdpSession.c
     String.c
     ${MSRDPEX_CORE_HEADERS})
 

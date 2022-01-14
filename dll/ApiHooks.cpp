@@ -4,9 +4,11 @@
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/NameResolver.h>
-#include <MsRdpEx/RdpSession.h>
+#include <MsRdpEx/RdpInstance.h>
 
 #include <MsRdpEx/OutputMirror.h>
+
+#include <detours.h>
 
 HMODULE (WINAPI * Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
 
@@ -88,16 +90,17 @@ bool MsRdpEx_CaptureBlt(
 {
     RECT rect = { 0 };
     bool captured = false;
-    MsRdpEx_RdpSession* session;
+    IMsRdpExInstance* instance = NULL;
+    MsRdpEx_OutputMirror* outputMirror = NULL;
 
     HWND hWnd = WindowFromDC(hdcDst);
 
     if (!hWnd)
         goto end;
 
-    session = MsRdpEx_SessionManager_FindByOutputPresenterHwnd(hWnd);
+    instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
 
-    if (!session)
+    if (!instance)
         goto end;
 
     if (!GetClientRect(hWnd, &rect))
@@ -106,22 +109,25 @@ bool MsRdpEx_CaptureBlt(
     LONG bitmapWidth = MsRdpEx_GetRectWidth(&rect);
     LONG bitmapHeight = MsRdpEx_GetRectHeight(&rect);
 
-    if (!session->outputMirror) {
-        session->outputMirror = MsRdpEx_OutputMirror_New();
+    instance->GetOutputMirror((LPVOID*) &outputMirror);
+
+    if (!outputMirror) {
+        outputMirror = MsRdpEx_OutputMirror_New();
+        instance->SetOutputMirror((LPVOID) outputMirror);
     }
 
-    if ((session->outputMirror->bitmapWidth != bitmapWidth) ||
-        (session->outputMirror->bitmapHeight != bitmapHeight))
+    if ((outputMirror->bitmapWidth != bitmapWidth) ||
+        (outputMirror->bitmapHeight != bitmapHeight))
     {
-        MsRdpEx_OutputMirror_Uninit(session->outputMirror);
-        MsRdpEx_OutputMirror_SetSourceDC(session->outputMirror, hdcSrc);
-        MsRdpEx_OutputMirror_SetFrameSize(session->outputMirror, bitmapWidth, bitmapHeight);
-        MsRdpEx_OutputMirror_Init(session->outputMirror);
+        MsRdpEx_OutputMirror_Uninit(outputMirror);
+        MsRdpEx_OutputMirror_SetSourceDC(outputMirror, hdcSrc);
+        MsRdpEx_OutputMirror_SetFrameSize(outputMirror, bitmapWidth, bitmapHeight);
+        MsRdpEx_OutputMirror_Init(outputMirror);
     }
 
-    HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(session->outputMirror);
+    HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
-    MsRdpEx_OutputMirror_DumpFrame(session->outputMirror);
+    MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 
     captured = true;
 end:
@@ -172,10 +178,13 @@ end:
 
 static WNDPROC Real_OPWndProc = NULL;
 
+extern void MsRdpEx_OutputWindow_OnCreate(HWND hWnd, void* pUserData);
+
 LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT result;
 	char* lpWindowNameA = NULL;
+    CMsRdpExInstance* instance = NULL;
 	
 	MsRdpEx_Log("OPWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
 
@@ -185,10 +194,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		void* lpCreateParams = createStruct->lpCreateParams;
 
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, createStruct->lpszName, -1, &lpWindowNameA, 0, NULL, NULL);
-
-        MsRdpEx_RdpSession* session = MsRdpEx_RdpSession_New();
-        session->hOutputPresenterWnd = hWnd;
-        MsRdpEx_SessionManager_Add(session);
+        MsRdpEx_Log("Window Create: %s", lpWindowNameA);
 	}
 
 	result = Real_OPWndProc(hWnd, uMsg, wParam, lParam);
@@ -196,14 +202,16 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	if (uMsg == WM_NCCREATE)
 	{
 		void* pUserData = (void*) GetWindowLongPtrW(hWnd, GWLP_USERDATA);
+
+        instance = MsRdpEx_InstanceManager_AttachOutputWindow(hWnd, pUserData);
+
+        if (!instance) {
+            MsRdpEx_Log("Failed to find matching RDP instance from output presenter window!");
+        }
 	}
 	else if (uMsg == WM_NCDESTROY)
 	{
-        MsRdpEx_RdpSession* session = MsRdpEx_SessionManager_FindByOutputPresenterHwnd(hWnd);
 
-        if (session) {
-            MsRdpEx_SessionManager_Remove(session, true);
-        }
 	}
 
 	free(lpWindowNameA);
@@ -211,7 +219,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	return result;
 }
 
-ATOM (WINAPI * Real_RegisterClassExW)(WNDCLASSEXW* wndClassEx) = RegisterClassExW;
+ATOM (WINAPI * Real_RegisterClassExW)(const WNDCLASSEXW* wndClassEx) = RegisterClassExW;
 
 ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
 {
@@ -237,13 +245,13 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
 void MsRdpEx_GlobalInit()
 {
     MsRdpEx_NameResolver_Get();
-    MsRdpEx_SessionManager_Get();
+    MsRdpEx_InstanceManager_Get();
 }
 
 void MsRdpEx_GlobalUninit()
 {
     MsRdpEx_NameResolver_Release();
-    MsRdpEx_SessionManager_Release();
+    MsRdpEx_InstanceManager_Release();
 }
 
 LONG MsRdpEx_AttachHooks()

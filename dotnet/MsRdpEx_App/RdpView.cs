@@ -24,6 +24,7 @@ namespace MsRdpEx_App
         private string outputPath;
         private int captureIndex = 0;
         private string captureOutputPath;
+        private bool enableCapture = true;
 
         public RdpView(string axName)
         {
@@ -37,7 +38,7 @@ namespace MsRdpEx_App
 
             InitializeComponent();
 
-            if (false)
+            if (enableCapture)
             {
                 Timer CaptureTimer = new Timer();
                 CaptureTimer.Interval = (1000); // 1 second
@@ -148,13 +149,18 @@ namespace MsRdpEx_App
         {
             IntPtr hWnd = GetOutputPresenterHwnd();
 
+            IMsRdpExCoreApi coreApi = Bindings.GetCoreApi();
+
+            object instance = null;
+            bool success = coreApi.QueryInstanceByWindowHandle(hWnd, out instance);
+            IMsRdpExInstance rdpInstance = (IMsRdpExInstance) instance;
+
             IntPtr hShadowDC = IntPtr.Zero;
             IntPtr hShadowBitmap = IntPtr.Zero;
             UInt32 shadowWidth = 0;
             UInt32 shadowHeight = 0;
 
-            if (Bindings.MsRdpEx_GetShadowBitmap(hWnd,
-                ref hShadowDC, ref hShadowBitmap, ref shadowWidth, ref shadowHeight))
+            if (rdpInstance.GetShadowBitmap(ref hShadowDC, ref hShadowBitmap, ref shadowWidth, ref shadowHeight))
             {
                 Bitmap bitmap = ShadowToBitmap(hWnd, hShadowDC, hShadowBitmap, (int)shadowWidth, (int)shadowHeight);
                 string bitmapName = String.Format("capture_{0:0000}.bmp", captureIndex++);
@@ -165,12 +171,7 @@ namespace MsRdpEx_App
 
         protected void OnConnected(object sender, EventArgs e)
         {
-            IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)this.rdpClient.GetOcx();
-            object propVal = extendedSettings.get_Property("CorePropertySet");
-            IMsRdpExtendedSettings props = (IMsRdpExtendedSettings)propVal;
 
-            object myTestProperty = true;
-            props.set_Property("MyTestProperty", ref myTestProperty);
         }
 
         protected void OnConnecting(object sender, EventArgs e)

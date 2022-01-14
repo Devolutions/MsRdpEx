@@ -104,6 +104,8 @@ bool MsRdpEx_Log(const char* format, ...);
 
 void MsRdpEx_LogOpen();
 void MsRdpEx_LogClose();
+void MsRdpEx_SetLogEnabled(bool logEnabled);
+void MsRdpEx_SetLogFilePath(const char* logFilePath);
 
 // DLL Main
 

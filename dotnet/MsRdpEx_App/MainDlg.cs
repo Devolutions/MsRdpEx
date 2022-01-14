@@ -53,6 +53,14 @@ namespace MsRdpEx_App
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
 
+            if (externalMode)
+            {
+                string appName = axName;
+                string[] args = new string[0];
+                Bindings.StartProcess(appName, args);
+                return;
+            }
+
             var process = Process.GetCurrentProcess();
             string processFileName = process.MainModule.FileName;
             string processFileDir = Path.GetDirectoryName(processFileName);
@@ -69,6 +77,8 @@ namespace MsRdpEx_App
             RdpView rdpView = new RdpView(axName);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
 
+            IMsRdpExInstance rdpEx = (IMsRdpExInstance) rdp.GetOcx();
+
             rdp.Server = this.txtComputer.Text;
             rdp.UserName = this.txtUserName.Text;
             rdp.AdvancedSettings9.EnableCredSspSupport = true;
@@ -82,7 +92,6 @@ namespace MsRdpEx_App
             rdp.DesktopHeight = DesktopSize.Height;
             rdpView.ClientSize = DesktopSize;
             rdpView.Text = String.Format("{0} ({1})", rdp.Server, axName);
-            rdp.Connect();
 
             object corePropsVal = extendedSettings.get_Property("CoreProperties");
             IMsRdpExtendedSettings coreProps = (IMsRdpExtendedSettings)corePropsVal;
@@ -90,12 +99,7 @@ namespace MsRdpEx_App
             object basePropsVal = extendedSettings.get_Property("BaseProperties");
             IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
 
-            //object transportPropsVal = extendedSettings.get_Property("TransportProperties");
-            //IMsRdpExtendedSettings transportProps = (IMsRdpExtendedSettings)transportPropsVal;
-
-            object strVal = "MySmartCardReader";
-            coreProps.set_Property("SmartCardReaderName", ref strVal);
-            string readerName = (string) coreProps.get_Property("SmartCardReaderName");
+            rdp.Connect();
 
             rdpView.Show();
         }

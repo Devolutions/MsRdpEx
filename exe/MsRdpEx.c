@@ -3,13 +3,13 @@
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nShowCmd)
 {
-    int status;
+    HRESULT hr;
     int argc = 0;
     char** argv = NULL;
 
     argv = MsRdpEx_GetArgumentVector(&argc);
-    status = MsRdpEx_LaunchProcessMain(argc, argv, NULL);
+    hr = MsRdpEx_LaunchProcess(argc, argv, NULL);
     MsRdpEx_FreeArgumentVector(argc, argv);
 
-    return status;
+    return 0;
 }
