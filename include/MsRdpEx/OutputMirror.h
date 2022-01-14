@@ -34,6 +34,7 @@ void MsRdpEx_OutputMirror_SetFrameSize(MsRdpEx_OutputMirror* ctx, uint32_t frame
 bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx);
 
 bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx);
+bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx);
 
 MsRdpEx_OutputMirror* MsRdpEx_OutputMirror_New();
 void MsRdpEx_OutputMirror_Free(MsRdpEx_OutputMirror* ctx);

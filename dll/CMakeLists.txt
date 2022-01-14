@@ -4,14 +4,13 @@ add_library(MsRdpEx_Dll SHARED
     MsRdpClient.h
     AxDll.cpp
     ApiHooks.cpp
-    ApiExports.c
+    ApiExports.cpp
     OutputMirror.c
     VideoRecorder.c
     Process.cpp
     Bitmap.c
     WinMsg.c
     RdpInstance.cpp
-    RdpSession.cpp
     RdpSettings.cpp
     TSObjects.cpp
     TSObjects.h

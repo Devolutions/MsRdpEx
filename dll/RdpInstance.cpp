@@ -107,6 +107,21 @@ public:
         return S_OK;
     }
 
+    bool STDMETHODCALLTYPE GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint32_t* pWidth, uint32_t* pHeight)
+    {
+        MsRdpEx_OutputMirror* outputMirror = m_OutputMirror;
+
+        if (!outputMirror)
+            return false;
+
+        *phDC = outputMirror->hShadowDC;
+        *phBitmap = outputMirror->hShadowBitmap;
+        *pWidth = outputMirror->bitmapWidth;
+        *pHeight = outputMirror->bitmapHeight;
+
+        return true;
+    }
+
 public:
     ULONG m_refCount = NULL;
     CMsRdpClient* m_pMsRdpClient = NULL;
@@ -261,7 +276,7 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
     MsRdpEx_ArrayListIt_Finish(it);
 
     if (found) {
-        obj->m_hOutputPresenterWnd = hOutputWnd;
+        obj->AttachOutputWindow(hOutputWnd, pUserData);
     }
 
     return found ? obj : NULL;

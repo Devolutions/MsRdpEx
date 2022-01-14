@@ -24,6 +24,7 @@ namespace MsRdpEx_App
         private string outputPath;
         private int captureIndex = 0;
         private string captureOutputPath;
+        private bool enableCapture = true;
 
         public RdpView(string axName)
         {
@@ -37,13 +38,13 @@ namespace MsRdpEx_App
 
             InitializeComponent();
 
-            /*
+            if (enableCapture)
             {
                 Timer CaptureTimer = new Timer();
                 CaptureTimer.Interval = (1000); // 1 second
                 CaptureTimer.Tick += new EventHandler(CaptureTimer_Tick);
                 CaptureTimer.Start();
-            }*/
+            }
         }
 
         private enum TernaryRasterOperations : uint
@@ -148,13 +149,18 @@ namespace MsRdpEx_App
         {
             IntPtr hWnd = GetOutputPresenterHwnd();
 
+            IMsRdpExCoreApi coreApi = Bindings.GetCoreApi();
+
+            object instance = null;
+            bool success = coreApi.QueryInstanceByWindowHandle(hWnd, out instance);
+            IMsRdpExInstance rdpInstance = (IMsRdpExInstance) instance;
+
             IntPtr hShadowDC = IntPtr.Zero;
             IntPtr hShadowBitmap = IntPtr.Zero;
             UInt32 shadowWidth = 0;
             UInt32 shadowHeight = 0;
 
-            if (Bindings.MsRdpEx_GetShadowBitmap(hWnd,
-                ref hShadowDC, ref hShadowBitmap, ref shadowWidth, ref shadowHeight))
+            if (rdpInstance.GetShadowBitmap(ref hShadowDC, ref hShadowBitmap, ref shadowWidth, ref shadowHeight))
             {
                 Bitmap bitmap = ShadowToBitmap(hWnd, hShadowDC, hShadowBitmap, (int)shadowWidth, (int)shadowHeight);
                 string bitmapName = String.Format("capture_{0:0000}.bmp", captureIndex++);

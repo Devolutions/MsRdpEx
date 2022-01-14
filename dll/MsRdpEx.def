@@ -14,4 +14,3 @@ EXPORTS
     DllPreCleanUp
     MsRdpEx_QueryInterface
     MsRdpEx_LaunchProcess
-    MsRdpEx_GetShadowBitmap

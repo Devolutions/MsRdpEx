@@ -4,7 +4,6 @@
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/NameResolver.h>
-#include <MsRdpEx/RdpSession.h>
 #include <MsRdpEx/RdpInstance.h>
 
 #include <MsRdpEx/OutputMirror.h>
@@ -91,7 +90,7 @@ bool MsRdpEx_CaptureBlt(
 {
     RECT rect = { 0 };
     bool captured = false;
-    MsRdpEx_RdpSession* session = NULL;
+    IMsRdpExInstance* instance = NULL;
     MsRdpEx_OutputMirror* outputMirror = NULL;
 
     HWND hWnd = WindowFromDC(hdcDst);
@@ -99,9 +98,9 @@ bool MsRdpEx_CaptureBlt(
     if (!hWnd)
         goto end;
 
-    session = MsRdpEx_SessionManager_FindByOutputPresenterHwnd(hWnd);
+    instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
 
-    if (!session)
+    if (!instance)
         goto end;
 
     if (!GetClientRect(hWnd, &rect))
@@ -110,14 +109,13 @@ bool MsRdpEx_CaptureBlt(
     LONG bitmapWidth = MsRdpEx_GetRectWidth(&rect);
     LONG bitmapHeight = MsRdpEx_GetRectHeight(&rect);
 
-    outputMirror = MsRdpEx_RdpSession_GetOutputMirror(session);
+    instance->GetOutputMirror((LPVOID*) &outputMirror);
 
     if (!outputMirror) {
         outputMirror = MsRdpEx_OutputMirror_New();
-        MsRdpEx_RdpSession_SetOutputMirror(session, outputMirror);
+        instance->SetOutputMirror((LPVOID) outputMirror);
     }
 
-#if 0
     if ((outputMirror->bitmapWidth != bitmapWidth) ||
         (outputMirror->bitmapHeight != bitmapHeight))
     {
@@ -126,7 +124,7 @@ bool MsRdpEx_CaptureBlt(
         MsRdpEx_OutputMirror_SetFrameSize(outputMirror, bitmapWidth, bitmapHeight);
         MsRdpEx_OutputMirror_Init(outputMirror);
     }
-#endif
+
     HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
     MsRdpEx_OutputMirror_DumpFrame(outputMirror);
@@ -186,7 +184,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 {
 	LRESULT result;
 	char* lpWindowNameA = NULL;
-    MsRdpEx_RdpSession* session = NULL;
+    CMsRdpExInstance* instance = NULL;
 	
 	MsRdpEx_Log("OPWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
 
@@ -196,9 +194,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		void* lpCreateParams = createStruct->lpCreateParams;
 
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, createStruct->lpszName, -1, &lpWindowNameA, 0, NULL, NULL);
-
-        session = MsRdpEx_RdpSession_New();
-        MsRdpEx_SessionManager_Add(session);
+        MsRdpEx_Log("Window Create: %s", lpWindowNameA);
 	}
 
 	result = Real_OPWndProc(hWnd, uMsg, wParam, lParam);
@@ -207,24 +203,15 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	{
 		void* pUserData = (void*) GetWindowLongPtrW(hWnd, GWLP_USERDATA);
 
-        if (session)
-        {
-            MsRdpEx_RdpSession_AttachWindow(session, hWnd, pUserData);
-        }
+        instance = MsRdpEx_InstanceManager_AttachOutputWindow(hWnd, pUserData);
 
-        CMsRdpExInstance* instance = MsRdpEx_InstanceManager_AttachOutputWindow(hWnd, pUserData);
-
-        if (instance) {
-            MsRdpEx_Log("Much success, much wow!");
+        if (!instance) {
+            MsRdpEx_Log("Failed to find matching RDP instance from output presenter window!");
         }
 	}
 	else if (uMsg == WM_NCDESTROY)
 	{
-        MsRdpEx_RdpSession* session = MsRdpEx_SessionManager_FindByOutputPresenterHwnd(hWnd);
 
-        if (session) {
-            MsRdpEx_SessionManager_Remove(session, true);
-        }
 	}
 
 	free(lpWindowNameA);
@@ -258,14 +245,12 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
 void MsRdpEx_GlobalInit()
 {
     MsRdpEx_NameResolver_Get();
-    MsRdpEx_SessionManager_Get();
     MsRdpEx_InstanceManager_Get();
 }
 
 void MsRdpEx_GlobalUninit()
 {
     MsRdpEx_NameResolver_Release();
-    MsRdpEx_SessionManager_Release();
     MsRdpEx_InstanceManager_Release();
 }
 

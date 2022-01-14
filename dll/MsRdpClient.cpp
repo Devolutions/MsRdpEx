@@ -734,6 +734,7 @@ public:
     virtual HRESULT __stdcall Unload(void) = 0;
     virtual void __stdcall SetLogEnabled(bool enabled) = 0;
     virtual void __stdcall SetLogFilePath(const char* logFilePath) = 0;
+    virtual bool __stdcall QueryInstanceByWindowHandle(HWND hWnd, LPVOID* ppvObject) = 0;
 };
 
 class CMsRdpExCoreApi : public IMsRdpExCoreApi
@@ -820,6 +821,21 @@ public:
     void __stdcall SetLogFilePath(const char* logFilePath)
     {
         MsRdpEx_SetLogFilePath(logFilePath);
+    }
+
+    bool __stdcall QueryInstanceByWindowHandle(HWND hWnd, LPVOID* ppvObject)
+    {
+        HRESULT hr;
+        IMsRdpExInstance* instance = NULL;
+
+        instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
+
+        if (!instance)
+            return false;
+
+        hr = instance->QueryInterface(IID_IMsRdpExInstance, ppvObject);
+
+        return (hr == S_OK) ? true : false;
     }
 
 private:

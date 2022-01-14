@@ -16,6 +16,10 @@ namespace MsRdpEx
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetLogFilePath([MarshalAs(UnmanagedType.LPStr)] string logFilePath);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        bool QueryInstanceByWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.IUnknown)] out object rdpInstance);
     }
 
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -44,6 +48,10 @@ namespace MsRdpEx
         void SetCorePropsRawPtr(IntPtr pCorePropsRaw);
 
         void AttachOutputWindow(IntPtr hOutputWnd, IntPtr pUserData);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        bool GetShadowBitmap(ref IntPtr phDC, ref IntPtr phBitmap, ref UInt32 pWidth, ref UInt32 pHeight);
     }
 
     public static class Bindings
@@ -87,10 +95,6 @@ namespace MsRdpEx
         [DllImport("MsRdpEx.dll")]
         public static extern uint MsRdpEx_QueryInterface(ref Guid riid,
             [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
-
-        [DllImport("MsRdpEx.dll")]
-        public static extern bool MsRdpEx_GetShadowBitmap(IntPtr hWnd,
-            ref IntPtr phDC, ref IntPtr phBitmap, ref UInt32 pWidth, ref UInt32 pHeight);
 
         public static bool LaunchProcess(string appName, string[] args)
         {

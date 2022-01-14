@@ -17,6 +17,7 @@ public:
     virtual HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw) = 0;
     virtual HRESULT __stdcall SetCorePropsRawPtr(LPVOID pCorePropsRaw) = 0;
     virtual HRESULT __stdcall AttachOutputWindow(HWND hOutputWnd, void* pUserData) = 0;
+    virtual bool __stdcall GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint32_t* pWidth, uint32_t* pHeight) = 0;
 };
 
 class CMsRdpExInstance;
