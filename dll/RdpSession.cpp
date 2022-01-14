@@ -5,6 +5,12 @@
 
 #include "TSObjects.h"
 
+struct _MsRdpEx_RdpSession
+{
+	HWND hOutputPresenterWnd;
+	MsRdpEx_OutputMirror* outputMirror;
+};
+
 MsRdpEx_RdpSession* MsRdpEx_RdpSession_New()
 {
 	MsRdpEx_RdpSession* session;
@@ -17,10 +23,59 @@ MsRdpEx_RdpSession* MsRdpEx_RdpSession_New()
 	return session;
 }
 
+MsRdpEx_OutputMirror* MsRdpEx_RdpSession_GetOutputMirror(MsRdpEx_RdpSession* session)
+{
+	return session->outputMirror;
+}
+
+void MsRdpEx_RdpSession_SetOutputMirror(MsRdpEx_RdpSession* session, MsRdpEx_OutputMirror* outputMirror)
+{
+	session->outputMirror = outputMirror;
+}
+
 void MsRdpEx_RdpSession_AttachWindow(MsRdpEx_RdpSession* session, HWND hWnd, void* pUserData)
 {
 	if (!session)
 		return;
+
+	session->hOutputPresenterWnd = hWnd;
+
+	size_t memStatus;
+	MEMORY_BASIC_INFORMATION memInfo;
+
+	size_t maxPtrCount = 200;
+	ITSPropertySet* pTSCoreProps = NULL;
+	ITSPropertySet* pTSBaseProps = NULL;
+
+	for (int i = 0; i < maxPtrCount; i++) {
+		ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)pUserData)[i];
+		memStatus = VirtualQuery(ppTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
+		if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize >= 8)) {
+			ITSObjectBase* pTSObject = *ppTSObject;
+			if (pTSObject) {
+				memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
+				if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
+					if (pTSObject->marker == TSOBJECT_MARKER) {
+						MsRdpEx_Log("COPWnd(%d): 0x%08X name: %s refCount: %d",
+							i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
+
+						if (!strcmp(pTSObject->name, "CTSPropertySet")) {
+							ITSPropertySet* pTSProps = (ITSPropertySet*)pTSObject;
+
+							if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
+								pTSCoreProps = pTSProps;
+							}
+							else if (!pTSBaseProps && TsPropertyMap_IsBaseProps(pTSProps)) {
+								pTSBaseProps = pTSProps;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	MsRdpEx_Log("pTSCoreProps2: %p", pTSCoreProps);
 
 	return;
 }

@@ -77,7 +77,7 @@ namespace MsRdpEx_App
             RdpView rdpView = new RdpView(axName);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
 
-            IMsRdpExContext rdpEx = (IMsRdpExContext) rdp.GetOcx();
+            IMsRdpExInstance rdpEx = (IMsRdpExInstance) rdp.GetOcx();
 
             rdp.Server = this.txtComputer.Text;
             rdp.UserName = this.txtUserName.Text;

@@ -19,7 +19,7 @@ bool MsRdpEx_GetShadowBitmap(HWND hWnd, HDC* phDC, HBITMAP* phBitmap, uint32_t* 
     if (!session)
         return false;
 
-    outputMirror = session->outputMirror;
+    outputMirror = MsRdpEx_RdpSession_GetOutputMirror(session);
 
     if (!outputMirror)
         return false;

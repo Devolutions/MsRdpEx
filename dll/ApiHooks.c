@@ -88,7 +88,8 @@ bool MsRdpEx_CaptureBlt(
 {
     RECT rect = { 0 };
     bool captured = false;
-    MsRdpEx_RdpSession* session;
+    MsRdpEx_RdpSession* session = NULL;
+    MsRdpEx_OutputMirror* outputMirror = NULL;
 
     HWND hWnd = WindowFromDC(hdcDst);
 
@@ -106,22 +107,25 @@ bool MsRdpEx_CaptureBlt(
     LONG bitmapWidth = MsRdpEx_GetRectWidth(&rect);
     LONG bitmapHeight = MsRdpEx_GetRectHeight(&rect);
 
-    if (!session->outputMirror) {
-        session->outputMirror = MsRdpEx_OutputMirror_New();
+    outputMirror = MsRdpEx_RdpSession_GetOutputMirror(session);
+
+    if (!outputMirror) {
+        outputMirror = MsRdpEx_OutputMirror_New();
+        MsRdpEx_RdpSession_SetOutputMirror(session, outputMirror);
     }
 
-    if ((session->outputMirror->bitmapWidth != bitmapWidth) ||
-        (session->outputMirror->bitmapHeight != bitmapHeight))
+    if ((outputMirror->bitmapWidth != bitmapWidth) ||
+        (outputMirror->bitmapHeight != bitmapHeight))
     {
-        MsRdpEx_OutputMirror_Uninit(session->outputMirror);
-        MsRdpEx_OutputMirror_SetSourceDC(session->outputMirror, hdcSrc);
-        MsRdpEx_OutputMirror_SetFrameSize(session->outputMirror, bitmapWidth, bitmapHeight);
-        MsRdpEx_OutputMirror_Init(session->outputMirror);
+        MsRdpEx_OutputMirror_Uninit(outputMirror);
+        MsRdpEx_OutputMirror_SetSourceDC(outputMirror, hdcSrc);
+        MsRdpEx_OutputMirror_SetFrameSize(outputMirror, bitmapWidth, bitmapHeight);
+        MsRdpEx_OutputMirror_Init(outputMirror);
     }
 
-    HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(session->outputMirror);
+    HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
-    MsRdpEx_OutputMirror_DumpFrame(session->outputMirror);
+    MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 
     captured = true;
 end:
@@ -190,7 +194,6 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, createStruct->lpszName, -1, &lpWindowNameA, 0, NULL, NULL);
 
         session = MsRdpEx_RdpSession_New();
-        session->hOutputPresenterWnd = hWnd;
         MsRdpEx_SessionManager_Add(session);
 	}
 

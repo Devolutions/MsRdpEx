@@ -9,12 +9,10 @@
 extern "C" {
 #endif
 
-struct _MsRdpEx_RdpSession
-{
-	HWND hOutputPresenterWnd;
-	MsRdpEx_OutputMirror* outputMirror;
-};
 typedef struct _MsRdpEx_RdpSession MsRdpEx_RdpSession;
+
+MsRdpEx_OutputMirror* MsRdpEx_RdpSession_GetOutputMirror(MsRdpEx_RdpSession* session);
+void MsRdpEx_RdpSession_SetOutputMirror(MsRdpEx_RdpSession* session, MsRdpEx_OutputMirror* outputMirror);
 
 MsRdpEx_RdpSession* MsRdpEx_RdpSession_New();
 void MsRdpEx_RdpSession_Free(MsRdpEx_RdpSession* session);
