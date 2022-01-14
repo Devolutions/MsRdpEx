@@ -488,68 +488,7 @@ public:
         IMstscAxInternal* pMstscAxInternal = NULL;
         hr = m_pMsTscAx->QueryInterface(IID_IMstscAxInternal, (LPVOID*)&pMstscAxInternal);
 
-#if 0
-        char* filename = MsRdpEx_GetRdpFilenameFromCommandLine();
-
-        if (filename) {
-            MsRdpEx_Log("Loading %s RDP", filename);
-            MsRdpEx_RdpFile* rdpFile = MsRdpEx_RdpFile_New();
-            if (MsRdpEx_RdpFile_Load(rdpFile, filename)) {
-                MsRdpEx_ArrayListIt* it = NULL;
-                MsRdpEx_RdpFileEntry* entry = NULL;
-
-                it = MsRdpEx_ArrayList_It(rdpFile->entries, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
-
-                while (!MsRdpEx_ArrayListIt_Done(it))
-                {
-                    entry = (MsRdpEx_RdpFileEntry*) MsRdpEx_ArrayListIt_Next(it);
-
-                    if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableCredentialsDelegation")) {
-                        VARIANT value;
-                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                            pMsRdpExtendedSettings->PutProperty("DisableCredentialsDelegation", &value);
-                        }
-                    }
-                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RedirectedAuthentication")) {
-                        VARIANT value;
-                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                            pMsRdpExtendedSettings->PutProperty("RedirectedAuthentication", &value);
-                        }
-                    }
-                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RestrictedLogon")) {
-                        VARIANT value;
-                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                            pMsRdpExtendedSettings->PutProperty("RestrictedLogon", &value);
-                        }
-                    }
-                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "AutoLogon")) {
-                        VARIANT value;
-                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                            pMsRdpExtendedSettings->PutProperty("AutoLogon", &value);
-                        }
-                    }
-                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ServerNameUsedForAuthentication")) {
-                        char* oldServerName = NULL;
-                        bstr_t ServerNameUsedForAuthentication = _com_util::ConvertStringToBSTR(entry->value);
-                        MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, m_pMsTscAx->GetServer().GetBSTR(), -1, &oldServerName, 0, NULL, NULL);
-                        m_pMsTscAx->PutServer(ServerNameUsedForAuthentication);
-                        MsRdpEx_NameResolver_RemapName(entry->value, oldServerName);
-                    }
-                    else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableUDPTransport")) {
-                        VARIANT value;
-                        if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                            bstr_t propName = _com_util::ConvertStringToBSTR(entry->value);
-                            pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
-                        }
-                    }
-                }
-
-                MsRdpEx_ArrayListIt_Finish(it);
-            }
-            MsRdpEx_RdpFile_Free(rdpFile);
-            free(filename);
-        }
-#endif
+        m_pMsRdpExtendedSettings->LoadRdpFile(NULL);
 
         if (pMsRdpClientNonScriptable3) {
             pMsRdpClientNonScriptable3->Release();

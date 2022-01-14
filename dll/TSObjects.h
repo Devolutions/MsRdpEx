@@ -9,6 +9,8 @@
 
 #include "mstscax.tlh"
 
+using namespace MSTSCLib;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
