@@ -4,7 +4,6 @@ add_library(MsRdpEx_Dll SHARED
     MsRdpClient.h
     AxDll.cpp
     ApiHooks.cpp
-    ApiExports.cpp
     OutputMirror.c
     VideoRecorder.c
     Process.cpp
