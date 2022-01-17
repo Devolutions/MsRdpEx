@@ -2,12 +2,12 @@ name: nuget package
 on: workflow_dispatch
 jobs:
   build:
-    name: MsRdpEx nuget package
+    name: MsRdpEx package
     runs-on: windows-2022
     strategy:
       fail-fast: false
       matrix:
-        arch: [ x64, arm64 ]
+        arch: [ x64, ARM64 ]
 
     steps:
       - name: Configure runner
@@ -23,9 +23,12 @@ jobs:
           Enter-VsDevShell ${{matrix.arch}}
           .\detours.ps1
 
-      - name: Build MsRdpEx (${{matrix.arch}})
+      - name: Build MsRdpEx.dll (${{matrix.arch}})
         shell: pwsh
         run: |
-          mkdir build-${{matrix.arch}} && cd build-${{matrix.arch}}
-          cmake -G "Visual Studio 17 2022" -A ${{matrix.arch}} -DWITH_DOTNET=OFF ..
-          cmake --build . --config Release
+          $ArchDir = "${{matrix.arch}}".ToLower()
+          $BuildDir = "build-$ArchDir"
+          cmake -G "Visual Studio 17 2022" -A ${{matrix.arch}} -DWITH_DOTNET=OFF -B $BuildDir
+          cmake --build $BuildDir --config Release
+          New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$ArchDir" | Out-Null
+          Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$ArchDir"
