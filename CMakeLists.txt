@@ -21,6 +21,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
+if(NOT DEFINED WITH_DOTNET)
+    set(WITH_DOTNET TRUE)
+endif()
+
 if(MSVC)
 	include(MSVCRuntime)
 
@@ -70,4 +74,6 @@ include_directories("${CMAKE_SOURCE_DIR}/com")
 add_subdirectory(dll)
 add_subdirectory(exe)
 
-add_subdirectory(dotnet)
+if(WITH_DOTNET)
+    add_subdirectory(dotnet)
+endif()
