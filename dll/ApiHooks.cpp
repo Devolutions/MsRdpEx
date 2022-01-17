@@ -90,6 +90,9 @@ bool MsRdpEx_CaptureBlt(
 {
     RECT rect = { 0 };
     bool captured = false;
+    bool outputMirrorEnabled = false;
+    bool videoRecordingEnabled = false;
+    bool dumpBitmapUpdates = false;
     IMsRdpExInstance* instance = NULL;
     MsRdpEx_OutputMirror* outputMirror = NULL;
 
@@ -103,17 +106,26 @@ bool MsRdpEx_CaptureBlt(
     if (!instance)
         goto end;
 
+    instance->GetOutputMirrorEnabled(&outputMirrorEnabled);
+    instance->GetVideoRecordingEnabled(&videoRecordingEnabled);
+    instance->GetDumpBitmapUpdates(&dumpBitmapUpdates);
+
+    if (!outputMirrorEnabled)
+        goto end;
+
     if (!GetClientRect(hWnd, &rect))
         goto end;
 
     LONG bitmapWidth = MsRdpEx_GetRectWidth(&rect);
     LONG bitmapHeight = MsRdpEx_GetRectHeight(&rect);
 
-    instance->GetOutputMirror((LPVOID*) &outputMirror);
+    instance->GetOutputMirrorObject((LPVOID*) &outputMirror);
 
     if (!outputMirror) {
         outputMirror = MsRdpEx_OutputMirror_New();
-        instance->SetOutputMirror((LPVOID) outputMirror);
+        outputMirror->videoRecordingEnabled = videoRecordingEnabled;
+        outputMirror->dumpBitmapUpdates = dumpBitmapUpdates;
+        instance->SetOutputMirrorObject((LPVOID) outputMirror);
     }
 
     if ((outputMirror->bitmapWidth != bitmapWidth) ||

@@ -25,11 +25,13 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 {
 	char filename[MSRDPEX_MAX_PATH];
 
-	if (ctx->videoRecorder) {
+	if (ctx->videoRecordingEnabled && ctx->videoRecorder) {
 		MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
 			0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
 		MsRdpEx_VideoRecorder_Timeout(ctx->videoRecorder);
-	} else {
+	}
+
+	if (ctx->dumpBitmapUpdates) {
 		const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
 		sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\image_%04d.bmp", appDataPath, ctx->captureIndex);
 		MsRdpEx_WriteBitmapFile(filename, ctx->bitmapData, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitsPerPixel);
@@ -46,15 +48,17 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 		ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitsPerPixel, &ctx->bitmapData);
 	ctx->hShadowObject = SelectObject(ctx->hShadowDC, ctx->hShadowBitmap);
 
-	ctx->videoRecorder = MsRdpEx_VideoRecorder_New();
-	
-	if (ctx->videoRecorder) {
-		char filename[MSRDPEX_MAX_PATH];
-		uint64_t timestamp = MsRdpEx_GetUnixTime();
-		const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
-		sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\%llu.webm", appDataPath, timestamp);
-		MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
-		MsRdpEx_VideoRecorder_SetFilename(ctx->videoRecorder, filename);
+	if (ctx->videoRecordingEnabled) {
+		ctx->videoRecorder = MsRdpEx_VideoRecorder_New();
+
+		if (ctx->videoRecorder) {
+			char filename[MSRDPEX_MAX_PATH];
+			uint64_t timestamp = MsRdpEx_GetUnixTime();
+			const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
+			sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\%llu.webm", appDataPath, timestamp);
+			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
+			MsRdpEx_VideoRecorder_SetFilename(ctx->videoRecorder, filename);
+		}
 	}
 
 	return true;
@@ -94,6 +98,8 @@ MsRdpEx_OutputMirror* MsRdpEx_OutputMirror_New()
 		return NULL;
 
 	ctx->bitsPerPixel = 32;
+	ctx->videoRecordingEnabled = false;
+	ctx->dumpBitmapUpdates = false;
 
 	return ctx;
 }

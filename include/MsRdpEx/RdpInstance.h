@@ -12,8 +12,14 @@ struct __declspec(novtable)
 {
 public:
     virtual HRESULT __stdcall GetRdpClient(LPVOID* ppvObject) = 0;
-    virtual HRESULT __stdcall GetOutputMirror(LPVOID* ppvObject) = 0;
-    virtual HRESULT __stdcall SetOutputMirror(LPVOID pvObject) = 0;
+    virtual HRESULT __stdcall GetOutputMirrorObject(LPVOID* ppvObject) = 0;
+    virtual HRESULT __stdcall SetOutputMirrorObject(LPVOID pvObject) = 0;
+    virtual HRESULT __stdcall GetOutputMirrorEnabled(bool* outputMirrorEnabled) = 0;
+    virtual HRESULT __stdcall SetOutputMirrorEnabled(bool outputMirrorEnabled) = 0;
+    virtual HRESULT __stdcall GetVideoRecordingEnabled(bool* videoRecordingEnabled) = 0;
+    virtual HRESULT __stdcall SetVideoRecordingEnabled(bool videoRecordingEnabled) = 0;
+    virtual HRESULT __stdcall GetDumpBitmapUpdates(bool* dumpBitmapUpdates) = 0;
+    virtual HRESULT __stdcall SetDumpBitmapUpdates(bool dumpBitmapUpdates) = 0;
     virtual HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw) = 0;
     virtual HRESULT __stdcall SetCorePropsRawPtr(LPVOID pCorePropsRaw) = 0;
     virtual HRESULT __stdcall AttachOutputWindow(HWND hOutputWnd, void* pUserData) = 0;

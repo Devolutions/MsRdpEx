@@ -23,6 +23,8 @@ struct _MsRdpEx_OutputMirror
 	HGDIOBJ hShadowObject;
 	uint32_t captureIndex;
 
+	bool dumpBitmapUpdates;
+	bool videoRecordingEnabled;
 	MsRdpEx_VideoRecorder* videoRecorder;
 };
 typedef struct _MsRdpEx_OutputMirror MsRdpEx_OutputMirror;
