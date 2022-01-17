@@ -99,6 +99,9 @@ namespace MsRdpEx_App
             object basePropsVal = extendedSettings.get_Property("BaseProperties");
             IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
 
+            object DisableUDPTransport = true;
+            coreProps.set_Property("DisableUDPTransport", ref DisableUDPTransport);
+
             rdp.Connect();
 
             rdpView.Show();

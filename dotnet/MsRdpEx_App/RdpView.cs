@@ -24,7 +24,7 @@ namespace MsRdpEx_App
         private string outputPath;
         private int captureIndex = 0;
         private string captureOutputPath;
-        private bool enableCapture = true;
+        private bool enableCapture = false;
 
         public RdpView(string axName)
         {
