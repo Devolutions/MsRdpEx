@@ -1,5 +1,5 @@
 
-#include <MsRdpEx/Process.h>
+#include <MsRdpEx/RdpProcess.h>
 
 #include "MsRdpEx.h"
 #include <MsRdpEx/RdpFile.h>
@@ -22,6 +22,15 @@ HRESULT MsRdpEx_LaunchProcess(int argc, char** argv, const char* appName)
     MsRdpEx_Process* ctx;
     STARTUPINFOA* startupInfo;
     PROCESS_INFORMATION* processInfo;
+    bool freeArgumentVector = false;
+
+    if (argc == -1) {
+        argv = MsRdpEx_GetArgumentVector(&argc);
+        freeArgumentVector = true;
+    }
+
+    if ((argc < 0) || !argv)
+        return E_UNEXPECTED;
 
     ctx = MsRdpEx_Process_New();
 
@@ -89,6 +98,10 @@ HRESULT MsRdpEx_LaunchProcess(int argc, char** argv, const char* appName)
     MsRdpEx_Process_Wait(ctx, INFINITE);
 
 exit:
+    if (freeArgumentVector) {
+        MsRdpEx_FreeArgumentVector(argc, argv);
+    }
+
     MsRdpEx_Process_Free(ctx);
     return hr;
 }

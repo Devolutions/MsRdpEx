@@ -4,7 +4,7 @@
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/RdpFile.h>
-#include <MsRdpEx/Process.h>
+#include <MsRdpEx/RdpProcess.h>
 #include <MsRdpEx/NameResolver.h>
 
 #include <MsRdpEx/RdpInstance.h>
