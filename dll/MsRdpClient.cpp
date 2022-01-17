@@ -488,21 +488,7 @@ public:
 
         CMsRdpExtendedSettings* pMsRdpExtendedSettings = m_pMsRdpExtendedSettings;
 
-        IMsRdpClientNonScriptable3* pMsRdpClientNonScriptable3 = NULL;
-        hr = m_pMsTscAx->QueryInterface(IID_IMsRdpClientNonScriptable3, (LPVOID*)&pMsRdpClientNonScriptable3);
-
-        IMstscAxInternal* pMstscAxInternal = NULL;
-        hr = m_pMsTscAx->QueryInterface(IID_IMstscAxInternal, (LPVOID*)&pMstscAxInternal);
-
         m_pMsRdpExtendedSettings->LoadRdpFile(NULL);
-
-        if (pMsRdpClientNonScriptable3) {
-            pMsRdpClientNonScriptable3->Release();
-        }
-
-        if (pMstscAxInternal) {
-            pMstscAxInternal->vtbl->Release(pMstscAxInternal);
-        }
 
         return m_pMsTscAx->raw_Connect();
     }

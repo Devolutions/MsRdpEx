@@ -77,15 +77,59 @@ public:
         return pMsRdpClient->QueryInterface(IID_IUnknown, ppvObject);
     }
 
-    HRESULT STDMETHODCALLTYPE GetOutputMirror(LPVOID* ppvObject)
+    HRESULT STDMETHODCALLTYPE GetOutputMirrorObject(LPVOID* ppvObject)
     {
         *ppvObject = m_OutputMirror;
         return S_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE SetOutputMirror(LPVOID pvObject)
+    HRESULT STDMETHODCALLTYPE SetOutputMirrorObject(LPVOID pvObject)
     {
         m_OutputMirror = (MsRdpEx_OutputMirror*) pvObject;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetOutputMirrorEnabled(bool* outputMirrorEnabled)
+    {
+        *outputMirrorEnabled = m_outputMirrorEnabled;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE SetOutputMirrorEnabled(bool outputMirrorEnabled)
+    {
+        m_outputMirrorEnabled = outputMirrorEnabled;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetVideoRecordingEnabled(bool* videoRecordingEnabled)
+    {
+        *videoRecordingEnabled = m_videoRecordingEnabled;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE SetVideoRecordingEnabled(bool videoRecordingEnabled)
+    {
+        m_videoRecordingEnabled = videoRecordingEnabled;
+
+        if (videoRecordingEnabled)
+            m_outputMirrorEnabled = true;
+
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetDumpBitmapUpdates(bool* dumpBitmapUpdates)
+    {
+        *dumpBitmapUpdates = m_dumpBitmapUpdates;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE SetDumpBitmapUpdates(bool dumpBitmapUpdates)
+    {
+        m_dumpBitmapUpdates = dumpBitmapUpdates;
+
+        if (dumpBitmapUpdates)
+            m_outputMirrorEnabled = true;
+
         return S_OK;
     }
 
@@ -124,6 +168,9 @@ public:
 
 public:
     ULONG m_refCount = NULL;
+    bool m_outputMirrorEnabled = false;
+    bool m_videoRecordingEnabled = false;
+    bool m_dumpBitmapUpdates = false;
     CMsRdpClient* m_pMsRdpClient = NULL;
     HWND m_hOutputPresenterWnd = NULL;
     MsRdpEx_OutputMirror* m_OutputMirror = NULL;

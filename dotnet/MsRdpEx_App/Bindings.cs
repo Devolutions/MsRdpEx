@@ -39,9 +39,21 @@ namespace MsRdpEx
     {
         void GetRdpClient([MarshalAs(UnmanagedType.IUnknown)] out object rdpClient);
 
-        void GetOutputMirror(out IntPtr outputMirror);
+        void GetOutputMirrorObject(out IntPtr outputMirror);
 
-        void SetOutputMirror(IntPtr outputMirror);
+        void SetOutputMirrorObject(IntPtr outputMirror);
+
+        void GetOutputMirrorEnabled([MarshalAs(UnmanagedType.U1)] out bool outputMirrorEnabled);
+
+        void SetOutputMirrorEnabled([MarshalAs(UnmanagedType.U1)] bool outputMirrorEnabled);
+
+        void GetVideoRecordingEnabled([MarshalAs(UnmanagedType.U1)] out bool videoRecordingEnabled);
+
+        void SetVideoRecordingEnabled([MarshalAs(UnmanagedType.U1)] bool videoRecordingEnabled);
+
+        void GetDumpBitmapUpdates([MarshalAs(UnmanagedType.U1)] out bool dumpBitmapUpdates);
+
+        void SetDumpBitmapUpdates([MarshalAs(UnmanagedType.U1)] bool dumpBitmapUpdates);
 
         void GetCorePropsRawPtr(out IntPtr pCorePropsRaw);
 
