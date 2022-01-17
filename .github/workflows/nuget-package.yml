@@ -27,9 +27,8 @@ jobs:
         shell: pwsh
         run: |
           $ArchDir = "${{matrix.arch}}".ToLower()
-          mkdir "build-$ArchDir" && cd "build-$ArchDir"
-          cmake -G "Visual Studio 17 2022" -A ${{matrix.arch}} -DWITH_DOTNET=OFF ..
-          cmake --build . --config Release
-          Set-Location ".."
+          $BuildDir = "build-$ArchDir"
+          cmake -G "Visual Studio 17 2022" -A ${{matrix.arch}} -DWITH_DOTNET=OFF -B $BuildDir
+          cmake --build $BuildDir --config Release
           New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$ArchDir" | Out-Null
-          Copy-Item "build-$ArchDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$ArchDir"
+          Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$ArchDir"
