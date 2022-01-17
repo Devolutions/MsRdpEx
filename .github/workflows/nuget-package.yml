@@ -30,5 +30,6 @@ jobs:
           mkdir "build-$ArchDir" && cd "build-$ArchDir"
           cmake -G "Visual Studio 17 2022" -A ${{matrix.arch}} -DWITH_DOTNET=OFF ..
           cmake --build . --config Release
+          Set-Location ".."
           New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$ArchDir" | Out-Null
           Copy-Item "build-$ArchDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$ArchDir"
