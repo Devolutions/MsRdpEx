@@ -21,6 +21,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
+if(NOT DEFINED WITH_NATIVE)
+    set(WITH_NATIVE TRUE)
+endif()
+
 if(NOT DEFINED WITH_DOTNET)
     set(WITH_DOTNET TRUE)
 endif()
@@ -71,8 +75,10 @@ set_property(TARGET detours PROPERTY
 include_directories("${CMAKE_SOURCE_DIR}/include")
 include_directories("${CMAKE_SOURCE_DIR}/com")
 
-add_subdirectory(dll)
-add_subdirectory(exe)
+if(WITH_NATIVE)
+    add_subdirectory(dll)
+    add_subdirectory(exe)
+endif()
 
 if(WITH_DOTNET)
     add_subdirectory(dotnet)

@@ -20,12 +20,18 @@ jobs:
       - name: Build Detours (${{matrix.arch}})
         shell: pwsh
         run: |
-          Enter-VsDevShell ${{matrix.arch}}
+          $TargetArch = ${{matrix.arch}}
+          $MsvcArch = @{"x64"="x64";"arm64"="ARM64"}[$TargetArch]
+          Enter-VsDevShell $MsvcArch
           .\detours.ps1
 
-      - name: Build MsRdpEx (${{matrix.arch}})
+      - name: Build MsRdpEx.dll (${{matrix.arch}})
         shell: pwsh
         run: |
-          mkdir build-${{matrix.arch}} && cd build-${{matrix.arch}}
-          cmake -G "Visual Studio 17 2022" -A ${{matrix.arch}} -DWITH_DOTNET=OFF ..
+          $TargetArch = ${{matrix.arch}}
+          $MsvcArch = @{"x64"="x64";"arm64"="ARM64"}[$TargetArch]
+          mkdir build-$MsvcArch && cd build-$MsvcArch
+          cmake -G "Visual Studio 17 2022" -A $MsvcPlatform -DWITH_DOTNET=OFF ..
           cmake --build . --config Release
+          New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$TargetArch" | Out-Null
+          Copy-Item "build-$MsvcArch/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$TargetArch"
