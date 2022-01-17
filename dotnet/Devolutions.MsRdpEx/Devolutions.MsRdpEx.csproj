@@ -1,44 +1,34 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <AssemblyName>Devolutions.MsRdpEx</AssemblyName>
+    <OutputType>Library</OutputType>
     <Platforms>Win32;x64;ARM64</Platforms>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ProcessorArchitecture>MSIL</ProcessorArchitecture>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
-    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <Company>MsRdpEx</Company>
-    <PackageId>MsRdpEx</PackageId>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <Optimize>False</Optimize>
+    <DebugType>Full</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <Optimize>True</Optimize>
+    <DebugType>None</DebugType>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../Devolutions.MsRdpEx/Devolutions.MsRdpEx.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" />
-  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="Interop.MSTSCLib">
       <Private>True</Private>
       <HintPath>..\Interop.MSTSCLib\Interop.MSTSCLib.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
   </ItemGroup>
 </Project>
