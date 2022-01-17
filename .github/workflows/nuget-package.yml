@@ -17,13 +17,13 @@ jobs:
       - name: Check out ${{ github.repository }}
         uses: actions/checkout@v2
 
-      - name: Build Detours [${{matrix.arch}}]
+      - name: Build Detours (${{matrix.arch}})
         shell: pwsh
         run: |
           Enter-VsDevShell ${{matrix.arch}}
           .\detours.ps1
 
-      - name: Build MsRdpEx.dll [${{matrix.arch}}]
+      - name: Build MsRdpEx.dll (${{matrix.arch}})
         shell: pwsh
         run: |
           $ArchDir = "${{matrix.arch}}".ToLower()
