@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ x64, ARM64 ]
+        arch: [ x64, arm64 ]
 
     steps:
       - name: Configure runner
@@ -26,7 +26,7 @@ jobs:
       - name: Build MsRdpEx.dll (${{matrix.arch}})
         shell: pwsh
         run: |
-          $ArchDir = "${{matrix.arch}}".ToLower()
+          $ArchDir = "${{matrix.arch}}"
           $BuildDir = "build-$ArchDir"
           cmake -G "Visual Studio 17 2022" -A ${{matrix.arch}} -DWITH_DOTNET=OFF -B $BuildDir
           cmake --build $BuildDir --config Release
@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: MsRdpEx-${{matrix.arch}}
-          path: dependencies/MsRdpEx
+          path: dependencies/MsRdpEx/${{matrix.arch}}
 
   build-managed:
     name: managed build
