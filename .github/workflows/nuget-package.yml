@@ -2,10 +2,8 @@ name: nuget package
 on: workflow_dispatch
 jobs:
   build-native:
-    name: MsRdpEx native
+    name: native build
     runs-on: windows-2022
-    strategy:
-      fail-fast: false
       matrix:
         arch: [ x64, ARM64 ]
 
@@ -40,10 +38,9 @@ jobs:
           path: dependencies/MsRdpEx
 
   build-managed:
-    name: MsRdpEx managed
+    name: managed build
     runs-on: windows-2022
-    strategy:
-      fail-fast: false
+    needs: build-native
 
     steps:
       - name: Check out ${{ github.repository }}
