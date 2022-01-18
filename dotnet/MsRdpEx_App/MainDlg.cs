@@ -57,7 +57,7 @@ namespace MsRdpEx_App
             {
                 string appName = axName;
                 string[] args = new string[0];
-                Bindings.StartProcess(appName, args);
+                RdpProcess rdpProcess = new RdpProcess(appName, args);
                 return;
             }
 
@@ -71,16 +71,15 @@ namespace MsRdpEx_App
                 axName = axNameEx;
             }
 
-            IMsRdpExCoreApi coreApi = Bindings.GetCoreApi();
+            RdpCoreApi coreApi = new RdpCoreApi();
             coreApi.Load();
 
             RdpView rdpView = new RdpView(axName);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
 
-            IMsRdpExInstance rdpInstance = (IMsRdpExInstance) rdp.GetOcx();
-
-            rdpInstance.SetOutputMirrorEnabled(true);
-            rdpInstance.SetVideoRecordingEnabled(true);
+            RdpInstance rdpInstance = new RdpInstance((IMsRdpExInstance)rdp.GetOcx());
+            rdpInstance.OutputMirrorEnabled = true;
+            rdpInstance.VideoRecordingEnabled = true;
 
             rdp.Server = this.txtComputer.Text;
             rdp.UserName = this.txtUserName.Text;
