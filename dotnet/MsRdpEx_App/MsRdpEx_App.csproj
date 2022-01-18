@@ -28,11 +28,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Devolutions.MsRdpEx/Devolutions.MsRdpEx.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" />
+    <ProjectReference Include="../Devolutions.MsRdpEx/Devolutions.MsRdpEx.csproj" IncludeAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
