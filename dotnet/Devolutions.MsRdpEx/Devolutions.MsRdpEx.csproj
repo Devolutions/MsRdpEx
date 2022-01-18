@@ -3,9 +3,10 @@
   <PropertyGroup>
     <AssemblyName>Devolutions.MsRdpEx</AssemblyName>
     <PackageId>Devolutions.MsRdpEx</PackageId>
-    <Version>2022.01.18.0</Version>
+    <Version>2022.01.18.2</Version>
     <Authors>mamoreau@devolutions.net</Authors>
     <Company>Devolutions</Company>
+    <Description>Microsoft RDP Extensions</Description>
     <OutputType>Library</OutputType>
     <Platforms>Win32;x64;ARM64</Platforms>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -13,9 +14,10 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -33,23 +35,19 @@
       <Private>False</Private>
       <HintPath>..\Interop.MSTSCLib\Interop.MSTSCLib.dll</HintPath>
       <SpecificVersion>False</SpecificVersion>
+      <CopyLocal>True</CopyLocal>
     </Reference>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj"
-        ReferenceOutputAssembly="true"/>
+    <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(OutputPath)/Interop.MSTSCLib.dll"
-        PackagePath="lib/$(TargetFramework)/Interop.MSTSCLib.dll" Pack="true" />
-    <Content Include="$(OutputPath)/AxInterop.MSTSCLib.dll"
-        PackagePath="lib/$(TargetFramework)/AxInterop.MSTSCLib.dll" Pack="true" />
-    <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll"
-        PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" />
-    <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll"
-        PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" />
+    <Content Include="$(OutputPath)/Interop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/Interop.MSTSCLib.dll" Pack="true" />
+    <Content Include="$(OutputPath)/AxInterop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/AxInterop.MSTSCLib.dll" Pack="true" />
+    <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll" PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" />
+    <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll" PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" />
   </ItemGroup>
 
 </Project>
