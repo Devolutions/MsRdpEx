@@ -91,7 +91,7 @@ namespace MsRdpEx
 
             for (int i = 0; i < argc; i++)
             {
-                argv[i] = Marshal.StringToCoTaskMemUTF8(args[i]);
+                argv[i] = Marshal.StringToCoTaskMemAnsi(args[i]);
             }
 
             process.Start(appName, argc, ref argv);
@@ -107,23 +107,5 @@ namespace MsRdpEx
         [DllImport("MsRdpEx.dll")]
         public static extern uint MsRdpEx_QueryInterface(ref Guid riid,
             [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
-
-        public static bool LaunchProcess(string appName, string[] args)
-        {
-            int argc = args.Length;
-            IntPtr[] argv = new IntPtr[argc];
-
-            for (int i = 0; i < argc; i++)
-            {
-                argv[i] = Marshal.StringToCoTaskMemUTF8(args[i]);
-            }
-
-            for (int i = 0; i < argv.Length; i++)
-            {
-                Marshal.FreeCoTaskMem(argv[i]);
-            }
-
-            return true;
-        }
     }
 }
