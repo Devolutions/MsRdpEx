@@ -4,6 +4,7 @@ jobs:
   build-native:
     name: native build
     runs-on: windows-2022
+    strategy:
       matrix:
         arch: [ x64, ARM64 ]
 
