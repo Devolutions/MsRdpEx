@@ -1,8 +1,8 @@
 name: nuget package
 on: workflow_dispatch
 jobs:
-  build:
-    name: MsRdpEx package
+  build-native:
+    name: MsRdpEx native
     runs-on: windows-2022
     strategy:
       fail-fast: false
@@ -32,3 +32,35 @@ jobs:
           cmake --build $BuildDir --config Release
           New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$ArchDir" | Out-Null
           Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$ArchDir"
+
+      - name: Upload native components
+        uses: actions/upload-artifact@v2
+        with:
+          name: MsRdpEx-${{matrix.arch}}
+          path: dependencies/MsRdpEx
+
+  build-managed:
+    name: MsRdpEx managed
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Check out ${{ github.repository }}
+        uses: actions/checkout@v2
+
+      - name: Configure runner
+        run: |
+          New-Item -ItemType Directory -Path "dependencies/MsRdpEx" | Out-Null
+
+      - name: Download native components
+        uses: actions/download-artifact@v2
+        with:
+          path: dependencies/MsRdpEx
+
+      - name: Build MsRdpEx.dll (${{matrix.arch}})
+        shell: pwsh
+        run: |
+          $BuildDir = "build-dotnet"
+          cmake -G "Visual Studio 17 2022" -A x64 -DWITH_DOTNET=ON -DWITH_NATIVE=OFF -B $BuildDir
+          cmake --build $BuildDir --config Release
