@@ -37,7 +37,7 @@ jobs:
       - name: Upload native components
         uses: actions/upload-artifact@v2
         with:
-          name: ${{matrix.arch}}
+          name: MsRdpEx-${{matrix.arch}}
           path: dependencies/MsRdpEx/${{matrix.arch}}
 
   build-managed:
@@ -49,7 +49,7 @@ jobs:
       - name: Check out ${{ github.repository }}
         uses: actions/checkout@v2
 
-      - name: Configure runner
+      - name: Prepare dependencies
         run: |
           New-Item -ItemType Directory -Path "dependencies/MsRdpEx" | Out-Null
 
@@ -58,6 +58,11 @@ jobs:
         with:
           path: dependencies/MsRdpEx
 
+      - name: Rename dependencies
+        run: |
+          Set-Location "dependencies"
+          $(Get-Item ".\MsRdpEx-*") | ForEach-Object { ($p1,$p2) = $_.Name -Split '-'; Rename-Item $_ $p2 }
+
       - name: Build MsRdpEx.dll (managed)
         shell: pwsh
         run: |
@@ -65,9 +70,10 @@ jobs:
           cmake -G "Visual Studio 17 2022" -A x64 -DWITH_DOTNET=ON -DWITH_NATIVE=OFF -B $BuildDir
           cmake --build $BuildDir --config Release
           & dotnet pack .\dotnet\Devolutions.MsRdpEx -o package
+          echo "::set-output name=NUPKG_FILENAME::$(Get-Item .\package\*.nupkg).Name"
 
       - name: Upload managed components
         uses: actions/upload-artifact@v2
         with:
-          name: MsRdpEx-${{matrix.arch}}
-          path: package
+          name: ${{ steps.build-managed.outputs.NUPKG_FILENAME }}
+          path: package/${{ steps.build-managed.outputs.NUPKG_FILENAME }}
