@@ -28,7 +28,7 @@ jobs:
         run: |
           $ArchDir = "${{matrix.arch}}"
           $BuildDir = "build-$ArchDir"
-          $MsvcArch = @{"x64"="x64";"arm64"="ARM64"}[${{matrix.arch}}]
+          $MsvcArch = @{"x64"="x64";"arm64"="ARM64"}["${{matrix.arch}}"]
           cmake -G "Visual Studio 17 2022" -A $MsvcArch -DWITH_DOTNET=OFF -B $BuildDir
           cmake --build $BuildDir --config Release
           New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$ArchDir" | Out-Null
