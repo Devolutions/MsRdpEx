@@ -86,10 +86,18 @@ bool MsRdpEx_InitPaths(uint32_t pathIds)
 
     if (pathIds & MSRDPEX_MSRDC_EXE_PATH) {
         ExpandEnvironmentStringsA("%ProgramFiles%\\Remote Desktop\\msrdc.exe", g_MSRDC_EXE_PATH, MSRDPEX_MAX_PATH);
+
+        if (!MsRdpEx_FileExists(g_MSRDC_EXE_PATH)) {
+            ExpandEnvironmentStringsA("%LocalAppData%\\Apps\\Remote Desktop\\msrdc.exe", g_MSRDC_EXE_PATH, MSRDPEX_MAX_PATH);
+        }
     }
 
     if (pathIds & MSRDPEX_RDCLIENTAX_DLL_PATH) {
         ExpandEnvironmentStringsA("%ProgramFiles%\\Remote Desktop\\rdclientax.dll", g_RDCLIENTAX_DLL_PATH, MSRDPEX_MAX_PATH);
+
+        if (!MsRdpEx_FileExists(g_RDCLIENTAX_DLL_PATH)) {
+            ExpandEnvironmentStringsA("%LocalAppData%\\Apps\\Remote Desktop\\rdclientax.dll", g_RDCLIENTAX_DLL_PATH, MSRDPEX_MAX_PATH);
+        }
     }
 
     return true;

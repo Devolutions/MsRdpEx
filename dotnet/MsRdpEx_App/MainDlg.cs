@@ -53,28 +53,34 @@ namespace MsRdpEx_App
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
 
+            var process = Process.GetCurrentProcess();
+            string processFileName = process.MainModule.FileName;
+            string processFileDir = Path.GetDirectoryName(processFileName);
+            string rdpExDll = Path.Combine(processFileDir, "MsRdpEx.dll");
+
+            if (!File.Exists(rdpExDll))
+            {
+                throw new Exception("could not find MsRdpEx.dll");
+            }
+
+            Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", axName);
+
+            string logFilePath = Environment.ExpandEnvironmentVariables("%LocalAppData%\\MsRdpEx\\HostApp.log");
+
+            RdpCoreApi coreApi = new RdpCoreApi();
+            coreApi.LogFilePath = logFilePath;
+            coreApi.LogEnabled = true;
+            coreApi.Load();
+
             if (externalMode)
             {
                 string appName = axName;
                 string[] args = new string[0];
-                RdpProcess rdpProcess = new RdpProcess(appName, args);
+                RdpProcess rdpProcess = new RdpProcess(args, appName, axName);
                 return;
             }
 
-            var process = Process.GetCurrentProcess();
-            string processFileName = process.MainModule.FileName;
-            string processFileDir = Path.GetDirectoryName(processFileName);
-            string axNameEx = Path.Combine(processFileDir, "MsRdpEx.dll");
-
-            if (File.Exists(axNameEx))
-            {
-                axName = axNameEx;
-            }
-
-            RdpCoreApi coreApi = new RdpCoreApi();
-            coreApi.Load();
-
-            RdpView rdpView = new RdpView(axName);
+            RdpView rdpView = new RdpView(axName, rdpExDll);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
 
             RdpInstance rdpInstance = new RdpInstance((IMsRdpExInstance)rdp.GetOcx());

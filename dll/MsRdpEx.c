@@ -3,6 +3,8 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <MsRdpEx/Environment.h>
+
 static HMODULE g_hModule = NULL;
 
 static MsRdpEx_AxDll* g_AxDll = NULL;
@@ -111,6 +113,8 @@ static bool g_IsLoaded = false;
 
 void MsRdpEx_Load()
 {
+    char* axName = NULL;
+    char* axPath = NULL;
     MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
 
     MsRdpEx_LogOpen();
@@ -120,7 +124,12 @@ void MsRdpEx_Load()
 
     MsRdpEx_Log("ModuleFilePath: %s", ModuleFilePath);
 
-    uint32_t pathId = MSRDPEX_MSTSCAX_DLL_PATH;
+    uint32_t pathId = 0;
+    axName = MsRdpEx_GetEnv("MSRDPEX_AXNAME");
+
+    if (axName) {
+        MsRdpEx_Log("AxName: %s", axName);
+    }
 
     if (MsRdpEx_StringIEquals(ModuleFileName, "mstsc.exe")) {
         pathId = MSRDPEX_MSTSCAX_DLL_PATH;
@@ -128,7 +137,33 @@ void MsRdpEx_Load()
         pathId = MSRDPEX_RDCLIENTAX_DLL_PATH;
     }
 
-    g_AxDll = MsRdpEx_AxDll_New(MsRdpEx_GetPath(pathId));
+    if (axName) {
+        if (MsRdpEx_StringIEquals(axName, "mstsc") || MsRdpEx_StringIEquals(axName, "mstsc.exe") ||
+            MsRdpEx_StringIEquals(axName, "mstscax") || MsRdpEx_StringIEquals(axName, "mstscax.dll")) {
+            pathId = MSRDPEX_MSTSCAX_DLL_PATH;
+        }
+        else if (MsRdpEx_StringIEquals(axName, "msrdc") || MsRdpEx_StringIEquals(axName, "msrdc.exe") ||
+            MsRdpEx_StringIEquals(axName, "rdclientax") || MsRdpEx_StringIEquals(axName, "rdclientax.dll")) {
+            pathId = MSRDPEX_RDCLIENTAX_DLL_PATH;
+        } else if (MsRdpEx_FileExists(axName)) {
+            axPath = _strdup(axName);
+        }
+    }
+
+    if (!axPath) {
+        if (!pathId) {
+            pathId = MSRDPEX_MSTSCAX_DLL_PATH;
+        }
+
+        axPath = _strdup(MsRdpEx_GetPath(pathId));
+    }
+
+    MsRdpEx_Log("AxDll: %s", axPath);
+
+    g_AxDll = MsRdpEx_AxDll_New(axPath);
+
+    free(axName);
+    free(axPath);
 
     MsRdpEx_AttachHooks();
 

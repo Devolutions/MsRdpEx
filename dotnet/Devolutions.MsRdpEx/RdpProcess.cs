@@ -6,8 +6,8 @@ namespace MsRdpEx
     {
         public IMsRdpExProcess iface;
         
-        public RdpProcess(string appName, string[] args) {
-            iface = Bindings.StartProcess(appName, args);
+        public RdpProcess(string[] args, string appName, string axName) {
+            iface = Bindings.StartProcess(args, appName, axName);
         }
 
         public void Stop(UInt32 exitCode)

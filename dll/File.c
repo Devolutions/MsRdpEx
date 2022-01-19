@@ -1,6 +1,12 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#ifdef _WIN32
+#include <shlwapi.h>
+#include <shlobj.h>
+#pragma comment(lib, "shlwapi.lib")
+#endif
+
 const char* MsRdpEx_FileBase(const char* filename)
 {
     size_t length;
@@ -25,16 +31,21 @@ const char* MsRdpEx_FileBase(const char* filename)
     return filename;
 }
 
-bool MsRdpEx_IsFile(const char* filename)
+bool MsRdpEx_FileExists(const char* filename)
 {
-    FILE* fp = fopen(filename, "rb");
+    bool result = false;
+	WCHAR* filenameW = NULL;
 
-    if (!fp)
+    if (!filename)
         return false;
 
-    fclose(fp);
-    
-    return true;
+	if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, filename, -1, &filenameW, 0) < 1)
+		return false;
+
+	result = PathFileExistsW(filenameW) ? true : false;
+	free(filenameW);
+
+	return result;
 }
 
 FILE* MsRdpEx_FileOpen(const char* path, const char* mode)
