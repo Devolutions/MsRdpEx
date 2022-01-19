@@ -132,6 +132,12 @@ namespace AxMSTSCLib {
         {
             string mstscax = Environment.ExpandEnvironmentVariables("%SystemRoot%\\System32\\mstscax.dll");
             string rdclientax = Environment.ExpandEnvironmentVariables("%ProgramFiles%\\Remote Desktop\\rdclientax.dll");
+            string rdclientax_local = Environment.ExpandEnvironmentVariables("%LocalAppData%\\Apps\\Remote Desktop\\rdclientax.dll");
+
+            if (!File.Exists(rdclientax) && File.Exists(rdclientax_local))
+            {
+                rdclientax = rdclientax_local;
+            }
 
             if (axName.Equals("latest"))
             {
