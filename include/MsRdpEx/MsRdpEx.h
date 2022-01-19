@@ -37,7 +37,7 @@ extern "C" {
 #endif
 
 const char* MsRdpEx_FileBase(const char* filename);
-bool MsRdpEx_IsFile(const char* filename);
+bool MsRdpEx_FileExists(const char* filename);
 
 FILE* MsRdpEx_FileOpen(const char* path, const char* mode);
 uint8_t* MsRdpEx_FileLoad(const char* filename, size_t* size, uint32_t zpad);

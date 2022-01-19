@@ -4,6 +4,7 @@ set(MSRDPEX_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include/MsRdpEx")
 set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/ArrayList.h"
     "${MSRDPEX_INCLUDE_DIR}/HashTable.h"
+    "${MSRDPEX_INCLUDE_DIR}/Environment.h"
     "${MSRDPEX_INCLUDE_DIR}/NameResolver.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpFile.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpProcess.h"
@@ -16,6 +17,7 @@ set(MSRDPEX_HEADERS
 add_library(MsRdpEx_Dll SHARED
     ArrayList.c
     HashTable.c
+    Environment.c
     NameResolver.c
     File.c
     Log.c
@@ -42,4 +44,4 @@ add_library(MsRdpEx_Dll SHARED
 
 set_target_properties(MsRdpEx_Dll PROPERTIES OUTPUT_NAME "MsRdpEx")
 
-target_link_libraries(MsRdpEx_Dll detours version.lib user32.lib ws2_32.lib secur32.lib advapi32.lib)
+target_link_libraries(MsRdpEx_Dll detours version.lib userenv.lib user32.lib ws2_32.lib secur32.lib advapi32.lib)

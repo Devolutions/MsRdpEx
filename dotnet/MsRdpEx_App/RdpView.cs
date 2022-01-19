@@ -20,15 +20,17 @@ namespace MsRdpEx_App
     public partial class RdpView : Form
     {
         public string axName = "latest";
+        public string rdpExDll;
 
         private string outputPath;
         private int captureIndex = 0;
         private string captureOutputPath;
         private bool enableCapture = false;
 
-        public RdpView(string axName)
+        public RdpView(string axName, string rdpExDll)
         {
             this.axName = axName;
+            this.rdpExDll = rdpExDll;
 
             outputPath = Environment.ExpandEnvironmentVariables("%LocalAppData%\\MsRdpEx");
             Directory.CreateDirectory(outputPath);
@@ -186,7 +188,7 @@ namespace MsRdpEx_App
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(RdpView));
             this.rdpClient = new AxMSTSCLib.AxMsRdpClient9NotSafeForScripting();
-            this.rdpClient.axName = this.axName;
+            this.rdpClient.axName = this.rdpExDll;
             this.rdpClient.OnConnected += OnConnected;
             this.rdpClient.OnConnecting += OnConnecting;
             ((System.ComponentModel.ISupportInitialize)(this.rdpClient)).BeginInit();

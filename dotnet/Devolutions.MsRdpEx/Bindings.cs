@@ -26,8 +26,9 @@ namespace MsRdpEx
     [Guid("338784B3-3363-45A2-8ECD-80A65DBAF636")]
     public interface IMsRdpExProcess
     {
-        void Start([MarshalAs(UnmanagedType.LPStr)] string filename,
-            int argc, ref IntPtr[] argv);
+        void Start(int argc, ref IntPtr[] argv,
+            [MarshalAs(UnmanagedType.LPStr)] string appName,
+            [MarshalAs(UnmanagedType.LPStr)] string axName);
         void Stop(UInt32 exitCode);
         void Wait(UInt32 milliseconds);
         void GetExitCode(out UInt32 exitCode);
@@ -79,7 +80,7 @@ namespace MsRdpEx
             return (IMsRdpExCoreApi)instance;
         }
 
-        public static IMsRdpExProcess StartProcess(string appName, string[] args)
+        public static IMsRdpExProcess StartProcess(string[] args, string appName, string axName)
         {
             object instance = null;
             MsRdpEx_QueryInterface(ref IID_IMsRdpExProcess, out instance);
@@ -94,7 +95,7 @@ namespace MsRdpEx
                 argv[i] = Marshal.StringToCoTaskMemAnsi(args[i]);
             }
 
-            process.Start(appName, argc, ref argv);
+            process.Start(argc, ref argv, appName, axName);
 
             for (int i = 0; i < argv.Length; i++)
             {
