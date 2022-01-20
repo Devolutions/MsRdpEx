@@ -36,16 +36,38 @@ bool MsRdpEx_PathCchRenameExtension(char* pszPath, size_t cchPath, const char* p
     return true;
 }
 
+bool MsRdpEx_PathCchDetect(char* pszPath, size_t cchPath, uint32_t pathId)
+{
+    bool success = true;
+
+    switch (pathId)
+    {
+        case MSRDPEX_CURRENT_MODULE_PATH:
+            GetModuleFileNameA(NULL, pszPath, cchPath);
+            break;
+
+        case MSRDPEX_CURRENT_LIBRARY_PATH:
+            GetModuleFileNameA((HINSTANCE)&__ImageBase, pszPath, cchPath);
+            break;
+
+        default:
+            success = false;
+            break;
+    }
+
+    return success;
+}
+
 bool MsRdpEx_InitPaths(uint32_t pathIds)
 {
     pathIds |= (MSRDPEX_CURRENT_MODULE_PATH | MSRDPEX_CURRENT_LIBRARY_PATH);
 
     if (pathIds & MSRDPEX_CURRENT_MODULE_PATH) {
-        GetModuleFileNameA(NULL, g_CURRENT_MODULE_PATH, MSRDPEX_MAX_PATH);
+        MsRdpEx_PathCchDetect(g_CURRENT_MODULE_PATH, MSRDPEX_MAX_PATH, MSRDPEX_CURRENT_MODULE_PATH);
     }
     
     if (pathIds & MSRDPEX_CURRENT_LIBRARY_PATH) {
-        GetModuleFileNameA((HINSTANCE)&__ImageBase, g_CURRENT_LIBRARY_PATH, MSRDPEX_MAX_PATH);
+        MsRdpEx_PathCchDetect(g_CURRENT_LIBRARY_PATH, MSRDPEX_MAX_PATH, MSRDPEX_CURRENT_LIBRARY_PATH);
     }
 
     const char* ModuleFileName = MsRdpEx_FileBase(g_CURRENT_MODULE_PATH);

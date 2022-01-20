@@ -67,6 +67,8 @@ uint64_t MsRdpEx_GetUnixTime();
 bool MsRdpEx_InitPaths(uint32_t pathIds);
 const char* MsRdpEx_GetPath(uint32_t pathId);
 
+bool MsRdpEx_PathCchDetect(char* pszPath, size_t cchPath, uint32_t pathId);
+
 bool MsRdpEx_PathCchRenameExtension(char* pszPath, size_t cchPath, const char* pszExt);
 
 // String Utils

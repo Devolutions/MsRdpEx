@@ -7,6 +7,7 @@ set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/Environment.h"
     "${MSRDPEX_INCLUDE_DIR}/NameResolver.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpFile.h"
+    "${MSRDPEX_INCLUDE_DIR}/RdpCoreApi.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpProcess.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpInstance.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpSettings.h"
@@ -32,6 +33,7 @@ add_library(MsRdpEx_Dll SHARED
     Bitmap.c
     WinMsg.c
     RdpFile.c
+    RdpCoreApi.cpp
     RdpProcess.cpp
     RdpInstance.cpp
     RdpSettings.cpp
