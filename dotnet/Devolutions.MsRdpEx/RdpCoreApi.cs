@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 
 namespace MsRdpEx
 {
@@ -19,6 +20,11 @@ namespace MsRdpEx
         public void Unload()
         {
             iface.Unload();
+        }
+
+        public string MsRdpExDllPath
+        {
+            get { return Marshal.PtrToStringAnsi(iface.GetMsRdpExDllPath()); }
         }
 
         public bool LogEnabled

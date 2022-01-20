@@ -12,6 +12,9 @@ namespace MsRdpEx
         void Unload();
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
+        IntPtr GetMsRdpExDllPath();
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetLogEnabled([MarshalAs(UnmanagedType.U1)] bool logEnabled);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
@@ -76,14 +79,14 @@ namespace MsRdpEx
         public static IMsRdpExCoreApi GetCoreApi()
         {
             object instance = null;
-            MsRdpEx_QueryInterface(ref IID_IMsRdpExCoreApi, out instance);
+            MsRdpEx_CreateInstance(ref IID_IMsRdpExCoreApi, out instance);
             return (IMsRdpExCoreApi)instance;
         }
 
         public static IMsRdpExProcess StartProcess(string[] args, string appName, string axName)
         {
             object instance = null;
-            MsRdpEx_QueryInterface(ref IID_IMsRdpExProcess, out instance);
+            MsRdpEx_CreateInstance(ref IID_IMsRdpExProcess, out instance);
 
             IMsRdpExProcess process = (IMsRdpExProcess) instance;
 
@@ -106,7 +109,7 @@ namespace MsRdpEx
         }
 
         [DllImport("MsRdpEx.dll")]
-        public static extern uint MsRdpEx_QueryInterface(ref Guid riid,
+        public static extern uint MsRdpEx_CreateInstance(ref Guid riid,
             [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
     }
 }

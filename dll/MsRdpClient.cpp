@@ -4,11 +4,11 @@
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/RdpFile.h>
+#include <MsRdpEx/RdpCoreApi.h>
 #include <MsRdpEx/RdpProcess.h>
-#include <MsRdpEx/NameResolver.h>
-
 #include <MsRdpEx/RdpInstance.h>
 #include <MsRdpEx/RdpSettings.h>
+#include <MsRdpEx/NameResolver.h>
 
 #include "TSObjects.h"
 
@@ -709,149 +709,6 @@ private:
     CMsRdpExInstance* m_pMsRdpExInstance;
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings;
 };
-
-//MIDL_INTERFACE("13F6E86F-EE7D-44D1-AA94-1136B784441D")
-//struct __declspec(uuid("13F6E86F-EE7D-44D1-AA94-1136B784441D")) __declspec(novtable)
-struct __declspec(novtable)
-IMsRdpExCoreApi : public IUnknown
-{
-public:
-    virtual HRESULT __stdcall Load(void) = 0;
-    virtual HRESULT __stdcall Unload(void) = 0;
-    virtual void __stdcall SetLogEnabled(bool enabled) = 0;
-    virtual void __stdcall SetLogFilePath(const char* logFilePath) = 0;
-    virtual bool __stdcall QueryInstanceByWindowHandle(HWND hWnd, LPVOID* ppvObject) = 0;
-};
-
-class CMsRdpExCoreApi : public IMsRdpExCoreApi
-{
-public:
-    CMsRdpExCoreApi()
-    {
-        m_refCount = 0;
-    }
-
-    ~CMsRdpExCoreApi()
-    {
-
-    }
-
-    // IUnknown interface
-public:
-    HRESULT STDMETHODCALLTYPE QueryInterface(
-        REFIID riid,
-        LPVOID* ppvObject
-    )
-    {
-        HRESULT hr = E_NOINTERFACE;
-        MsRdpEx_Log("CMsRdpExCoreApi::QueryInterface");
-        WriteIID(riid);
-
-        if (riid == IID_IUnknown)
-        {
-            *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
-        }
-        if (riid == IID_IMsRdpExCoreApi)
-        {
-            *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
-        }
-
-        MsRdpEx_Log("--> hr=%x", hr);
-        return hr;
-    }
-
-    ULONG STDMETHODCALLTYPE AddRef()
-    {
-        MsRdpEx_Log("CMsRdpExCoreApi::AddRef");
-        return ++m_refCount;
-    }
-
-    ULONG STDMETHODCALLTYPE Release()
-    {
-        MsRdpEx_Log("CMsRdpExCoreApi::Release");
-        if (--m_refCount == 0)
-        {
-            MsRdpEx_Log("--> deleting object");
-            delete this;
-            return 0;
-        }
-        MsRdpEx_Log("--> refCount=%d", m_refCount);
-        return m_refCount;
-    }
-
-    // IMsRdpExCoreApi
-public:
-    HRESULT __stdcall Load()
-    {
-        MsRdpEx_Load();
-        MsRdpEx_Log("CMsRdpExCoreApi::Load");
-        return S_OK;
-    }
-
-    HRESULT __stdcall Unload()
-    {
-        MsRdpEx_Log("CMsRdpExCoreApi::Unload");
-        MsRdpEx_Unload();
-        return S_OK;
-    }
-
-    void __stdcall SetLogEnabled(bool logEnabled)
-    {
-        MsRdpEx_SetLogEnabled(logEnabled);
-    }
-
-    void __stdcall SetLogFilePath(const char* logFilePath)
-    {
-        MsRdpEx_SetLogFilePath(logFilePath);
-    }
-
-    bool __stdcall QueryInstanceByWindowHandle(HWND hWnd, LPVOID* ppvObject)
-    {
-        HRESULT hr;
-        IMsRdpExInstance* instance = NULL;
-
-        instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
-
-        if (!instance)
-            return false;
-
-        hr = instance->QueryInterface(IID_IMsRdpExInstance, ppvObject);
-
-        return (hr == S_OK) ? true : false;
-    }
-
-private:
-    ULONG m_refCount;
-};
-
-static CMsRdpExCoreApi* g_MsRdpExCoreApi = NULL;
-
-HRESULT CDECL MsRdpEx_QueryInterface(REFCLSID riid, LPVOID* ppvObject)
-{
-    HRESULT hr = E_NOINTERFACE;
-
-    char iid[MSRDPEX_GUID_STRING_SIZE];
-    MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
-
-    MsRdpEx_Log("MsRdpEx_QueryInterface(%s)", iid);
-
-    if (riid == IID_IMsRdpExCoreApi) {
-        if (!g_MsRdpExCoreApi) {
-            g_MsRdpExCoreApi = new CMsRdpExCoreApi();
-        }
-
-        hr = g_MsRdpExCoreApi->QueryInterface(riid, ppvObject);
-    }
-    else if (riid == IID_IMsRdpExProcess) {
-        hr = MsRdpExProcess_CreateInstance(ppvObject);
-    }
-
-    return hr;
-}
 
 class CClassFactory : IClassFactory
 {

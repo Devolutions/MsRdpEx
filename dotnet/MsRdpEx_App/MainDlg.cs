@@ -53,10 +53,8 @@ namespace MsRdpEx_App
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
 
-            var process = Process.GetCurrentProcess();
-            string processFileName = process.MainModule.FileName;
-            string processFileDir = Path.GetDirectoryName(processFileName);
-            string rdpExDll = Path.Combine(processFileDir, "MsRdpEx.dll");
+            RdpCoreApi coreApi = new RdpCoreApi();
+            string rdpExDll = coreApi.MsRdpExDllPath;
 
             if (!File.Exists(rdpExDll))
             {
@@ -67,7 +65,6 @@ namespace MsRdpEx_App
 
             string logFilePath = Environment.ExpandEnvironmentVariables("%LocalAppData%\\MsRdpEx\\HostApp.log");
 
-            RdpCoreApi coreApi = new RdpCoreApi();
             coreApi.LogFilePath = logFilePath;
             coreApi.LogEnabled = true;
             coreApi.Load();

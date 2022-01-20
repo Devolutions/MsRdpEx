@@ -232,6 +232,8 @@ HRESULT MsRdpEx_LaunchProcess(int argc, char** argv, const char* appName, const 
     if (hr != S_OK)
         goto exit;
 
+    rdpProcess->AddRef();
+
     hr = rdpProcess->Start(argc, argv, appName, axName);
 
     if (hr != S_OK)
@@ -254,5 +256,6 @@ exit:
 HRESULT CDECL MsRdpExProcess_CreateInstance(LPVOID* ppvObject)
 {
     CMsRdpExProcess* pObj = new CMsRdpExProcess();
-    return pObj->QueryInterface(IID_IMsRdpExProcess, ppvObject);
+    *ppvObject = (LPVOID) pObj;
+    return S_OK;
 }

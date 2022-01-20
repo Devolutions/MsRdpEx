@@ -12,5 +12,5 @@ EXPORTS
     DllCancelAuthentication
     DllDeleteSavedCreds
     DllPreCleanUp
-    MsRdpEx_QueryInterface
+    MsRdpEx_CreateInstance
     MsRdpEx_LaunchProcess
