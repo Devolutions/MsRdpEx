@@ -12,6 +12,9 @@ namespace MsRdpEx
         void Unload();
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
+        IntPtr GetMsRdpExDllPath();
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetLogEnabled([MarshalAs(UnmanagedType.U1)] bool logEnabled);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]

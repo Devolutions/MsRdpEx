@@ -72,6 +72,8 @@ namespace MsRdpEx_App
             coreApi.LogEnabled = true;
             coreApi.Load();
 
+            string msRdpExDllPath = coreApi.MsRdpExDllPath;
+
             if (externalMode)
             {
                 string appName = axName;

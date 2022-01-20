@@ -718,6 +718,7 @@ IMsRdpExCoreApi : public IUnknown
 public:
     virtual HRESULT __stdcall Load(void) = 0;
     virtual HRESULT __stdcall Unload(void) = 0;
+    virtual const char* __stdcall GetMsRdpExDllPath() = 0;
     virtual void __stdcall SetLogEnabled(bool enabled) = 0;
     virtual void __stdcall SetLogFilePath(const char* logFilePath) = 0;
     virtual bool __stdcall QueryInstanceByWindowHandle(HWND hWnd, LPVOID* ppvObject) = 0;
@@ -797,6 +798,11 @@ public:
         MsRdpEx_Log("CMsRdpExCoreApi::Unload");
         MsRdpEx_Unload();
         return S_OK;
+    }
+
+    const char* __stdcall GetMsRdpExDllPath()
+    {
+        return MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
     }
 
     void __stdcall SetLogEnabled(bool logEnabled)
