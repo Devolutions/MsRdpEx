@@ -200,7 +200,7 @@ namespace MsRdpEx_App
             this.rdpClient.Enabled = true;
             this.rdpClient.Location = new System.Drawing.Point(0, 0);
             this.rdpClient.Name = "rdpClient";
-            this.rdpClient.OcxState = ((System.Windows.Forms.AxHost.State)(resources.GetObject("rdpClient.OcxState")));
+            this.rdpClient.OcxState = null;
             this.rdpClient.Size = new System.Drawing.Size(1107, 503);
             this.rdpClient.TabIndex = 0;
             // 
