@@ -1,4 +1,6 @@
 build*/
+bin/
+obj/
 .vscode/
 .nupkg
 dependencies/
