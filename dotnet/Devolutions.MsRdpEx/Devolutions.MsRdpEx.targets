@@ -2,7 +2,7 @@
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-x64\native\MsRdpEx.dll">
-      <Link>x64\MsRdpEx.dll</Link>
+      <Link>runtimes\win-x64\native\MsRdpEx.dll</Link>
       <PublishState>Included</PublishState>
       <Visible>False</Visible>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -10,7 +10,7 @@
       <Pack>false</Pack>
     </Content>
     <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-arm64\native\MsRdpEx.dll">
-      <Link>arm64\MsRdpEx.dll</Link>
+      <Link>runtimes\win-arm64\native\MsRdpEx.dll</Link>
       <PublishState>Included</PublishState>
       <Visible>False</Visible>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
