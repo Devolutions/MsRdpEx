@@ -36,5 +36,10 @@ namespace MsRdpEx
         {
             set { iface.SetLogFilePath(value); }
         }
+
+        public bool AxHookEnabled
+        {
+            set { iface.SetAxHookEnabled(value); }
+        }
     }
 }

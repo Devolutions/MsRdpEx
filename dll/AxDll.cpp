@@ -5,9 +5,19 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+static bool g_AxHookEnabled = true;
+
+void MsRdpEx_SetAxHookEnabled(bool axHookEnabled)
+{
+    g_AxHookEnabled = axHookEnabled;
+}
+
 HRESULT CDECL MsRdpEx_AxDll_DllGetClassObject(MsRdpEx_AxDll* axDll, REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
     HRESULT hr = axDll->DllGetClassObject(rclsid, riid, ppv);
+
+    if (!g_AxHookEnabled)
+        return hr;
 
     if (riid == IID_IClassFactory)
     {

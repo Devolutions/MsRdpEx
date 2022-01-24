@@ -89,6 +89,8 @@ bool MsRdpEx_CaptureBlt(
     HDC hdcSrc, int srcX, int srcY)
 {
     RECT rect = { 0 };
+    uint32_t frameWidth = 0;
+    uint32_t frameHeight = 0;
     bool captured = false;
     bool outputMirrorEnabled = false;
     bool videoRecordingEnabled = false;
@@ -105,6 +107,8 @@ bool MsRdpEx_CaptureBlt(
 
     if (!instance)
         goto end;
+
+    MsRdpEx_Log("CaptureBlt: hWnd: %p instance: %p", hWnd, instance);
 
     instance->GetOutputMirrorEnabled(&outputMirrorEnabled);
     instance->GetVideoRecordingEnabled(&videoRecordingEnabled);
@@ -123,13 +127,14 @@ bool MsRdpEx_CaptureBlt(
 
     if (!outputMirror) {
         outputMirror = MsRdpEx_OutputMirror_New();
-        outputMirror->videoRecordingEnabled = videoRecordingEnabled;
-        outputMirror->dumpBitmapUpdates = dumpBitmapUpdates;
+        MsRdpEx_OutputMirror_SetDumpBitmapUpdates(outputMirror, dumpBitmapUpdates);
+        MsRdpEx_OutputMirror_SetVideoRecordingEnabled(outputMirror, videoRecordingEnabled);
         instance->SetOutputMirrorObject((LPVOID) outputMirror);
     }
 
-    if ((outputMirror->bitmapWidth != bitmapWidth) ||
-        (outputMirror->bitmapHeight != bitmapHeight))
+    MsRdpEx_OutputMirror_GetFrameSize(outputMirror, &frameWidth, &frameHeight);
+
+    if ((frameWidth != bitmapWidth) || (frameHeight != bitmapHeight))
     {
         MsRdpEx_OutputMirror_Uninit(outputMirror);
         MsRdpEx_OutputMirror_SetSourceDC(outputMirror, hdcSrc);
@@ -218,12 +223,24 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         instance = MsRdpEx_InstanceManager_AttachOutputWindow(hWnd, pUserData);
 
         if (!instance) {
-            MsRdpEx_Log("Failed to find matching RDP instance from output presenter window!");
+            IMsRdpExInstance* instance = (IMsRdpExInstance*) CMsRdpExInstance_New(NULL);
+            MsRdpEx_Log("Creating detached RDP instance: %p hWnd: %p", instance, hWnd);
+            instance->AttachOutputWindow(hWnd, pUserData);
+            MsRdpEx_InstanceManager_Add((CMsRdpExInstance*) instance);
         }
 	}
 	else if (uMsg == WM_NCDESTROY)
 	{
+        IUnknown* pRdpClient = NULL;
+        IMsRdpExInstance* instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
 
+        if (instance) {
+            instance->GetRdpClient((LPVOID*) &pRdpClient);
+
+            if (!pRdpClient) {
+                MsRdpEx_InstanceManager_Remove((CMsRdpExInstance*) instance, true);
+            }
+        }
 	}
 
 	free(lpWindowNameA);
@@ -274,7 +291,7 @@ LONG MsRdpEx_AttachHooks()
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourAttach((PVOID*)(&Real_LoadLibraryW), Hook_LoadLibraryW);
-    DetourAttach((PVOID*)(&Real_GetAddrInfoW), Hook_GetAddrInfoW);
+    //DetourAttach((PVOID*)(&Real_GetAddrInfoW), Hook_GetAddrInfoW);
     //DetourAttach((PVOID*)(&Real_GetAddrInfoExW), Hook_GetAddrInfoExW);
     DetourAttach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
     DetourAttach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
@@ -289,7 +306,7 @@ LONG MsRdpEx_DetachHooks()
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     DetourDetach((PVOID*)(&Real_LoadLibraryW), Hook_LoadLibraryW);
-    DetourDetach((PVOID*)(&Real_GetAddrInfoW), Hook_GetAddrInfoW);
+    //DetourDetach((PVOID*)(&Real_GetAddrInfoW), Hook_GetAddrInfoW);
     //DetourDetach((PVOID*)(&Real_GetAddrInfoExW), Hook_GetAddrInfoExW);
     DetourDetach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
     DetourDetach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);

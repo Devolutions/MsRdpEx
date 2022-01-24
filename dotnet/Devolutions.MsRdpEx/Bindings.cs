@@ -21,8 +21,15 @@ namespace MsRdpEx
         void SetLogFilePath([MarshalAs(UnmanagedType.LPStr)] string logFilePath);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetAxHookEnabled([MarshalAs(UnmanagedType.U1)] bool axHookEnabled);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
         [return: MarshalAs(UnmanagedType.U1)]
         bool QueryInstanceByWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.IUnknown)] out object rdpInstance);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        bool OpenInstanceForWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.IUnknown)] out object rdpInstance);
     }
 
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

@@ -4,6 +4,25 @@
 #include <MsRdpEx/VideoRecorder.h>
 #include <MsRdpEx/OutputMirror.h>
 
+struct _MsRdpEx_OutputMirror
+{
+	uint8_t* bitmapData;
+	uint32_t bitmapWidth;
+	uint32_t bitmapHeight;
+	uint32_t bitsPerPixel;
+	uint32_t bitmapStep;
+
+	HDC hSourceDC;
+	HDC hShadowDC;
+	HBITMAP hShadowBitmap;
+	HGDIOBJ hShadowObject;
+	uint32_t captureIndex;
+
+	bool dumpBitmapUpdates;
+	bool videoRecordingEnabled;
+	MsRdpEx_VideoRecorder* videoRecorder;
+};
+
 void MsRdpEx_OutputMirror_SetSourceDC(MsRdpEx_OutputMirror* ctx, HDC hSourceDC)
 {
 	ctx->hSourceDC = hSourceDC;
@@ -19,6 +38,12 @@ void MsRdpEx_OutputMirror_SetFrameSize(MsRdpEx_OutputMirror* ctx, uint32_t frame
 	ctx->bitmapWidth = frameWidth;
 	ctx->bitmapHeight = frameHeight;
 	ctx->bitmapStep = frameWidth * 4;
+}
+
+void MsRdpEx_OutputMirror_GetFrameSize(MsRdpEx_OutputMirror* ctx, uint32_t* frameWidth, uint32_t* frameHeight)
+{
+	*frameWidth = ctx->bitmapWidth;
+	*frameHeight = ctx->bitmapHeight;
 }
 
 bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
@@ -38,6 +63,26 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 	}
 
 	ctx->captureIndex++;
+	return true;
+}
+
+void MsRdpEx_OutputMirror_SetDumpBitmapUpdates(MsRdpEx_OutputMirror* ctx, bool dumpBitmapUpdates)
+{
+	ctx->dumpBitmapUpdates = dumpBitmapUpdates;
+}
+
+void MsRdpEx_OutputMirror_SetVideoRecordingEnabled(MsRdpEx_OutputMirror* ctx, bool videoRecordingEnabled)
+{
+	ctx->videoRecordingEnabled = videoRecordingEnabled;
+}
+
+bool MsRdpEx_OutputMirror_GetShadowBitmap(MsRdpEx_OutputMirror* ctx,
+	HDC* phDC, HBITMAP* phBitmap, uint32_t* pWidth, uint32_t* pHeight)
+{
+	*phDC = ctx->hShadowDC;
+	*phBitmap = ctx->hShadowBitmap;
+	*pWidth = ctx->bitmapWidth;
+	*pHeight = ctx->bitmapHeight;
 	return true;
 }
 

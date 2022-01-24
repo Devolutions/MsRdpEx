@@ -74,7 +74,8 @@ public:
     HRESULT STDMETHODCALLTYPE GetRdpClient(LPVOID* ppvObject)
     {
         IUnknown* pMsRdpClient = (IUnknown*)m_pMsRdpClient;
-        return pMsRdpClient->QueryInterface(IID_IUnknown, ppvObject);
+        *ppvObject = (void*)m_pMsRdpClient;
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetOutputMirrorObject(LPVOID* ppvObject)
@@ -158,12 +159,7 @@ public:
         if (!outputMirror)
             return false;
 
-        *phDC = outputMirror->hShadowDC;
-        *phBitmap = outputMirror->hShadowBitmap;
-        *pWidth = outputMirror->bitmapWidth;
-        *pHeight = outputMirror->bitmapHeight;
-
-        return true;
+        return MsRdpEx_OutputMirror_GetShadowBitmap(outputMirror, phDC, phBitmap, pWidth, pHeight);
     }
 
 public:

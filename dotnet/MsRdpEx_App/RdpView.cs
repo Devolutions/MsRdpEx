@@ -25,7 +25,8 @@ namespace MsRdpEx_App
         private string outputPath;
         private int captureIndex = 0;
         private string captureOutputPath;
-        private bool enableCapture = false;
+        private bool enableCapture = true;
+        private Timer captureTimer = null;
 
         public RdpView(string axName, string rdpExDll)
         {
@@ -42,10 +43,10 @@ namespace MsRdpEx_App
 
             if (enableCapture)
             {
-                Timer CaptureTimer = new Timer();
-                CaptureTimer.Interval = (1000); // 1 second
-                CaptureTimer.Tick += new EventHandler(CaptureTimer_Tick);
-                CaptureTimer.Start();
+                this.captureTimer = new Timer();
+                captureTimer.Interval = (1000); // 1 second
+                captureTimer.Tick += new EventHandler(CaptureTimer_Tick);
+                captureTimer.Start();
             }
         }
 
@@ -154,8 +155,9 @@ namespace MsRdpEx_App
             IMsRdpExCoreApi coreApi = Bindings.GetCoreApi();
 
             object instance = null;
-            bool success = coreApi.QueryInstanceByWindowHandle(hWnd, out instance);
+            bool success = coreApi.OpenInstanceForWindowHandle(hWnd, out instance);
             IMsRdpExInstance rdpInstance = (IMsRdpExInstance) instance;
+            rdpInstance.SetOutputMirrorEnabled(true);
 
             IntPtr hShadowDC = IntPtr.Zero;
             IntPtr hShadowBitmap = IntPtr.Zero;
@@ -179,6 +181,14 @@ namespace MsRdpEx_App
         protected void OnConnecting(object sender, EventArgs e)
         {
             
+        }
+
+        protected void OnFormClosing(object sender, EventArgs e)
+        {
+            if (captureTimer != null)
+            {
+                captureTimer.Stop();
+            }
         }
 
         private System.ComponentModel.IContainer components = null;
@@ -214,6 +224,8 @@ namespace MsRdpEx_App
             this.Text = "Remote Desktop Client";
             ((System.ComponentModel.ISupportInitialize)(this.rdpClient)).EndInit();
             this.ResumeLayout(false);
+
+            this.FormClosing += OnFormClosing;
         }
 
         protected override void Dispose(bool disposing)

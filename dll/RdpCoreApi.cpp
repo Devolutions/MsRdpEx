@@ -4,6 +4,8 @@
 
 #include <MsRdpEx/RdpCoreApi.h>
 
+#include "MsRdpEx.h"
+
 extern "C" const GUID IID_IMsRdpExCoreApi;
 extern "C" const GUID IID_IMsRdpExInstance;
 extern "C" const GUID IID_IMsRdpExProcess;
@@ -99,6 +101,11 @@ public:
         MsRdpEx_SetLogFilePath(logFilePath);
     }
 
+    void __stdcall SetAxHookEnabled(bool axHookEnabled)
+    {
+        MsRdpEx_SetAxHookEnabled(axHookEnabled);
+    }
+
     bool __stdcall QueryInstanceByWindowHandle(HWND hWnd, LPVOID* ppvObject)
     {
         HRESULT hr;
@@ -108,6 +115,25 @@ public:
 
         if (!instance)
             return false;
+
+        hr = instance->QueryInterface(IID_IMsRdpExInstance, ppvObject);
+
+        return (hr == S_OK) ? true : false;
+    }
+
+    bool __stdcall OpenInstanceForWindowHandle(HWND hWnd, LPVOID* ppvObject)
+    {
+        HRESULT hr;
+        IMsRdpExInstance* instance = NULL;
+
+        instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
+
+        if (!instance)
+        {
+            instance = (IMsRdpExInstance*) CMsRdpExInstance_New(NULL);
+            instance->AttachOutputWindow(hWnd, NULL);
+            MsRdpEx_InstanceManager_Add((CMsRdpExInstance*) instance);
+        }
 
         hr = instance->QueryInterface(IID_IMsRdpExInstance, ppvObject);
 

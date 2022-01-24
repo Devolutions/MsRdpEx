@@ -50,6 +50,7 @@ namespace MsRdpEx_App
 
         private void btnConnect_Click(object sender, EventArgs e)
         {
+            bool axHookEnabled = false;
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
 
@@ -67,6 +68,7 @@ namespace MsRdpEx_App
 
             coreApi.LogFilePath = logFilePath;
             coreApi.LogEnabled = true;
+            coreApi.AxHookEnabled = axHookEnabled;
             coreApi.Load();
 
             if (externalMode)
@@ -80,9 +82,12 @@ namespace MsRdpEx_App
             RdpView rdpView = new RdpView(axName, rdpExDll);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
 
-            RdpInstance rdpInstance = new RdpInstance((IMsRdpExInstance)rdp.GetOcx());
-            rdpInstance.OutputMirrorEnabled = true;
-            rdpInstance.VideoRecordingEnabled = true;
+            if (axHookEnabled)
+            {
+                RdpInstance rdpInstance = new RdpInstance((IMsRdpExInstance)rdp.GetOcx());
+                rdpInstance.OutputMirrorEnabled = true;
+                rdpInstance.VideoRecordingEnabled = true;
+            }
 
             rdp.Server = this.txtComputer.Text;
             rdp.UserName = this.txtUserName.Text;
@@ -98,14 +103,17 @@ namespace MsRdpEx_App
             rdpView.ClientSize = DesktopSize;
             rdpView.Text = String.Format("{0} ({1})", rdp.Server, axName);
 
-            object corePropsVal = extendedSettings.get_Property("CoreProperties");
-            IMsRdpExtendedSettings coreProps = (IMsRdpExtendedSettings)corePropsVal;
+            if (axHookEnabled)
+            {
+                object corePropsVal = extendedSettings.get_Property("CoreProperties");
+                IMsRdpExtendedSettings coreProps = (IMsRdpExtendedSettings)corePropsVal;
 
-            object basePropsVal = extendedSettings.get_Property("BaseProperties");
-            IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
+                object basePropsVal = extendedSettings.get_Property("BaseProperties");
+                IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
 
-            object DisableUDPTransport = true;
-            coreProps.set_Property("DisableUDPTransport", ref DisableUDPTransport);
+                object DisableUDPTransport = true;
+                coreProps.set_Property("DisableUDPTransport", ref DisableUDPTransport);
+            }
 
             rdp.Connect();
 
