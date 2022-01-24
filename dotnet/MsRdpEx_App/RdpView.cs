@@ -155,8 +155,9 @@ namespace MsRdpEx_App
             IMsRdpExCoreApi coreApi = Bindings.GetCoreApi();
 
             object instance = null;
-            bool success = coreApi.QueryInstanceByWindowHandle(hWnd, out instance);
+            bool success = coreApi.OpenInstanceForWindowHandle(hWnd, out instance);
             IMsRdpExInstance rdpInstance = (IMsRdpExInstance) instance;
+            rdpInstance.SetOutputMirrorEnabled(true);
 
             IntPtr hShadowDC = IntPtr.Zero;
             IntPtr hShadowBitmap = IntPtr.Zero;
