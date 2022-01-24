@@ -17,7 +17,13 @@ HRESULT DllCanUnloadNow()
 
 HRESULT DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
-    MsRdpEx_Log("DllGetClassObject");
+    char clsid[MSRDPEX_GUID_STRING_SIZE];
+    char iid[MSRDPEX_GUID_STRING_SIZE];
+
+    MsRdpEx_GuidBinToStr((GUID*)rclsid, clsid, 0);
+    MsRdpEx_GuidBinToStr((GUID*)riid, iid, 0);
+    MsRdpEx_Log("DllGetClassObject(%s, %s)", clsid, iid);
+
     return MsRdpEx_AxDll_DllGetClassObject(g_AxDll, rclsid, riid, ppv);
 }
 

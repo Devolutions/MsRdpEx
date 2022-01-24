@@ -89,6 +89,8 @@ bool MsRdpEx_CaptureBlt(
     HDC hdcSrc, int srcX, int srcY)
 {
     RECT rect = { 0 };
+    uint32_t frameWidth = 0;
+    uint32_t frameHeight = 0;
     bool captured = false;
     bool outputMirrorEnabled = false;
     bool videoRecordingEnabled = false;
@@ -123,13 +125,14 @@ bool MsRdpEx_CaptureBlt(
 
     if (!outputMirror) {
         outputMirror = MsRdpEx_OutputMirror_New();
-        outputMirror->videoRecordingEnabled = videoRecordingEnabled;
-        outputMirror->dumpBitmapUpdates = dumpBitmapUpdates;
+        MsRdpEx_OutputMirror_SetDumpBitmapUpdates(outputMirror, dumpBitmapUpdates);
+        MsRdpEx_OutputMirror_SetVideoRecordingEnabled(outputMirror, videoRecordingEnabled);
         instance->SetOutputMirrorObject((LPVOID) outputMirror);
     }
 
-    if ((outputMirror->bitmapWidth != bitmapWidth) ||
-        (outputMirror->bitmapHeight != bitmapHeight))
+    MsRdpEx_OutputMirror_GetFrameSize(outputMirror, &frameWidth, &frameHeight);
+
+    if ((frameWidth != bitmapWidth) || (frameHeight != bitmapHeight))
     {
         MsRdpEx_OutputMirror_Uninit(outputMirror);
         MsRdpEx_OutputMirror_SetSourceDC(outputMirror, hdcSrc);

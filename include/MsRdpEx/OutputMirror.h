@@ -9,31 +9,21 @@
 extern "C" {
 #endif
 
-struct _MsRdpEx_OutputMirror
-{
-	uint8_t* bitmapData;
-	uint32_t bitmapWidth;
-	uint32_t bitmapHeight;
-	uint32_t bitsPerPixel;
-	uint32_t bitmapStep;
-
-	HDC hSourceDC;
-	HDC hShadowDC;
-	HBITMAP hShadowBitmap;
-	HGDIOBJ hShadowObject;
-	uint32_t captureIndex;
-
-	bool dumpBitmapUpdates;
-	bool videoRecordingEnabled;
-	MsRdpEx_VideoRecorder* videoRecorder;
-};
 typedef struct _MsRdpEx_OutputMirror MsRdpEx_OutputMirror;
 
 void MsRdpEx_OutputMirror_SetSourceDC(MsRdpEx_OutputMirror* ctx, HDC hSourceDC);
 HDC MsRdpEx_OutputMirror_GetShadowDC(MsRdpEx_OutputMirror* ctx);
 
 void MsRdpEx_OutputMirror_SetFrameSize(MsRdpEx_OutputMirror* ctx, uint32_t frameWidth, uint32_t frameHeight);
+void MsRdpEx_OutputMirror_GetFrameSize(MsRdpEx_OutputMirror* ctx, uint32_t* frameWidth, uint32_t* frameHeight);
+
 bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx);
+
+void MsRdpEx_OutputMirror_SetDumpBitmapUpdates(MsRdpEx_OutputMirror* ctx, bool dumpBitmapUpdates);
+void MsRdpEx_OutputMirror_SetVideoRecordingEnabled(MsRdpEx_OutputMirror* ctx, bool videoRecordingEnabled);
+
+bool MsRdpEx_OutputMirror_GetShadowBitmap(MsRdpEx_OutputMirror* ctx,
+	HDC* phDC, HBITMAP* phBitmap, uint32_t* pWidth, uint32_t* pHeight);
 
 bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx);
 bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx);
