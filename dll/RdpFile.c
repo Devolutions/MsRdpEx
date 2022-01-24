@@ -93,6 +93,7 @@ char* MsRdpEx_GetRdpFilenameFromCommandLine()
 	int argc = 0;
 	char* filename = NULL;
 	LPWSTR* argsW = NULL;
+	char* cmdlineA = NULL;
 	LPCWSTR cmdlineW = GetCommandLineW();
 
 	if (!cmdlineW)
@@ -103,10 +104,16 @@ char* MsRdpEx_GetRdpFilenameFromCommandLine()
 	if (!argsW)
 		goto exit;
 
-	if (argc < 1)
+	if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, cmdlineW, -1, &cmdlineA, 0, NULL, NULL) < 0) {
+		goto exit;
+	}
+
+	MsRdpEx_Log("cmdline(argc=%d): %s", argc, cmdlineA);
+
+	if (argc < 2)
 		goto exit;
 
-	if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, argsW[0], -1, &filename, 0, NULL, NULL) < 0) {
+	if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, argsW[1], -1, &filename, 0, NULL, NULL) < 0) {
 		goto exit;
 	}
 
@@ -117,6 +124,7 @@ char* MsRdpEx_GetRdpFilenameFromCommandLine()
 	}
 
 exit:
+	free(cmdlineA);
 	LocalFree(argsW);
 	return filename;
 }

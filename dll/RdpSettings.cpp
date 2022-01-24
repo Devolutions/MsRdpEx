@@ -175,7 +175,11 @@ HRESULT STDMETHODCALLTYPE CMsRdpExtendedSettings::QueryInterface(
 )
 {
     HRESULT hr;
-    MsRdpEx_Log("CMsRdpExtendedSettings::QueryInterface");
+    char iid[MSRDPEX_GUID_STRING_SIZE];
+
+    MsRdpEx_GuidBinToStr((const GUID*)&riid, iid, 0);
+
+    MsRdpEx_Log("CMsRdpExtendedSettings::QueryInterface(%s)", iid);
 
     if (riid == IID_IUnknown)
     {
@@ -410,7 +414,7 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
 
     CMsRdpExtendedSettings* pMsRdpExtendedSettings = this;
 
-    MsRdpEx_Log("Loading %s RDP", filename);
+    MsRdpEx_Log("Loading %s", filename);
     MsRdpEx_RdpFile* rdpFile = MsRdpEx_RdpFile_New();
 
     if (MsRdpEx_RdpFile_Load(rdpFile, filename)) {
@@ -421,44 +425,49 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
 
         while (!MsRdpEx_ArrayListIt_Done(it))
         {
-            entry = (MsRdpEx_RdpFileEntry*)MsRdpEx_ArrayListIt_Next(it);
+            entry = (MsRdpEx_RdpFileEntry*) MsRdpEx_ArrayListIt_Next(it);
 
             if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableCredentialsDelegation")) {
                 VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    pMsRdpExtendedSettings->PutProperty("DisableCredentialsDelegation", &value);
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                    pMsRdpExtendedSettings->PutProperty(propName, &value);
                 }
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RedirectedAuthentication")) {
                 VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    pMsRdpExtendedSettings->PutProperty("RedirectedAuthentication", &value);
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                    pMsRdpExtendedSettings->PutProperty(propName, &value);
                 }
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RestrictedLogon")) {
                 VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    pMsRdpExtendedSettings->PutProperty("RestrictedLogon", &value);
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                    pMsRdpExtendedSettings->PutProperty(propName, &value);
                 }
             }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "AutoLogon")) {
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "UserSpecifiedServerName")) {
                 VARIANT value;
-                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    pMsRdpExtendedSettings->PutProperty("AutoLogon", &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ServerNameUsedForAuthentication")) {
-                char* oldServerName = NULL;
-                bstr_t ServerNameUsedForAuthentication = _com_util::ConvertStringToBSTR(entry->value);
-                MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, m_pMsTscAx->GetServer().GetBSTR(), -1, &oldServerName, 0, NULL, NULL);
-                m_pMsTscAx->PutServer(ServerNameUsedForAuthentication);
-                MsRdpEx_NameResolver_RemapName(entry->value, oldServerName);
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+                value.bstrVal = propValue;
+                value.vt = VT_BSTR;
+                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableUDPTransport")) {
                 VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->value);
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                     pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+                }
+            }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableHardwareMode")) {
+                VARIANT value;
+                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                    pMsRdpExtendedSettings->put_Property(propName, &value);
                 }
             }
         }

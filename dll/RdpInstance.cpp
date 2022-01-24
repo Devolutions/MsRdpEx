@@ -74,7 +74,8 @@ public:
     HRESULT STDMETHODCALLTYPE GetRdpClient(LPVOID* ppvObject)
     {
         IUnknown* pMsRdpClient = (IUnknown*)m_pMsRdpClient;
-        return pMsRdpClient->QueryInterface(IID_IUnknown, ppvObject);
+        *ppvObject = (void*)m_pMsRdpClient;
+        return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetOutputMirrorObject(LPVOID* ppvObject)
