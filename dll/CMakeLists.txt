@@ -1,6 +1,19 @@
 
 set(MSRDPEX_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include/MsRdpEx")
 
+set(MSRDPEX_RESOURCES
+    MsRdpEx.rc)
+
+windows_rc_generate_version_info(
+    NAME "MsRdpEx" TYPE "DLL"
+    VERSION "${MSRDPEX_VERSION}"
+    FILENAME "MsRdpEx.dll"
+    VENDOR "${MSRDPEX_VENDOR}"
+    COPYRIGHT "${MSRDPEX_COPYRIGHT}"
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+
+source_group("Resources" FILES ${MSRDPEX_RESOURCES})
+
 set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/ArrayList.h"
     "${MSRDPEX_INCLUDE_DIR}/HashTable.h"
@@ -15,7 +28,7 @@ set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/VideoRecorder.h"
     "${MSRDPEX_INCLUDE_DIR}/MsRdpEx.h")
 
-add_library(MsRdpEx_Dll SHARED
+set(MSRDPEX_SOURCES
     ArrayList.c
     HashTable.c
     Environment.c
@@ -39,11 +52,16 @@ add_library(MsRdpEx_Dll SHARED
     RdpSettings.cpp
     TSObjects.cpp
     TSObjects.h
-	MsRdpEx.c
-	MsRdpEx.h
-    MsRdpEx.def
-    ${MSRDPEX_HEADERS})
+    MsRdpEx.c
+    MsRdpEx.h)
+
+add_library(MsRdpEx_Dll SHARED
+    ${MSRDPEX_SOURCES}
+    ${MSRDPEX_HEADERS}
+    ${MSRDPEX_RESOURCES}
+    MsRdpEx.def)
 
 set_target_properties(MsRdpEx_Dll PROPERTIES OUTPUT_NAME "MsRdpEx")
 
-target_link_libraries(MsRdpEx_Dll detours version.lib userenv.lib user32.lib ws2_32.lib secur32.lib advapi32.lib)
+target_link_libraries(MsRdpEx_Dll detours
+    version.lib userenv.lib user32.lib ws2_32.lib secur32.lib advapi32.lib)
