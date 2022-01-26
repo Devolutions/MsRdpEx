@@ -36,7 +36,7 @@ extern "C" {
 typedef struct _MsRdpEx_InstanceManager MsRdpEx_InstanceManager;
 
 bool MsRdpEx_InstanceManager_Add(CMsRdpExInstance* instance);
-bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance, bool free);
+bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance);
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(HWND hWnd);
 

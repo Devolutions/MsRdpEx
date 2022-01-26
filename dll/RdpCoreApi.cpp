@@ -32,42 +32,48 @@ public:
     )
     {
         HRESULT hr = E_NOINTERFACE;
-        MsRdpEx_Log("CMsRdpExCoreApi::QueryInterface");
+        ULONG refCount = m_refCount;
+        char iid[MSRDPEX_GUID_STRING_SIZE];
+        MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
         if (riid == IID_IUnknown)
         {
             *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if (riid == IID_IMsRdpExCoreApi)
+        else if (riid == IID_IMsRdpExCoreApi)
         {
             *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
 
-        MsRdpEx_Log("--> hr=%x", hr);
+        MsRdpEx_Log("CMsRdpExCoreApi::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
+
         return hr;
     }
 
     ULONG STDMETHODCALLTYPE AddRef()
     {
-        MsRdpEx_Log("CMsRdpExCoreApi::AddRef");
-        return ++m_refCount;
+        ULONG refCount = InterlockedIncrement(&m_refCount);
+        MsRdpEx_Log("CMsRdpExCoreApi::AddRef() = %d", refCount);
+        return refCount;
     }
 
     ULONG STDMETHODCALLTYPE Release()
     {
-        MsRdpEx_Log("CMsRdpExCoreApi::Release");
-        if (--m_refCount == 0)
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+
+        MsRdpEx_Log("CMsRdpExCoreApi::Release() = %d", refCount);
+
+        if (refCount == 0)
         {
-            MsRdpEx_Log("--> deleting object");
             delete this;
             return 0;
         }
-        MsRdpEx_Log("--> refCount=%d", m_refCount);
-        return m_refCount;
+
+        return refCount;
     }
 
     // IMsRdpExCoreApi

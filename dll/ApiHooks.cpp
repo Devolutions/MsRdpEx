@@ -238,7 +238,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             instance->GetRdpClient((LPVOID*) &pRdpClient);
 
             if (!pRdpClient) {
-                MsRdpEx_InstanceManager_Remove((CMsRdpExInstance*) instance, true);
+                MsRdpEx_InstanceManager_Remove((CMsRdpExInstance*) instance);
             }
         }
 	}
