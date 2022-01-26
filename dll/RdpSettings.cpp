@@ -29,44 +29,55 @@ public:
         LPVOID* ppvObject
     )
     {
-        HRESULT hr;
+        HRESULT hr = E_NOINTERFACE;
+        ULONG refCount = m_refCount;
+        char iid[MSRDPEX_GUID_STRING_SIZE];
+        MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
+
         MsRdpEx_Log("CMsRdpPropertySet::QueryInterface");
 
         if (riid == IID_IUnknown)
         {
             *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpExtendedSettings) && m_pTSPropertySet)
+        else if ((riid == IID_IMsRdpExtendedSettings) && m_pTSPropertySet)
         {
             *ppvObject = (LPVOID)((IMsRdpExtendedSettings*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
+        }
+        else
+        {
+            hr = m_pUnknown->QueryInterface(riid, ppvObject);
         }
 
-        hr = m_pUnknown->QueryInterface(riid, ppvObject);
-        MsRdpEx_Log("--> hr=%x", hr);
+        MsRdpEx_Log("CMsRdpPropertySet::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
+
         return hr;
     }
 
     ULONG STDMETHODCALLTYPE AddRef()
     {
-        MsRdpEx_Log("CMsRdpPropertySet::AddRef");
-        return ++m_refCount;
+        ULONG refCount = InterlockedIncrement(&m_refCount);
+        MsRdpEx_Log("CMsRdpPropertySet::AddRef() = %d", refCount);
+        return refCount;
     }
 
     ULONG STDMETHODCALLTYPE Release()
     {
-        MsRdpEx_Log("CMsRdpPropertySet::Release");
-        if (--m_refCount == 0)
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+
+        MsRdpEx_Log("CMsRdpPropertySet::Release() = %d", refCount);
+
+        if (refCount == 0)
         {
-            MsRdpEx_Log("--> deleting object");
             delete this;
             return 0;
         }
-        MsRdpEx_Log("--> refCount=%d", m_refCount);
-        return m_refCount;
+
+        return refCount;
     }
 
     // IMsRdpExtendedSettings
@@ -174,48 +185,53 @@ HRESULT STDMETHODCALLTYPE CMsRdpExtendedSettings::QueryInterface(
     LPVOID* ppvObject
 )
 {
-    HRESULT hr;
+    HRESULT hr = E_NOINTERFACE;
+    ULONG refCount = m_refCount;
     char iid[MSRDPEX_GUID_STRING_SIZE];
-
-    MsRdpEx_GuidBinToStr((const GUID*)&riid, iid, 0);
-
-    MsRdpEx_Log("CMsRdpExtendedSettings::QueryInterface(%s)", iid);
+    MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
     if (riid == IID_IUnknown)
     {
         *ppvObject = (LPVOID)((IUnknown*)this);
-        m_refCount++;
-        return S_OK;
+        refCount = InterlockedIncrement(&m_refCount);
+        hr = S_OK;
     }
-    if ((riid == IID_IMsRdpExtendedSettings) && m_pMsRdpExtendedSettings)
+    else if ((riid == IID_IMsRdpExtendedSettings) && m_pMsRdpExtendedSettings)
     {
         *ppvObject = (LPVOID)((IMsRdpExtendedSettings*)this);
-        m_refCount++;
-        return S_OK;
+        refCount = InterlockedIncrement(&m_refCount);
+        hr = S_OK;
+    }
+    else
+    {
+        hr = m_pUnknown->QueryInterface(riid, ppvObject);
     }
 
-    hr = m_pUnknown->QueryInterface(riid, ppvObject);
-    MsRdpEx_Log("--> hr=%x", hr);
+    MsRdpEx_Log("CMsRdpExtendedSettings::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
+
     return hr;
 }
 
 ULONG STDMETHODCALLTYPE CMsRdpExtendedSettings::AddRef()
 {
-    MsRdpEx_Log("CMsRdpExtendedSettings::AddRef");
-    return ++m_refCount;
+    ULONG refCount = InterlockedIncrement(&m_refCount);
+    MsRdpEx_Log("CMsRdpExtendedSettings::AddRef() = %d", refCount);
+    return refCount;
 }
 
 ULONG STDMETHODCALLTYPE CMsRdpExtendedSettings::Release()
 {
-    MsRdpEx_Log("CMsRdpExtendedSettings::Release");
-    if (--m_refCount == 0)
+    ULONG refCount = InterlockedDecrement(&m_refCount);
+
+    MsRdpEx_Log("CMsRdpExtendedSettings::Release() = %d", refCount);
+
+    if (refCount == 0)
     {
-        MsRdpEx_Log("--> deleting object");
         delete this;
         return 0;
     }
-    MsRdpEx_Log("--> refCount=%d", m_refCount);
-    return m_refCount;
+
+    return refCount;
 }
 
 HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VARIANT* pValue) {

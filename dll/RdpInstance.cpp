@@ -32,41 +32,48 @@ public:
     )
     {
         HRESULT hr = E_NOINTERFACE;
-        MsRdpEx_Log("CMsRdpExInstance::QueryInterface");
+        ULONG refCount = m_refCount;
+        char iid[MSRDPEX_GUID_STRING_SIZE];
+        MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
         if (riid == IID_IUnknown)
         {
             *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
         else if (riid == IID_IMsRdpExInstance)
         {
             *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
+
+        MsRdpEx_Log("CMsRdpExInstance::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
 
         return hr;
     }
 
     ULONG STDMETHODCALLTYPE AddRef()
     {
-        MsRdpEx_Log("CMsRdpExInstance::AddRef");
-        return ++m_refCount;
+        ULONG refCount = InterlockedIncrement(&m_refCount);
+        MsRdpEx_Log("CMsRdpExInstance::AddRef() = %d", refCount);
+        return refCount;
     }
 
     ULONG STDMETHODCALLTYPE Release()
     {
-        MsRdpEx_Log("CMsRdpExInstance::Release");
-        if (--m_refCount == 0)
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+
+        MsRdpEx_Log("CMsRdpExInstance::Release() = %d", refCount);
+
+        if (refCount == 0)
         {
-            MsRdpEx_Log("--> deleting object");
             delete this;
             return 0;
         }
-        MsRdpEx_Log("--> refCount=%d", m_refCount);
-        return m_refCount;
+
+        return refCount;
     }
 
     // IMsRdpExInstance
@@ -203,19 +210,21 @@ bool MsRdpEx_InstanceManager_Add(CMsRdpExInstance* instance)
     if (!ctx)
         return false;
 
+    instance->AddRef();
     MsRdpEx_ArrayList_Add(ctx->instances, instance);
 
     return true;
 }
 
-bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance, bool free)
+bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance)
 {
     MsRdpEx_InstanceManager* ctx = g_InstanceManager;
 
-    if (!ctx)
+    if (!ctx || !instance)
         return false;
 
-    MsRdpEx_ArrayList_Remove(ctx->instances, instance, free);
+    MsRdpEx_ArrayList_Remove(ctx->instances, instance, false);
+    instance->Release();
 
     return true;
 }

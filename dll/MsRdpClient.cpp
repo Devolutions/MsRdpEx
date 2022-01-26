@@ -202,9 +202,7 @@ public:
         }
         
         if (m_pMsRdpExInstance) {
-            MsRdpEx_InstanceManager_Remove(m_pMsRdpExInstance, false);
-            IMsRdpExInstance* pMsRdpExInstance = (IMsRdpExInstance*) m_pMsRdpExInstance;
-            pMsRdpExInstance->Release();
+            MsRdpEx_InstanceManager_Remove(m_pMsRdpExInstance);
         }
     }
 
@@ -215,123 +213,130 @@ public:
         LPVOID* ppvObject
     )
     {
-        HRESULT hr;
-        MsRdpEx_Log("CMsRdpClient::QueryInterface");
-        WriteIID(riid);
+        HRESULT hr = E_NOINTERFACE;
+        ULONG refCount = m_refCount;
+        char iid[MSRDPEX_GUID_STRING_SIZE];
+        MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
         if (riid == IID_IUnknown)
         {
             *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IDispatch) && m_pDispatch)
+        else if ((riid == IID_IDispatch) && m_pDispatch)
         {
             *ppvObject = (LPVOID)((IDispatch*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsTscAx) && m_pMsTscAx)
+        else if ((riid == IID_IMsTscAx) && m_pMsTscAx)
         {
             *ppvObject = (LPVOID)((IMsTscAx*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpClient) && m_pMsRdpClient)
+        else if ((riid == IID_IMsRdpClient) && m_pMsRdpClient)
         {
             *ppvObject = (LPVOID)((IMsRdpClient*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpClient2) && m_pMsRdpClient2)
+        else if ((riid == IID_IMsRdpClient2) && m_pMsRdpClient2)
         {
             *ppvObject = (LPVOID)((IMsRdpClient2*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpClient3) && m_pMsRdpClient3)
+        else if ((riid == IID_IMsRdpClient3) && m_pMsRdpClient3)
         {
             *ppvObject = (LPVOID)((IMsRdpClient3*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpClient4) && m_pMsRdpClient4)
+        else if ((riid == IID_IMsRdpClient4) && m_pMsRdpClient4)
         {
             *ppvObject = (LPVOID)((IMsRdpClient4*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpClient5) && m_pMsRdpClient5)
+        else if ((riid == IID_IMsRdpClient5) && m_pMsRdpClient5)
         {
             *ppvObject = (LPVOID)((IMsRdpClient5*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpClient6) && m_pMsRdpClient6)
+        else if ((riid == IID_IMsRdpClient6) && m_pMsRdpClient6)
         {
             *ppvObject = (LPVOID)((IMsRdpClient6*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpClient7) && m_pMsRdpClient7)
+        else if ((riid == IID_IMsRdpClient7) && m_pMsRdpClient7)
         {
             *ppvObject = (LPVOID)((IMsRdpClient7*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpClient8) && m_pMsRdpClient8)
+        else if ((riid == IID_IMsRdpClient8) && m_pMsRdpClient8)
         {
             *ppvObject = (LPVOID)((IMsRdpClient8*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpClient9) && m_pMsRdpClient9)
+        else if ((riid == IID_IMsRdpClient9) && m_pMsRdpClient9)
         {
             *ppvObject = (LPVOID)((IMsRdpClient9*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-        if ((riid == IID_IMsRdpClient10) && m_pMsRdpClient10)
+        else if ((riid == IID_IMsRdpClient10) && m_pMsRdpClient10)
         {
             *ppvObject = (LPVOID)((IMsRdpClient10*)this);
-            m_refCount++;
-            return S_OK;
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
         }
-
-        if ((riid == IID_IMsRdpExtendedSettings) && m_pMsRdpExtendedSettings)
+        else if ((riid == IID_IMsRdpExtendedSettings) && m_pMsRdpExtendedSettings)
         {
             IMsRdpExtendedSettings* pMsRdpExtendedSettings = (IMsRdpExtendedSettings*) m_pMsRdpExtendedSettings;
-            return pMsRdpExtendedSettings->QueryInterface(IID_IMsRdpExtendedSettings, ppvObject);
+            hr = pMsRdpExtendedSettings->QueryInterface(IID_IMsRdpExtendedSettings, ppvObject);
         }
-
-        if ((riid == IID_IMsRdpExInstance) && m_pMsRdpExInstance)
+        else if ((riid == IID_IMsRdpExInstance) && m_pMsRdpExInstance)
         {
             IMsRdpExInstance* pMsRdpExInstance = (IMsRdpExInstance*) m_pMsRdpExInstance;
-            return pMsRdpExInstance->QueryInterface(IID_IMsRdpExInstance, ppvObject);
+            hr = pMsRdpExInstance->QueryInterface(IID_IMsRdpExInstance, ppvObject);
+        }
+        else
+        {
+            hr = m_pUnknown->QueryInterface(riid, ppvObject);
         }
 
-        hr = m_pUnknown->QueryInterface(riid, ppvObject);
-        MsRdpEx_Log("--> hr=%x", hr);
+        MsRdpEx_Log("CMsRdpClient::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
+        WriteIID(riid);
+
         return hr;
     }
 
     ULONG STDMETHODCALLTYPE AddRef()
     {
-        MsRdpEx_Log("CMsRdpClient::AddRef");
-        return ++m_refCount;
+        ULONG refCount = InterlockedIncrement(&m_refCount);
+        MsRdpEx_Log("CMsRdpClient::AddRef() = %d", refCount);
+        return refCount;
     }
 
     ULONG STDMETHODCALLTYPE Release()
     {
-        MsRdpEx_Log("CMsRdpClient::Release");
-        if (--m_refCount == 0)
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+
+        MsRdpEx_Log("CMsRdpClient::Release() = %d", refCount);
+
+        if (refCount == 0)
         {
-            MsRdpEx_Log("--> deleting object");
             delete this;
             return 0;
         }
-        MsRdpEx_Log("--> refCount=%d", m_refCount);
-        return m_refCount;
+
+        return refCount;
     }
 
     // IDispatch interface
