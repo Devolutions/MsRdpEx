@@ -41,27 +41,6 @@ static SECURITY_STATUS SEC_ENTRY sspi_QueryCredentialsAttributesW(PCredHandle ph
 	return status;
 }
 
-typedef struct _SEC_WINNT_AUTH_IDENTITY_OPAQUE {
-	uint32_t Version; // 2
-	uint32_t padding1;
-	uint16_t domainSize1;
-	uint16_t domainSize2;
-	uint32_t padding2; // 0
-	uint32_t domainOffset; // 64 (offset)
-	uint32_t padding4; // 0
-	uint16_t userSize1;
-	uint16_t userSize2;
-	uint32_t padding5;
-	uint32_t userOffset; // 78 (offset)
-	uint32_t padding7; // 0
-	uint32_t padding8; // 136
-	uint32_t padding9; // 0
-	uint32_t padding10; // 104
-	uint32_t padding11; // 0
-	uint32_t padding12; // 0
-	uint32_t padding13; // 0
-} SEC_WINNT_AUTH_IDENTITY_OPAQUE;
-
 static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 	SEC_WCHAR* pszPrincipal, SEC_WCHAR* pszPackage, ULONG fCredentialUse, void* pvLogonID,
 	void* pAuthData, SEC_GET_KEY_FN pGetKeyFn, void* pvGetKeyArgument, PCredHandle phCredential,
@@ -93,32 +72,63 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 
 		if (pCred->pSpnegoCred) {
 			SECURITY_STATUS secStatus = SEC_E_OK;
-			SEC_WINNT_AUTH_IDENTITY_OPAQUE* pAuthIdentity = (SEC_WINNT_AUTH_IDENTITY_OPAQUE*) pCred->pSpnegoCred;
+			bool bUnprotectCredentials = false;
+			DWORD dwUnpackFlags = 0;
+			char* userA = NULL;
+			char* domainA = NULL;
+			char* passwordA = NULL;
+			WCHAR szUserName[512+1];
+			WCHAR szDomainName[512+1];
+			WCHAR szPassword[512+1];
+			DWORD cchMaxUserName = sizeof(szUserName) / sizeof(WCHAR);
+			DWORD cchMaxDomainName = sizeof(szDomainName) / sizeof(WCHAR);
+			DWORD cchMaxPassword = sizeof(szPassword) / sizeof(WCHAR);
+			DWORD cchUserName = cchMaxUserName;
+			DWORD cchDomainName = cchMaxDomainName;
+			DWORD cchPassword = cchMaxPassword;
+			DWORD cbAuthBuffer = LocalSize((HLOCAL)pCred->pSpnegoCred);
 
-			char* pUserA = NULL;
-			uint32_t userSize = pAuthIdentity->userSize1;
-			uint32_t userLength = userSize / 2;
-			uint32_t userOffset = pAuthIdentity->userOffset;
-			WCHAR* userData = (WCHAR*) & ((uint8_t*)pAuthIdentity)[userOffset];
+			if (bUnprotectCredentials) {
+				dwUnpackFlags |= CRED_PACK_PROTECTED_CREDENTIALS;
+			}
 
-			char* pDomainA = NULL;
-			uint32_t domainSize = pAuthIdentity->domainSize1;
-			uint32_t domainLength = domainSize / 2;
-			uint32_t domainOffset = pAuthIdentity->domainOffset;
-			WCHAR* domainData = (WCHAR*)&((uint8_t*)pAuthIdentity)[domainOffset];
+			BOOL success = CredUnPackAuthenticationBufferW(dwUnpackFlags,
+				pCred->pSpnegoCred, cbAuthBuffer, szUserName, &cchUserName,
+				szDomainName, &cchDomainName, szPassword, &cchPassword);
 
-			MsRdpEx_Log("AuthIdentity: UserSize: %d domainSize: %d", userSize, domainSize);
+			if (cchUserName == cchMaxUserName)
+				cchUserName = 0;
 
-			if (userLength)
-				MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, userData, userLength, &pUserA, 0, NULL, NULL);
+			if (cchDomainName == cchMaxDomainName)
+				cchDomainName = 0;
 
-			if (domainLength)
-				MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, domainData, domainLength, &pDomainA, 0, NULL, NULL);
+			if (cchPassword == cchMaxPassword)
+				cchPassword = 0;
 
-			MsRdpEx_Log("AuthIdentity User: %s Domain: %s",
-				pUserA ? pUserA : "", pDomainA ? pDomainA : "");
-			free(pUserA);
-			free(pDomainA);
+			if (!bUnprotectCredentials) {
+				cchPassword = 0;
+			}
+
+			if (success) {
+				if (cchUserName)
+					MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, szUserName, cchUserName, &userA, 0, NULL, NULL);
+
+				if (cchDomainName)
+					MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, szDomainName, cchDomainName, &domainA, 0, NULL, NULL);
+
+				if (cchPassword)
+					MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, szPassword, cchPassword, &passwordA, 0, NULL, NULL);
+
+				MsRdpEx_Log("CredUnPackAuthenticationBufferW: Size: %d User: %s (%d) Domain: %s (%d) Password: %s (%d)",
+					cbAuthBuffer,
+					userA ? userA : "", cchUserName,
+					domainA ? domainA : "", cchDomainName,
+					passwordA ? passwordA : "", cchPassword);
+
+				free(userA);
+				free(domainA);
+				free(passwordA);
+			}
 		}
 	}
 

@@ -7,6 +7,7 @@
 #include <sspi.h>
 #include <security.h>
 #include <credssp.h>
+#include <wincred.h>
 
 #ifdef __cplusplus
 extern "C" {
