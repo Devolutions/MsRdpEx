@@ -15,6 +15,7 @@ windows_rc_generate_version_info(
 source_group("Resources" FILES ${MSRDPEX_RESOURCES})
 
 set(MSRDPEX_HEADERS
+    "${MSRDPEX_INCLUDE_DIR}/Sspi.h"
     "${MSRDPEX_INCLUDE_DIR}/ArrayList.h"
     "${MSRDPEX_INCLUDE_DIR}/HashTable.h"
     "${MSRDPEX_INCLUDE_DIR}/Environment.h"
@@ -33,6 +34,7 @@ set(MSRDPEX_SOURCES
     HashTable.c
     Environment.c
     NameResolver.c
+    Sspi.cpp
     File.c
     Log.c
     Paths.c

@@ -100,6 +100,9 @@ bool MsRdpEx_GuidSetNil(GUID* guid);
 bool MsRdpEx_GuidBinToStr(const GUID* guid, char* str, uint32_t flags);
 bool MsRdpEx_GuidStrToBin(const char* str, GUID* guid, uint32_t flags);
 
+uint8_t* MsRdpEx_HexToBin(const char* hex, uint8_t* bin, int size, uint32_t flags);
+char* MsRdpEx_BinToHex(const uint8_t* bin, char* hex, int size, uint32_t flags);
+
 // Log Utils
 
 bool MsRdpEx_Log(const char* format, ...);

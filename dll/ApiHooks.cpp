@@ -3,6 +3,7 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <MsRdpEx/Sspi.h>
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/RdpInstance.h>
 
@@ -271,6 +272,14 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
     return wndClassAtom;
 }
 
+PSecurityFunctionTableW (SEC_ENTRY* Real_InitSecurityInterfaceW)(void) = InitSecurityInterfaceW;
+
+PSecurityFunctionTableW Hook_InitSecurityInterfaceW(void)
+{
+    PSecurityFunctionTableW pSecTable = Real_InitSecurityInterfaceW();
+    return MsRdpEx_SspiHook_Init(pSecTable);
+}
+
 void MsRdpEx_GlobalInit()
 {
     MsRdpEx_NameResolver_Get();
@@ -296,6 +305,7 @@ LONG MsRdpEx_AttachHooks()
     DetourAttach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
     DetourAttach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
     DetourAttach((PVOID*)(&Real_RegisterClassExW), Hook_RegisterClassExW);
+    DetourAttach((PVOID*)(&Real_InitSecurityInterfaceW), Hook_InitSecurityInterfaceW);
     error = DetourTransactionCommit();
     return error;
 }
@@ -311,6 +321,7 @@ LONG MsRdpEx_DetachHooks()
     DetourDetach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
     DetourDetach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
     DetourDetach((PVOID*)(&Real_RegisterClassExW), Hook_RegisterClassExW);
+    DetourDetach((PVOID*)(&Real_InitSecurityInterfaceW), Hook_InitSecurityInterfaceW);
     error = DetourTransactionCommit();
     MsRdpEx_GlobalUninit();
     return error;
