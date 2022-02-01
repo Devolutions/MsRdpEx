@@ -158,8 +158,6 @@ BOOL Hook_BitBlt(
 {
     BOOL status;
 
-    MsRdpEx_Log("BitBlt: %d,%d %dx%d %d,%d", dstX, dstY, width, height, srcX, srcY);
-
     status = Real_BitBlt(hdcDst, dstX, dstY, width, height, hdcSrc, srcX, srcY, rop);
 
     bool captured = MsRdpEx_CaptureBlt(hdcDst, dstX, dstY, width, height, hdcSrc, srcX, srcY);

@@ -421,11 +421,26 @@ static SECURITY_STATUS SEC_ENTRY sspi_EncryptMessage(PCtxtHandle phContext, ULON
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("EncryptMessage seqNo: %d", MessageSeqNo);
+	MsRdpEx_Log("EncryptMessage seqNo: %d cbBuffers: %d", MessageSeqNo, pMessage->cBuffers);
 
 	if (!(g_RealTable && g_RealTable->EncryptMessage))
 	{
 		return SEC_E_UNSUPPORTED_FUNCTION;
+	}
+
+	for (unsigned long iBuffer = 0; iBuffer < pMessage->cBuffers; iBuffer++) {
+		PSecBuffer pSecBuffer = &pMessage->pBuffers[iBuffer];
+
+		if ((pSecBuffer->cbBuffer < 1) || (!pSecBuffer->pvBuffer)) {
+			continue;
+		}
+
+		if (pSecBuffer->BufferType != SECBUFFER_DATA) {
+			continue;
+		}
+
+		MsRdpEx_Log("SecBuffer[%d](type:%d length:%d):", iBuffer, pSecBuffer->BufferType, pSecBuffer->cbBuffer);
+		MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 	}
 
 	status = g_RealTable->EncryptMessage(phContext, fQOP, pMessage, MessageSeqNo);
@@ -446,6 +461,21 @@ static SECURITY_STATUS SEC_ENTRY sspi_DecryptMessage(PCtxtHandle phContext, PSec
 	}
 
 	status = g_RealTable->DecryptMessage(phContext, pMessage, MessageSeqNo, pfQOP);
+
+	for (unsigned long iBuffer = 0; iBuffer < pMessage->cBuffers; iBuffer++) {
+		PSecBuffer pSecBuffer = &pMessage->pBuffers[iBuffer];
+
+		if ((pSecBuffer->cbBuffer < 1) || (!pSecBuffer->pvBuffer)) {
+			continue;
+		}
+
+		if (pSecBuffer->BufferType != SECBUFFER_DATA) {
+			continue;
+		}
+
+		MsRdpEx_Log("SecBuffer[%d](type:%d length:%d):", iBuffer, pSecBuffer->BufferType, pSecBuffer->cbBuffer);
+		MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
+	}
 
 	return status;
 }

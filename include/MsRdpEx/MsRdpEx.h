@@ -106,6 +106,7 @@ char* MsRdpEx_BinToHex(const uint8_t* bin, char* hex, int size, uint32_t flags);
 // Log Utils
 
 bool MsRdpEx_Log(const char* format, ...);
+void MsRdpEx_LogHexDump(const uint8_t* data, size_t size);
 
 void MsRdpEx_LogOpen();
 void MsRdpEx_LogClose();
