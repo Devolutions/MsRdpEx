@@ -30,6 +30,10 @@ struct _MsRdpEx_Pcap
     PCAP_RECORD* head;
     PCAP_RECORD* tail;
     PCAP_RECORD* record;
+    bool synchronized;
+    CRITICAL_SECTION lock;
+    uint32_t inboundSeqNo;
+    uint32_t outboundSeqNo;
 };
 
 #define PCAP_MAGIC_NUMBER 0xA1B2C3D4
@@ -75,10 +79,15 @@ static bool MsRdpEx_PcapFile_ReadRecord(MsRdpEx_PcapFile* pcap, PCAP_RECORD* rec
     return true;
 }
 
+static bool MsRdpEx_PcapFile_WriteRecordData(MsRdpEx_PcapFile* pcap, PCAP_RECORD* record)
+{
+    return fwrite(record->cdata, record->length, 1, pcap->fp) == 1;
+}
+
 static bool MsRdpEx_PcapFile_WriteRecord(MsRdpEx_PcapFile* pcap, PCAP_RECORD* record)
 {
     return MsRdpEx_PcapFile_WriteRecordHeader(pcap, &record->header) &&
-           (fwrite(record->cdata, record->length, 1, pcap->fp) == 1);
+        MsRdpEx_PcapFile_WriteRecordData(pcap, record);
 }
 
 bool MsRdpEx_PcapFile_AddRecord(MsRdpEx_PcapFile* pcap, const uint8_t* data, uint32_t length)
@@ -152,6 +161,18 @@ bool MsRdpEx_PcapFile_GetNextRecord(MsRdpEx_PcapFile* pcap, PCAP_RECORD* record)
     return MsRdpEx_PcapFile_HasNextRecord(pcap) && MsRdpEx_PcapFile_ReadRecord(pcap, record);
 }
 
+void MsRdpEx_PcapFile_Lock(MsRdpEx_PcapFile* pcap)
+{
+    if (pcap->synchronized)
+        EnterCriticalSection(&pcap->lock);
+}
+
+void MsRdpEx_PcapFile_Unlock(MsRdpEx_PcapFile* pcap)
+{
+    if (pcap->synchronized)
+        LeaveCriticalSection(&pcap->lock);
+}
+
 MsRdpEx_PcapFile* MsRdpEx_PcapFile_Open(const char* name, bool write)
 {
     MsRdpEx_PcapFile* pcap;
@@ -164,6 +185,8 @@ MsRdpEx_PcapFile* MsRdpEx_PcapFile_Open(const char* name, bool write)
     pcap->name = _strdup(name);
     pcap->write = write;
     pcap->record_count = 0;
+    pcap->synchronized = true;
+
     pcap->fp = MsRdpEx_FileOpen(name, write ? "w+b" : "rb");
 
     if (!pcap->fp)
@@ -191,6 +214,9 @@ MsRdpEx_PcapFile* MsRdpEx_PcapFile_Open(const char* name, bool write)
         if (!MsRdpEx_PcapFile_ReadHeader(pcap, &pcap->header))
             goto fail;
     }
+
+    if (!InitializeCriticalSectionAndSpinCount(&pcap->lock, 4000))
+        goto fail;
 
     return pcap;
 
@@ -222,6 +248,9 @@ void MsRdpEx_PcapFile_Close(MsRdpEx_PcapFile* pcap)
         fclose(pcap->fp);
 
     free(pcap->name);
+
+    DeleteCriticalSection(&pcap->lock);
+
     free(pcap);
 }
 
@@ -233,6 +262,8 @@ static bool MsRdpEx_PcapFile_WriteEthernetHeader(MsRdpEx_PcapFile* pcap, PCAP_ET
 
     if (!pcap || !pcap->fp || !ethernet)
         return false;
+
+    ZeroMemory(buffer, sizeof(buffer));
 
     s = MsRdpEx_Stream_New(buffer, 14, false);
 
@@ -282,6 +313,8 @@ static bool MsRdpEx_PcapFile_WriteIPv4Header(MsRdpEx_PcapFile* pcap, PCAP_IPV4_H
     if (!pcap || !pcap->fp || !ipv4)
         return false;
 
+    ZeroMemory(buffer, sizeof(buffer));
+
     s = MsRdpEx_Stream_New(buffer, 20, false);
     
     if (!s)
@@ -318,6 +351,8 @@ static bool MsRdpEx_PcapFile_WriteTcpHeader(MsRdpEx_PcapFile* pcap, PCAP_TCP_HEA
     if (!pcap || !pcap->fp || !tcp)
         return false;
 
+    ZeroMemory(buffer, sizeof(buffer));
+
     s = MsRdpEx_Stream_New(buffer, 20, false);
     
     if (!s)
@@ -340,16 +375,17 @@ static bool MsRdpEx_PcapFile_WriteTcpHeader(MsRdpEx_PcapFile* pcap, PCAP_TCP_HEA
     return success;
 }
 
-static UINT32 g_InboundSequenceNumber = 0;
-static UINT32 g_OutboundSequenceNumber = 0;
-
-bool MsRdpEx_PcapFile_PacketWrite(MsRdpEx_PcapFile* pcap, uint8_t* data, size_t length, uint32_t flags)
+bool MsRdpEx_PcapFile_WritePacket(MsRdpEx_PcapFile* pcap, const uint8_t* data, size_t length, uint32_t flags)
 {
     PCAP_TCP_HEADER tcp;
     PCAP_IPV4_HEADER ipv4;
     struct timeval tp;
     PCAP_RECORD record;
     PCAP_ETHERNET_HEADER ethernet;
+
+    ZeroMemory(&tcp, sizeof(PCAP_TCP_HEADER));
+    ZeroMemory(&ipv4, sizeof(PCAP_IPV4_HEADER));
+    ZeroMemory(&ethernet, sizeof(PCAP_ETHERNET_HEADER));
 
     ethernet.Type = 0x0800;
 
@@ -418,15 +454,15 @@ bool MsRdpEx_PcapFile_PacketWrite(MsRdpEx_PcapFile* pcap, uint8_t* data, size_t 
 
     if (flags & PCAP_PACKET_FLAG_OUTBOUND)
     {
-        tcp.SequenceNumber = g_OutboundSequenceNumber;
-        tcp.AcknowledgementNumber = g_InboundSequenceNumber;
-        g_OutboundSequenceNumber += length;
+        tcp.SequenceNumber = pcap->outboundSeqNo;
+        tcp.AcknowledgementNumber = pcap->inboundSeqNo;
+        pcap->outboundSeqNo += length;
     }
     else
     {
-        tcp.SequenceNumber = g_InboundSequenceNumber;
-        tcp.AcknowledgementNumber = g_OutboundSequenceNumber;
-        g_InboundSequenceNumber += length;
+        tcp.SequenceNumber = pcap->inboundSeqNo;
+        tcp.AcknowledgementNumber = pcap->outboundSeqNo;
+        pcap->inboundSeqNo += length;
     }
 
     tcp.Offset = 5;
@@ -435,7 +471,7 @@ bool MsRdpEx_PcapFile_PacketWrite(MsRdpEx_PcapFile* pcap, uint8_t* data, size_t 
     tcp.Window = 0x7FFF;
     tcp.Checksum = 0;
     tcp.UrgentPointer = 0;
-    record.data = data;
+    record.data = (void*) data;
     record.length = length;
     record.header.incl_len = record.length + 14 + 20 + 20;
     record.header.orig_len = record.length + 14 + 20 + 20;
@@ -449,11 +485,9 @@ bool MsRdpEx_PcapFile_PacketWrite(MsRdpEx_PcapFile* pcap, uint8_t* data, size_t 
         !MsRdpEx_PcapFile_WriteEthernetHeader(pcap, &ethernet) ||
         !MsRdpEx_PcapFile_WriteIPv4Header(pcap, &ipv4) ||
         !MsRdpEx_PcapFile_WriteTcpHeader(pcap, &tcp) ||
-        !MsRdpEx_PcapFile_WriteRecord(pcap, &record)) {
+        !MsRdpEx_PcapFile_WriteRecordData(pcap, &record)) {
         return false;
     }
-
-    MsRdpEx_PcapFile_Flush(pcap);
 
     return true;
 }

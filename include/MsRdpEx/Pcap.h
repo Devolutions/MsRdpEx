@@ -101,7 +101,10 @@ bool MsRdpEx_PcapFile_GetNextRecordHeader(MsRdpEx_PcapFile* pcap, PCAP_RECORD* r
 bool MsRdpEx_PcapFile_GetNextRecordContent(MsRdpEx_PcapFile* pcap, PCAP_RECORD* record);
 void MsRdpEx_PcapFile_Flush(MsRdpEx_PcapFile* pcap);
 
-bool MsRdpEx_PcapFile_PacketWrite(MsRdpEx_PcapFile* pcap, uint8_t* data, size_t length, uint32_t flags);
+void MsRdpEx_PcapFile_Lock(MsRdpEx_PcapFile* pcap);
+void MsRdpEx_PcapFile_Unlock(MsRdpEx_PcapFile* pcap);
+
+bool MsRdpEx_PcapFile_WritePacket(MsRdpEx_PcapFile* pcap, const uint8_t* data, size_t length, uint32_t flags);
 
 #ifdef __cplusplus
 }

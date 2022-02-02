@@ -1,6 +1,27 @@
 #include "MsRdpEx.h"
 
+#include <MsRdpEx/Pcap.h>
+
 #include <MsRdpEx/Sspi.h>
+
+static MsRdpEx_PcapFile* g_PcapFile = NULL;
+static bool g_PcapEnabled = true;
+static char g_PcapFilePath[MSRDPEX_MAX_PATH] = { 0 };
+
+static MsRdpEx_PcapFile* MsRdpEx_GetPcapFile()
+{
+	if (g_PcapFile)
+		return g_PcapFile;
+
+	if (g_PcapFilePath[0] == '\0') {
+		const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
+		sprintf_s(g_PcapFilePath, MSRDPEX_MAX_PATH, "%s\\MsRdpEx.pcap", appDataPath);
+	}
+
+	g_PcapFile = MsRdpEx_PcapFile_Open(g_PcapFilePath, true);
+
+	return g_PcapFile;
+}
 
 static PSecurityFunctionTableW g_RealTable = NULL;
 static PSecurityFunctionTableW g_HookTable = NULL;
@@ -481,6 +502,16 @@ static SECURITY_STATUS SEC_ENTRY sspi_EncryptMessage(PCtxtHandle phContext, ULON
 			continue;
 		}
 
+		MsRdpEx_PcapFile* pcap = MsRdpEx_GetPcapFile();
+
+		if (pcap) {
+			MsRdpEx_PcapFile_Lock(pcap);
+			MsRdpEx_PcapFile_WritePacket(pcap,
+				(const uint8_t*) pSecBuffer->pvBuffer,
+				pSecBuffer->cbBuffer, PCAP_PACKET_FLAG_OUTBOUND);
+			MsRdpEx_PcapFile_Unlock(pcap);
+		}
+
 		MsRdpEx_Log("SecBuffer[%d](type:%d length:%d):", iBuffer, pSecBuffer->BufferType, pSecBuffer->cbBuffer);
 		MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 	}
@@ -513,6 +544,16 @@ static SECURITY_STATUS SEC_ENTRY sspi_DecryptMessage(PCtxtHandle phContext, PSec
 
 		if (pSecBuffer->BufferType != SECBUFFER_DATA) {
 			continue;
+		}
+
+		MsRdpEx_PcapFile* pcap = MsRdpEx_GetPcapFile();
+
+		if (pcap) {
+			MsRdpEx_PcapFile_Lock(pcap);
+			MsRdpEx_PcapFile_WritePacket(pcap,
+				(const uint8_t*) pSecBuffer->pvBuffer,
+				pSecBuffer->cbBuffer, PCAP_PACKET_FLAG_INBOUND);
+			MsRdpEx_PcapFile_Unlock(pcap);
 		}
 
 		MsRdpEx_Log("SecBuffer[%d](type:%d length:%d):", iBuffer, pSecBuffer->BufferType, pSecBuffer->cbBuffer);
