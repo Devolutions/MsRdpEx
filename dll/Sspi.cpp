@@ -12,7 +12,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_EnumerateSecurityPackagesW(ULONG* pcPackag
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("EnumerateSecurityPackagesW");
+	MsRdpEx_Log("sspi_EnumerateSecurityPackagesW");
 
 	if (!(g_RealTable && g_RealTable->EnumerateSecurityPackagesW))
 	{
@@ -29,7 +29,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_QueryCredentialsAttributesW(PCredHandle ph
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("QueryCredentialsAttributesW");
+	MsRdpEx_Log("sspi_QueryCredentialsAttributesW");
 
 	if (!(g_RealTable && g_RealTable->QueryCredentialsAttributesW))
 	{
@@ -61,7 +61,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 	if (pszPackage)
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszPackage, -1, &pszPackageA, 0, NULL, NULL);
 
-	MsRdpEx_Log("AcquireCredentialsHandleW(principal=\"%s\", package=\"%s\")",
+	MsRdpEx_Log("sspi_AcquireCredentialsHandleW(principal=\"%s\", package=\"%s\")",
 		pszPrincipalA ? pszPrincipalA : "",
 		pszPackageA ? pszPackageA : "");
 
@@ -146,7 +146,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_FreeCredentialsHandle(PCredHandle phCreden
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("FreeCredentialsHandle");
+	MsRdpEx_Log("sspi_FreeCredentialsHandle");
 
 	if (!(g_RealTable && g_RealTable->FreeCredentialsHandle))
 	{
@@ -164,17 +164,52 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 	PCtxtHandle phNewContext, PSecBufferDesc pOutput, PULONG pfContextAttr, PTimeStamp ptsExpiry)
 {
 	SECURITY_STATUS status;
-
-	MsRdpEx_Log("InitializeSecurityContextW");
+	unsigned long iBuffer = 0;
+	char* pszTargetNameA = NULL;
+	PSecBuffer pSecBuffer = NULL;
 
 	if (!(g_RealTable && g_RealTable->InitializeSecurityContextW))
 	{
 		return SEC_E_UNSUPPORTED_FUNCTION;
 	}
 
+	if (pszTargetName)
+		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszTargetName, -1, &pszTargetNameA, 0, NULL, NULL);
+
+	MsRdpEx_Log("sspi_InitializeSecurityContextW: pszTargetName: %s fContextReq: 0x%08X TargetDataRep: 0x%08X",
+		pszTargetNameA ? pszTargetNameA : "", fContextReq, TargetDataRep);
+
+	if (pInput) {
+		for (iBuffer = 0; iBuffer < pInput->cBuffers; iBuffer++) {
+			pSecBuffer = &pInput->pBuffers[iBuffer];
+
+			if ((pSecBuffer->cbBuffer < 1) || (!pSecBuffer->pvBuffer)) {
+				continue;
+			}
+
+			MsRdpEx_Log("InputBuffer[%d](type:%d length:%d):", iBuffer, pSecBuffer->BufferType, pSecBuffer->cbBuffer);
+			MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
+		}
+	}
+
 	status = g_RealTable->InitializeSecurityContextW(
 		phCredential, phContext, pszTargetName, fContextReq, Reserved1, TargetDataRep, pInput,
 		Reserved2, phNewContext, pOutput, pfContextAttr, ptsExpiry);
+
+	if (pOutput) {
+		for (iBuffer = 0; iBuffer < pOutput->cBuffers; iBuffer++) {
+			pSecBuffer = &pOutput->pBuffers[iBuffer];
+
+			if ((pSecBuffer->cbBuffer < 1) || (!pSecBuffer->pvBuffer)) {
+				continue;
+			}
+
+			MsRdpEx_Log("OutputBuffer[%d](type:%d length:%d):", iBuffer, pSecBuffer->BufferType, pSecBuffer->cbBuffer);
+			MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
+		}
+	}
+
+	free(pszTargetNameA);
 
 	return status;
 }
@@ -188,7 +223,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcceptSecurityContext(PCredHandle phCreden
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("AcceptSecurityContext");
+	MsRdpEx_Log("sspi_AcceptSecurityContext");
 
 	if (!(g_RealTable && g_RealTable->AcceptSecurityContext))
 	{
@@ -206,7 +241,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_CompleteAuthToken(PCtxtHandle phContext, P
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("CompleteAuthToken");
+	MsRdpEx_Log("sspi_CompleteAuthToken");
 
 	if (!(g_RealTable && g_RealTable->CompleteAuthToken))
 	{
@@ -222,7 +257,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_DeleteSecurityContext(PCtxtHandle phContex
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("DeleteSecurityContext");
+	MsRdpEx_Log("sspi_DeleteSecurityContext");
 
 	if (!(g_RealTable && g_RealTable->DeleteSecurityContext))
 	{
@@ -238,7 +273,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_ApplyControlToken(PCtxtHandle phContext, P
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("ApplyControlToken");
+	MsRdpEx_Log("sspi_ApplyControlToken");
 
 	if (!(g_RealTable && g_RealTable->ApplyControlToken))
 	{
@@ -255,7 +290,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_QueryContextAttributesW(PCtxtHandle phCont
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("QueryContextAttributesW");
+	MsRdpEx_Log("sspi_QueryContextAttributesW: %d", (int) ulAttribute);
 
 	if (!(g_RealTable && g_RealTable->QueryContextAttributesW))
 	{
@@ -271,7 +306,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_ImpersonateSecurityContext(PCtxtHandle phC
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("ImpersonateSecurityContext");
+	MsRdpEx_Log("sspi_ImpersonateSecurityContext");
 
 	if (!(g_RealTable && g_RealTable->ImpersonateSecurityContext))
 	{
@@ -287,7 +322,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_RevertSecurityContext(PCtxtHandle phContex
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("RevertSecurityContext");
+	MsRdpEx_Log("sspi_RevertSecurityContext");
 
 	if (!(g_RealTable && g_RealTable->RevertSecurityContext))
 	{
@@ -304,7 +339,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_MakeSignature(PCtxtHandle phContext, ULONG
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("MakeSignature");
+	MsRdpEx_Log("sspi_MakeSignature");
 
 	if (!(g_RealTable && g_RealTable->MakeSignature))
 	{
@@ -321,7 +356,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_VerifySignature(PCtxtHandle phContext, PSe
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("VerifySignature");
+	MsRdpEx_Log("sspi_VerifySignature");
 
 	if (!(g_RealTable && g_RealTable->VerifySignature))
 	{
@@ -337,7 +372,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_FreeContextBuffer(void* pvContextBuffer)
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("FreeContextBuffer");
+	MsRdpEx_Log("sspi_FreeContextBuffer");
 
 	if (!(g_RealTable && g_RealTable->FreeContextBuffer))
 	{
@@ -353,15 +388,22 @@ static SECURITY_STATUS SEC_ENTRY sspi_QuerySecurityPackageInfoW(SEC_WCHAR* pszPa
 	PSecPkgInfoW* ppPackageInfo)
 {
 	SECURITY_STATUS status;
-
-	MsRdpEx_Log("QuerySecurityPackageInfoW");
+	char* pszPackageNameA = NULL;
 
 	if (!(g_RealTable && g_RealTable->QuerySecurityPackageInfoW))
 	{
 		return SEC_E_UNSUPPORTED_FUNCTION;
 	}
 
+	if (pszPackageName)
+		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszPackageName, -1, &pszPackageNameA, 0, NULL, NULL);
+
+	MsRdpEx_Log("sspi_QuerySecurityPackageInfoW: %s",
+		pszPackageNameA ? pszPackageNameA : "");
+
 	status = g_RealTable->QuerySecurityPackageInfoW(pszPackageName, ppPackageInfo);
+
+	free(pszPackageNameA);
 
 	return status;
 }
@@ -371,7 +413,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_ExportSecurityContext(PCtxtHandle phContex
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("ExportSecurityContext");
+	MsRdpEx_Log("sspi_ExportSecurityContext");
 
 	if (!(g_RealTable && g_RealTable->ExportSecurityContext))
 	{
@@ -388,7 +430,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_ImportSecurityContextW(SEC_WCHAR* pszPacka
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("ImportSecurityContextW");
+	MsRdpEx_Log("sspi_ImportSecurityContextW");
 
 	if (!(g_RealTable && g_RealTable->ImportSecurityContextW))
 	{
@@ -404,7 +446,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_QuerySecurityContextToken(PCtxtHandle phCo
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("QuerySecurityContextToken");
+	MsRdpEx_Log("sspi_QuerySecurityContextToken");
 
 	if (!(g_RealTable && g_RealTable->QuerySecurityContextToken))
 	{
@@ -421,7 +463,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_EncryptMessage(PCtxtHandle phContext, ULON
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("EncryptMessage seqNo: %d cbBuffers: %d", MessageSeqNo, pMessage->cBuffers);
+	MsRdpEx_Log("sspi_EncryptMessage seqNo: %d cbBuffers: %d", MessageSeqNo, pMessage->cBuffers);
 
 	if (!(g_RealTable && g_RealTable->EncryptMessage))
 	{
@@ -453,7 +495,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_DecryptMessage(PCtxtHandle phContext, PSec
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("DecryptMessage seqNo: %d", MessageSeqNo);
+	MsRdpEx_Log("sspi_DecryptMessage seqNo: %d", MessageSeqNo);
 
 	if (!(g_RealTable && g_RealTable->DecryptMessage))
 	{
@@ -485,7 +527,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_SetContextAttributesW(PCtxtHandle phContex
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("SetContextAttributesW");
+	MsRdpEx_Log("sspi_SetContextAttributesW");
 
 	if (!(g_RealTable && g_RealTable->SetContextAttributesW))
 	{

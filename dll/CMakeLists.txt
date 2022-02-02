@@ -16,6 +16,7 @@ source_group("Resources" FILES ${MSRDPEX_RESOURCES})
 
 set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/Sspi.h"
+    "${MSRDPEX_INCLUDE_DIR}/Pcap.h"
     "${MSRDPEX_INCLUDE_DIR}/ArrayList.h"
     "${MSRDPEX_INCLUDE_DIR}/HashTable.h"
     "${MSRDPEX_INCLUDE_DIR}/Environment.h"
@@ -45,6 +46,7 @@ set(MSRDPEX_SOURCES
     ApiHooks.cpp
     OutputMirror.c
     VideoRecorder.c
+    Pcap.cpp
     Bitmap.c
     WinMsg.c
     RdpFile.c
