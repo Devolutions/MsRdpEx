@@ -34,6 +34,57 @@ bool MsRdpEx_Log(const char* format, ...)
 	return status;
 }
 
+void MsRdpEx_LogHexDump(const uint8_t* data, size_t size)
+{
+    int i, ln, hn;
+	const uint8_t* p = data;
+    size_t width = 16;
+    size_t offset = 0;
+    size_t chunk = 0;
+    char line[512];
+    char* bin2hex = "0123456789ABCDEF";
+
+    while (offset < size) {
+        chunk = size - offset;
+
+        if (chunk >= width)
+            chunk = width;
+
+        for (i = 0; i < chunk; i++)
+        {
+            ln = p[i] & 0xF;
+            hn = (p[i] >> 4) & 0xF;
+
+            line[i * 2] = bin2hex[hn];
+            line[(i * 2) + 1] = bin2hex[ln];
+        }
+
+        line[chunk * 2] = ' ';
+
+        for (i = chunk; i < width; i++) {
+            line[i * 2] = ' ';
+            line[(i * 2) + 1] = ' ';
+        }
+
+        char* side = &line[(width * 2) + 1];
+
+        for (i = 0; i < chunk; i++)
+        {
+            char c = ((p[i] >= 0x20) && (p[i] < 0x7F)) ? p[i] : '.';
+            side[i] = c;
+        }
+        side[i] = '\n';
+        side[i+1] = '\0';
+
+        if (g_LogFile) {
+            fwrite(line, 1, strlen(line), g_LogFile);
+        }
+
+        offset += chunk;
+        p += chunk;
+    }
+}
+
 void MsRdpEx_LogOpen()
 {
     if (!g_LogEnabled)

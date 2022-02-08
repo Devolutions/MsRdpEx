@@ -15,6 +15,9 @@ windows_rc_generate_version_info(
 source_group("Resources" FILES ${MSRDPEX_RESOURCES})
 
 set(MSRDPEX_HEADERS
+    "${MSRDPEX_INCLUDE_DIR}/Sspi.h"
+    "${MSRDPEX_INCLUDE_DIR}/Stream.h"
+    "${MSRDPEX_INCLUDE_DIR}/Pcap.h"
     "${MSRDPEX_INCLUDE_DIR}/ArrayList.h"
     "${MSRDPEX_INCLUDE_DIR}/HashTable.h"
     "${MSRDPEX_INCLUDE_DIR}/Environment.h"
@@ -33,6 +36,8 @@ set(MSRDPEX_SOURCES
     HashTable.c
     Environment.c
     NameResolver.c
+    Sspi.cpp
+    Stream.cpp
     File.c
     Log.c
     Paths.c
@@ -43,6 +48,7 @@ set(MSRDPEX_SOURCES
     ApiHooks.cpp
     OutputMirror.c
     VideoRecorder.c
+    Pcap.cpp
     Bitmap.c
     WinMsg.c
     RdpFile.c
@@ -64,4 +70,4 @@ add_library(MsRdpEx_Dll SHARED
 set_target_properties(MsRdpEx_Dll PROPERTIES OUTPUT_NAME "MsRdpEx")
 
 target_link_libraries(MsRdpEx_Dll detours
-    version.lib userenv.lib user32.lib ws2_32.lib secur32.lib advapi32.lib)
+    version.lib userenv.lib user32.lib ws2_32.lib secur32.lib credui.lib advapi32.lib)

@@ -318,6 +318,75 @@ bool MsRdpEx_GuidStrToBin(const char* str, GUID* guid, uint32_t flags)
 	return true;
 }
 
+uint8_t* MsRdpEx_HexToBin(const char* hex, uint8_t* bin, int size, uint32_t flags)
+{
+    char c;
+    int i, ln, hn;
+
+    if (!bin)
+        bin = (uint8_t*)malloc(size);
+
+    if (!bin)
+        return NULL;
+
+    for (i = 0; i < size; i++)
+    {
+        hn = ln = 0;
+
+        c = hex[(i * 2) + 0];
+
+        if ((c >= '0') && (c <= '9'))
+            hn = c - '0';
+        else if ((c >= 'a') && (c <= 'f'))
+            hn = (c - 'a') + 10;
+        else if ((c >= 'A') && (c <= 'F'))
+            hn = (c - 'A') + 10;
+
+        c = hex[(i * 2) + 1];
+
+        if ((c >= '0') && (c <= '9'))
+            ln = c - '0';
+        else if ((c >= 'a') && (c <= 'f'))
+            ln = (c - 'a') + 10;
+        else if ((c >= 'A') && (c <= 'F'))
+            ln = (c - 'A') + 10;
+
+        bin[i] = (hn << 4) | ln;
+    }
+
+    return bin;
+}
+
+char* MsRdpEx_BinToHex(const uint8_t* bin, char* hex, int size, uint32_t flags)
+{
+    int i, ln, hn;
+    char* bin2hex;
+    char bin2hex_lc[] = "0123456789abcdef";
+    char bin2hex_uc[] = "0123456789ABCDEF";
+
+    bin2hex = (flags & MSRDPEX_STRING_FLAG_UPPERCASE) ? bin2hex_uc : bin2hex_lc;
+
+    if (!hex)
+        hex = (char*)malloc((size + 1) * 2);
+
+    if (!hex)
+        return NULL;
+
+    for (i = 0; i < size; i++)
+    {
+        ln = bin[i] & 0xF;
+        hn = (bin[i] >> 4) & 0xF;
+
+        hex[i * 2] = bin2hex[hn];
+        hex[(i * 2) + 1] = bin2hex[ln];
+    }
+
+    if (!(flags & MSRDPEX_STRING_FLAG_NO_TERMINATOR))
+        hex[size * 2] = '\0';
+
+    return hex;
+}
+
 char** MsRdpEx_GetArgumentVector(int* argc)
 {
 	int index;
