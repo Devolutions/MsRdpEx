@@ -50,7 +50,7 @@ namespace MsRdpEx_App
 
         private void btnConnect_Click(object sender, EventArgs e)
         {
-            bool axHookEnabled = false;
+            bool axHookEnabled = true;
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
 

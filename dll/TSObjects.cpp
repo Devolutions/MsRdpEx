@@ -3,6 +3,8 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <MsRdpEx/Memory.h>
+
 const char* GetTSPropertyTypeName(uint8_t propType)
 {
     const char* name = "none";
@@ -69,17 +71,26 @@ void DumpTSPropertyMap(ITSPropertySet* pTSPropertySet, const char* name)
 
 bool TsPropertyMap_IsCoreProps(ITSPropertySet* pTSPropertySet)
 {
-    uint32_t propCount = pTSPropertySet->propCount;
-    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
+    uint32_t propCount;
+    PROPERTY_ENTRY_EX* propMap;
 
-    if (propCount < 175)
+    if (!MsRdpEx_CanReadUnsafePtr((void*)pTSPropertySet, sizeof(ITSPropertySet)))
+        return false;
+    
+    propCount = pTSPropertySet->propCount;
+    propMap = pTSPropertySet->propMap;
+
+    if ((propCount < 175) || (propCount > 500))
+        return false;
+
+    if (!MsRdpEx_CanReadUnsafePtr((void*)propMap, propCount * sizeof(PROPERTY_ENTRY_EX)))
         return false;
 
     for (int i = 0; i < 10; i++)
     {
         PROPERTY_ENTRY_EX* prop = &propMap[i];
   
-        if (MsRdpEx_StringIEquals(prop->propName, "ServerName")) {
+        if (MsRdpEx_StringIEqualsUnsafePtr(prop->propName, "ServerName")) {
             return true;
         }
     }
@@ -89,17 +100,26 @@ bool TsPropertyMap_IsCoreProps(ITSPropertySet* pTSPropertySet)
 
 bool TsPropertyMap_IsBaseProps(ITSPropertySet* pTSPropertySet)
 {
-    uint32_t propCount = pTSPropertySet->propCount;
-    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
+    uint32_t propCount;
+    PROPERTY_ENTRY_EX* propMap;
 
-    if (propCount < 100)
+    if (!MsRdpEx_CanReadUnsafePtr((void*)pTSPropertySet, sizeof(ITSPropertySet)))
+        return false;
+
+    propCount = pTSPropertySet->propCount;
+    propMap = pTSPropertySet->propMap;
+
+    if ((propCount < 100) || (propCount > 500))
+        return false;
+
+    if (!MsRdpEx_CanReadUnsafePtr((void*)propMap, propCount * sizeof(PROPERTY_ENTRY_EX)))
         return false;
 
     for (int i = 0; i < 10; i++)
     {
         PROPERTY_ENTRY_EX* prop = &propMap[i];
 
-        if (MsRdpEx_StringIEquals(prop->propName, "FullScreen")) {
+        if (MsRdpEx_StringIEqualsUnsafePtr(prop->propName, "FullScreen")) {
             return true;
         }
     }
@@ -109,17 +129,26 @@ bool TsPropertyMap_IsBaseProps(ITSPropertySet* pTSPropertySet)
 
 bool TsPropertyMap_IsTransportProps(ITSPropertySet* pTSPropertySet)
 {
-    uint32_t propCount = pTSPropertySet->propCount;
-    PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
+    uint32_t propCount;
+    PROPERTY_ENTRY_EX* propMap;
 
-    if (propCount < 25)
+    if (!MsRdpEx_CanReadUnsafePtr((void*)pTSPropertySet, sizeof(ITSPropertySet)))
+        return false;
+
+    propCount = pTSPropertySet->propCount;
+    propMap = pTSPropertySet->propMap;
+
+    if ((propCount < 25) || (propCount > 500))
+        return false;
+
+    if (!MsRdpEx_CanReadUnsafePtr((void*)propMap, propCount * sizeof(PROPERTY_ENTRY_EX)))
         return false;
 
     for (int i = 0; i < 10; i++)
     {
         PROPERTY_ENTRY_EX* prop = &propMap[i];
 
-        if (MsRdpEx_StringIEquals(prop->propName, "GatewayHostname")) {
+        if (MsRdpEx_StringIEqualsUnsafePtr(prop->propName, "GatewayHostname")) {
             return true;
         }
     }

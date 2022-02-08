@@ -1,6 +1,7 @@
 
 #include <MsRdpEx/RdpInstance.h>
 
+#include <MsRdpEx/Memory.h>
 #include <MsRdpEx/ArrayList.h>
 
 #include "TSObjects.h"
@@ -264,33 +265,27 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
     if (!ctx)
         return NULL;
 
-    size_t memStatus;
     size_t maxPtrCount = 200;
-    MEMORY_BASIC_INFORMATION memInfo;
     ITSPropertySet* pTSCoreProps = NULL;
     ITSPropertySet* pTSBaseProps = NULL;
 
     for (int i = 0; i < maxPtrCount; i++) {
         ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)pUserData)[i];
-        memStatus = VirtualQuery(ppTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-        if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize >= 8)) {
+        if (MsRdpEx_CanReadUnsafePtr(ppTSObject, 8)) {
             ITSObjectBase* pTSObject = *ppTSObject;
-            if (pTSObject) {
-                memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-                if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > sizeof(ITSObjectBase))) {
-                    if (pTSObject->marker == TSOBJECT_MARKER) {
-                        MsRdpEx_Log("COPWnd(%d): 0x%08X name: %s refCount: %d",
-                            i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
+            if (MsRdpEx_CanReadUnsafePtr(pTSObject, sizeof(ITSObjectBase))) {
+                if (pTSObject->marker == TSOBJECT_MARKER) {
+                    MsRdpEx_Log("COPWnd(%d): 0x%08X name: %s refCount: %d",
+                        i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
 
-                        if (!strcmp(pTSObject->name, "CTSPropertySet")) {
-                            ITSPropertySet* pTSProps = (ITSPropertySet*)pTSObject;
+                    if (MsRdpEx_StringEqualsUnsafePtr(pTSObject->name, "CTSPropertySet")) {
+                        ITSPropertySet* pTSProps = (ITSPropertySet*)pTSObject;
 
-                            if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
-                                pTSCoreProps = pTSProps;
-                            }
-                            else if (!pTSBaseProps && TsPropertyMap_IsBaseProps(pTSProps)) {
-                                pTSBaseProps = pTSProps;
-                            }
+                        if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
+                            pTSCoreProps = pTSProps;
+                        }
+                        else if (!pTSBaseProps && TsPropertyMap_IsBaseProps(pTSProps)) {
+                            pTSBaseProps = pTSProps;
                         }
                     }
                 }
