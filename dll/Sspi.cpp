@@ -62,6 +62,27 @@ static SECURITY_STATUS SEC_ENTRY sspi_QueryCredentialsAttributesW(PCredHandle ph
 	return status;
 }
 
+typedef struct _SEC_WINNT_AUTH_IDENTITY_OPAQUE {
+	uint32_t version;
+	uint32_t padding1;
+	uint16_t domainSize1;
+	uint16_t domainSize2;
+	uint32_t padding2;
+	uint32_t domainOffset;
+	uint32_t padding4;
+	uint16_t userSize1;
+	uint16_t userSize2;
+	uint32_t padding5;
+	uint32_t userOffset;
+	uint32_t padding7;
+	uint32_t padding8;
+	uint32_t padding9;
+	uint32_t padding10;
+	uint32_t padding11;
+	uint32_t padding12;
+	uint32_t padding13;
+} SEC_WINNT_AUTH_IDENTITY_OPAQUE;
+
 static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 	SEC_WCHAR* pszPrincipal, SEC_WCHAR* pszPackage, ULONG fCredentialUse, void* pvLogonID,
 	void* pAuthData, SEC_GET_KEY_FN pGetKeyFn, void* pvGetKeyArgument, PCredHandle phCredential,
@@ -111,6 +132,28 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 
 			if (bUnprotectCredentials) {
 				dwUnpackFlags |= CRED_PACK_PROTECTED_CREDENTIALS;
+			}
+
+			SEC_WINNT_AUTH_IDENTITY_OPAQUE* pAuthOpaque = (SEC_WINNT_AUTH_IDENTITY_OPAQUE*)pCred->pSpnegoCred;
+			
+			if (1) {
+				char* pUserA = NULL;
+				char* pDomainA = NULL;
+				uint16_t userLength = pAuthOpaque->userSize1 / 2;
+				uint16_t domainLength = pAuthOpaque->domainSize1 / 2;
+				WCHAR* pUserW = (WCHAR*) & ((uint8_t*)pAuthOpaque)[pAuthOpaque->userOffset];
+				WCHAR* pDomainW = (WCHAR*)&((uint8_t*)pAuthOpaque)[pAuthOpaque->domainOffset];
+
+				if (userLength)
+					MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pUserW, userLength, &pUserA, 0, NULL, NULL);
+
+				if (domainLength)
+					MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pDomainW, domainLength, &pDomainA, 0, NULL, NULL);
+
+				MsRdpEx_Log("AUTH_OPAQUE: User: \"%s\" Domain: \"%s\"", pUserA, pDomainA);
+
+				free(pUserA);
+				free(pDomainA);
 			}
 
 			BOOL success = CredUnPackAuthenticationBufferW(dwUnpackFlags,
