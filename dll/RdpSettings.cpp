@@ -341,7 +341,7 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
             ITSObjectBase* pTSObject = *ppTSObject;
             if (pTSObject) {
                 memStatus = VirtualQuery(pTSObject, &memInfo, sizeof(MEMORY_BASIC_INFORMATION));
-                if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > 16)) {
+                if ((memStatus != 0) && (memInfo.State == MEM_COMMIT) && (memInfo.RegionSize > sizeof(ITSObjectBase))) {
                     if (pTSObject->marker == TSOBJECT_MARKER) {
                         MsRdpEx_Log("MsTscAx(%d): 0x%08X name: %s refCount: %d",
                             i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
