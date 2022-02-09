@@ -1,9 +1,9 @@
 
-#include "TSObjects.h"
-
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/Memory.h>
+
+#include "TSObjects.h"
 
 const char* GetTSPropertyTypeName(uint8_t propType)
 {

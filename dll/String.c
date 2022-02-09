@@ -182,12 +182,14 @@ static GUID GUID_NIL =
 	{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }
 };
 
+#include <rpc.h>
+
 bool MsRdpEx_GuidGenerate(GUID* guid)
 {
 	if (!guid)
 		return false;
 
-    CoCreateGuid(guid);
+    UuidCreateSequential((UUID*)guid);
 
 	return true;
 }

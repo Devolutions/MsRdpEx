@@ -72,4 +72,4 @@ add_library(MsRdpEx_Dll SHARED
 set_target_properties(MsRdpEx_Dll PROPERTIES OUTPUT_NAME "MsRdpEx")
 
 target_link_libraries(MsRdpEx_Dll detours
-    version.lib userenv.lib user32.lib ws2_32.lib secur32.lib credui.lib advapi32.lib)
+    version.lib userenv.lib user32.lib rpcrt4.lib ws2_32.lib secur32.lib credui.lib advapi32.lib)
