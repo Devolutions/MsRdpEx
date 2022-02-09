@@ -5,6 +5,8 @@
 
 #include <MsRdpEx/Environment.h>
 
+#include <detours.h>
+
 static HMODULE g_hModule = NULL;
 
 static MsRdpEx_AxDll* g_AxDll = NULL;

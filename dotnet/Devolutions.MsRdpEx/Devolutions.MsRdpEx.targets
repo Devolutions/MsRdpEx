@@ -1,6 +1,14 @@
 <?xml version="1.0"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-x86\native\MsRdpEx.dll">
+      <Link>runtimes\win-x86\native\MsRdpEx.dll</Link>
+      <PublishState>Included</PublishState>
+      <Visible>False</Visible>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <IncludeInVsix>true</IncludeInVsix>
+      <Pack>false</Pack>
+    </Content>
     <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-x64\native\MsRdpEx.dll">
       <Link>runtimes\win-x64\native\MsRdpEx.dll</Link>
       <PublishState>Included</PublishState>

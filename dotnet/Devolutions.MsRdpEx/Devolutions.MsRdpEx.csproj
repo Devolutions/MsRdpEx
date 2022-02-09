@@ -46,6 +46,7 @@
   <ItemGroup>
     <Content Include="$(OutputPath)/Interop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/Interop.MSTSCLib.dll" Pack="true" />
     <Content Include="$(OutputPath)/AxInterop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/AxInterop.MSTSCLib.dll" Pack="true" />
+    <Content Include="../../dependencies/MsRdpEx/x86/MsRdpEx.dll" PackagePath="runtimes/win-x86/native/MsRdpEx.dll" Pack="true" />
     <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll" PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" />
     <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll" PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" />
     <Content Include="Devolutions.MsRdpEx.targets" PackagePath="build/Devolutions.MsRdpEx.targets" Pack="true" />
