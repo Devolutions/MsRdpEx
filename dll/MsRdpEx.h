@@ -65,6 +65,8 @@ void MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll);
 LONG MsRdpEx_AttachHooks();
 LONG MsRdpEx_DetachHooks();
 
+bool MsRdpEx_IsAddressInModule(PVOID pAddress, LPCTSTR pszModule);
+
 LONG MsRdpEx_GetRectWidth(LPRECT rect);
 LONG MsRdpEx_GetRectHeight(LPRECT rect);
 void MsRdpEx_GetRectSize(LPRECT rect, LONG* pWidth, LONG* pHeight);

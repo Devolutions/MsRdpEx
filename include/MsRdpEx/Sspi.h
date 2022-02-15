@@ -15,6 +15,9 @@ extern "C" {
 
 PSecurityFunctionTableW MsRdpEx_SspiHook_Init(PSecurityFunctionTableW pSecTable);
 
+LONG MsRdpEx_AttachSspiHooks();
+LONG MsRdpEx_DetachSspiHooks();
+
 #ifdef __cplusplus
 }
 #endif

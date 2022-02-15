@@ -4,6 +4,10 @@
 
 #include <MsRdpEx/Sspi.h>
 
+#include <intrin.h>
+
+#include <detours.h>
+
 static MsRdpEx_PcapFile* g_PcapFile = NULL;
 static bool g_PcapEnabled = true;
 static char g_PcapFilePath[MSRDPEX_MAX_PATH] = { 0 };
@@ -25,6 +29,16 @@ static MsRdpEx_PcapFile* MsRdpEx_GetPcapFile()
 
 static PSecurityFunctionTableW g_RealTable = NULL;
 static PSecurityFunctionTableW g_HookTable = NULL;
+
+static HMODULE g_hSspiCli = NULL;
+
+static SecurityFunctionTableW real_SecurityFunctionTableW = { 0 };
+
+static ACCEPT_SECURITY_CONTEXT_FN Real_AcceptSecurityContext = NULL;
+static ACQUIRE_CREDENTIALS_HANDLE_FN_A Real_AcquireCredentialsHandleA = NULL;
+static ACQUIRE_CREDENTIALS_HANDLE_FN_W Real_AcquireCredentialsHandleW = NULL;
+static DECRYPT_MESSAGE_FN Real_DecryptMessage = NULL;
+static ENCRYPT_MESSAGE_FN Real_EncryptMessage = NULL;
 
 static const char* MsRdpEx_GetSecurityStatusString(SECURITY_STATUS status);
 
@@ -91,11 +105,6 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 	SECURITY_STATUS status;
 	char* pszPrincipalA = NULL;
 	char* pszPackageA = NULL;
-
-	if (!(g_RealTable && g_RealTable->AcquireCredentialsHandleW))
-	{
-		return SEC_E_UNSUPPORTED_FUNCTION;
-	}
 
 	if (pszPrincipal)
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszPrincipal, -1, &pszPrincipalA, 0, NULL, NULL);
@@ -196,7 +205,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 		}
 	}
 
-	status = g_RealTable->AcquireCredentialsHandleW(pszPrincipal, pszPackage, fCredentialUse, pvLogonID,
+	status = Real_AcquireCredentialsHandleW(pszPrincipal, pszPackage, fCredentialUse, pvLogonID,
 		pAuthData, pGetKeyFn, pvGetKeyArgument,
 		phCredential, ptsExpiry);
 
@@ -289,12 +298,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcceptSecurityContext(PCredHandle phCreden
 
 	MsRdpEx_Log("sspi_AcceptSecurityContext");
 
-	if (!(g_RealTable && g_RealTable->AcceptSecurityContext))
-	{
-		return SEC_E_UNSUPPORTED_FUNCTION;
-	}
-
-	status = g_RealTable->AcceptSecurityContext(phCredential,
+	status = Real_AcceptSecurityContext(phCredential,
 		phContext, pInput, fContextReq, TargetDataRep,
 		phNewContext, pOutput, pfContextAttr, ptsTimeStamp);
 
@@ -529,10 +533,12 @@ static SECURITY_STATUS SEC_ENTRY sspi_EncryptMessage(PCtxtHandle phContext, ULON
 
 	MsRdpEx_Log("sspi_EncryptMessage seqNo: %d cbBuffers: %d", MessageSeqNo, pMessage->cBuffers);
 
-	if (!(g_RealTable && g_RealTable->EncryptMessage))
+#if 0
+	if (!MsRdpEx_IsAddressInModule(_ReturnAddress(), L"mstscax.dll"))
 	{
-		return SEC_E_UNSUPPORTED_FUNCTION;
+		return Real_EncryptMessage(phContext, fQOP, pMessage, MessageSeqNo);
 	}
+#endif
 
 	for (unsigned long iBuffer = 0; iBuffer < pMessage->cBuffers; iBuffer++) {
 		PSecBuffer pSecBuffer = &pMessage->pBuffers[iBuffer];
@@ -559,7 +565,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_EncryptMessage(PCtxtHandle phContext, ULON
 		MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 	}
 
-	status = g_RealTable->EncryptMessage(phContext, fQOP, pMessage, MessageSeqNo);
+	status = Real_EncryptMessage(phContext, fQOP, pMessage, MessageSeqNo);
 
 	return status;
 }
@@ -571,12 +577,14 @@ static SECURITY_STATUS SEC_ENTRY sspi_DecryptMessage(PCtxtHandle phContext, PSec
 
 	MsRdpEx_Log("sspi_DecryptMessage seqNo: %d", MessageSeqNo);
 
-	if (!(g_RealTable && g_RealTable->DecryptMessage))
-	{
-		return SEC_E_UNSUPPORTED_FUNCTION;
-	}
+	status = Real_DecryptMessage(phContext, pMessage, MessageSeqNo, pfQOP);
 
-	status = g_RealTable->DecryptMessage(phContext, pMessage, MessageSeqNo, pfQOP);
+#if 0
+	if (!MsRdpEx_IsAddressInModule(_ReturnAddress(), L"mstscax.dll"))
+	{
+		return status;
+	}
+#endif
 
 	for (unsigned long iBuffer = 0; iBuffer < pMessage->cBuffers; iBuffer++) {
 		PSecBuffer pSecBuffer = &pMessage->pBuffers[iBuffer];
@@ -657,9 +665,43 @@ static const SecurityFunctionTableW sspi_SecurityFunctionTableW = {
 PSecurityFunctionTableW MsRdpEx_SspiHook_Init(PSecurityFunctionTableW pSecTable)
 {
 	g_RealTable = pSecTable;
-	g_HookTable = (PSecurityFunctionTableW) & sspi_SecurityFunctionTableW;
+	g_HookTable = (PSecurityFunctionTableW) &sspi_SecurityFunctionTableW;
 	MsRdpEx_Log("InitSecurityInterfaceW");
 	return g_HookTable;
+}
+
+LONG MsRdpEx_AttachSspiHooks()
+{
+	g_hSspiCli = GetModuleHandleA("sspicli.dll");
+
+	if (!g_hSspiCli)
+		return -1;
+
+	g_RealTable = (PSecurityFunctionTableW) &real_SecurityFunctionTableW;
+	g_HookTable = (PSecurityFunctionTableW) &sspi_SecurityFunctionTableW;
+
+	Real_AcceptSecurityContext = (ACCEPT_SECURITY_CONTEXT_FN) GetProcAddress(g_hSspiCli, "AcceptSecurityContext");
+	//real_AcquireCredentialsHandleA = (ACQUIRE_CREDENTIALS_HANDLE_FN_A) GetProcAddress(g_hSspiCli, "AcquireCredentialsHandleA");
+	Real_AcquireCredentialsHandleW = (ACQUIRE_CREDENTIALS_HANDLE_FN_W) GetProcAddress(g_hSspiCli, "AcquireCredentialsHandleW");
+	Real_EncryptMessage = (ENCRYPT_MESSAGE_FN) GetProcAddress(g_hSspiCli, "EncryptMessage");
+	Real_DecryptMessage = (DECRYPT_MESSAGE_FN) GetProcAddress(g_hSspiCli, "DecryptMessage");
+
+	DetourAttach((PVOID*)(&Real_AcceptSecurityContext), sspi_AcceptSecurityContext);
+	DetourAttach((PVOID*)(&Real_AcquireCredentialsHandleW), sspi_AcquireCredentialsHandleW);
+	DetourAttach((PVOID*)(&Real_EncryptMessage), sspi_EncryptMessage);
+	DetourAttach((PVOID*)(&Real_DecryptMessage), sspi_DecryptMessage);
+
+	return 0;
+}
+
+LONG MsRdpEx_DetachSspiHooks()
+{
+	DetourDetach((PVOID*)(&Real_AcceptSecurityContext), sspi_AcceptSecurityContext);
+	DetourDetach((PVOID*)(&Real_AcquireCredentialsHandleW), sspi_AcquireCredentialsHandleW);
+	DetourDetach((PVOID*)(&Real_EncryptMessage), sspi_EncryptMessage);
+	DetourDetach((PVOID*)(&Real_DecryptMessage), sspi_DecryptMessage);
+
+	return 0;
 }
 
 static const char* MsRdpEx_GetSecurityStatusString(SECURITY_STATUS status)
