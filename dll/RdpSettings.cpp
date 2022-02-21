@@ -132,7 +132,7 @@ public:
     }
 
     HRESULT __stdcall SetVBoolProperty(const char* propName, VARIANT_BOOL propValue) {
-        return m_pTSPropertySet->vtbl->SetBoolProperty(m_pTSPropertySet, propName, propValue ? true : false);
+        return m_pTSPropertySet->vtbl->SetBoolProperty(m_pTSPropertySet, propName, propValue);
     }
 
     HRESULT __stdcall SetIntProperty(const char* propName, uint32_t propValue) {
@@ -242,6 +242,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
 }
 
 HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VARIANT* pValue) {
+    HRESULT hr = S_OK;
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
     MsRdpEx_Log("CMsRdpExtendedSettings::get_Property(%s)", propName);
 
@@ -275,7 +276,9 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         return m_TransportProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
     }
 
-    return m_pMsRdpExtendedSettings->get_Property(bstrPropertyName, pValue);
+    hr = m_pMsRdpExtendedSettings->get_Property(bstrPropertyName, pValue);
+
+    return hr;
 }
 
 // additional functions

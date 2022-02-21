@@ -62,7 +62,7 @@ bool MsRdpEx_RdpFileEntry_GetVBoolValue(MsRdpEx_RdpFileEntry* entry, VARIANT* pV
 
 	VariantInit(pVariant);
 	pVariant->vt = VT_BOOL;
-	pVariant->bVal = bVal;
+	pVariant->boolVal = bVal ? VARIANT_TRUE : VARIANT_FALSE;
 
 	return true;
 }

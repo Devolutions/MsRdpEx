@@ -449,8 +449,8 @@ bool MsRdpEx_PcapFile_WritePacket(MsRdpEx_PcapFile* pcap, const uint8_t* data, s
         ipv4.DestinationAddress = 0xC0A80196; /* 192.168.1.150 */
     }
 
-    tcp.SourcePort = 3389;
-    tcp.DestinationPort = 3389;
+    tcp.SourcePort = 3390;
+    tcp.DestinationPort = 3390;
 
     if (flags & PCAP_PACKET_FLAG_OUTBOUND)
     {
