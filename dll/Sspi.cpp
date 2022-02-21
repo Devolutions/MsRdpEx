@@ -255,9 +255,11 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 	if (pszPackage)
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszPackage, -1, &pszPackageA, 0, NULL, NULL);
 
+#if 0
 	if (pAuthData && MsRdpEx_StringIEquals(pszPackageA, "CREDSSP")) {
 		sspi_DumpCredSspAuthData(pAuthData);
 	}
+#endif
 
 	status = Real_AcquireCredentialsHandleW(pszPrincipal, pszPackage, fCredentialUse, pvLogonID,
 		pAuthData, pGetKeyFn, pvGetKeyArgument,
@@ -268,7 +270,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 		pszPackageA ? pszPackageA : "",
 		(void*)phCredential->dwLower, (void*) phCredential->dwUpper);
 
-	char* proxyServer = NULL; //proxyServer = "rdg.ad.it-help.ninja:4343:KdcProxy";
+	char* proxyServer = NULL;
 
 	if (proxyServer && (MsRdpEx_StringIEquals(pszPackageA, "CREDSSP") || MsRdpEx_StringIEquals(pszPackageA, "TSSSP"))) {
 		sspi_SetKdcProxySettings(phCredential, proxyServer);
