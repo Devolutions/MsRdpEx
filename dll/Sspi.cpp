@@ -215,7 +215,7 @@ static bool sspi_SetKdcProxySettings(PCredHandle phCredential, const char* proxy
 	DWORD cchProxyServer = wcslen(pProxyServerW);
 	SecPkgCredentials_KdcProxySettingsW* pKdcProxySettings = NULL;
 	DWORD cbKdcProxySettings = sizeof(SecPkgCredentials_KdcProxySettingsW);
-	DWORD cbProxyServer = cchProxyServer * sizeof(WCHAR);
+	DWORD cbProxyServer = (cchProxyServer + 1) * sizeof(WCHAR);
 	unsigned long cbBuffer = cbKdcProxySettings + cbProxyServer;
 	uint8_t* pBuffer = (uint8_t*) calloc(1, cbBuffer);
 
@@ -225,7 +225,7 @@ static bool sspi_SetKdcProxySettings(PCredHandle phCredential, const char* proxy
 		pKdcProxySettings->Version = KDC_PROXY_SETTINGS_V1;
 		pKdcProxySettings->Flags = KDC_PROXY_SETTINGS_FLAGS_FORCEPROXY;
 		pKdcProxySettings->ProxyServerOffset = cbKdcProxySettings;
-		pKdcProxySettings->ProxyServerLength = cbProxyServer / sizeof(WCHAR);
+		pKdcProxySettings->ProxyServerLength = cbProxyServer;
 		pKdcProxySettings->ClientTlsCredOffset = 0;
 		pKdcProxySettings->ClientTlsCredLength = 0;
 		memcpy(&pBuffer[pKdcProxySettings->ProxyServerOffset], pProxyServerW, cbProxyServer);
@@ -648,7 +648,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_SetCredentialsAttributesW(PCredHandle phCr
 		char* pProxyServerA = NULL;
 		WCHAR* proxyServerW = NULL;
 		PSecPkgCredentials_KdcProxySettingsW pKdcProxySettings = (PSecPkgCredentials_KdcProxySettingsW) pBuffer;
-		DWORD cchProxyServer = pKdcProxySettings->ProxyServerLength;
+		DWORD cchProxyServer = pKdcProxySettings->ProxyServerLength / sizeof(WCHAR);
 		WCHAR* pProxyServerW = (WCHAR*)&((uint8_t*)pBuffer)[pKdcProxySettings->ProxyServerOffset];
 
 		if (cchProxyServer) {
