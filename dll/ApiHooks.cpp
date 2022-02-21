@@ -270,12 +270,41 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
     return wndClassAtom;
 }
 
-PSecurityFunctionTableW (SEC_ENTRY* Real_InitSecurityInterfaceW)(void) = InitSecurityInterfaceW;
+#include <psapi.h>
 
-PSecurityFunctionTableW Hook_InitSecurityInterfaceW(void)
+bool MsRdpEx_IsAddressInModule(PVOID pAddress, LPCTSTR pszModule)
 {
-    PSecurityFunctionTableW pSecTable = Real_InitSecurityInterfaceW();
-    return MsRdpEx_SspiHook_Init(pSecTable);
+    bool result;
+    HMODULE hModule;
+    LPVOID pStartAddr;
+    LPVOID pEndAddr;
+    MODULEINFO mi;
+    MEMORY_BASIC_INFORMATION mbi;
+
+    // Check the validity of the given address.
+    if (VirtualQuery(pAddress, &mbi, sizeof(mbi)) == 0)
+        return false;
+
+    // Retrieve information regarding the specified module.
+    hModule = GetModuleHandle(pszModule);
+
+    if (!hModule)
+        return false;
+
+    if (!GetModuleInformation(GetCurrentProcess(), hModule, &mi, sizeof(mi)))
+        return false;
+
+    // Check the validity of the given address.
+    if (VirtualQuery(pAddress, &mbi, sizeof(mbi)) == 0)
+        return false;
+
+    // Determine if the specified address is in the module. 
+    pStartAddr = mi.lpBaseOfDll;
+    pEndAddr = (LPVOID)((PBYTE)mi.lpBaseOfDll + mi.SizeOfImage - 1);
+
+    result = (pAddress >= pStartAddr) && (pAddress <= pEndAddr) ? true : false;
+
+    return result;
 }
 
 void MsRdpEx_GlobalInit()
@@ -303,7 +332,7 @@ LONG MsRdpEx_AttachHooks()
     DetourAttach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
     DetourAttach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
     DetourAttach((PVOID*)(&Real_RegisterClassExW), Hook_RegisterClassExW);
-    //DetourAttach((PVOID*)(&Real_InitSecurityInterfaceW), Hook_InitSecurityInterfaceW);
+    MsRdpEx_AttachSspiHooks();
     error = DetourTransactionCommit();
     return error;
 }
@@ -319,7 +348,7 @@ LONG MsRdpEx_DetachHooks()
     DetourDetach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
     DetourDetach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
     DetourDetach((PVOID*)(&Real_RegisterClassExW), Hook_RegisterClassExW);
-    //DetourDetach((PVOID*)(&Real_InitSecurityInterfaceW), Hook_InitSecurityInterfaceW);
+    MsRdpEx_DetachSspiHooks();
     error = DetourTransactionCommit();
     MsRdpEx_GlobalUninit();
     return error;
