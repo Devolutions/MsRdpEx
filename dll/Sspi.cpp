@@ -215,7 +215,7 @@ static bool sspi_SetKdcProxySettings(PCredHandle phCredential, const char* proxy
 	DWORD cchProxyServer = wcslen(pProxyServerW);
 	SecPkgCredentials_KdcProxySettingsW* pKdcProxySettings = NULL;
 	DWORD cbKdcProxySettings = sizeof(SecPkgCredentials_KdcProxySettingsW);
-	DWORD cbProxyServer = cchProxyServer * sizeof(WCHAR);
+	DWORD cbProxyServer = (cchProxyServer + 1) * sizeof(WCHAR);
 	unsigned long cbBuffer = cbKdcProxySettings + cbProxyServer;
 	uint8_t* pBuffer = (uint8_t*) calloc(1, cbBuffer);
 
@@ -225,7 +225,7 @@ static bool sspi_SetKdcProxySettings(PCredHandle phCredential, const char* proxy
 		pKdcProxySettings->Version = KDC_PROXY_SETTINGS_V1;
 		pKdcProxySettings->Flags = KDC_PROXY_SETTINGS_FLAGS_FORCEPROXY;
 		pKdcProxySettings->ProxyServerOffset = cbKdcProxySettings;
-		pKdcProxySettings->ProxyServerLength = cbProxyServer / sizeof(WCHAR);
+		pKdcProxySettings->ProxyServerLength = cbProxyServer;
 		pKdcProxySettings->ClientTlsCredOffset = 0;
 		pKdcProxySettings->ClientTlsCredLength = 0;
 		memcpy(&pBuffer[pKdcProxySettings->ProxyServerOffset], pProxyServerW, cbProxyServer);
@@ -307,18 +307,19 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 	if (pszTargetName)
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszTargetName, -1, &pszTargetNameA, 0, NULL, NULL);
 
-	MsRdpEx_Log("sspi_InitializeSecurityContextW: pszTargetName: %s fContextReq: 0x%08X TargetDataRep: 0x%08X",
-		pszTargetNameA ? pszTargetNameA : "", fContextReq, TargetDataRep);
+	MsRdpEx_Log("sspi_InitializeSecurityContextW: pszTargetName: %s fContextReq: 0x%08X phCredential=%p,%p",
+		pszTargetNameA ? pszTargetNameA : "", fContextReq, (void*)phCredential->dwLower, (void*)phCredential->dwUpper);
 
 	if (pInput) {
 		for (iBuffer = 0; iBuffer < pInput->cBuffers; iBuffer++) {
 			pSecBuffer = &pInput->pBuffers[iBuffer];
+			unsigned long BufferType = pSecBuffer->BufferType & ~(SECBUFFER_ATTRMASK);
 
 			if ((pSecBuffer->cbBuffer < 1) || (!pSecBuffer->pvBuffer)) {
 				continue;
 			}
 
-			MsRdpEx_Log("InputBuffer[%d](type:%d length:%d):", iBuffer, pSecBuffer->BufferType, pSecBuffer->cbBuffer);
+			MsRdpEx_Log("InputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
 			MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 		}
 	}
@@ -330,12 +331,13 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 	if (pOutput) {
 		for (iBuffer = 0; iBuffer < pOutput->cBuffers; iBuffer++) {
 			pSecBuffer = &pOutput->pBuffers[iBuffer];
+			unsigned long BufferType = pSecBuffer->BufferType & ~(SECBUFFER_ATTRMASK);
 
 			if ((pSecBuffer->cbBuffer < 1) || (!pSecBuffer->pvBuffer)) {
 				continue;
 			}
 
-			MsRdpEx_Log("OutputBuffer[%d](type:%d length:%d):", iBuffer, pSecBuffer->BufferType, pSecBuffer->cbBuffer);
+			MsRdpEx_Log("OutputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
 			MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 		}
 	}
@@ -648,7 +650,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_SetCredentialsAttributesW(PCredHandle phCr
 		char* pProxyServerA = NULL;
 		WCHAR* proxyServerW = NULL;
 		PSecPkgCredentials_KdcProxySettingsW pKdcProxySettings = (PSecPkgCredentials_KdcProxySettingsW) pBuffer;
-		DWORD cchProxyServer = pKdcProxySettings->ProxyServerLength;
+		DWORD cchProxyServer = pKdcProxySettings->ProxyServerLength / sizeof(WCHAR);
 		WCHAR* pProxyServerW = (WCHAR*)&((uint8_t*)pBuffer)[pKdcProxySettings->ProxyServerOffset];
 
 		if (cchProxyServer) {
