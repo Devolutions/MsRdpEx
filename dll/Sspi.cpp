@@ -307,18 +307,19 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 	if (pszTargetName)
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszTargetName, -1, &pszTargetNameA, 0, NULL, NULL);
 
-	MsRdpEx_Log("sspi_InitializeSecurityContextW: pszTargetName: %s fContextReq: 0x%08X TargetDataRep: 0x%08X",
-		pszTargetNameA ? pszTargetNameA : "", fContextReq, TargetDataRep);
+	MsRdpEx_Log("sspi_InitializeSecurityContextW: pszTargetName: %s fContextReq: 0x%08X phCredential=%p,%p",
+		pszTargetNameA ? pszTargetNameA : "", fContextReq, (void*)phCredential->dwLower, (void*)phCredential->dwUpper);
 
 	if (pInput) {
 		for (iBuffer = 0; iBuffer < pInput->cBuffers; iBuffer++) {
 			pSecBuffer = &pInput->pBuffers[iBuffer];
+			unsigned long BufferType = pSecBuffer->BufferType & ~(SECBUFFER_ATTRMASK);
 
 			if ((pSecBuffer->cbBuffer < 1) || (!pSecBuffer->pvBuffer)) {
 				continue;
 			}
 
-			MsRdpEx_Log("InputBuffer[%d](type:%d length:%d):", iBuffer, pSecBuffer->BufferType, pSecBuffer->cbBuffer);
+			MsRdpEx_Log("InputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
 			MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 		}
 	}
@@ -330,12 +331,13 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 	if (pOutput) {
 		for (iBuffer = 0; iBuffer < pOutput->cBuffers; iBuffer++) {
 			pSecBuffer = &pOutput->pBuffers[iBuffer];
+			unsigned long BufferType = pSecBuffer->BufferType & ~(SECBUFFER_ATTRMASK);
 
 			if ((pSecBuffer->cbBuffer < 1) || (!pSecBuffer->pvBuffer)) {
 				continue;
 			}
 
-			MsRdpEx_Log("OutputBuffer[%d](type:%d length:%d):", iBuffer, pSecBuffer->BufferType, pSecBuffer->cbBuffer);
+			MsRdpEx_Log("OutputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
 			MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 		}
 	}
