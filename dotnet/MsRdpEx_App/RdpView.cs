@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 using MSTSCLib;
+using AxMSTSCLib;
 
 using MsRdpEx;
 
@@ -183,6 +184,26 @@ namespace MsRdpEx_App
             
         }
 
+        protected void OnEnterFullScreenMode(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void OnLeaveFullScreenMode(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void OnConnectionBarPullDown(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void OnConfirmClose(object sender, IMsTscAxEvents_OnConfirmCloseEvent e)
+        {
+            e.pfAllowClose = true;
+        }
+
         protected void OnFormClosing(object sender, EventArgs e)
         {
             if (captureTimer != null)
@@ -201,6 +222,10 @@ namespace MsRdpEx_App
             this.rdpClient.axName = this.rdpExDll;
             this.rdpClient.OnConnected += OnConnected;
             this.rdpClient.OnConnecting += OnConnecting;
+            this.rdpClient.OnEnterFullScreenMode += OnEnterFullScreenMode;
+            this.rdpClient.OnLeaveFullScreenMode += OnLeaveFullScreenMode;
+            this.rdpClient.OnConnectionBarPullDown += OnConnectionBarPullDown;
+            this.rdpClient.OnConfirmClose += OnConfirmClose;
             ((System.ComponentModel.ISupportInitialize)(this.rdpClient)).BeginInit();
             this.SuspendLayout();
             // 

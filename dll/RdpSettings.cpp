@@ -85,11 +85,15 @@ public:
 public:
     HRESULT __stdcall put_Property(BSTR bstrPropertyName, VARIANT* pValue) {
         char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpPropertySet::put_Property(%s)", propName);
+        MsRdpEx_Log("CMsRdpPropertySet::put_Property(%s, vt: %d)", propName, pValue->vt);
         
         if (pValue->vt == VT_BOOL)
         {
             return SetVBoolProperty(propName, pValue->boolVal);
+        }
+        else if (pValue->vt == VT_I4)
+        {
+            return SetIntProperty(propName, pValue->intVal);
         }
         else if (pValue->vt == VT_UI4)
         {
@@ -144,7 +148,11 @@ public:
     }
 
     HRESULT __stdcall GetVBoolProperty(const char* propName, VARIANT_BOOL* propValue) {
-        return m_pTSPropertySet->vtbl->GetBoolProperty(m_pTSPropertySet, propName, propValue);
+        HRESULT hr;
+        int iVal = 0;
+        hr = m_pTSPropertySet->vtbl->GetBoolProperty(m_pTSPropertySet, propName, &iVal);
+        *propValue = iVal ? VARIANT_TRUE : VARIANT_FALSE;
+        return hr;
     }
 
     HRESULT __stdcall GetBStrProperty(const char* propName, BSTR* propValue) {
