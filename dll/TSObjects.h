@@ -45,7 +45,7 @@ typedef struct ITSPropertySetVtbl
     ULONG(STDMETHODCALLTYPE* AddRef)(ITSPropertySet* This);
     ULONG(STDMETHODCALLTYPE* Release)(ITSPropertySet* This);
     HRESULT(STDMETHODCALLTYPE* SetProperty)(ITSPropertySet* This, const char* propName, void* propValue);
-    HRESULT(STDMETHODCALLTYPE* SetBoolProperty)(ITSPropertySet* This, const char* propName, VARIANT_BOOL propValue);
+    HRESULT(STDMETHODCALLTYPE* SetBoolProperty)(ITSPropertySet* This, const char* propName, int propValue);
     HRESULT(STDMETHODCALLTYPE* SetIntProperty)(ITSPropertySet* This, const char* propName, int propValue);
     HRESULT(STDMETHODCALLTYPE* SetIUnknownProperty)(ITSPropertySet* This, const char* propName, void* propValue);
     HRESULT(STDMETHODCALLTYPE* SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
@@ -55,7 +55,7 @@ typedef struct ITSPropertySetVtbl
     HRESULT(STDMETHODCALLTYPE* GetProperty2)(ITSPropertySet* This, const char* propName, uint32_t* a1);
     HRESULT(STDMETHODCALLTYPE* GetIntProperty)(ITSPropertySet* This, const char* propName, int* propValue);
     HRESULT(STDMETHODCALLTYPE* GetIUnknownProperty)(ITSPropertySet* This, const char* propName, IUnknown** propValue);
-    HRESULT(STDMETHODCALLTYPE* GetBoolProperty)(ITSPropertySet* This, const char* propName, VARIANT_BOOL* propValue);
+    HRESULT(STDMETHODCALLTYPE* GetBoolProperty)(ITSPropertySet* This, const char* propName, int* propValue);
     HRESULT(STDMETHODCALLTYPE* GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
     HRESULT(STDMETHODCALLTYPE* GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* a1, uint32_t* a2);
     HRESULT(STDMETHODCALLTYPE* GetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR* propValue);

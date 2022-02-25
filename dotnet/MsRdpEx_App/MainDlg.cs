@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -111,8 +111,26 @@ namespace MsRdpEx_App
                 object basePropsVal = extendedSettings.get_Property("BaseProperties");
                 IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
 
+                object ShellMarkRdpSecure = true;
+                baseProps.set_Property("ShellMarkRdpSecure", ref ShellMarkRdpSecure);
+
                 object DisableUDPTransport = true;
                 coreProps.set_Property("DisableUDPTransport", ref DisableUDPTransport);
+
+                object UsingSavedCreds = false;
+                coreProps.set_Property("UsingSavedCreds", ref UsingSavedCreds);
+
+                object DisableCTRLAltDel = false;
+                coreProps.set_Property("DisableCTRLAltDel", ref DisableCTRLAltDel);
+
+                object EnableCredSspSupport = true;
+                coreProps.set_Property("EnableCredSspSupport", ref EnableCredSspSupport);
+
+                object PromptForCredentials = false;
+                baseProps.set_Property("PromptForCredentials", ref PromptForCredentials);
+
+                object AllowCredentialSaving = false;
+                baseProps.set_Property("AllowCredentialSaving", ref AllowCredentialSaving);
             }
 
             rdp.Connect();
