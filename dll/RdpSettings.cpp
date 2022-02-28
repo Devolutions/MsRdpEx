@@ -23,7 +23,7 @@ static HRESULT Hook_ITSPropertySet_SetBoolProperty(ITSPropertySet* This, const c
 {
     HRESULT hr;
 
-    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::SetBoolProperty(%s, %d)", propName, propValue);
+    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetBoolProperty(%s, %d)", propName, propValue);
 
     hr = Real_ITSPropertySet_SetBoolProperty(This, propName, propValue);
 
@@ -36,7 +36,7 @@ static HRESULT Hook_ITSPropertySet_GetBoolProperty(ITSPropertySet* This, const c
 
     hr = Real_ITSPropertySet_GetBoolProperty(This, propName, propValue);
 
-    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::GetBoolProperty(%s, %d)", propName, *propValue);
+    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetBoolProperty(%s, %d)", propName, *propValue);
 
     return hr;
 }
@@ -45,7 +45,7 @@ static HRESULT Hook_ITSPropertySet_SetIntProperty(ITSPropertySet* This, const ch
 {
     HRESULT hr;
 
-    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::SetIntProperty(%s, %d)", propName, propValue);
+    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetIntProperty(%s, %d)", propName, propValue);
 
     hr = Real_ITSPropertySet_SetIntProperty(This, propName, propValue);
 
@@ -58,7 +58,7 @@ static HRESULT Hook_ITSPropertySet_GetIntProperty(ITSPropertySet* This, const ch
 
     hr = Real_ITSPropertySet_GetIntProperty(This, propName, propValue);
 
-    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::GetIntProperty(%s, %d)", propName, *propValue);
+    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetIntProperty(%s, %d)", propName, *propValue);
 
     return hr;
 }
@@ -69,7 +69,7 @@ static HRESULT Hook_ITSPropertySet_SetStringProperty(ITSPropertySet* This, const
 
     char* propValueA = _com_util::ConvertBSTRToString((BSTR) propValue);
 
-    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::SetStringProperty(%s, \"%s\")", propName, propValueA);
+    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetStringProperty(%s, \"%s\")", propName, propValueA);
 
     hr = Real_ITSPropertySet_SetStringProperty(This, propName, propValue);
 
@@ -82,7 +82,7 @@ static HRESULT Hook_ITSPropertySet_GetStringProperty(ITSPropertySet* This, const
 
     hr = Real_ITSPropertySet_GetStringProperty(This, propName, propValue);
 
-    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::GetStringProperty(%s)", propName);
+    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetStringProperty(%s)", propName);
 
     return hr;
 }

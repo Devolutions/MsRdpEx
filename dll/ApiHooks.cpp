@@ -109,7 +109,7 @@ bool MsRdpEx_CaptureBlt(
     if (!instance)
         goto end;
 
-    MsRdpEx_LogPrint(DEBUG, "CaptureBlt: hWnd: %p instance: %p", hWnd, instance);
+    MsRdpEx_LogPrint(TRACE, "CaptureBlt: hWnd: %p instance: %p", hWnd, instance);
 
     instance->GetOutputMirrorEnabled(&outputMirrorEnabled);
     instance->GetVideoRecordingEnabled(&videoRecordingEnabled);
@@ -163,7 +163,7 @@ BOOL Hook_BitBlt(
     bool captured = MsRdpEx_CaptureBlt(hdcDst, dstX, dstY, width, height, hdcSrc, srcX, srcY);
     
     if (captured) {
-        MsRdpEx_LogPrint(DEBUG, "BitBlt: %d,%d %dx%d %d,%d", dstX, dstY, width, height, srcX, srcY);
+        MsRdpEx_LogPrint(TRACE, "BitBlt: %d,%d %dx%d %d,%d", dstX, dstY, width, height, srcX, srcY);
     }
 
     return status;
@@ -185,7 +185,7 @@ BOOL Hook_StretchBlt(
     bool captured = MsRdpEx_CaptureBlt(hdcDst, srcX, srcY, srcW, srcH, hdcSrc, srcX, srcY);
 
     if (captured) {
-        MsRdpEx_LogPrint(DEBUG, "StretchBlt: %d,%d %dx%d %d,%d %dx%d", dstX, dstY, dstW, dstH, srcX, srcY, srcW, srcH);
+        MsRdpEx_LogPrint(TRACE, "StretchBlt: %d,%d %dx%d %d,%d %dx%d", dstX, dstY, dstW, dstH, srcX, srcY, srcW, srcH);
     }
 
 end:

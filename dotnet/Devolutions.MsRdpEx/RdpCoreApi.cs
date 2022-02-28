@@ -32,9 +32,24 @@ namespace MsRdpEx
             set { iface.SetLogEnabled(value); }
         }
 
+        public MsRdpEx_LogLevel LogLevel
+        {
+            set { iface.SetLogLevel(value); }
+        }
+
         public string LogFilePath
         {
             set { iface.SetLogFilePath(value); }
+        }
+
+        public bool PcapEnabled
+        {
+            set { iface.SetPcapEnabled(value); }
+        }
+
+        public string PcapFilePath
+        {
+            set { iface.SetPcapFilePath(value); }
         }
 
         public bool AxHookEnabled

@@ -65,9 +65,13 @@ namespace MsRdpEx_App
             Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", axName);
 
             string logFilePath = Environment.ExpandEnvironmentVariables("%LocalAppData%\\MsRdpEx\\HostApp.log");
+            string pcapFilePath = Environment.ExpandEnvironmentVariables("%LocalAppData%\\MsRdpEx\\capture.pcap");
 
-            coreApi.LogFilePath = logFilePath;
             coreApi.LogEnabled = true;
+            coreApi.LogLevel = MsRdpEx_LogLevel.Debug;
+            coreApi.LogFilePath = logFilePath;
+            coreApi.PcapEnabled = true;
+            coreApi.PcapFilePath = pcapFilePath;
             coreApi.AxHookEnabled = axHookEnabled;
             coreApi.Load();
 
