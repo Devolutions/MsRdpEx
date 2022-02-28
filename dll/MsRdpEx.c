@@ -5,7 +5,7 @@
 
 #include <MsRdpEx/Environment.h>
 
-#include <detours.h>
+#include <MsRdpEx/Detours.h>
 
 static HMODULE g_hModule = NULL;
 

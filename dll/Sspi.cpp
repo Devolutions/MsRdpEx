@@ -6,7 +6,7 @@
 
 #include <intrin.h>
 
-#include <detours.h>
+#include <MsRdpEx/Detours.h>
 
 static MsRdpEx_PcapFile* g_PcapFile = NULL;
 static bool g_PcapEnabled = true;
@@ -693,12 +693,6 @@ static SECURITY_STATUS SEC_ENTRY sspi_QueryCredentialsAttributesExW(PCredHandle 
 	return status;
 }
 
-#define MSRDPEX_DETOUR_ATTACH(_realFn, _hookFn) \
-	if (_realFn) DetourAttach((PVOID*)(&_realFn), _hookFn);
-
-#define MSRDPEX_DETOUR_DETACH(_realFn, _hookFn) \
-	if (_realFn) DetourDetach((PVOID*)(&_realFn), _hookFn);
-
 LONG MsRdpEx_AttachSspiHooks()
 {
 	g_hSspiCli = GetModuleHandleA("sspicli.dll");
@@ -711,37 +705,37 @@ LONG MsRdpEx_AttachSspiHooks()
 	if (!g_hSecur32)
 		return -1;
 
-	Real_EnumerateSecurityPackagesW = (ENUMERATE_SECURITY_PACKAGES_FN_W) GetProcAddress(g_hSspiCli, "EnumerateSecurityPackagesW");
-	Real_QueryCredentialsAttributesW = (QUERY_CREDENTIALS_ATTRIBUTES_FN) GetProcAddress(g_hSspiCli, "QueryCredentialsAttributesW");
-	Real_AcquireCredentialsHandleW = (ACQUIRE_CREDENTIALS_HANDLE_FN_W) GetProcAddress(g_hSspiCli, "AcquireCredentialsHandleW");
-	Real_FreeCredentialsHandle = (FREE_CREDENTIALS_HANDLE_FN) GetProcAddress(g_hSspiCli, "FreeCredentialsHandle");
+	MSRDPEX_GETPROCADDRESS(Real_EnumerateSecurityPackagesW, ENUMERATE_SECURITY_PACKAGES_FN_W, g_hSspiCli, "EnumerateSecurityPackagesW");
+	MSRDPEX_GETPROCADDRESS(Real_QueryCredentialsAttributesW, QUERY_CREDENTIALS_ATTRIBUTES_FN, g_hSspiCli, "QueryCredentialsAttributesW");
+	MSRDPEX_GETPROCADDRESS(Real_AcquireCredentialsHandleW, ACQUIRE_CREDENTIALS_HANDLE_FN_W, g_hSspiCli, "AcquireCredentialsHandleW");
+	MSRDPEX_GETPROCADDRESS(Real_FreeCredentialsHandle, FREE_CREDENTIALS_HANDLE_FN, g_hSspiCli, "FreeCredentialsHandle");
 
-	Real_InitializeSecurityContextW = (INITIALIZE_SECURITY_CONTEXT_FN_W) GetProcAddress(g_hSspiCli, "InitializeSecurityContextW");
-	Real_AcceptSecurityContext = (ACCEPT_SECURITY_CONTEXT_FN) GetProcAddress(g_hSspiCli, "AcceptSecurityContext");
-	Real_CompleteAuthToken = (COMPLETE_AUTH_TOKEN_FN) GetProcAddress(g_hSspiCli, "CompleteAuthToken");
-	Real_DeleteSecurityContext = (DELETE_SECURITY_CONTEXT_FN) GetProcAddress(g_hSspiCli, "DeleteSecurityContext");
-	Real_ApplyControlToken = (APPLY_CONTROL_TOKEN_FN) GetProcAddress(g_hSspiCli, "ApplyControlToken");
-	Real_QueryContextAttributesW = (QUERY_CONTEXT_ATTRIBUTES_FN_W) GetProcAddress(g_hSspiCli, "QueryContextAttributesW");
-	Real_ImpersonateSecurityContext = (IMPERSONATE_SECURITY_CONTEXT_FN) GetProcAddress(g_hSspiCli, "ImpersonateSecurityContext");
-	Real_RevertSecurityContext = (REVERT_SECURITY_CONTEXT_FN) GetProcAddress(g_hSspiCli, "RevertSecurityContext");
-	Real_MakeSignature = (MAKE_SIGNATURE_FN) GetProcAddress(g_hSspiCli, "MakeSignature");
-	Real_VerifySignature = (VERIFY_SIGNATURE_FN) GetProcAddress(g_hSspiCli, "VerifySignature");
-	Real_FreeContextBuffer = (FREE_CONTEXT_BUFFER_FN) GetProcAddress(g_hSspiCli, "FreeContextBuffer");
-	Real_QuerySecurityPackageInfoW = (QUERY_SECURITY_PACKAGE_INFO_FN_W) GetProcAddress(g_hSspiCli, "QuerySecurityPackageInfoW");
+	MSRDPEX_GETPROCADDRESS(Real_InitializeSecurityContextW, INITIALIZE_SECURITY_CONTEXT_FN_W, g_hSspiCli, "InitializeSecurityContextW");
+	MSRDPEX_GETPROCADDRESS(Real_AcceptSecurityContext, ACCEPT_SECURITY_CONTEXT_FN, g_hSspiCli, "AcceptSecurityContext");
+	MSRDPEX_GETPROCADDRESS(Real_CompleteAuthToken, COMPLETE_AUTH_TOKEN_FN, g_hSspiCli, "CompleteAuthToken");
+	MSRDPEX_GETPROCADDRESS(Real_DeleteSecurityContext, DELETE_SECURITY_CONTEXT_FN, g_hSspiCli, "DeleteSecurityContext");
+	MSRDPEX_GETPROCADDRESS(Real_ApplyControlToken, APPLY_CONTROL_TOKEN_FN, g_hSspiCli, "ApplyControlToken");
+	MSRDPEX_GETPROCADDRESS(Real_QueryContextAttributesW, QUERY_CONTEXT_ATTRIBUTES_FN_W, g_hSspiCli, "QueryContextAttributesW");
+	MSRDPEX_GETPROCADDRESS(Real_ImpersonateSecurityContext, IMPERSONATE_SECURITY_CONTEXT_FN, g_hSspiCli, "ImpersonateSecurityContext");
+	MSRDPEX_GETPROCADDRESS(Real_RevertSecurityContext, REVERT_SECURITY_CONTEXT_FN, g_hSspiCli, "RevertSecurityContext");
+	MSRDPEX_GETPROCADDRESS(Real_MakeSignature, MAKE_SIGNATURE_FN, g_hSspiCli, "MakeSignature");
+	MSRDPEX_GETPROCADDRESS(Real_VerifySignature, VERIFY_SIGNATURE_FN, g_hSspiCli, "VerifySignature");
+	MSRDPEX_GETPROCADDRESS(Real_FreeContextBuffer, FREE_CONTEXT_BUFFER_FN, g_hSspiCli, "FreeContextBuffer");
+	MSRDPEX_GETPROCADDRESS(Real_QuerySecurityPackageInfoW, QUERY_SECURITY_PACKAGE_INFO_FN_W, g_hSspiCli, "QuerySecurityPackageInfoW");
 
-	Real_ExportSecurityContext = (EXPORT_SECURITY_CONTEXT_FN) GetProcAddress(g_hSspiCli, "ExportSecurityContext");
-	Real_ImportSecurityContextW = (IMPORT_SECURITY_CONTEXT_FN_W) GetProcAddress(g_hSspiCli, "ImportSecurityContextW");
-	Real_AddCredentialsW = (ADD_CREDENTIALS_FN_W) GetProcAddress(g_hSspiCli, "AddCredentialsW");
+	MSRDPEX_GETPROCADDRESS(Real_ExportSecurityContext, EXPORT_SECURITY_CONTEXT_FN, g_hSspiCli, "ExportSecurityContext");
+	MSRDPEX_GETPROCADDRESS(Real_ImportSecurityContextW, IMPORT_SECURITY_CONTEXT_FN_W, g_hSspiCli, "ImportSecurityContextW");
+	MSRDPEX_GETPROCADDRESS(Real_AddCredentialsW, ADD_CREDENTIALS_FN_W, g_hSspiCli, "AddCredentialsW");
 
-	Real_QuerySecurityContextToken = (QUERY_SECURITY_CONTEXT_TOKEN_FN) GetProcAddress(g_hSspiCli, "QuerySecurityContextToken");
-	Real_EncryptMessage = (ENCRYPT_MESSAGE_FN) GetProcAddress(g_hSspiCli, "EncryptMessage");
-	Real_DecryptMessage = (DECRYPT_MESSAGE_FN) GetProcAddress(g_hSspiCli, "DecryptMessage");
-	Real_SetContextAttributesW = (SET_CONTEXT_ATTRIBUTES_FN_W) GetProcAddress(g_hSspiCli, "SetContextAttributesW");
+	MSRDPEX_GETPROCADDRESS(Real_QuerySecurityContextToken, QUERY_SECURITY_CONTEXT_TOKEN_FN, g_hSspiCli, "QuerySecurityContextToken");
+	MSRDPEX_GETPROCADDRESS(Real_EncryptMessage, ENCRYPT_MESSAGE_FN, g_hSspiCli, "EncryptMessage");
+	MSRDPEX_GETPROCADDRESS(Real_DecryptMessage, DECRYPT_MESSAGE_FN, g_hSspiCli, "DecryptMessage");
+	MSRDPEX_GETPROCADDRESS(Real_SetContextAttributesW, SET_CONTEXT_ATTRIBUTES_FN_W, g_hSspiCli, "SetContextAttributesW");
 
-	Real_SetCredentialsAttributesW = (SET_CREDENTIALS_ATTRIBUTES_FN_W) GetProcAddress(g_hSecur32, "SetCredentialsAttributesW");
+	MSRDPEX_GETPROCADDRESS(Real_SetCredentialsAttributesW, SET_CREDENTIALS_ATTRIBUTES_FN_W, g_hSecur32, "SetCredentialsAttributesW");
 
-	Real_QueryContextAttributesExW = (QUERY_CONTEXT_ATTRIBUTES_EX_FN_W) GetProcAddress(g_hSspiCli, "QueryContextAttributesExW");
-	Real_QueryCredentialsAttributesExW = (QUERY_CREDENTIALS_ATTRIBUTES_EX_FN_W) GetProcAddress(g_hSspiCli, "QueryCredentialsAttributesExW");
+	MSRDPEX_GETPROCADDRESS(Real_QueryContextAttributesExW, QUERY_CONTEXT_ATTRIBUTES_EX_FN_W, g_hSspiCli, "QueryContextAttributesExW");
+	MSRDPEX_GETPROCADDRESS(Real_QueryCredentialsAttributesExW, QUERY_CREDENTIALS_ATTRIBUTES_EX_FN_W, g_hSspiCli, "QueryCredentialsAttributesExW");
 
 	MSRDPEX_DETOUR_ATTACH(Real_EnumerateSecurityPackagesW, sspi_EnumerateSecurityPackagesW);
 	MSRDPEX_DETOUR_ATTACH(Real_QueryCredentialsAttributesW, sspi_QueryCredentialsAttributesW);

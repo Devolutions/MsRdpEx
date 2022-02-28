@@ -5,7 +5,7 @@
 #include <MsRdpEx/RdpFile.h>
 #include <MsRdpEx/Environment.h>
 
-#include <detours.h>
+#include <MsRdpEx/Detours.h>
 
 extern "C" const GUID IID_IMsRdpExProcess;
 

@@ -9,7 +9,7 @@
 
 #include <MsRdpEx/OutputMirror.h>
 
-#include <detours.h>
+#include <MsRdpEx/Detours.h>
 
 HMODULE (WINAPI * Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
 
@@ -326,12 +326,12 @@ LONG MsRdpEx_AttachHooks()
     DetourRestoreAfterWith();
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
-    DetourAttach((PVOID*)(&Real_LoadLibraryW), Hook_LoadLibraryW);
-    //DetourAttach((PVOID*)(&Real_GetAddrInfoW), Hook_GetAddrInfoW);
-    //DetourAttach((PVOID*)(&Real_GetAddrInfoExW), Hook_GetAddrInfoExW);
-    DetourAttach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
-    DetourAttach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
-    DetourAttach((PVOID*)(&Real_RegisterClassExW), Hook_RegisterClassExW);
+    MSRDPEX_DETOUR_ATTACH(Real_LoadLibraryW, Hook_LoadLibraryW);
+    //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
+    //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
+    MSRDPEX_DETOUR_ATTACH(Real_BitBlt, Hook_BitBlt);
+    MSRDPEX_DETOUR_ATTACH(Real_StretchBlt, Hook_StretchBlt);
+    MSRDPEX_DETOUR_ATTACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MsRdpEx_AttachSspiHooks();
     error = DetourTransactionCommit();
     return error;
@@ -342,12 +342,12 @@ LONG MsRdpEx_DetachHooks()
     LONG error;
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
-    DetourDetach((PVOID*)(&Real_LoadLibraryW), Hook_LoadLibraryW);
-    //DetourDetach((PVOID*)(&Real_GetAddrInfoW), Hook_GetAddrInfoW);
-    //DetourDetach((PVOID*)(&Real_GetAddrInfoExW), Hook_GetAddrInfoExW);
-    DetourDetach((PVOID*)(&Real_BitBlt), Hook_BitBlt);
-    DetourDetach((PVOID*)(&Real_StretchBlt), Hook_StretchBlt);
-    DetourDetach((PVOID*)(&Real_RegisterClassExW), Hook_RegisterClassExW);
+    MSRDPEX_DETOUR_DETACH(Real_LoadLibraryW, Hook_LoadLibraryW);
+    //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
+    //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
+    MSRDPEX_DETOUR_DETACH(Real_BitBlt, Hook_BitBlt);
+    MSRDPEX_DETOUR_DETACH(Real_StretchBlt, Hook_StretchBlt);
+    MSRDPEX_DETOUR_DETACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MsRdpEx_DetachSspiHooks();
     error = DetourTransactionCommit();
     MsRdpEx_GlobalUninit();
