@@ -108,7 +108,7 @@ char* MsRdpEx_GetRdpFilenameFromCommandLine()
 		goto exit;
 	}
 
-	MsRdpEx_Log("cmdline(argc=%d): %s", argc, cmdlineA);
+	MsRdpEx_LogPrint(DEBUG, "cmdline(argc=%d): %s", argc, cmdlineA);
 
 	if (argc < 2)
 		goto exit;
@@ -220,7 +220,7 @@ bool MsRdpEx_RdpFile_Load(MsRdpEx_RdpFile* ctx, const char* filename)
 
 			if (*type == 'i') /* integer type */
 			{
-				MsRdpEx_Log("RDP(i): %s = %s", name, value);
+				MsRdpEx_LogPrint(DEBUG, "RDP(i): %s = %s", name, value);
 				entry = MsRdpEx_RdpFileEntry_New(*type, name, value);
 
 				if (entry) {
@@ -229,7 +229,7 @@ bool MsRdpEx_RdpFile_Load(MsRdpEx_RdpFile* ctx, const char* filename)
 			}
 			else if (*type == 's') /* string type */
 			{
-				MsRdpEx_Log("RDP(s): %s = %s", name, value);
+				MsRdpEx_LogPrint(DEBUG, "RDP(s): %s = %s", name, value);
 				entry = MsRdpEx_RdpFileEntry_New(*type, name, value);
 
 				if (entry) {

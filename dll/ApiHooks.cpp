@@ -22,7 +22,7 @@ HMODULE Hook_LoadLibraryW(LPCWSTR lpLibFileName)
 
     filename = MsRdpEx_FileBase(lpLibFileNameA);
 
-    MsRdpEx_Log("LoadLibraryW: %s", lpLibFileNameA);
+    MsRdpEx_LogPrint(DEBUG, "LoadLibraryW: %s", lpLibFileNameA);
 
     if (MsRdpEx_StringIEquals(filename, "mstscax.dll")) {
         hModule = LoadLibraryA(MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH));
@@ -51,7 +51,7 @@ INT WINAPI Hook_GetAddrInfoW(PCWSTR pNodeNameW, PCWSTR pServiceName,
 
     MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pNodeNameW, -1, &pNodeNameA, 0, NULL, NULL);
 
-    MsRdpEx_Log("GetAddrInfoW: %s", pNodeNameA);
+    MsRdpEx_LogPrint(DEBUG, "GetAddrInfoW: %s", pNodeNameA);
 
     if (MsRdpEx_NameResolver_GetMapping(pNodeNameA, &newNameA)) {
         MsRdpEx_ConvertToUnicode(CP_UTF8, 0, newNameA, -1, &newNameW, 0);
@@ -109,7 +109,7 @@ bool MsRdpEx_CaptureBlt(
     if (!instance)
         goto end;
 
-    MsRdpEx_Log("CaptureBlt: hWnd: %p instance: %p", hWnd, instance);
+    MsRdpEx_LogPrint(DEBUG, "CaptureBlt: hWnd: %p instance: %p", hWnd, instance);
 
     instance->GetOutputMirrorEnabled(&outputMirrorEnabled);
     instance->GetVideoRecordingEnabled(&videoRecordingEnabled);
@@ -163,7 +163,7 @@ BOOL Hook_BitBlt(
     bool captured = MsRdpEx_CaptureBlt(hdcDst, dstX, dstY, width, height, hdcSrc, srcX, srcY);
     
     if (captured) {
-        MsRdpEx_Log("BitBlt: %d,%d %dx%d %d,%d", dstX, dstY, width, height, srcX, srcY);
+        MsRdpEx_LogPrint(DEBUG, "BitBlt: %d,%d %dx%d %d,%d", dstX, dstY, width, height, srcX, srcY);
     }
 
     return status;
@@ -185,7 +185,7 @@ BOOL Hook_StretchBlt(
     bool captured = MsRdpEx_CaptureBlt(hdcDst, srcX, srcY, srcW, srcH, hdcSrc, srcX, srcY);
 
     if (captured) {
-        MsRdpEx_Log("StretchBlt: %d,%d %dx%d %d,%d %dx%d", dstX, dstY, dstW, dstH, srcX, srcY, srcW, srcH);
+        MsRdpEx_LogPrint(DEBUG, "StretchBlt: %d,%d %dx%d %d,%d %dx%d", dstX, dstY, dstW, dstH, srcX, srcY, srcW, srcH);
     }
 
 end:
@@ -202,7 +202,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	char* lpWindowNameA = NULL;
     CMsRdpExInstance* instance = NULL;
 	
-	MsRdpEx_Log("OPWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
+	MsRdpEx_LogPrint(DEBUG, "OPWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
 
 	if (uMsg == WM_NCCREATE)
 	{
@@ -210,7 +210,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 		void* lpCreateParams = createStruct->lpCreateParams;
 
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, createStruct->lpszName, -1, &lpWindowNameA, 0, NULL, NULL);
-        MsRdpEx_Log("Window Create: %s", lpWindowNameA);
+        MsRdpEx_LogPrint(DEBUG, "Window Create: %s", lpWindowNameA);
 	}
 
 	result = Real_OPWndProc(hWnd, uMsg, wParam, lParam);
@@ -223,7 +223,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
         if (!instance) {
             IMsRdpExInstance* instance = (IMsRdpExInstance*) CMsRdpExInstance_New(NULL);
-            MsRdpEx_Log("Creating detached RDP instance: %p hWnd: %p", instance, hWnd);
+            MsRdpEx_LogPrint(DEBUG, "Creating detached RDP instance: %p hWnd: %p", instance, hWnd);
             instance->AttachOutputWindow(hWnd, pUserData);
             MsRdpEx_InstanceManager_Add((CMsRdpExInstance*) instance);
         }
@@ -256,7 +256,7 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
 
     MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, wndClassEx->lpszClassName, -1, &lpClassNameA, 0, NULL, NULL);
 
-    MsRdpEx_Log("RegisterClassExW: %s", lpClassNameA);
+    MsRdpEx_LogPrint(DEBUG, "RegisterClassExW: %s", lpClassNameA);
 
     if (MsRdpEx_StringEquals(lpClassNameA, "OPWindowClass")) {
         Real_OPWndProc = wndClassEx->lpfnWndProc;

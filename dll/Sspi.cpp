@@ -70,7 +70,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_EnumerateSecurityPackagesW(ULONG* pcPackag
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_EnumerateSecurityPackagesW");
+	MsRdpEx_LogPrint(DEBUG, "sspi_EnumerateSecurityPackagesW");
 
 	status = Real_EnumerateSecurityPackagesW(pcPackages, ppPackageInfo);
 
@@ -82,7 +82,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_QueryCredentialsAttributesW(PCredHandle ph
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_QueryCredentialsAttributesW: phCredential: %p ulAttribute: %d",
+	MsRdpEx_LogPrint(DEBUG, "sspi_QueryCredentialsAttributesW: phCredential: %p ulAttribute: %d",
 		phCredential, ulAttribute);
 
 	status = Real_QueryCredentialsAttributesW(phCredential, ulAttribute, pBuffer);
@@ -115,7 +115,7 @@ static bool sspi_DumpCredSspAuthData(void* pAuthData)
 {
 	CREDSSP_CRED* pCred = (CREDSSP_CRED*) pAuthData;
 
-	MsRdpEx_Log("CredSSP submit type: %d schannel: %d spnego: %d",
+	MsRdpEx_LogPrint(DEBUG, "CredSSP submit type: %d schannel: %d spnego: %d",
 		pCred->Type, pCred->pSchannelCred ? 1 : 0, pCred->pSpnegoCred ? 1 : 0);
 
 	if (pCred->pSpnegoCred) {
@@ -156,7 +156,7 @@ static bool sspi_DumpCredSspAuthData(void* pAuthData)
 			if (domainLength)
 				MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pDomainW, domainLength, &pDomainA, 0, NULL, NULL);
 
-			MsRdpEx_Log("AUTH_OPAQUE: User: \"%s\" Domain: \"%s\"", pUserA, pDomainA);
+			MsRdpEx_LogPrint(DEBUG, "AUTH_OPAQUE: User: \"%s\" Domain: \"%s\"", pUserA, pDomainA);
 
 			free(pUserA);
 			free(pDomainA);
@@ -189,7 +189,7 @@ static bool sspi_DumpCredSspAuthData(void* pAuthData)
 			if (cchPassword)
 				MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, szPassword, cchPassword, &passwordA, 0, NULL, NULL);
 
-			MsRdpEx_Log("CredUnPackAuthenticationBufferW: Size: %d User: %s (%d) Domain: %s (%d) Password: %s (%d)",
+			MsRdpEx_LogPrint(DEBUG, "CredUnPackAuthenticationBufferW: Size: %d User: %s (%d) Domain: %s (%d) Password: %s (%d)",
 				cbAuthBuffer,
 				userA ? userA : "", cchUserName,
 				domainA ? domainA : "", cchDomainName,
@@ -230,7 +230,7 @@ static bool sspi_SetKdcProxySettings(PCredHandle phCredential, const char* proxy
 		pKdcProxySettings->ClientTlsCredLength = 0;
 		memcpy(&pBuffer[pKdcProxySettings->ProxyServerOffset], pProxyServerW, cbProxyServer);
 
-		MsRdpEx_Log("Injecting KdcProxySettings: %s", proxyServer);
+		MsRdpEx_LogPrint(DEBUG, "Injecting KdcProxySettings: %s", proxyServer);
 		status = SetCredentialsAttributesW(phCredential, SECPKG_CRED_ATTR_KDC_PROXY_SETTINGS, (void*) pBuffer, cbBuffer);
 	}
 
@@ -265,7 +265,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 		pAuthData, pGetKeyFn, pvGetKeyArgument,
 		phCredential, ptsExpiry);
 
-	MsRdpEx_Log("sspi_AcquireCredentialsHandleW(principal=\"%s\", package=\"%s\", phCredential=%p,%p)",
+	MsRdpEx_LogPrint(DEBUG, "sspi_AcquireCredentialsHandleW(principal=\"%s\", package=\"%s\", phCredential=%p,%p)",
 		pszPrincipalA ? pszPrincipalA : "",
 		pszPackageA ? pszPackageA : "",
 		(void*)phCredential->dwLower, (void*) phCredential->dwUpper);
@@ -286,7 +286,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_FreeCredentialsHandle(PCredHandle phCreden
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_FreeCredentialsHandle: phCredential: %p,%p",
+	MsRdpEx_LogPrint(DEBUG, "sspi_FreeCredentialsHandle: phCredential: %p,%p",
 		(void*)phCredential->dwLower, (void*)phCredential->dwUpper);
 
 	status = Real_FreeCredentialsHandle(phCredential);
@@ -307,7 +307,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 	if (pszTargetName)
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszTargetName, -1, &pszTargetNameA, 0, NULL, NULL);
 
-	MsRdpEx_Log("sspi_InitializeSecurityContextW: pszTargetName: %s fContextReq: 0x%08X phCredential=%p,%p",
+	MsRdpEx_LogPrint(DEBUG, "sspi_InitializeSecurityContextW: pszTargetName: %s fContextReq: 0x%08X phCredential=%p,%p",
 		pszTargetNameA ? pszTargetNameA : "", fContextReq, (void*)phCredential->dwLower, (void*)phCredential->dwUpper);
 
 	if (pInput) {
@@ -319,7 +319,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 				continue;
 			}
 
-			MsRdpEx_Log("InputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
+			MsRdpEx_LogPrint(DEBUG, "InputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
 			MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 		}
 	}
@@ -337,7 +337,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 				continue;
 			}
 
-			MsRdpEx_Log("OutputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
+			MsRdpEx_LogPrint(DEBUG, "OutputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
 			MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 		}
 	}
@@ -356,7 +356,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcceptSecurityContext(PCredHandle phCreden
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_AcceptSecurityContext");
+	MsRdpEx_LogPrint(DEBUG, "sspi_AcceptSecurityContext");
 
 	status = Real_AcceptSecurityContext(phCredential,
 		phContext, pInput, fContextReq, TargetDataRep,
@@ -369,7 +369,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_CompleteAuthToken(PCtxtHandle phContext, P
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_CompleteAuthToken");
+	MsRdpEx_LogPrint(DEBUG, "sspi_CompleteAuthToken");
 
 	status = Real_CompleteAuthToken(phContext, pToken);
 
@@ -380,7 +380,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_DeleteSecurityContext(PCtxtHandle phContex
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_DeleteSecurityContext");
+	MsRdpEx_LogPrint(DEBUG, "sspi_DeleteSecurityContext");
 
 	status = Real_DeleteSecurityContext(phContext);
 
@@ -391,7 +391,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_ApplyControlToken(PCtxtHandle phContext, P
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_ApplyControlToken");
+	MsRdpEx_LogPrint(DEBUG, "sspi_ApplyControlToken");
 
 	status = Real_ApplyControlToken(phContext, pInput);
 
@@ -403,7 +403,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_QueryContextAttributesW(PCtxtHandle phCont
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_QueryContextAttributesW: %d", (int) ulAttribute);
+	MsRdpEx_LogPrint(DEBUG, "sspi_QueryContextAttributesW: %d", (int) ulAttribute);
 
 	status = Real_QueryContextAttributesW(phContext, ulAttribute, pBuffer);
 
@@ -414,7 +414,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_ImpersonateSecurityContext(PCtxtHandle phC
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_ImpersonateSecurityContext");
+	MsRdpEx_LogPrint(DEBUG, "sspi_ImpersonateSecurityContext");
 
 	status = Real_ImpersonateSecurityContext(phContext);
 
@@ -425,7 +425,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_RevertSecurityContext(PCtxtHandle phContex
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_RevertSecurityContext");
+	MsRdpEx_LogPrint(DEBUG, "sspi_RevertSecurityContext");
 
 	status = Real_RevertSecurityContext(phContext);
 
@@ -437,7 +437,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_MakeSignature(PCtxtHandle phContext, ULONG
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_MakeSignature");
+	MsRdpEx_LogPrint(DEBUG, "sspi_MakeSignature");
 
 	status = Real_MakeSignature(phContext, fQOP, pMessage, MessageSeqNo);
 
@@ -449,7 +449,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_VerifySignature(PCtxtHandle phContext, PSe
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_VerifySignature");
+	MsRdpEx_LogPrint(DEBUG, "sspi_VerifySignature");
 
 	status = Real_VerifySignature(phContext, pMessage, MessageSeqNo, pfQOP);
 
@@ -460,7 +460,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_FreeContextBuffer(void* pvContextBuffer)
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_FreeContextBuffer");
+	MsRdpEx_LogPrint(DEBUG, "sspi_FreeContextBuffer");
 
 	status = Real_FreeContextBuffer(pvContextBuffer);
 
@@ -476,7 +476,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_QuerySecurityPackageInfoW(SEC_WCHAR* pszPa
 	if (pszPackageName)
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszPackageName, -1, &pszPackageNameA, 0, NULL, NULL);
 
-	MsRdpEx_Log("sspi_QuerySecurityPackageInfoW: %s",
+	MsRdpEx_LogPrint(DEBUG, "sspi_QuerySecurityPackageInfoW: %s",
 		pszPackageNameA ? pszPackageNameA : "");
 
 	status = Real_QuerySecurityPackageInfoW(pszPackageName, ppPackageInfo);
@@ -491,7 +491,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_ExportSecurityContext(PCtxtHandle phContex
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_ExportSecurityContext");
+	MsRdpEx_LogPrint(DEBUG, "sspi_ExportSecurityContext");
 
 	status = Real_ExportSecurityContext(phContext, fFlags, pPackedContext, pToken);
 
@@ -503,7 +503,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_ImportSecurityContextW(SEC_WCHAR* pszPacka
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_ImportSecurityContextW");
+	MsRdpEx_LogPrint(DEBUG, "sspi_ImportSecurityContextW");
 
 	status = Real_ImportSecurityContextW(pszPackage, pPackedContext, pToken, phContext);
 
@@ -515,7 +515,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AddCredentialsW(PCredHandle hCredentials, 
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_AddCredentialsW");
+	MsRdpEx_LogPrint(DEBUG, "sspi_AddCredentialsW");
 
 	status = Real_AddCredentialsW(hCredentials, pszPrincipal, pszPackage,
 		fCredentialUse, pAuthData, pGetKeyFn, pvGetKeyArgument, ptsExpiry);
@@ -527,7 +527,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_QuerySecurityContextToken(PCtxtHandle phCo
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_QuerySecurityContextToken");
+	MsRdpEx_LogPrint(DEBUG, "sspi_QuerySecurityContextToken");
 
 	status = Real_QuerySecurityContextToken(phContext, phToken);
 
@@ -539,7 +539,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_EncryptMessage(PCtxtHandle phContext, ULON
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_EncryptMessage phContext: %p seqNo: %d cbBuffers: %d ReturnAddress: %p",
+	MsRdpEx_LogPrint(DEBUG, "sspi_EncryptMessage phContext: %p seqNo: %d cbBuffers: %d ReturnAddress: %p",
 		phContext, MessageSeqNo, pMessage->cBuffers, _ReturnAddress());
 
 #if 0
@@ -571,7 +571,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_EncryptMessage(PCtxtHandle phContext, ULON
 			MsRdpEx_PcapFile_Unlock(pcap);
 		}
 
-		MsRdpEx_Log("SecBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
+		MsRdpEx_LogPrint(DEBUG, "SecBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
 		MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 	}
 
@@ -585,7 +585,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_DecryptMessage(PCtxtHandle phContext, PSec
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_DecryptMessage phContext: %p seqNo: %d ReturnAddress: %p",
+	MsRdpEx_LogPrint(DEBUG, "sspi_DecryptMessage phContext: %p seqNo: %d ReturnAddress: %p",
 		phContext, MessageSeqNo, _ReturnAddress());
 
 	status = Real_DecryptMessage(phContext, pMessage, MessageSeqNo, pfQOP);
@@ -619,7 +619,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_DecryptMessage(PCtxtHandle phContext, PSec
 			MsRdpEx_PcapFile_Unlock(pcap);
 		}
 
-		MsRdpEx_Log("SecBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
+		MsRdpEx_LogPrint(DEBUG, "SecBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
 		MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 	}
 
@@ -631,7 +631,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_SetContextAttributesW(PCtxtHandle phContex
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_SetContextAttributesW");
+	MsRdpEx_LogPrint(DEBUG, "sspi_SetContextAttributesW");
 
 	status = Real_SetContextAttributesW(phContext, ulAttribute, pBuffer, cbBuffer);
 
@@ -643,7 +643,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_SetCredentialsAttributesW(PCredHandle phCr
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_SetCredentialsAttributesW: ulAttribute: %d cbBuffer: %d phCredential: %p,%p",
+	MsRdpEx_LogPrint(DEBUG, "sspi_SetCredentialsAttributesW: ulAttribute: %d cbBuffer: %d phCredential: %p,%p",
 		ulAttribute, cbBuffer, (void*)phCredential->dwLower, (void*)phCredential->dwUpper);
 
 	if (ulAttribute == SECPKG_CRED_ATTR_KDC_PROXY_SETTINGS) {
@@ -657,10 +657,10 @@ static SECURITY_STATUS SEC_ENTRY sspi_SetCredentialsAttributesW(PCredHandle phCr
 			MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pProxyServerW, cchProxyServer, &pProxyServerA, 0, NULL, NULL);
 		}
 
-		MsRdpEx_Log("KdcProxySettings: Version: %d Flags: 0x%08X", pKdcProxySettings->Version, pKdcProxySettings->Flags);
+		MsRdpEx_LogPrint(DEBUG, "KdcProxySettings: Version: %d Flags: 0x%08X", pKdcProxySettings->Version, pKdcProxySettings->Flags);
 
 		if (pProxyServerA) {
-			MsRdpEx_Log("ProxyServer: %s", pProxyServerA);
+			MsRdpEx_LogPrint(DEBUG, "ProxyServer: %s", pProxyServerA);
 		}
 	}
 
@@ -674,7 +674,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_QueryContextAttributesExW(PCtxtHandle phCo
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_QueryContextAttributesExW: ulAttribute: %d cbBuffer: %d", ulAttribute, cbBuffer);
+	MsRdpEx_LogPrint(DEBUG, "sspi_QueryContextAttributesExW: ulAttribute: %d cbBuffer: %d", ulAttribute, cbBuffer);
 
 	status = Real_QueryContextAttributesExW(phContext, ulAttribute, pBuffer, cbBuffer);
 
@@ -686,7 +686,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_QueryCredentialsAttributesExW(PCredHandle 
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_Log("sspi_QueryCredentialsAttributesExW: ulAttribute: %d cbBuffer: %d", ulAttribute, cbBuffer);
+	MsRdpEx_LogPrint(DEBUG, "sspi_QueryCredentialsAttributesExW: ulAttribute: %d cbBuffer: %d", ulAttribute, cbBuffer);
 
 	status = Real_QueryCredentialsAttributesExW(phCredential, ulAttribute, pBuffer, cbBuffer);
 

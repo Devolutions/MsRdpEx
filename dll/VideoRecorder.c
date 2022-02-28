@@ -8,7 +8,7 @@ void* MsRdpEx_LoadFunc(HMODULE hModule, const char* name, void** ppFunc)
     void* pFunc = GetProcAddress(hModule, name);
     *ppFunc = pFunc;
     if (!pFunc) {
-        MsRdpEx_Log("LoadFunc(%s): not found", name);
+        MsRdpEx_LogPrint(DEBUG, "LoadFunc(%s): not found", name);
     }
     return pFunc;
 }

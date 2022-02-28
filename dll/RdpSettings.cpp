@@ -23,7 +23,7 @@ static HRESULT Hook_ITSPropertySet_SetBoolProperty(ITSPropertySet* This, const c
 {
     HRESULT hr;
 
-    MsRdpEx_Log("ITSPropertySet::SetBoolProperty(%s, %d)", propName, propValue);
+    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::SetBoolProperty(%s, %d)", propName, propValue);
 
     hr = Real_ITSPropertySet_SetBoolProperty(This, propName, propValue);
 
@@ -36,7 +36,7 @@ static HRESULT Hook_ITSPropertySet_GetBoolProperty(ITSPropertySet* This, const c
 
     hr = Real_ITSPropertySet_GetBoolProperty(This, propName, propValue);
 
-    MsRdpEx_Log("ITSPropertySet::GetBoolProperty(%s, %d)", propName, *propValue);
+    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::GetBoolProperty(%s, %d)", propName, *propValue);
 
     return hr;
 }
@@ -45,7 +45,7 @@ static HRESULT Hook_ITSPropertySet_SetIntProperty(ITSPropertySet* This, const ch
 {
     HRESULT hr;
 
-    MsRdpEx_Log("ITSPropertySet::SetIntProperty(%s, %d)", propName, propValue);
+    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::SetIntProperty(%s, %d)", propName, propValue);
 
     hr = Real_ITSPropertySet_SetIntProperty(This, propName, propValue);
 
@@ -58,7 +58,7 @@ static HRESULT Hook_ITSPropertySet_GetIntProperty(ITSPropertySet* This, const ch
 
     hr = Real_ITSPropertySet_GetIntProperty(This, propName, propValue);
 
-    MsRdpEx_Log("ITSPropertySet::GetIntProperty(%s, %d)", propName, *propValue);
+    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::GetIntProperty(%s, %d)", propName, *propValue);
 
     return hr;
 }
@@ -69,7 +69,7 @@ static HRESULT Hook_ITSPropertySet_SetStringProperty(ITSPropertySet* This, const
 
     char* propValueA = _com_util::ConvertBSTRToString((BSTR) propValue);
 
-    MsRdpEx_Log("ITSPropertySet::SetStringProperty(%s, \"%s\")", propName, propValueA);
+    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::SetStringProperty(%s, \"%s\")", propName, propValueA);
 
     hr = Real_ITSPropertySet_SetStringProperty(This, propName, propValue);
 
@@ -82,7 +82,7 @@ static HRESULT Hook_ITSPropertySet_GetStringProperty(ITSPropertySet* This, const
 
     hr = Real_ITSPropertySet_GetStringProperty(This, propName, propValue);
 
-    MsRdpEx_Log("ITSPropertySet::GetStringProperty(%s)", propName);
+    MsRdpEx_LogPrint(DEBUG, "ITSPropertySet::GetStringProperty(%s)", propName);
 
     return hr;
 }
@@ -146,7 +146,7 @@ public:
         char iid[MSRDPEX_GUID_STRING_SIZE];
         MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
-        MsRdpEx_Log("CMsRdpPropertySet::QueryInterface");
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::QueryInterface");
 
         if (riid == IID_IUnknown)
         {
@@ -165,7 +165,7 @@ public:
             hr = m_pUnknown->QueryInterface(riid, ppvObject);
         }
 
-        MsRdpEx_Log("CMsRdpPropertySet::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
 
         return hr;
     }
@@ -173,7 +173,7 @@ public:
     ULONG STDMETHODCALLTYPE AddRef()
     {
         ULONG refCount = InterlockedIncrement(&m_refCount);
-        MsRdpEx_Log("CMsRdpPropertySet::AddRef() = %d", refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::AddRef() = %d", refCount);
         return refCount;
     }
 
@@ -181,7 +181,7 @@ public:
     {
         ULONG refCount = InterlockedDecrement(&m_refCount);
 
-        MsRdpEx_Log("CMsRdpPropertySet::Release() = %d", refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::Release() = %d", refCount);
 
         if (refCount == 0)
         {
@@ -196,7 +196,7 @@ public:
 public:
     HRESULT __stdcall put_Property(BSTR bstrPropertyName, VARIANT* pValue) {
         char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpPropertySet::put_Property(%s, vt: %d)", propName, pValue->vt);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::put_Property(%s, vt: %d)", propName, pValue->vt);
         
         if (pValue->vt == VT_BOOL)
         {
@@ -222,7 +222,7 @@ public:
         HRESULT hr = E_INVALIDARG;
         uint8_t propType = 0;
         char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-        MsRdpEx_Log("CMsRdpPropertySet::get_Property(%s)", propName);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::get_Property(%s)", propName);
 
         VariantInit(pValue);
 
@@ -327,7 +327,7 @@ HRESULT STDMETHODCALLTYPE CMsRdpExtendedSettings::QueryInterface(
         hr = m_pUnknown->QueryInterface(riid, ppvObject);
     }
 
-    MsRdpEx_Log("CMsRdpExtendedSettings::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
+    MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
 
     return hr;
 }
@@ -335,7 +335,7 @@ HRESULT STDMETHODCALLTYPE CMsRdpExtendedSettings::QueryInterface(
 ULONG STDMETHODCALLTYPE CMsRdpExtendedSettings::AddRef()
 {
     ULONG refCount = InterlockedIncrement(&m_refCount);
-    MsRdpEx_Log("CMsRdpExtendedSettings::AddRef() = %d", refCount);
+    MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::AddRef() = %d", refCount);
     return refCount;
 }
 
@@ -343,7 +343,7 @@ ULONG STDMETHODCALLTYPE CMsRdpExtendedSettings::Release()
 {
     ULONG refCount = InterlockedDecrement(&m_refCount);
 
-    MsRdpEx_Log("CMsRdpExtendedSettings::Release() = %d", refCount);
+    MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::Release() = %d", refCount);
 
     if (refCount == 0)
     {
@@ -356,14 +356,14 @@ ULONG STDMETHODCALLTYPE CMsRdpExtendedSettings::Release()
 
 HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VARIANT* pValue) {
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-    MsRdpEx_Log("CMsRdpExtendedSettings::put_Property(%s)", propName);
+    MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::put_Property(%s)", propName);
     return m_pMsRdpExtendedSettings->put_Property(bstrPropertyName, pValue);
 }
 
 HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VARIANT* pValue) {
     HRESULT hr = S_OK;
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-    MsRdpEx_Log("CMsRdpExtendedSettings::get_Property(%s)", propName);
+    MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::get_Property(%s)", propName);
 
     VariantInit(pValue);
 
@@ -404,7 +404,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
 
 HRESULT __stdcall CMsRdpExtendedSettings::put_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue) {
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-    MsRdpEx_Log("CMsRdpExtendedSettings::put_CoreProperty(%s)", propName);
+    MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::put_CoreProperty(%s)", propName);
 
     if (!m_CoreProps)
         return E_INVALIDARG;
@@ -414,7 +414,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_CoreProperty(BSTR bstrPropertyName
 
 HRESULT __stdcall CMsRdpExtendedSettings::get_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue) {
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-    MsRdpEx_Log("CMsRdpExtendedSettings::get_CoreProperty(%s)", propName);
+    MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::get_CoreProperty(%s)", propName);
 
     if (!m_CoreProps)
         return E_INVALIDARG;
@@ -424,7 +424,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_CoreProperty(BSTR bstrPropertyName
 
 HRESULT __stdcall CMsRdpExtendedSettings::put_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue) {
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-    MsRdpEx_Log("CMsRdpExtendedSettings::put_BaseProperty(%s)", propName);
+    MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::put_BaseProperty(%s)", propName);
 
     if (!m_BaseProps)
         return E_INVALIDARG;
@@ -434,7 +434,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_BaseProperty(BSTR bstrPropertyName
 
 HRESULT __stdcall CMsRdpExtendedSettings::get_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue) {
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
-    MsRdpEx_Log("CMsRdpExtendedSettings::get_BaseProperty(%s)", propName);
+    MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::get_BaseProperty(%s)", propName);
 
     if (!m_BaseProps)
         return E_INVALIDARG;
@@ -460,7 +460,7 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
             ITSObjectBase* pTSObject = *ppTSObject;
             if (MsRdpEx_CanReadUnsafePtr(pTSObject, sizeof(ITSObjectBase))) {
                 if (pTSObject->marker == TSOBJECT_MARKER) {
-                    MsRdpEx_Log("MsTscAx(%d): 0x%08X name: %s refCount: %d",
+                    MsRdpEx_LogPrint(DEBUG, "MsTscAx(%d): 0x%08X name: %s refCount: %d",
                         i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
 
                     if (MsRdpEx_StringEqualsUnsafePtr(pTSObject->name, "CTSPropertySet")) {
@@ -487,7 +487,7 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
             ITSObjectBase* pTSObject = *ppTSObject;
             if (MsRdpEx_CanReadUnsafePtr(pTSObject, sizeof(ITSObjectBase))) {
                 if (pTSObject->marker == TSOBJECT_MARKER) {
-                    MsRdpEx_Log("TSWin32CoreApi(%d): 0x%08X name: %s refCount: %d",
+                    MsRdpEx_LogPrint(DEBUG, "TSWin32CoreApi(%d): 0x%08X name: %s refCount: %d",
                         i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
 
                     if (MsRdpEx_StringEqualsUnsafePtr(pTSObject->name, "CTSPropertySet")) {
@@ -505,7 +505,7 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
         }
     }
 
-    MsRdpEx_Log("pTSCoreProps1: %p", pTSCoreProps);
+    MsRdpEx_LogPrint(DEBUG, "pTSCoreProps1: %p", pTSCoreProps);
 
     if (pTSCoreProps)
     {
@@ -543,7 +543,7 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
 
     CMsRdpExtendedSettings* pMsRdpExtendedSettings = this;
 
-    MsRdpEx_Log("Loading %s", filename);
+    MsRdpEx_LogPrint(DEBUG, "Loading %s", filename);
     MsRdpEx_RdpFile* rdpFile = MsRdpEx_RdpFile_New();
 
     if (MsRdpEx_RdpFile_Load(rdpFile, filename)) {

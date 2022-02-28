@@ -105,6 +105,25 @@ char* MsRdpEx_BinToHex(const uint8_t* bin, char* hex, int size, uint32_t flags);
 
 // Log Utils
 
+#define MSRDPEX_LOG_TRACE   0
+#define MSRDPEX_LOG_DEBUG   1
+#define MSRDPEX_LOG_INFO    2
+#define MSRDPEX_LOG_WARN    3
+#define MSRDPEX_LOG_ERROR   4
+#define MSRDPEX_LOG_FATAL   5
+#define MSRDPEX_LOG_OFF     6
+
+bool MsRdpEx_IsLogLevelActive(uint32_t logLevel);
+
+#define MsRdpEx_LogPrint(_log_level, ...)                                              \
+	do                                                                                 \
+	{                                                                                  \
+		if (MsRdpEx_IsLogLevelActive(MSRDPEX_LOG_ ## _log_level))                      \
+		{                                                                              \
+			MsRdpEx_Log(__VA_ARGS__);                                                  \
+		}                                                                              \
+	} while (0)
+
 bool MsRdpEx_Log(const char* format, ...);
 void MsRdpEx_LogHexDump(const uint8_t* data, size_t size);
 

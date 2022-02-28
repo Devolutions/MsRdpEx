@@ -60,7 +60,7 @@ public:
             hr = S_OK;
         }
 
-        MsRdpEx_Log("CMsRdpExProcess::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExProcess::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
 
         return hr;
     }
@@ -68,7 +68,7 @@ public:
     ULONG STDMETHODCALLTYPE AddRef()
     {
         ULONG refCount = InterlockedIncrement(&m_refCount);
-        MsRdpEx_Log("CMsRdpExProcess::AddRef() = %d", refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExProcess::AddRef() = %d", refCount);
         return refCount;
     }
 
@@ -76,7 +76,7 @@ public:
     {
         ULONG refCount = InterlockedDecrement(&m_refCount);
 
-        MsRdpEx_Log("CMsRdpExProcess::Release() = %d", refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExProcess::Release() = %d", refCount);
 
         if (refCount == 0)
         {
