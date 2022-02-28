@@ -17,6 +17,7 @@ source_group("Resources" FILES ${MSRDPEX_RESOURCES})
 set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/Sspi.h"
     "${MSRDPEX_INCLUDE_DIR}/Stream.h"
+    "${MSRDPEX_INCLUDE_DIR}/Detours.h"
     "${MSRDPEX_INCLUDE_DIR}/Memory.h"
     "${MSRDPEX_INCLUDE_DIR}/Pcap.h"
     "${MSRDPEX_INCLUDE_DIR}/ArrayList.h"
@@ -39,6 +40,7 @@ set(MSRDPEX_SOURCES
     NameResolver.c
     Sspi.cpp
     Stream.cpp
+    Detours.cpp
     Memory.c
     File.c
     Log.c

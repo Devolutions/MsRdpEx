@@ -49,7 +49,7 @@ public:
             hr = S_OK;
         }
 
-        MsRdpEx_Log("CMsRdpExCoreApi::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExCoreApi::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
 
         return hr;
     }
@@ -57,7 +57,7 @@ public:
     ULONG STDMETHODCALLTYPE AddRef()
     {
         ULONG refCount = InterlockedIncrement(&m_refCount);
-        MsRdpEx_Log("CMsRdpExCoreApi::AddRef() = %d", refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExCoreApi::AddRef() = %d", refCount);
         return refCount;
     }
 
@@ -65,7 +65,7 @@ public:
     {
         ULONG refCount = InterlockedDecrement(&m_refCount);
 
-        MsRdpEx_Log("CMsRdpExCoreApi::Release() = %d", refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExCoreApi::Release() = %d", refCount);
 
         if (refCount == 0)
         {
@@ -81,13 +81,13 @@ public:
     HRESULT __stdcall Load()
     {
         MsRdpEx_Load();
-        MsRdpEx_Log("CMsRdpExCoreApi::Load");
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExCoreApi::Load");
         return S_OK;
     }
 
     HRESULT __stdcall Unload()
     {
-        MsRdpEx_Log("CMsRdpExCoreApi::Unload");
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExCoreApi::Unload");
         MsRdpEx_Unload();
         return S_OK;
     }
@@ -166,7 +166,7 @@ HRESULT CDECL MsRdpEx_CreateInstance(REFCLSID riid, LPVOID* ppvObject)
     char iid[MSRDPEX_GUID_STRING_SIZE];
     MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
-    MsRdpEx_Log("MsRdpEx_CreateInstance(%s)", iid);
+    MsRdpEx_LogPrint(DEBUG, "MsRdpEx_CreateInstance(%s)", iid);
 
     if (riid == IID_IMsRdpExCoreApi) {
         hr = MsRdpExCoreApi_CreateInstance((LPVOID*) &pUnknown);

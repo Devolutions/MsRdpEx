@@ -40,7 +40,7 @@ bool MsRdpEx_NameResolver_RemapName(const char* oldName, const char* newName)
     if (!ctx)
         return false;
 
-	MsRdpEx_Log("RemapName: %s -> %s", oldName, newName);
+	MsRdpEx_LogPrint(DEBUG, "RemapName: %s -> %s", oldName, newName);
 
     MsRdpEx_HashTable_Add(ctx->renaming, (void*) oldName, (void*) newName);
 

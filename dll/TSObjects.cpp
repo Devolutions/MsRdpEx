@@ -60,12 +60,12 @@ void DumpTSPropertyMap(ITSPropertySet* pTSPropertySet, const char* name)
     uint32_t propCount = pTSPropertySet->propCount;
     PROPERTY_ENTRY_EX* propMap = pTSPropertySet->propMap;
 
-    MsRdpEx_Log("TSPropertySet: %s (%d)", name, propCount);
+    MsRdpEx_LogPrint(DEBUG, "TSPropertySet: %s (%d)", name, propCount);
 
     for (int i = 0; i < propCount; i++)
     {
         PROPERTY_ENTRY_EX* prop = &propMap[i];
-        MsRdpEx_Log("%s (%s)", prop->propName, GetTSPropertyTypeName(prop->propType));
+        MsRdpEx_LogPrint(DEBUG, "%s (%s)", prop->propName, GetTSPropertyTypeName(prop->propType));
     }
 }
 
@@ -168,5 +168,5 @@ void CDECL MsRdpEx_OutputWindow_OnCreate(HWND hWnd, void* pUserData)
 {
     COPWnd* pOPWnd = (COPWnd*) pUserData;
 
-    MsRdpEx_Log("WindowCreate: %s name: %s hWnd: %p", pOPWnd->name, hWnd);
+    MsRdpEx_LogPrint(DEBUG, "WindowCreate: %s name: %s hWnd: %p", pOPWnd->name, hWnd);
 }

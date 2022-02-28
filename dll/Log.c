@@ -5,7 +5,17 @@ static FILE* g_LogFile = NULL;
 static bool g_LogEnabled = true;
 static char g_LogFilePath[MSRDPEX_MAX_PATH] = { 0 };
 
+static uint32_t g_LogLevel = MSRDPEX_LOG_DEBUG;
+
 #define MSRDPEX_LOG_MAX_LINE    8192
+
+bool MsRdpEx_IsLogLevelActive(uint32_t logLevel)
+{
+    if (g_LogLevel == MSRDPEX_LOG_OFF)
+        return false;
+
+    return logLevel >= g_LogLevel;
+}
 
 bool MsRdpEx_LogVA(const char* format, va_list args)
 {

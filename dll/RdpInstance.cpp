@@ -50,7 +50,7 @@ public:
             hr = S_OK;
         }
 
-        MsRdpEx_Log("CMsRdpExInstance::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExInstance::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
 
         return hr;
     }
@@ -58,7 +58,7 @@ public:
     ULONG STDMETHODCALLTYPE AddRef()
     {
         ULONG refCount = InterlockedIncrement(&m_refCount);
-        MsRdpEx_Log("CMsRdpExInstance::AddRef() = %d", refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExInstance::AddRef() = %d", refCount);
         return refCount;
     }
 
@@ -66,7 +66,7 @@ public:
     {
         ULONG refCount = InterlockedDecrement(&m_refCount);
 
-        MsRdpEx_Log("CMsRdpExInstance::Release() = %d", refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExInstance::Release() = %d", refCount);
 
         if (refCount == 0)
         {
@@ -275,7 +275,7 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
             ITSObjectBase* pTSObject = *ppTSObject;
             if (MsRdpEx_CanReadUnsafePtr(pTSObject, sizeof(ITSObjectBase))) {
                 if (pTSObject->marker == TSOBJECT_MARKER) {
-                    MsRdpEx_Log("COPWnd(%d): 0x%08X name: %s refCount: %d",
+                    MsRdpEx_LogPrint(DEBUG, "COPWnd(%d): 0x%08X name: %s refCount: %d",
                         i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
 
                     if (MsRdpEx_StringEqualsUnsafePtr(pTSObject->name, "CTSPropertySet")) {
@@ -311,7 +311,7 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
 
         obj->GetCorePropsRawPtr(&pCorePropsRaw2);
 
-        MsRdpEx_Log("pCorePropsRaw: %p == %p", pCorePropsRaw1, pCorePropsRaw2);
+        MsRdpEx_LogPrint(DEBUG, "pCorePropsRaw: %p == %p", pCorePropsRaw1, pCorePropsRaw2);
 
         if (pCorePropsRaw1 == pCorePropsRaw2)
         {
