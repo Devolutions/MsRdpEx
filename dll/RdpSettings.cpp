@@ -4,8 +4,114 @@
 #include <MsRdpEx/Memory.h>
 #include <MsRdpEx/RdpFile.h>
 #include <MsRdpEx/NameResolver.h>
+#include <MsRdpEx/Detours.h>
+
+#include "TSObjects.h"
 
 extern "C" const GUID IID_ITSPropertySet;
+
+static bool g_TSPropertySet_Hooked = false;
+
+static ITSPropertySet_SetBoolProperty Real_ITSPropertySet_SetBoolProperty = NULL;
+static ITSPropertySet_GetBoolProperty Real_ITSPropertySet_GetBoolProperty = NULL;
+static ITSPropertySet_SetIntProperty Real_ITSPropertySet_SetIntProperty = NULL;
+static ITSPropertySet_GetIntProperty Real_ITSPropertySet_GetIntProperty = NULL;
+static ITSPropertySet_SetStringProperty Real_ITSPropertySet_SetStringProperty = NULL;
+static ITSPropertySet_GetStringProperty Real_ITSPropertySet_GetStringProperty = NULL;
+
+static HRESULT Hook_ITSPropertySet_SetBoolProperty(ITSPropertySet* This, const char* propName, int propValue)
+{
+    HRESULT hr;
+
+    MsRdpEx_Log("ITSPropertySet::SetBoolProperty(%s, %d)", propName, propValue);
+
+    hr = Real_ITSPropertySet_SetBoolProperty(This, propName, propValue);
+
+    return hr;
+}
+
+static HRESULT Hook_ITSPropertySet_GetBoolProperty(ITSPropertySet* This, const char* propName, int* propValue)
+{
+    HRESULT hr;
+
+    hr = Real_ITSPropertySet_GetBoolProperty(This, propName, propValue);
+
+    MsRdpEx_Log("ITSPropertySet::GetBoolProperty(%s, %d)", propName, *propValue);
+
+    return hr;
+}
+
+static HRESULT Hook_ITSPropertySet_SetIntProperty(ITSPropertySet* This, const char* propName, int propValue)
+{
+    HRESULT hr;
+
+    MsRdpEx_Log("ITSPropertySet::SetIntProperty(%s, %d)", propName, propValue);
+
+    hr = Real_ITSPropertySet_SetIntProperty(This, propName, propValue);
+
+    return hr;
+}
+
+static HRESULT Hook_ITSPropertySet_GetIntProperty(ITSPropertySet* This, const char* propName, int* propValue)
+{
+    HRESULT hr;
+
+    hr = Real_ITSPropertySet_GetIntProperty(This, propName, propValue);
+
+    MsRdpEx_Log("ITSPropertySet::GetIntProperty(%s, %d)", propName, *propValue);
+
+    return hr;
+}
+
+static HRESULT Hook_ITSPropertySet_SetStringProperty(ITSPropertySet* This, const char* propName, WCHAR* propValue)
+{
+    HRESULT hr;
+
+    char* propValueA = _com_util::ConvertBSTRToString((BSTR) propValue);
+
+    MsRdpEx_Log("ITSPropertySet::SetStringProperty(%s, \"%s\")", propName, propValueA);
+
+    hr = Real_ITSPropertySet_SetStringProperty(This, propName, propValue);
+
+    return hr;
+}
+
+static HRESULT Hook_ITSPropertySet_GetStringProperty(ITSPropertySet* This, const char* propName, WCHAR** propValue)
+{
+    HRESULT hr;
+
+    hr = Real_ITSPropertySet_GetStringProperty(This, propName, propValue);
+
+    MsRdpEx_Log("ITSPropertySet::GetStringProperty(%s)", propName);
+
+    return hr;
+}
+
+static bool TSPropertySet_Hook(ITSPropertySet* pTSPropertySet)
+{
+    LONG error;
+
+    DetourRestoreAfterWith();
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+
+    Real_ITSPropertySet_SetBoolProperty = pTSPropertySet->vtbl->SetBoolProperty;
+    Real_ITSPropertySet_GetBoolProperty = pTSPropertySet->vtbl->GetBoolProperty;
+    Real_ITSPropertySet_SetIntProperty = pTSPropertySet->vtbl->SetIntProperty;
+    Real_ITSPropertySet_GetIntProperty = pTSPropertySet->vtbl->GetIntProperty;
+    Real_ITSPropertySet_SetStringProperty = pTSPropertySet->vtbl->SetStringProperty;
+    Real_ITSPropertySet_GetStringProperty = pTSPropertySet->vtbl->GetStringProperty;
+
+    DetourAttach((PVOID*)(&Real_ITSPropertySet_SetBoolProperty), Hook_ITSPropertySet_SetBoolProperty);
+    DetourAttach((PVOID*)(&Real_ITSPropertySet_GetBoolProperty), Hook_ITSPropertySet_GetBoolProperty);
+    DetourAttach((PVOID*)(&Real_ITSPropertySet_SetIntProperty), Hook_ITSPropertySet_SetIntProperty);
+    DetourAttach((PVOID*)(&Real_ITSPropertySet_GetIntProperty), Hook_ITSPropertySet_GetIntProperty);
+    DetourAttach((PVOID*)(&Real_ITSPropertySet_SetStringProperty), Hook_ITSPropertySet_SetStringProperty);
+    DetourAttach((PVOID*)(&Real_ITSPropertySet_GetStringProperty), Hook_ITSPropertySet_GetStringProperty);
+
+    error = DetourTransactionCommit();
+    return true;
+}
 
 class CMsRdpPropertySet : public IMsRdpExtendedSettings
 {
@@ -15,6 +121,11 @@ public:
         m_refCount = 0;
         m_pUnknown = pUnknown;
         pUnknown->QueryInterface(IID_ITSPropertySet, (LPVOID*)&m_pTSPropertySet);
+
+        if (!g_TSPropertySet_Hooked) {
+            TSPropertySet_Hook(m_pTSPropertySet);
+            g_TSPropertySet_Hooked = true;
+        }
     }
 
     ~CMsRdpPropertySet()

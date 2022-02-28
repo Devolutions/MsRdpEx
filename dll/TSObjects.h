@@ -39,31 +39,40 @@ typedef struct tagPROPERTY_ENTRY_EX PROPERTY_ENTRY_EX;
 
 typedef struct _ITSPropertySet ITSPropertySet;
 
+typedef HRESULT (__stdcall* ITSPropertySet_SetBoolProperty)(ITSPropertySet* This, const char* propName, int propValue);
+typedef HRESULT (__stdcall* ITSPropertySet_GetBoolProperty)(ITSPropertySet* This, const char* propName, int* propValue);
+
+typedef HRESULT (__stdcall* ITSPropertySet_SetIntProperty)(ITSPropertySet* This, const char* propName, int propValue);
+typedef HRESULT (__stdcall* ITSPropertySet_GetIntProperty)(ITSPropertySet* This, const char* propName, int* propValue);
+
+typedef HRESULT (__stdcall* ITSPropertySet_SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
+typedef HRESULT (__stdcall* ITSPropertySet_GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
+
 typedef struct ITSPropertySetVtbl
 {
-    HRESULT(STDMETHODCALLTYPE* QueryInterface)(ITSPropertySet* This, REFIID riid, void** ppvObject);
-    ULONG(STDMETHODCALLTYPE* AddRef)(ITSPropertySet* This);
-    ULONG(STDMETHODCALLTYPE* Release)(ITSPropertySet* This);
-    HRESULT(STDMETHODCALLTYPE* SetProperty)(ITSPropertySet* This, const char* propName, void* propValue);
-    HRESULT(STDMETHODCALLTYPE* SetBoolProperty)(ITSPropertySet* This, const char* propName, int propValue);
-    HRESULT(STDMETHODCALLTYPE* SetIntProperty)(ITSPropertySet* This, const char* propName, int propValue);
-    HRESULT(STDMETHODCALLTYPE* SetIUnknownProperty)(ITSPropertySet* This, const char* propName, void* propValue);
-    HRESULT(STDMETHODCALLTYPE* SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
-    HRESULT(STDMETHODCALLTYPE* SetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
-    HRESULT(STDMETHODCALLTYPE* SetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR propValue);
-    HRESULT(STDMETHODCALLTYPE* GetProperty1)(ITSPropertySet* This, const char* propName, WCHAR* a1, int a2);
-    HRESULT(STDMETHODCALLTYPE* GetProperty2)(ITSPropertySet* This, const char* propName, uint32_t* a1);
-    HRESULT(STDMETHODCALLTYPE* GetIntProperty)(ITSPropertySet* This, const char* propName, int* propValue);
-    HRESULT(STDMETHODCALLTYPE* GetIUnknownProperty)(ITSPropertySet* This, const char* propName, IUnknown** propValue);
-    HRESULT(STDMETHODCALLTYPE* GetBoolProperty)(ITSPropertySet* This, const char* propName, int* propValue);
-    HRESULT(STDMETHODCALLTYPE* GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
-    HRESULT(STDMETHODCALLTYPE* GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* a1, uint32_t* a2);
-    HRESULT(STDMETHODCALLTYPE* GetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR* propValue);
-    HRESULT(STDMETHODCALLTYPE* EnterReadLock)(ITSPropertySet* This);
-    HRESULT(STDMETHODCALLTYPE* LeaveReadLock)(ITSPropertySet* This);
-    HRESULT(STDMETHODCALLTYPE* EnterWriteLock)(ITSPropertySet* This);
-    HRESULT(STDMETHODCALLTYPE* LeaveWriteLock)(ITSPropertySet* This);
-    HRESULT(STDMETHODCALLTYPE* RevertToDefaults)(ITSPropertySet* This);
+    HRESULT(__stdcall* QueryInterface)(ITSPropertySet* This, REFIID riid, void** ppvObject);
+    ULONG(__stdcall* AddRef)(ITSPropertySet* This);
+    ULONG(__stdcall* Release)(ITSPropertySet* This);
+    HRESULT(__stdcall* SetProperty)(ITSPropertySet* This, const char* propName, void* propValue);
+    HRESULT(__stdcall* SetBoolProperty)(ITSPropertySet* This, const char* propName, int propValue);
+    HRESULT(__stdcall* SetIntProperty)(ITSPropertySet* This, const char* propName, int propValue);
+    HRESULT(__stdcall* SetIUnknownProperty)(ITSPropertySet* This, const char* propName, void* propValue);
+    HRESULT(__stdcall* SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
+    HRESULT(__stdcall* SetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
+    HRESULT(__stdcall* SetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR propValue);
+    HRESULT(__stdcall* GetProperty1)(ITSPropertySet* This, const char* propName, WCHAR* a1, int a2);
+    HRESULT(__stdcall* GetProperty2)(ITSPropertySet* This, const char* propName, uint32_t* a1);
+    HRESULT(__stdcall* GetIntProperty)(ITSPropertySet* This, const char* propName, int* propValue);
+    HRESULT(__stdcall* GetIUnknownProperty)(ITSPropertySet* This, const char* propName, IUnknown** propValue);
+    HRESULT(__stdcall* GetBoolProperty)(ITSPropertySet* This, const char* propName, int* propValue);
+    HRESULT(__stdcall* GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
+    HRESULT(__stdcall* GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* a1, uint32_t* a2);
+    HRESULT(__stdcall* GetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR* propValue);
+    HRESULT(__stdcall* EnterReadLock)(ITSPropertySet* This);
+    HRESULT(__stdcall* LeaveReadLock)(ITSPropertySet* This);
+    HRESULT(__stdcall* EnterWriteLock)(ITSPropertySet* This);
+    HRESULT(__stdcall* LeaveWriteLock)(ITSPropertySet* This);
+    HRESULT(__stdcall* RevertToDefaults)(ITSPropertySet* This);
 } ITSPropertySetVtbl;
 
 struct _ITSPropertySet
