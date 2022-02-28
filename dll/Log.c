@@ -11,6 +11,9 @@ static uint32_t g_LogLevel = MSRDPEX_LOG_DEBUG;
 
 bool MsRdpEx_IsLogLevelActive(uint32_t logLevel)
 {
+    if (!g_LogEnabled)
+        return false;
+
     if (g_LogLevel == MSRDPEX_LOG_OFF)
         return false;
 
@@ -119,6 +122,11 @@ void MsRdpEx_LogClose()
 void MsRdpEx_SetLogEnabled(bool logEnabled)
 {
     g_LogEnabled = logEnabled;
+}
+
+void MsRdpEx_SetLogLevel(uint32_t logLevel)
+{
+    g_LogLevel = logLevel;
 }
 
 void MsRdpEx_SetLogFilePath(const char* logFilePath)

@@ -13,7 +13,10 @@ public:
     virtual HRESULT __stdcall Unload(void) = 0;
     virtual const char* __stdcall GetMsRdpExDllPath() = 0;
     virtual void __stdcall SetLogEnabled(bool enabled) = 0;
+    virtual void __stdcall SetLogLevel(uint32_t logLevel) = 0;
     virtual void __stdcall SetLogFilePath(const char* logFilePath) = 0;
+    virtual void __stdcall SetPcapEnabled(bool enabled) = 0;
+    virtual void __stdcall SetPcapFilePath(const char* pcapFilePath) = 0;
     virtual void __stdcall SetAxHookEnabled(bool axHookEnabled) = 0;
     virtual bool __stdcall QueryInstanceByWindowHandle(HWND hWnd, LPVOID* ppvObject) = 0;
     virtual bool __stdcall OpenInstanceForWindowHandle(HWND hWnd, LPVOID* ppvObject) = 0;

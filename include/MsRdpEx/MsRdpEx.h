@@ -124,13 +124,28 @@ bool MsRdpEx_IsLogLevelActive(uint32_t logLevel);
 		}                                                                              \
 	} while (0)
 
+#define MsRdpEx_LogDump(_log_level, ...)                                               \
+	do                                                                                 \
+	{                                                                                  \
+		if (MsRdpEx_IsLogLevelActive(MSRDPEX_LOG_ ## _log_level))                      \
+		{                                                                              \
+			MsRdpEx_LogHexDump(__VA_ARGS__);                                           \
+		}                                                                              \
+	} while (0)
+
 bool MsRdpEx_Log(const char* format, ...);
 void MsRdpEx_LogHexDump(const uint8_t* data, size_t size);
 
 void MsRdpEx_LogOpen();
 void MsRdpEx_LogClose();
 void MsRdpEx_SetLogEnabled(bool logEnabled);
+void MsRdpEx_SetLogLevel(uint32_t logLevel);
 void MsRdpEx_SetLogFilePath(const char* logFilePath);
+
+// PCAP
+
+void MsRdpEx_SetPcapEnabled(bool pcapEnabled);
+void MsRdpEx_SetPcapFilePath(const char* pcapFilePath);
 
 // DLL Main
 

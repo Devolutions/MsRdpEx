@@ -12,6 +12,16 @@ static MsRdpEx_PcapFile* g_PcapFile = NULL;
 static bool g_PcapEnabled = true;
 static char g_PcapFilePath[MSRDPEX_MAX_PATH] = { 0 };
 
+void MsRdpEx_SetPcapEnabled(bool pcapEnabled)
+{
+	g_PcapEnabled = pcapEnabled;
+}
+
+void MsRdpEx_SetPcapFilePath(const char* pcapFilePath)
+{
+	strcpy_s(g_PcapFilePath, MSRDPEX_MAX_PATH, pcapFilePath);
+}
+
 static MsRdpEx_PcapFile* MsRdpEx_GetPcapFile()
 {
 	if (g_PcapFile)
@@ -319,8 +329,8 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 				continue;
 			}
 
-			MsRdpEx_LogPrint(DEBUG, "InputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
-			MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
+			MsRdpEx_LogPrint(TRACE, "InputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
+			MsRdpEx_LogDump(TRACE, (uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 		}
 	}
 
@@ -337,8 +347,8 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 				continue;
 			}
 
-			MsRdpEx_LogPrint(DEBUG, "OutputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
-			MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
+			MsRdpEx_LogPrint(TRACE, "OutputBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
+			MsRdpEx_LogDump(TRACE, (uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 		}
 	}
 
@@ -539,7 +549,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_EncryptMessage(PCtxtHandle phContext, ULON
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_LogPrint(DEBUG, "sspi_EncryptMessage phContext: %p seqNo: %d cbBuffers: %d ReturnAddress: %p",
+	MsRdpEx_LogPrint(TRACE, "sspi_EncryptMessage phContext: %p seqNo: %d cbBuffers: %d ReturnAddress: %p",
 		phContext, MessageSeqNo, pMessage->cBuffers, _ReturnAddress());
 
 #if 0
@@ -571,8 +581,8 @@ static SECURITY_STATUS SEC_ENTRY sspi_EncryptMessage(PCtxtHandle phContext, ULON
 			MsRdpEx_PcapFile_Unlock(pcap);
 		}
 
-		MsRdpEx_LogPrint(DEBUG, "SecBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
-		MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
+		MsRdpEx_LogPrint(TRACE, "SecBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
+		MsRdpEx_LogDump(TRACE, (uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 	}
 
 	status = Real_EncryptMessage(phContext, fQOP, pMessage, MessageSeqNo);
@@ -585,7 +595,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_DecryptMessage(PCtxtHandle phContext, PSec
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_LogPrint(DEBUG, "sspi_DecryptMessage phContext: %p seqNo: %d ReturnAddress: %p",
+	MsRdpEx_LogPrint(TRACE, "sspi_DecryptMessage phContext: %p seqNo: %d ReturnAddress: %p",
 		phContext, MessageSeqNo, _ReturnAddress());
 
 	status = Real_DecryptMessage(phContext, pMessage, MessageSeqNo, pfQOP);
@@ -619,8 +629,8 @@ static SECURITY_STATUS SEC_ENTRY sspi_DecryptMessage(PCtxtHandle phContext, PSec
 			MsRdpEx_PcapFile_Unlock(pcap);
 		}
 
-		MsRdpEx_LogPrint(DEBUG, "SecBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
-		MsRdpEx_LogHexDump((uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
+		MsRdpEx_LogPrint(TRACE, "SecBuffer[%d](type:%d length:%d):", iBuffer, BufferType, pSecBuffer->cbBuffer);
+		MsRdpEx_LogDump(TRACE, (uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 	}
 
 	return status;

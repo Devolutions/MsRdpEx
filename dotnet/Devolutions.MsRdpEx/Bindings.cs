@@ -4,6 +4,17 @@ using System.Runtime.InteropServices;
 
 namespace MsRdpEx
 {
+    public enum MsRdpEx_LogLevel : uint
+    {
+        Trace = 0,
+        Debug = 1,
+        Info = 2,
+        Warn = 3,
+        Error = 4,
+        Fatal = 5,
+        Off = 6
+    }
+
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [Guid("13F6E86F-EE7D-44D1-AA94-1136B784441D")]
     public interface IMsRdpExCoreApi
@@ -18,7 +29,16 @@ namespace MsRdpEx
         void SetLogEnabled([MarshalAs(UnmanagedType.U1)] bool logEnabled);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetLogLevel([MarshalAs(UnmanagedType.U4)] MsRdpEx_LogLevel logLevel);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetLogFilePath([MarshalAs(UnmanagedType.LPStr)] string logFilePath);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetPcapEnabled([MarshalAs(UnmanagedType.U1)] bool pcapEnabled);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetPcapFilePath([MarshalAs(UnmanagedType.LPStr)] string pcapFilePath);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetAxHookEnabled([MarshalAs(UnmanagedType.U1)] bool axHookEnabled);

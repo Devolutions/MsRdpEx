@@ -102,9 +102,24 @@ public:
         MsRdpEx_SetLogEnabled(logEnabled);
     }
 
+    void __stdcall SetLogLevel(uint32_t logLevel)
+    {
+        MsRdpEx_SetLogLevel(logLevel);
+    }
+
     void __stdcall SetLogFilePath(const char* logFilePath)
     {
         MsRdpEx_SetLogFilePath(logFilePath);
+    }
+
+    void __stdcall SetPcapEnabled(bool pcapEnabled)
+    {
+        MsRdpEx_SetPcapEnabled(pcapEnabled);
+    }
+
+    void __stdcall SetPcapFilePath(const char* pcapFilePath)
+    {
+        MsRdpEx_SetPcapFilePath(pcapFilePath);
     }
 
     void __stdcall SetAxHookEnabled(bool axHookEnabled)
