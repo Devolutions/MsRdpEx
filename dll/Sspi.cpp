@@ -24,6 +24,9 @@ void MsRdpEx_SetPcapFilePath(const char* pcapFilePath)
 
 static MsRdpEx_PcapFile* MsRdpEx_GetPcapFile()
 {
+    if (!g_PcapEnabled)
+        return NULL;
+
 	if (g_PcapFile)
 		return g_PcapFile;
 
