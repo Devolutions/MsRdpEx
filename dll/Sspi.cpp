@@ -9,7 +9,7 @@
 #include <MsRdpEx/Detours.h>
 
 static MsRdpEx_PcapFile* g_PcapFile = NULL;
-static bool g_PcapEnabled = true;
+static bool g_PcapEnabled = false;
 static char g_PcapFilePath[MSRDPEX_MAX_PATH] = { 0 };
 
 void MsRdpEx_SetPcapEnabled(bool pcapEnabled)
