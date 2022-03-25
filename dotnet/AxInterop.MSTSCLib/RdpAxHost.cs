@@ -21,6 +21,7 @@ namespace AxMSTSCLib {
             object obj;
             var classFactory = GetClassFactory(libraryModule, clsid);
             classFactory.CreateInstance(null, ref IID_IUnknown, out obj);
+            Marshal.ReleaseComObject(classFactory);
             return obj;
         }
 
@@ -53,7 +54,7 @@ namespace AxMSTSCLib {
         void LockServer(bool fLock);
     }
 
-    internal class LibraryModule : IDisposable
+    internal class LibraryModule
     {
         private readonly IntPtr _handle;
         private readonly string _filePath;
@@ -64,11 +65,9 @@ namespace AxMSTSCLib {
         [DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
 
-        [DllImport("kernel32.dll")]
-        public static extern bool FreeLibrary(IntPtr hModule);
-
         public static LibraryModule LoadModule(string filePath)
         {
+            // Since LoadLibrary is ref-counted; we don't have an explicit need to call FreeLibrary
             var libraryModule = new LibraryModule(LoadLibrary(filePath), filePath);
 
             if (libraryModule._handle == IntPtr.Zero)
@@ -84,24 +83,6 @@ namespace AxMSTSCLib {
         {
             _filePath = filePath;
             _handle = handle;
-        }
-
-        ~LibraryModule()
-        {
-            if (_handle != IntPtr.Zero)
-            {
-                FreeLibrary(_handle);
-            }
-        }
-
-        public void Dispose()
-        {
-            if (_handle != IntPtr.Zero)
-            {
-                FreeLibrary(_handle);
-            }
-
-            GC.SuppressFinalize(this);
         }
 
         public IntPtr GetProcAddress(string name)
@@ -121,6 +102,11 @@ namespace AxMSTSCLib {
         public string FilePath
         {
             get { return _filePath; }
+        }
+
+        public IntPtr Module
+        {
+            get { return _handle; }
         }
     }
 
