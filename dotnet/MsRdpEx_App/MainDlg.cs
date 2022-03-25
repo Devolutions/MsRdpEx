@@ -50,30 +50,15 @@ namespace MsRdpEx_App
 
         private void btnConnect_Click(object sender, EventArgs e)
         {
-            bool axHookEnabled = true;
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
 
-            RdpCoreApi coreApi = new RdpCoreApi();
-            string rdpExDll = coreApi.MsRdpExDllPath;
-
-            if (!File.Exists(rdpExDll))
-            {
-                throw new Exception("could not find MsRdpEx.dll");
-            }
-
             Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", axName);
 
-            string logFilePath = Environment.ExpandEnvironmentVariables("%LocalAppData%\\MsRdpEx\\HostApp.log");
-            string pcapFilePath = Environment.ExpandEnvironmentVariables("%LocalAppData%\\MsRdpEx\\capture.pcap");
-
-            coreApi.LogEnabled = true;
-            coreApi.LogLevel = MsRdpEx_LogLevel.Debug;
-            coreApi.LogFilePath = logFilePath;
-            coreApi.PcapEnabled = true;
-            coreApi.PcapFilePath = pcapFilePath;
-            coreApi.AxHookEnabled = axHookEnabled;
-            coreApi.Load();
+            MsRdpExManager manager = MsRdpExManager.Instance;
+            RdpCoreApi coreApi = manager.CoreApi;
+            bool axHookEnabled = manager.AxHookEnabled;
+            string rdpExDll = coreApi.MsRdpExDllPath;
 
             if (externalMode)
             {
