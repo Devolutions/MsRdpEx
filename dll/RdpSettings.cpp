@@ -291,13 +291,17 @@ CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown)
 {
     m_refCount = 0;
     m_pUnknown = pUnknown;
+
     pUnknown->QueryInterface(IID_IMsRdpExtendedSettings, (LPVOID*)&m_pMsRdpExtendedSettings);
+
+    if (m_pMsRdpExtendedSettings)
+        m_pMsRdpExtendedSettings->AddRef();
 }
 
 CMsRdpExtendedSettings::~CMsRdpExtendedSettings()
 {
-    m_pUnknown->Release();
-    if (m_pMsRdpExtendedSettings) m_pMsRdpExtendedSettings->Release();
+    if (m_pMsRdpExtendedSettings)
+        m_pMsRdpExtendedSettings->Release();
 }
 
 HRESULT STDMETHODCALLTYPE CMsRdpExtendedSettings::QueryInterface(
