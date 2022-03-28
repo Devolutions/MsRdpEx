@@ -25,6 +25,16 @@ static HRESULT Hook_ITSPropertySet_SetBoolProperty(ITSPropertySet* This, const c
 
     MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetBoolProperty(%s, %d)", propName, propValue);
 
+    if (MsRdpEx_StringIEquals(propName, "UsingSavedCreds")) {
+        // Workaround for "Always prompt for password upon connection" GPO":
+        // The RDP ActiveX sets the "UsingSavedCreds" to true if the password is set.
+        // This is obviously a problem for credential injection, so force it to false.
+        // https://theitbros.com/enable-saved-credentials-usage-rdp/
+        // https://twitter.com/awakecoding/status/1367953137210957826
+        // HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services\fPromptForPassword = 1
+        propValue = 0;
+    }
+
     hr = Real_ITSPropertySet_SetBoolProperty(This, propName, propValue);
 
     return hr;
