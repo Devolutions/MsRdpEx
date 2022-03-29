@@ -389,6 +389,78 @@ char* MsRdpEx_BinToHex(const uint8_t* bin, char* hex, int size, uint32_t flags)
     return hex;
 }
 
+char** MsRdpEx_GetStringVectorFromBlock(int* argc, const char* argb)
+{
+    int index = 0;
+    int length = 0;
+    char* arg = NULL;
+    char** args = NULL;
+
+    *argc = 0;
+
+    if (!argb) {
+        goto exit;
+    }
+
+    index = 0;
+    arg = (char*) argb;
+    do
+    {
+        length = strlen(arg);
+        arg = &arg[length + 1];
+        index++;
+    } while (length > 0);
+
+    *argc = index;
+
+    args = (char**) calloc(*argc + 1, sizeof(char*));
+
+    if (!args)
+        goto exit;
+
+    index = 0;
+    arg = (char*) argb;
+    do
+    {
+        length = strlen(arg);
+        args[index] = _strdup(arg);
+        arg = &arg[length + 1];
+        index++;
+    } while (length > 0);
+
+exit:
+    return args;
+}
+
+char* MsRdpEx_GetStringBlockFromVector(int argc, char** argv)
+{
+    int index = 0;
+    int offset = 0;
+    int length = 0;
+    size_t size = 0;
+    char* arg = NULL;
+    char* argb = NULL;
+
+    for (index = 0; index < argc; index++) {
+        arg = argv[index];
+        length = strlen(arg);
+        size += (length + 1);
+    }
+
+    size += 1;
+
+    argb = (char*) calloc(1, size);
+
+    for (index = 0; index < argc; index++) {
+        arg = argv[index];
+        length = strlen(arg);
+        memcpy(&argv[offset], arg, (length + 1));
+        offset += (length + 1);
+    }
+
+    return argb;
+}
+
 char** MsRdpEx_GetArgumentVector(int* argc)
 {
 	int index;

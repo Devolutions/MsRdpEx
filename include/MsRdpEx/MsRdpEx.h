@@ -103,6 +103,9 @@ bool MsRdpEx_GuidStrToBin(const char* str, GUID* guid, uint32_t flags);
 uint8_t* MsRdpEx_HexToBin(const char* hex, uint8_t* bin, int size, uint32_t flags);
 char* MsRdpEx_BinToHex(const uint8_t* bin, char* hex, int size, uint32_t flags);
 
+char** MsRdpEx_GetStringVectorFromBlock(int* argc, const char* argb);
+char* MsRdpEx_GetStringBlockFromVector(int argc, char** argv);
+
 // Log Utils
 
 #define MSRDPEX_LOG_TRACE   0
