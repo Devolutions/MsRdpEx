@@ -56,12 +56,23 @@ namespace MsRdpEx
     [Guid("338784B3-3363-45A2-8ECD-80A65DBAF636")]
     public interface IMsRdpExProcess
     {
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetFileName([MarshalAs(UnmanagedType.LPStr)] string filename);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPStr)] string workingDirectory);
+
         void Start(int argc, ref IntPtr[] argv,
             [MarshalAs(UnmanagedType.LPStr)] string appName,
             [MarshalAs(UnmanagedType.LPStr)] string axName);
         void Stop(UInt32 exitCode);
         void Wait(UInt32 milliseconds);
-        void GetExitCode(out UInt32 exitCode);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        uint GetProcessId();
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        uint GetExitCode();
     }
 
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

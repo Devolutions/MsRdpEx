@@ -13,10 +13,13 @@ struct __declspec(novtable)
     IMsRdpExProcess : public IUnknown
 {
 public:
+    virtual void __stdcall SetFileName(const char* filename) = 0;
+    virtual void __stdcall SetWorkingDirectory(const char* workingDirectory) = 0;
     virtual HRESULT __stdcall Start(int argc, char** argv, const char* appName, const char* axName) = 0;
     virtual HRESULT __stdcall Stop(uint32_t exitCode) = 0;
     virtual HRESULT __stdcall Wait(uint32_t milliseconds) = 0;
-    virtual HRESULT __stdcall GetExitCode(uint32_t* pExitCode) = 0;
+    virtual uint32_t __stdcall GetProcessId() = 0;
+    virtual uint32_t __stdcall GetExitCode() = 0;
 };
 
 class CMsRdpExProcess : public IMsRdpExProcess
@@ -26,13 +29,16 @@ public:
     {
         m_refCount = 0;
         m_exitCode = 0;
+        m_filename = NULL;
+        m_workingDirectory = NULL;
         ZeroMemory(&m_startupInfo, sizeof(STARTUPINFOA));
         ZeroMemory(&m_processInfo, sizeof(PROCESS_INFORMATION));
     }
 
     ~CMsRdpExProcess()
     {
-
+        free(m_filename);
+        free(m_workingDirectory);
     }
 
     // IUnknown interface
@@ -89,6 +95,31 @@ public:
 
     // IMsRdpExProcess
 public:
+
+    void STDMETHODCALLTYPE SetFileName(const char* filename)
+    {
+        if (m_filename) {
+            free(m_filename);
+            m_filename = NULL;
+        }
+
+        if (filename) {
+            m_filename = _strdup(filename);
+        }
+    }
+
+    void STDMETHODCALLTYPE SetWorkingDirectory(const char* workingDirectory)
+    {
+        if (m_workingDirectory) {
+            free(m_workingDirectory);
+            m_workingDirectory = NULL;
+        }
+
+        if (workingDirectory) {
+            m_workingDirectory = _strdup(workingDirectory);
+        }
+    }
+
     HRESULT STDMETHODCALLTYPE Start(int argc, char** argv, const char* appName, const char* axName)
     {
         HRESULT hr = S_OK;
@@ -210,14 +241,20 @@ public:
         return hr;
     }
 
-    HRESULT STDMETHODCALLTYPE GetExitCode(uint32_t* pExitCode)
+    uint32_t STDMETHODCALLTYPE GetProcessId()
     {
-        *pExitCode = m_exitCode;
-        return S_OK;
+        return ::GetProcessId(m_processInfo.hProcess);
+    }
+
+    uint32_t STDMETHODCALLTYPE GetExitCode()
+    {
+        return m_exitCode;
     }
 
 private:
     ULONG m_refCount;
+    char* m_filename;
+    char* m_workingDirectory;
     STARTUPINFOA m_startupInfo;
     PROCESS_INFORMATION m_processInfo;
     DWORD m_exitCode;

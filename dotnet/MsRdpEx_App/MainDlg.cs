@@ -65,6 +65,8 @@ namespace MsRdpEx_App
                 string appName = axName;
                 string[] args = new string[0];
                 RdpProcess rdpProcess = new RdpProcess(args, appName, axName);
+                uint processId = rdpProcess.GetProcessId();
+                Process.GetProcessById((int) processId);
                 return;
             }
 

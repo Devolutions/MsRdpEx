@@ -10,6 +10,16 @@ namespace MsRdpEx
             iface = Bindings.StartProcess(args, appName, axName);
         }
 
+        public string FileName
+        {
+            set { iface.SetFileName(value); }
+        }
+
+        public string WorkingDirectory
+        {
+            set { iface.SetWorkingDirectory(value); }
+        }
+
         public void Stop(UInt32 exitCode)
         {
             iface.Stop(exitCode);
@@ -20,9 +30,14 @@ namespace MsRdpEx
             iface.Wait(milliseconds);
         }
 
-        public void GetExitCode(out UInt32 exitCode)
+        public uint GetProcessId()
         {
-            iface.GetExitCode(out exitCode);
+            return iface.GetProcessId();
+        }
+
+        public uint GetExitCode()
+        {
+            return iface.GetExitCode();
         }
     }
 }
