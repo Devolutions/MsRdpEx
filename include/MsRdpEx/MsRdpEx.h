@@ -105,6 +105,9 @@ char* MsRdpEx_BinToHex(const uint8_t* bin, char* hex, int size, uint32_t flags);
 
 char** MsRdpEx_GetStringVectorFromBlock(int* argc, const char* argb);
 char* MsRdpEx_GetStringBlockFromVector(int argc, char** argv);
+char* MsRdpEx_CloneStringBlock(const char* argb);
+void MsRdpEx_FreeStringBlock(const char* argb);
+void MsRdpEx_FreeStringVector(int argc, char** argv);
 
 // Log Utils
 

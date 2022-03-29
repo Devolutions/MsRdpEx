@@ -14,6 +14,8 @@ struct __declspec(novtable)
 {
 public:
     virtual void __stdcall SetFileName(const char* filename) = 0;
+    virtual void __stdcall SetArgumentBlock(const char* argumentBlock) = 0;
+    virtual void __stdcall SetEnvironmentBlock(const char* environmentBlock) = 0;
     virtual void __stdcall SetWorkingDirectory(const char* workingDirectory) = 0;
     virtual HRESULT __stdcall Start(int argc, char** argv, const char* appName, const char* axName) = 0;
     virtual HRESULT __stdcall Stop(uint32_t exitCode) = 0;
@@ -30,6 +32,8 @@ public:
         m_refCount = 0;
         m_exitCode = 0;
         m_filename = NULL;
+        m_argumentBlock = NULL;
+        m_environmentBlock = NULL;
         m_workingDirectory = NULL;
         ZeroMemory(&m_startupInfo, sizeof(STARTUPINFOA));
         ZeroMemory(&m_processInfo, sizeof(PROCESS_INFORMATION));
@@ -38,6 +42,8 @@ public:
     ~CMsRdpExProcess()
     {
         free(m_filename);
+        MsRdpEx_FreeStringBlock(m_argumentBlock);
+        MsRdpEx_FreeStringBlock(m_environmentBlock);
         free(m_workingDirectory);
     }
 
@@ -105,6 +111,30 @@ public:
 
         if (filename) {
             m_filename = _strdup(filename);
+        }
+    }
+
+    void STDMETHODCALLTYPE SetArgumentBlock(const char* argumentBlock)
+    {
+        if (m_argumentBlock) {
+            MsRdpEx_FreeStringBlock(argumentBlock);
+            argumentBlock = NULL;
+        }
+
+        if (argumentBlock) {
+            m_argumentBlock = MsRdpEx_CloneStringBlock(argumentBlock);
+        }
+    }
+
+    void STDMETHODCALLTYPE SetEnvironmentBlock(const char* environmentBlock)
+    {
+        if (m_environmentBlock) {
+            MsRdpEx_FreeStringBlock(environmentBlock);
+            environmentBlock = NULL;
+        }
+
+        if (environmentBlock) {
+            m_environmentBlock = MsRdpEx_CloneStringBlock(environmentBlock);
         }
     }
 
@@ -254,6 +284,8 @@ public:
 private:
     ULONG m_refCount;
     char* m_filename;
+    char* m_argumentBlock;
+    char* m_environmentBlock;
     char* m_workingDirectory;
     STARTUPINFOA m_startupInfo;
     PROCESS_INFORMATION m_processInfo;

@@ -60,6 +60,12 @@ namespace MsRdpEx
         void SetFileName([MarshalAs(UnmanagedType.LPStr)] string filename);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetArgumentBlock([MarshalAs(UnmanagedType.LPStr)] string argumentBlock);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetEnvironmentBlock([MarshalAs(UnmanagedType.LPStr)] string environmentBlock);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetWorkingDirectory([MarshalAs(UnmanagedType.LPStr)] string workingDirectory);
 
         void Start(int argc, ref IntPtr[] argv,

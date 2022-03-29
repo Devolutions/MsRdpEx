@@ -408,7 +408,10 @@ char** MsRdpEx_GetStringVectorFromBlock(int* argc, const char* argb)
     {
         length = strlen(arg);
         arg = &arg[length + 1];
-        index++;
+
+        if (length > 0) {
+            index++;
+        }
     } while (length > 0);
 
     *argc = index;
@@ -424,8 +427,11 @@ char** MsRdpEx_GetStringVectorFromBlock(int* argc, const char* argb)
     {
         length = strlen(arg);
         args[index] = _strdup(arg);
-        arg = &arg[length + 1];
-        index++;
+
+        if (length > 0) {
+            arg = &arg[length + 1];
+            index++;
+        }
     } while (length > 0);
 
 exit:
@@ -459,6 +465,54 @@ char* MsRdpEx_GetStringBlockFromVector(int argc, char** argv)
     }
 
     return argb;
+}
+
+char* MsRdpEx_CloneStringBlock(const char* argb)
+{
+    int length = 0;
+    size_t size = 0;
+    char* arg = NULL;
+    char** args = NULL;
+    char* copyb = NULL;
+
+    if (!argb)
+        return NULL;
+
+    arg = (char*) argb;
+    do
+    {
+        length = strlen(arg);
+        arg = &arg[length + 1];
+        size += (length + 1);
+    } while (length > 0);
+
+    size += 1;
+    copyb = (char*) calloc(1, size);
+
+    if (!copyb)
+        return NULL;
+
+    memcpy(copyb, argb, size);
+    return copyb;
+}
+
+void MsRdpEx_FreeStringBlock(const char* argb)
+{
+    free((void*) argb);
+}
+
+void MsRdpEx_FreeStringVector(int argc, char** argv)
+{
+    int index;
+
+    if (!argv)
+        return;
+
+    for (index = 0; index < argc; index++) {
+        free(argv[index]);
+    }
+
+    free(argv);
 }
 
 char** MsRdpEx_GetArgumentVector(int* argc)
