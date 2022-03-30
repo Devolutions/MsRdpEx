@@ -389,6 +389,52 @@ char* MsRdpEx_BinToHex(const uint8_t* bin, char* hex, int size, uint32_t flags)
     return hex;
 }
 
+char* MsRdpEx_StringJoin(char* value[], size_t count, const char sep)
+{
+    char* str = NULL;
+    char* result = NULL;
+    size_t len = 0;
+
+    if (!value || !count)
+        return NULL;
+
+    for (int i = 0; i < count; i++)
+    {
+        str = value[i];
+
+        if (!str)
+            continue;
+
+        len += strlen(str) + 1;
+    }
+
+    result = (char*)calloc(len, sizeof(char));
+
+    if (!result)
+        return NULL;
+
+    strcpy(result, value[0]);
+
+    len = strlen(result);
+
+    for (int i = 1; i < (int)count; i++)
+    {
+        if (!value[i])
+            continue;
+
+        result[len] = sep;
+        result[len + 1] = '\0';
+
+        strcat(result, value[i]);
+
+        len = strlen(result);
+    }
+
+    result[len] = '\0';
+
+    return result;
+}
+
 char** MsRdpEx_GetStringVectorFromBlock(int* argc, const char* argb)
 {
     int index = 0;
