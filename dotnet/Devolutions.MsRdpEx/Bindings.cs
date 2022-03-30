@@ -68,10 +68,14 @@ namespace MsRdpEx
         [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetWorkingDirectory([MarshalAs(UnmanagedType.LPStr)] string workingDirectory);
 
+        void StartWithInfo();
+
         void Start(int argc, ref IntPtr[] argv,
             [MarshalAs(UnmanagedType.LPStr)] string appName,
             [MarshalAs(UnmanagedType.LPStr)] string axName);
+
         void Stop(UInt32 exitCode);
+
         void Wait(UInt32 milliseconds);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]

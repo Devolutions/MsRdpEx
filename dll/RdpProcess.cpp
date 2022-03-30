@@ -17,6 +17,7 @@ public:
     virtual void __stdcall SetArgumentBlock(const char* argumentBlock) = 0;
     virtual void __stdcall SetEnvironmentBlock(const char* environmentBlock) = 0;
     virtual void __stdcall SetWorkingDirectory(const char* workingDirectory) = 0;
+    virtual HRESULT __stdcall StartWithInfo() = 0;
     virtual HRESULT __stdcall Start(int argc, char** argv, const char* appName, const char* axName) = 0;
     virtual HRESULT __stdcall Stop(uint32_t exitCode) = 0;
     virtual HRESULT __stdcall Wait(uint32_t milliseconds) = 0;
@@ -148,6 +149,57 @@ public:
         if (workingDirectory) {
             m_workingDirectory = _strdup(workingDirectory);
         }
+    }
+
+    HRESULT STDMETHODCALLTYPE StartWithInfo()
+    {
+        int argc = 0;
+        char** argv = NULL;
+        HRESULT hr = S_OK;
+        STARTUPINFOA* startupInfo;
+        PROCESS_INFORMATION* processInfo;
+
+        startupInfo = &m_startupInfo;
+        processInfo = &m_processInfo;
+
+        MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
+
+        argv = MsRdpEx_GetStringVectorFromBlock(&argc, m_argumentBlock);
+
+        const char* lpApplicationName = m_filename;
+        char* lpCommandLine = MsRdpEx_StringJoin(argv, argc, ' ');
+        char* lpEnvironment = m_environmentBlock;
+        char* lpCurrentDirectory = m_workingDirectory;
+
+        DWORD dwCreationFlags = CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED;
+        const char* lpDllName = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
+
+        BOOL fSuccess = DetourCreateProcessWithDllExA(
+            lpApplicationName, /* lpApplicationName */
+            lpCommandLine, /* lpCommandLine */
+            NULL, /* lpProcessAttributes */
+            NULL, /* lpThreadAttributes */
+            FALSE, /* bInheritHandles */
+            dwCreationFlags, /* dwCreationFlags */
+            lpEnvironment, /* lpEnvironment */
+            lpCurrentDirectory, /* lpCurrentDirectory */
+            startupInfo, /* lpStartupInfo */
+            processInfo, /* lpProcessInformation */
+            lpDllName, /* lpDllName */
+            NULL /* pfCreateProcessW */
+        );
+
+        free(lpCommandLine);
+
+        if (!fSuccess) {
+            hr = E_FAIL;
+            goto exit;
+        }
+
+        ResumeThread(processInfo->hThread);
+
+    exit:
+        return hr;
     }
 
     HRESULT STDMETHODCALLTYPE Start(int argc, char** argv, const char* appName, const char* axName)
