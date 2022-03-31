@@ -18,6 +18,12 @@ namespace MsRdpEx_App
 {
     public partial class MainDlg : Form
     {
+        private string mstscExecutable = null;
+        private string mstscAxLibrary = null;
+
+        private string msrdcExecutable = null;
+        private string msrdcAxLibrary = null;
+
         public MainDlg()
         {
             InitializeComponent();
@@ -46,6 +52,27 @@ namespace MsRdpEx_App
             {
                 this.txtPassword.Text = rdpPassword;
             }
+
+            string mstscax = Environment.ExpandEnvironmentVariables("%SystemRoot%\\System32\\mstscax.dll");
+            string rdclientax_global = Environment.ExpandEnvironmentVariables("%ProgramFiles%\\Remote Desktop\\rdclientax.dll");
+            string rdclientax_local = Environment.ExpandEnvironmentVariables("%LocalAppData%\\Apps\\Remote Desktop\\rdclientax.dll");
+
+            this.mstscAxLibrary = mstscax;
+            this.mstscExecutable = Path.Combine(Path.GetDirectoryName(mstscAxLibrary), "mstsc.exe");
+
+            if (File.Exists(rdclientax_global))
+            {
+                this.msrdcAxLibrary = rdclientax_global;
+            }
+            else if (File.Exists(rdclientax_local))
+            {
+                this.msrdcAxLibrary = rdclientax_local;
+            }
+
+            if (!string.IsNullOrEmpty(msrdcAxLibrary))
+            {
+                this.msrdcExecutable = Path.Combine(Path.GetDirectoryName(msrdcAxLibrary), "msrdc.exe");
+            }
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
@@ -62,11 +89,28 @@ namespace MsRdpEx_App
 
             if (externalMode)
             {
-                string appName = axName;
-                string[] args = new string[0];
-                RdpProcess rdpProcess = new RdpProcess(args, appName, axName);
-                uint processId = rdpProcess.GetProcessId();
-                Process.GetProcessById((int) processId);
+                string filename = this.mstscExecutable;
+
+                if (axName.Equals("msrdc"))
+                {
+                    filename = this.msrdcExecutable;
+                }
+
+                string workingDirectory = "C:\\Windows\\System32";
+
+                string[] args = new string[1];
+                args[0] = filename;
+                //args[1] = rdpFile;
+                string arguments = string.Join(' ', args);
+
+                ProcessStartInfo startInfo = new ProcessStartInfo();
+                startInfo.FileName = filename;
+                startInfo.UseShellExecute = false;
+                startInfo.WorkingDirectory = workingDirectory;
+                startInfo.Arguments = arguments;
+                startInfo.Environment.Add("MSRDPEX_AXNAME", axName);
+
+                Process process = RdpProcess.StartProcess(startInfo);
                 return;
             }
 

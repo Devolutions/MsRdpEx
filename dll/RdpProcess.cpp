@@ -14,6 +14,7 @@ struct __declspec(novtable)
 {
 public:
     virtual void __stdcall SetFileName(const char* filename) = 0;
+    virtual void __stdcall SetArguments(const char* arguments) = 0;
     virtual void __stdcall SetArgumentBlock(const char* argumentBlock) = 0;
     virtual void __stdcall SetEnvironmentBlock(const char* environmentBlock) = 0;
     virtual void __stdcall SetWorkingDirectory(const char* workingDirectory) = 0;
@@ -33,6 +34,7 @@ public:
         m_refCount = 0;
         m_exitCode = 0;
         m_filename = NULL;
+        m_arguments = NULL;
         m_argumentBlock = NULL;
         m_environmentBlock = NULL;
         m_workingDirectory = NULL;
@@ -43,6 +45,7 @@ public:
     ~CMsRdpExProcess()
     {
         free(m_filename);
+        free(m_arguments);
         MsRdpEx_FreeStringBlock(m_argumentBlock);
         MsRdpEx_FreeStringBlock(m_environmentBlock);
         free(m_workingDirectory);
@@ -115,6 +118,18 @@ public:
         }
     }
 
+    void STDMETHODCALLTYPE SetArguments(const char* arguments)
+    {
+        if (m_arguments) {
+            free(m_arguments);
+            m_arguments = NULL;
+        }
+
+        if (arguments) {
+            m_arguments = _strdup(arguments);
+        }
+    }
+
     void STDMETHODCALLTYPE SetArgumentBlock(const char* argumentBlock)
     {
         if (m_argumentBlock) {
@@ -158,18 +173,28 @@ public:
         HRESULT hr = S_OK;
         STARTUPINFOA* startupInfo;
         PROCESS_INFORMATION* processInfo;
+        const char* lpApplicationName = NULL;
+        char* lpCommandLine = NULL;
+        char* lpEnvironment = NULL;
+        char* lpCurrentDirectory = NULL;
 
         startupInfo = &m_startupInfo;
         processInfo = &m_processInfo;
 
         MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
 
-        argv = MsRdpEx_GetStringVectorFromBlock(&argc, m_argumentBlock);
+        if (m_arguments) {
+            lpCommandLine = _strdup(m_arguments);
+        }
+        else {
+            argv = MsRdpEx_GetStringVectorFromBlock(&argc, m_argumentBlock);
+            lpCommandLine = MsRdpEx_StringJoin(argv, argc, ' ');
+            MsRdpEx_FreeStringVector(argc, argv);
+        }
 
-        const char* lpApplicationName = m_filename;
-        char* lpCommandLine = MsRdpEx_StringJoin(argv, argc, ' ');
-        char* lpEnvironment = m_environmentBlock;
-        char* lpCurrentDirectory = m_workingDirectory;
+        lpApplicationName = m_filename;
+        lpEnvironment = m_environmentBlock;
+        lpCurrentDirectory = m_workingDirectory;
 
         DWORD dwCreationFlags = CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED;
         const char* lpDllName = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
@@ -336,6 +361,7 @@ public:
 private:
     ULONG m_refCount;
     char* m_filename;
+    char* m_arguments;
     char* m_argumentBlock;
     char* m_environmentBlock;
     char* m_workingDirectory;
