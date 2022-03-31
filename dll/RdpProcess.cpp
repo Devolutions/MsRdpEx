@@ -199,6 +199,10 @@ public:
         DWORD dwCreationFlags = CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED;
         const char* lpDllName = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
 
+        MsRdpEx_LogPrint(DEBUG, "IMsRdpExProcess::Start(FileName=\"%s\", "
+            "Arguments=\"%s\", WorkingDirectory=\"%s\", DllName=\"%s\")",
+            lpApplicationName, lpCommandLine, lpCurrentDirectory, lpDllName);
+
         BOOL fSuccess = DetourCreateProcessWithDllExA(
             lpApplicationName, /* lpApplicationName */
             lpCommandLine, /* lpCommandLine */
@@ -217,6 +221,8 @@ public:
         free(lpCommandLine);
 
         if (!fSuccess) {
+            DWORD lastError = GetLastError();
+            MsRdpEx_LogPrint(DEBUG, "IMsRdpExProcess::Start() failure: 0x%08X", lastError);
             hr = E_FAIL;
             goto exit;
         }

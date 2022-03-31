@@ -27,7 +27,7 @@ namespace MsRdpEx_App
             string pcapFilePath = Environment.ExpandEnvironmentVariables("%LocalAppData%\\MsRdpEx\\capture.pcap");
 
             coreApi.LogEnabled = true;
-            coreApi.LogLevel = MsRdpEx_LogLevel.Debug;
+            coreApi.LogLevel = MsRdpEx_LogLevel.Trace;
             coreApi.LogFilePath = logFilePath;
             coreApi.PcapEnabled = false;
             coreApi.PcapFilePath = pcapFilePath;
