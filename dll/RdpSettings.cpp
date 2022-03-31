@@ -268,6 +268,10 @@ public:
         return m_pTSPropertySet->vtbl->SetStringProperty(m_pTSPropertySet, propName, propValue);
     }
 
+    HRESULT __stdcall SetSecureStringProperty(const char* propName, BSTR propValue) {
+        return m_pTSPropertySet->vtbl->SetSecureStringProperty(m_pTSPropertySet, propName, propValue);
+    }
+
     HRESULT __stdcall GetVBoolProperty(const char* propName, VARIANT_BOOL* propValue) {
         HRESULT hr;
         int iVal = 0;
@@ -456,6 +460,26 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_BaseProperty(BSTR bstrPropertyName
     return m_BaseProps->get_Property(bstrPropertyName, pValue);
 }
 
+HRESULT __stdcall CMsRdpExtendedSettings::SetTargetPassword(const char* password) {
+    if (!m_CoreProps)
+        return E_INVALIDARG;
+
+    bstr_t propValue = _com_util::ConvertStringToBSTR(password);
+    m_CoreProps->SetSecureStringProperty("Password", propValue);
+
+    return S_OK;
+}
+
+HRESULT __stdcall CMsRdpExtendedSettings::SetGatewayPassword(const char* password) {
+    if (!m_TransportProps)
+        return E_INVALIDARG;
+
+    bstr_t propValue = _com_util::ConvertStringToBSTR(password);
+    m_TransportProps->SetSecureStringProperty("GatewayPassword", propValue);
+
+    return S_OK;
+}
+
 HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
 {
     HRESULT hr;
@@ -612,6 +636,12 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
                     bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                     pMsRdpExtendedSettings->put_Property(propName, &value);
                 }
+            }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {
+                pMsRdpExtendedSettings->SetTargetPassword(entry->value);
+            }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "GatewayPassword")) {
+                pMsRdpExtendedSettings->SetGatewayPassword(entry->value);
             }
         }
 

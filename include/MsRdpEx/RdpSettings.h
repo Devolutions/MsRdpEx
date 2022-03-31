@@ -33,6 +33,8 @@ public:
     HRESULT __stdcall get_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue);
     HRESULT __stdcall put_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue);
     HRESULT __stdcall get_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue);
+    HRESULT __stdcall SetTargetPassword(const char* password);
+    HRESULT __stdcall SetGatewayPassword(const char* password);
     HRESULT __stdcall AttachRdpClient(IMsTscAx* pMsTscAx);
     HRESULT __stdcall LoadRdpFile(const char* rdpFileName);
     HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw);
