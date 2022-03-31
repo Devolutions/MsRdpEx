@@ -18,6 +18,14 @@ namespace MsRdpEx_App
 {
     public partial class MainDlg : Form
     {
+        private string mstscExecutable = null;
+        private string mstscAxLibrary = null;
+
+        private string msrdcExecutable = null;
+        private string msrdcAxLibrary = null;
+
+        private string rdpFileName = null;
+
         public MainDlg()
         {
             InitializeComponent();
@@ -31,6 +39,8 @@ namespace MsRdpEx_App
             string rdpHostname = Environment.GetEnvironmentVariable("RDP_HOSTNAME");
             string rdpUsername = Environment.GetEnvironmentVariable("RDP_USERNAME");
             string rdpPassword = Environment.GetEnvironmentVariable("RDP_PASSWORD");
+
+            rdpFileName = Environment.GetEnvironmentVariable("RDP_FILENAME");
 
             if (rdpHostname != null)
             {
@@ -46,14 +56,33 @@ namespace MsRdpEx_App
             {
                 this.txtPassword.Text = rdpPassword;
             }
+
+            string mstscax = Environment.ExpandEnvironmentVariables("%SystemRoot%\\System32\\mstscax.dll");
+            string rdclientax_global = Environment.ExpandEnvironmentVariables("%ProgramFiles%\\Remote Desktop\\rdclientax.dll");
+            string rdclientax_local = Environment.ExpandEnvironmentVariables("%LocalAppData%\\Apps\\Remote Desktop\\rdclientax.dll");
+
+            this.mstscAxLibrary = mstscax;
+            this.mstscExecutable = Path.Combine(Path.GetDirectoryName(mstscAxLibrary), "mstsc.exe");
+
+            if (File.Exists(rdclientax_global))
+            {
+                this.msrdcAxLibrary = rdclientax_global;
+            }
+            else if (File.Exists(rdclientax_local))
+            {
+                this.msrdcAxLibrary = rdclientax_local;
+            }
+
+            if (!string.IsNullOrEmpty(msrdcAxLibrary))
+            {
+                this.msrdcExecutable = Path.Combine(Path.GetDirectoryName(msrdcAxLibrary), "msrdc.exe");
+            }
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
         {
             string axName = this.cboRdpClient.Text;
             bool externalMode = this.cboLaunchMode.SelectedIndex == 1;
-
-            Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", axName);
 
             MsRdpExManager manager = MsRdpExManager.Instance;
             RdpCoreApi coreApi = manager.CoreApi;
@@ -62,13 +91,39 @@ namespace MsRdpEx_App
 
             if (externalMode)
             {
-                string appName = axName;
-                string[] args = new string[0];
-                RdpProcess rdpProcess = new RdpProcess(args, appName, axName);
-                uint processId = rdpProcess.GetProcessId();
-                Process.GetProcessById((int) processId);
+                string filename = this.mstscExecutable;
+
+                if (axName.Equals("msrdc"))
+                {
+                    filename = this.msrdcExecutable;
+                }
+
+                string workingDirectory = Path.GetDirectoryName(filename);
+
+                List<string> args = new List<string>();
+                args.Add(filename);
+
+                if (this.rdpFileName != null)
+                {
+                    args.Add(this.rdpFileName);
+                }
+
+                string arguments = string.Join(' ', args.ToArray());
+
+                ProcessStartInfo startInfo = new ProcessStartInfo();
+                startInfo.FileName = filename;
+                startInfo.UseShellExecute = false;
+                startInfo.WorkingDirectory = workingDirectory;
+                startInfo.Arguments = arguments;
+                startInfo.Environment.Add("MSRDPEX_AXNAME", axName);
+                startInfo.Environment.Add("MSRDPEX_LOG_ENABLED", "1");
+                startInfo.Environment.Add("MSRDPEX_LOG_LEVEL", "TRACE");
+
+                Process process = RdpProcess.StartProcess(startInfo);
                 return;
             }
+
+            Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", axName);
 
             RdpView rdpView = new RdpView(axName, rdpExDll);
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;

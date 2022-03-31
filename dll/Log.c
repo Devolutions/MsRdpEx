@@ -1,6 +1,10 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <MsRdpEx/Environment.h>
+
+static bool g_LogInitialized = false;
+
 static FILE* g_LogFile = NULL;
 static bool g_LogEnabled = true;
 static char g_LogFilePath[MSRDPEX_MAX_PATH] = { 0 };
@@ -98,8 +102,70 @@ void MsRdpEx_LogHexDump(const uint8_t* data, size_t size)
     }
 }
 
+void MsRdpEx_LogEnvInit()
+{
+    char* envvar;
+
+    if (g_LogInitialized)
+        return;
+
+    bool logEnabled = MsRdpEx_GetEnvBool("MSRDPEX_LOG_LEVEL", false);
+
+    if (logEnabled) {
+        // only set if true to avoid overriding current value
+        MsRdpEx_SetLogEnabled(true);
+    }
+
+    envvar = MsRdpEx_GetEnv("MSRDPEX_LOG_LEVEL");
+
+    if (envvar) {
+        int ival = atoi(envvar);
+
+        if ((ival >= 0) && (ival <= 6)) {
+            MsRdpEx_SetLogLevel((uint32_t) ival);
+        }
+        else {
+            if (MsRdpEx_StringIEquals(envvar, "TRACE")) {
+                MsRdpEx_SetLogLevel(MSRDPEX_LOG_TRACE);
+            }
+            else if (MsRdpEx_StringIEquals(envvar, "DEBUG")) {
+                MsRdpEx_SetLogLevel(MSRDPEX_LOG_DEBUG);
+            }
+            else if (MsRdpEx_StringIEquals(envvar, "INFO")) {
+                MsRdpEx_SetLogLevel(MSRDPEX_LOG_INFO);
+            }
+            else if (MsRdpEx_StringIEquals(envvar, "WARN")) {
+                MsRdpEx_SetLogLevel(MSRDPEX_LOG_WARN);
+            }
+            else if (MsRdpEx_StringIEquals(envvar, "ERROR")) {
+                MsRdpEx_SetLogLevel(MSRDPEX_LOG_ERROR);
+            }
+            else if (MsRdpEx_StringIEquals(envvar, "FATAL")) {
+                MsRdpEx_SetLogLevel(MSRDPEX_LOG_FATAL);
+            }
+            else if (MsRdpEx_StringIEquals(envvar, "OFF")) {
+                MsRdpEx_SetLogLevel(MSRDPEX_LOG_OFF);
+            }
+        }
+    }
+
+    free(envvar);
+
+    envvar = MsRdpEx_GetEnv("MSRDPEX_LOG_FILE_PATH");
+
+    if (envvar) {
+        MsRdpEx_SetLogFilePath(envvar);
+    }
+
+    free(envvar);
+
+    g_LogInitialized = true;
+}
+
 void MsRdpEx_LogOpen()
 {
+    MsRdpEx_LogEnvInit();
+
     if (!g_LogEnabled)
         return;
 

@@ -60,6 +60,9 @@ namespace MsRdpEx
         void SetFileName([MarshalAs(UnmanagedType.LPStr)] string filename);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetArguments([MarshalAs(UnmanagedType.LPStr)] string arguments);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetArgumentBlock([MarshalAs(UnmanagedType.LPStr)] string argumentBlock);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
@@ -129,6 +132,14 @@ namespace MsRdpEx
             object instance = null;
             MsRdpEx_CreateInstance(ref IID_IMsRdpExCoreApi, out instance);
             return (IMsRdpExCoreApi)instance;
+        }
+
+        public static IMsRdpExProcess CreateProcess()
+        {
+            object instance = null;
+            MsRdpEx_CreateInstance(ref IID_IMsRdpExProcess, out instance);
+            IMsRdpExProcess process = (IMsRdpExProcess)instance;
+            return process;
         }
 
         public static IMsRdpExProcess StartProcess(string[] args, string appName, string axName)
