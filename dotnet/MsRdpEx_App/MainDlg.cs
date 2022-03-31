@@ -116,6 +116,8 @@ namespace MsRdpEx_App
                 startInfo.WorkingDirectory = workingDirectory;
                 startInfo.Arguments = arguments;
                 startInfo.Environment.Add("MSRDPEX_AXNAME", axName);
+                startInfo.Environment.Add("MSRDPEX_LOG_ENABLED", "1");
+                startInfo.Environment.Add("MSRDPEX_LOG_LEVEL", "TRACE");
 
                 Process process = RdpProcess.StartProcess(startInfo);
                 return;
