@@ -3,10 +3,13 @@
 #include <MsRdpEx/Pcap.h>
 
 #include <MsRdpEx/Sspi.h>
+#include <MsRdpEx/Environment.h>
 
 #include <intrin.h>
 
 #include <MsRdpEx/Detours.h>
+
+static bool g_PcapInitialized = false;
 
 static MsRdpEx_PcapFile* g_PcapFile = NULL;
 static bool g_PcapEnabled = false;
@@ -24,8 +27,34 @@ void MsRdpEx_SetPcapFilePath(const char* pcapFilePath)
 	strcpy_s(g_PcapFilePath, MSRDPEX_MAX_PATH, pcapFilePath);
 }
 
+void MsRdpEx_PcapEnvInit()
+{
+    char* envvar;
+
+    if (g_PcapInitialized)
+        return;
+
+    bool pcapDump = MsRdpEx_GetEnvBool("MSRDPEX_PCAP_DUMP", false);
+    MsRdpEx_SetPcapEnabled(pcapDump);
+	
+    bool sspiDump = MsRdpEx_GetEnvBool("MSRDPEX_SSPI_DUMP", false);
+    g_SspiDump = sspiDump;
+
+    envvar = MsRdpEx_GetEnv("MSRDPEX_PCAP_FILE_PATH");
+
+    if (envvar) {
+        MsRdpEx_SetPcapFilePath(envvar);
+    }
+
+    free(envvar);
+
+    g_PcapInitialized = true;
+}
+
 static MsRdpEx_PcapFile* MsRdpEx_GetPcapFile()
 {
+    MsRdpEx_PcapEnvInit();
+
     if (!g_PcapEnabled)
         return NULL;
 
