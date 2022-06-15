@@ -3,6 +3,7 @@
 #include <MsRdpEx/Pcap.h>
 
 #include <MsRdpEx/Sspi.h>
+#include <MsRdpEx/ArrayList.h>
 #include <MsRdpEx/Environment.h>
 
 #include <intrin.h>
@@ -69,6 +70,121 @@ static MsRdpEx_PcapFile* MsRdpEx_GetPcapFile()
 	g_PcapFile = MsRdpEx_PcapFile_Open(g_PcapFilePath, true);
 
 	return g_PcapFile;
+}
+
+typedef struct
+{
+	MsRdpEx_ArrayList* credentialHandles;
+} MsRdpEx_SspiContext;
+
+typedef struct
+{
+	ULONG_PTR dwLower;
+	ULONG_PTR dwUpper;
+	char packageName[32];
+} MsRdpEx_SecHandle;
+
+MsRdpEx_SecHandle* MsRdpEx_SecHandle_New(PSecHandle pHandle, const char* packageName)
+{
+	MsRdpEx_SecHandle* handle = (MsRdpEx_SecHandle*)calloc(1, sizeof(MsRdpEx_SecHandle));
+
+	if (!handle)
+		return NULL;
+
+	handle->dwLower = pHandle->dwLower;
+	handle->dwUpper = pHandle->dwUpper;
+	strncpy(handle->packageName, packageName, sizeof(handle->packageName));
+
+	return handle;
+}
+
+bool MsRdpEx_SecHandle_Equals(PSecHandle objA, PSecHandle objB)
+{
+	return (objA->dwLower == objB->dwLower) && (objA->dwUpper == objB->dwUpper);
+}
+
+bool MsRdpEx_SspiContext_AddCredHandle(MsRdpEx_SspiContext* ctx, PSecHandle phCredential, const char* packageName)
+{
+	MsRdpEx_SecHandle* credHandle;
+
+	if (!ctx)
+		return false;
+	
+	credHandle = MsRdpEx_SecHandle_New(phCredential, packageName);
+
+	if (!credHandle)
+		return false;
+
+	MsRdpEx_LogPrint(DEBUG, "AddCredHandle: phCredential: %p,%p name: %s",
+		phCredential->dwLower, phCredential->dwUpper, packageName);
+
+	return MsRdpEx_ArrayList_Add(ctx->credentialHandles, (void*)credHandle) >= 0;
+}
+
+MsRdpEx_SecHandle* MsRdpEx_SspiContext_GetCredHandle(MsRdpEx_SspiContext* ctx, PSecHandle phCredential)
+{
+	MsRdpEx_SecHandle* credHandle = NULL;
+
+	if (!ctx)
+		return NULL;
+
+	credHandle = (MsRdpEx_SecHandle*)MsRdpEx_ArrayList_Find(ctx->credentialHandles,
+		(MSRDPEX_OBJECT_MATCH_FN)MsRdpEx_SecHandle_Equals, phCredential);
+
+	return credHandle;
+}
+
+bool MsRdpEx_SspiContext_RemoveCredHandle(MsRdpEx_SspiContext* ctx, PSecHandle phCredential)
+{
+	MsRdpEx_SecHandle* credHandle;
+
+	if (!ctx)
+		return false;
+
+	credHandle = MsRdpEx_SspiContext_GetCredHandle(ctx, phCredential);
+
+	MsRdpEx_LogPrint(DEBUG, "RemCredHandle: phCredential: %p,%p name: %s",
+		phCredential->dwLower, phCredential->dwUpper, credHandle->packageName);
+
+	return MsRdpEx_ArrayList_Remove(ctx->credentialHandles, (void*)phCredential, true) ? true : false;
+}
+
+MsRdpEx_SspiContext* MsRdpEx_SspiContext_New()
+{
+	MsRdpEx_SspiContext* ctx;
+
+	ctx = (MsRdpEx_SspiContext*)calloc(1, sizeof(MsRdpEx_SspiContext));
+
+	if (!ctx)
+		return NULL;
+
+	ctx->credentialHandles = MsRdpEx_ArrayList_New(true);
+	MsRdpEx_Object* obj = MsRdpEx_ArrayList_Object(ctx->credentialHandles);
+
+	obj->fnObjectEquals = (MSRDPEX_OBJECT_EQUALS_FN) MsRdpEx_SecHandle_Equals;
+	obj->fnObjectFree = free;
+
+	return ctx;
+}
+
+void MsRdpEx_SspiContext_Free(MsRdpEx_SspiContext* ctx)
+{
+	if (!ctx)
+		return;
+
+	MsRdpEx_ArrayList_Free(ctx->credentialHandles);
+
+	free(ctx);
+}
+
+static MsRdpEx_SspiContext* g_SspiContext = NULL;
+
+static MsRdpEx_SspiContext* MsRdpEx_GetSspiContext()
+{
+	if (!g_SspiContext)
+		g_SspiContext = MsRdpEx_SspiContext_New();
+	
+	return g_SspiContext;
 }
 
 static HMODULE g_hSspiCli = NULL;
@@ -314,6 +430,9 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 		pszPackageA ? pszPackageA : "",
 		(void*)phCredential->dwLower, (void*) phCredential->dwUpper);
 
+	MsRdpEx_SspiContext* sspi = MsRdpEx_GetSspiContext();
+	MsRdpEx_SspiContext_AddCredHandle(sspi, phCredential, pszPackageA);
+
 	char* proxyServer = NULL;
 
 	if (proxyServer && (MsRdpEx_StringIEquals(pszPackageA, "CREDSSP") || MsRdpEx_StringIEquals(pszPackageA, "TSSSP"))) {
@@ -332,6 +451,9 @@ static SECURITY_STATUS SEC_ENTRY sspi_FreeCredentialsHandle(PCredHandle phCreden
 
 	MsRdpEx_LogPrint(DEBUG, "sspi_FreeCredentialsHandle: phCredential: %p,%p",
 		(void*)phCredential->dwLower, (void*)phCredential->dwUpper);
+
+	MsRdpEx_SspiContext* sspi = MsRdpEx_GetSspiContext();
+	MsRdpEx_SspiContext_RemoveCredHandle(sspi, phCredential);
 
 	status = Real_FreeCredentialsHandle(phCredential);
 
@@ -368,6 +490,13 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 				MsRdpEx_LogDump(TRACE, (uint8_t*)pSecBuffer->pvBuffer, (size_t)pSecBuffer->cbBuffer);
 			}
 		}
+	}
+
+	MsRdpEx_SspiContext* sspi = MsRdpEx_GetSspiContext();
+	MsRdpEx_SecHandle* secHandle = MsRdpEx_SspiContext_GetCredHandle(sspi, phCredential);
+
+	if (secHandle) {
+		MsRdpEx_LogPrint(DEBUG, "SecHandle: %s", secHandle->packageName);
 	}
 
 	status = Real_InitializeSecurityContextW(
