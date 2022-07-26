@@ -240,11 +240,18 @@ public:
         char szCommandLine[2048];
         STARTUPINFOA* startupInfo;
         PROCESS_INFORMATION* processInfo;
+        const char* axNameEnv = NULL;
 
         startupInfo = &m_startupInfo;
         processInfo = &m_processInfo;
 
         MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
+
+        axNameEnv = MsRdpEx_GetEnv("MSRDPEX_AXNAME");
+
+        if (!axName && axNameEnv) {
+            axName = axNameEnv;
+        }
 
         if (axName) {
             SetEnvironmentVariableA("MSRDPEX_AXNAME", axName);
@@ -307,6 +314,7 @@ public:
         ResumeThread(processInfo->hThread);
 
     exit:
+        free((void*)axNameEnv);
         return hr;
     }
 
