@@ -8,6 +8,8 @@
 
 #include <windows.h>
 
+#include <oleauto.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,10 +28,17 @@ typedef HRESULT (WINAPI * fnDllSetAuthProperties)(uint64_t properties);
 
 typedef HRESULT (WINAPI * fnDllSetClaimsToken)(uint64_t a1, uint64_t a2, WCHAR* p3);
 
-typedef HRESULT (WINAPI * fnDllGetClaimsToken)(WCHAR* a1, WCHAR* a2, WCHAR* a3,
+typedef HRESULT (WINAPI * fnDllGetClaimsToken1)(WCHAR* a1, WCHAR* a2, WCHAR* a3,
     uint64_t a4, HWND a5, WCHAR** a6, WCHAR** a7, WCHAR* a8, WCHAR* a9);
 
-typedef HRESULT (WINAPI * fnDllLogoffClaimsToken)(WCHAR* a1);
+typedef HRESULT(WINAPI* fnDllGetClaimsToken2)(
+    WCHAR* a1, BSTR a2, void* a3, void* a4, int a5, int a6,
+    void* a7, BSTR* a8, BSTR* a9, BSTR* a10, char* a11, void* a12,
+    void* a13, void* a14, void* a15, int* a16, int* a17, void* a18);
+
+typedef HRESULT (WINAPI * fnDllLogoffClaimsToken1)(WCHAR* a1);
+
+typedef HRESULT(WINAPI* fnDllLogoffClaimsToken2)(WCHAR* a1, WCHAR* a2);
 
 typedef HRESULT (WINAPI * fnDllCancelAuthentication)();
 
@@ -46,9 +55,9 @@ struct _MsRdpEx_AxDll
     fnDllUnregisterServer DllUnregisterServer;
     fnDllGetTscCtlVer DllGetTscCtlVer;
     fnDllSetAuthProperties DllSetAuthProperties;
-    fnDllGetClaimsToken DllGetClaimsToken;
+    fnDllGetClaimsToken2 DllGetClaimsToken;
     fnDllSetClaimsToken DllSetClaimsToken;
-    fnDllLogoffClaimsToken DllLogoffClaimsToken;
+    fnDllLogoffClaimsToken2 DllLogoffClaimsToken;
     fnDllCancelAuthentication DllCancelAuthentication;
     fnDllDeleteSavedCreds DllDeleteSavedCreds;
     fnDllPreCleanUp DllPreCleanUp;

@@ -61,17 +61,35 @@ HRESULT DllSetClaimsToken(uint64_t a1, uint64_t a2, WCHAR* a3)
     return g_AxDll->DllSetClaimsToken(a1, a2, a3);
 }
 
+#if 0
 HRESULT DllGetClaimsToken(WCHAR* a1, WCHAR* a2, WCHAR* a3, uint64_t a4, HWND a5, WCHAR** a6, WCHAR** a7, WCHAR* a8, WCHAR* a9)
 {
-    MsRdpEx_LogPrint(DEBUG, "DllGetClaimsToken");
+    MsRdpEx_LogPrint(DEBUG, "DllGetClaimsToken1");
     return g_AxDll->DllGetClaimsToken(a1, a2, a3, a4, a5, a6, a7, a8, a9);
 }
+#else
+HRESULT DllGetClaimsToken(WCHAR* a1, BSTR a2, void* a3, void* a4, int a5, int a6,
+    void* a7, BSTR* a8, BSTR* a9, BSTR* a10, char* a11, void* a12,
+    void* a13, void* a14, void* a15, int* a16, int* a17, void* a18)
+{
+    MsRdpEx_LogPrint(DEBUG, "DllGetClaimsToken2");
+    return g_AxDll->DllGetClaimsToken(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18);
+}
+#endif
 
+#if 0
 HRESULT DllLogoffClaimsToken(WCHAR* a1)
 {
-    MsRdpEx_LogPrint(DEBUG, "DllLogoffClaimsToken");
+    MsRdpEx_LogPrint(DEBUG, "DllLogoffClaimsToken1");
     return g_AxDll->DllLogoffClaimsToken(a1);
 }
+#else
+HRESULT DllLogoffClaimsToken(WCHAR* a1, WCHAR* a2)
+{
+    MsRdpEx_LogPrint(DEBUG, "DllLogoffClaimsToken2");
+    return g_AxDll->DllLogoffClaimsToken(a1, a2);
+}
+#endif
 
 HRESULT DllCancelAuthentication()
 {

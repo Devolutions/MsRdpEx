@@ -5,7 +5,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 {
     HRESULT hr;
 
-    hr = MsRdpEx_LaunchProcess(-1, NULL, NULL, "mstsc");
+    hr = MsRdpEx_LaunchProcess(-1, NULL, NULL, NULL);
 
     return 0;
 }

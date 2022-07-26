@@ -54,9 +54,9 @@ MsRdpEx_AxDll* CDECL MsRdpEx_AxDll_New(const char* filename)
     dll->DllUnregisterServer = (fnDllUnregisterServer) GetProcAddress(hModule, "DllUnregisterServer");
     dll->DllGetTscCtlVer = (fnDllGetTscCtlVer) GetProcAddress(hModule, "DllGetTscCtlVer");
     dll->DllSetAuthProperties = (fnDllSetAuthProperties) GetProcAddress(hModule, "DllSetAuthProperties");
-    dll->DllGetClaimsToken = (fnDllGetClaimsToken) GetProcAddress(hModule, "DllGetClaimsToken");
+    dll->DllGetClaimsToken = (fnDllGetClaimsToken2) GetProcAddress(hModule, "DllGetClaimsToken");
     dll->DllSetClaimsToken = (fnDllSetClaimsToken) GetProcAddress(hModule, "DllSetClaimsToken");
-    dll->DllLogoffClaimsToken = (fnDllLogoffClaimsToken) GetProcAddress(hModule, "DllLogoffClaimsToken");
+    dll->DllLogoffClaimsToken = (fnDllLogoffClaimsToken2) GetProcAddress(hModule, "DllLogoffClaimsToken");
     dll->DllCancelAuthentication = (fnDllCancelAuthentication) GetProcAddress(hModule, "DllCancelAuthentication");
     dll->DllDeleteSavedCreds = (fnDllDeleteSavedCreds) GetProcAddress(hModule, "DllDeleteSavedCreds");
     dll->DllPreCleanUp = (fnDllPreCleanUp) GetProcAddress(hModule, "DllPreCleanUp"); // rdclientax.dll
