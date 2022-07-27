@@ -11,13 +11,13 @@ static HMODULE g_hModule = NULL;
 
 static MsRdpEx_AxDll* g_AxDll = NULL;
 
-HRESULT DllCanUnloadNow()
+HRESULT STDAPICALLTYPE DllCanUnloadNow()
 {
     MsRdpEx_LogPrint(DEBUG, "DllCanUnloadNow");
     return g_AxDll->DllCanUnloadNow();
 }
 
-HRESULT DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
+HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
     char clsid[MSRDPEX_GUID_STRING_SIZE];
     char iid[MSRDPEX_GUID_STRING_SIZE];
