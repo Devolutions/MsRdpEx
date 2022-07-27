@@ -35,6 +35,18 @@ static HRESULT Hook_ITSPropertySet_SetBoolProperty(ITSPropertySet* This, const c
         propValue = 0;
     }
 
+    if (MsRdpEx_StringIEquals(propName, "ShellMarkRdpSecure")) {
+        // Workaround for RDP file signature requirement.
+        // Always mark RDP files as "signed" even when they're not
+        propValue = 1;
+    }
+
+    if (MsRdpEx_StringIEquals(propName, "ShowRedirectionWarningDialog")) {
+        // Workaround for RDP file signature requirement.
+        // Disable the redirection warning dialog to avoid some checks.
+        propValue = 0;
+    }
+
     hr = Real_ITSPropertySet_SetBoolProperty(This, propName, propValue);
 
     return hr;
