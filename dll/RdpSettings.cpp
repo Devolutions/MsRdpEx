@@ -6,6 +6,8 @@
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/Detours.h>
 
+#include <intrin.h>
+
 #include "TSObjects.h"
 
 extern "C" const GUID IID_ITSPropertySet;
@@ -57,6 +59,15 @@ static HRESULT Hook_ITSPropertySet_GetBoolProperty(ITSPropertySet* This, const c
     HRESULT hr;
 
     hr = Real_ITSPropertySet_GetBoolProperty(This, propName, propValue);
+
+    if (MsRdpEx_StringIEquals(propName, "TSGTransportIsUsed")) {
+        if (MsRdpEx_IsAddressInModule(_ReturnAddress(), L"mstscax.dll") ||
+            MsRdpEx_IsAddressInModule(_ReturnAddress(), L"rdclientax.dll")) {
+            // Workaround to apply KDCProxyName value when not using RD Gateway
+            // This enables injection of KDC proxy settings at all times.
+            *propValue = 1;
+        }
+    }
 
     MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetBoolProperty(%s, %d)", propName, *propValue);
 
