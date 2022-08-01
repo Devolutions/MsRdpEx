@@ -80,7 +80,6 @@ public:
 public:
     HRESULT __stdcall Load()
     {
-        MsRdpEx_Load();
         MsRdpEx_LogPrint(DEBUG, "CMsRdpExCoreApi::Load");
         return S_OK;
     }
@@ -88,7 +87,6 @@ public:
     HRESULT __stdcall Unload()
     {
         MsRdpEx_LogPrint(DEBUG, "CMsRdpExCoreApi::Unload");
-        MsRdpEx_Unload();
         return S_OK;
     }
 

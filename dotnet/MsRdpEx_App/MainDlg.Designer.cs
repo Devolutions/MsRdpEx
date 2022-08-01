@@ -141,7 +141,6 @@ namespace MsRdpEx_App
             this.cboRdpClient.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cboRdpClient.FormattingEnabled = true;
             this.cboRdpClient.Items.AddRange(new object[] {
-            "latest",
             "mstsc",
             "msrdc"});
             this.cboRdpClient.Location = new System.Drawing.Point(126, 31);

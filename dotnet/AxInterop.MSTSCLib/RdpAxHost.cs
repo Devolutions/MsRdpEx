@@ -87,7 +87,7 @@ namespace AxMSTSCLib {
 
         public IntPtr GetProcAddress(string name)
         {
-            IntPtr ptr = GetProcAddress(_handle, "DllGetClassObject");
+            IntPtr ptr = GetProcAddress(_handle, name);
 
             if (ptr == IntPtr.Zero)
             {
@@ -112,7 +112,9 @@ namespace AxMSTSCLib {
 
     public class AxHostEx : System.Windows.Forms.AxHost
     {
-        public string axName = "latest";
+        public string axName = "mstsc";
+        public string rdpExDll = null;
+        private static object loadLock = new object();
 
         public static string RdpGetAxDllPath(string axName)
         {
@@ -125,26 +127,12 @@ namespace AxMSTSCLib {
                 rdclientax = rdclientax_local;
             }
 
-            if (axName.Equals("latest"))
-            {
-                if (File.Exists(rdclientax))
-                {
-                    return rdclientax;
-                }
-                else
-                {
-                    return mstscax;
-                }
-            }
-
-            if (axName.Equals("mstscax") || axName.Equals("mstscax.dll") ||
-                axName.Equals("mstsc") || axName.Equals("mstsc.exe"))
+            if (axName.Equals("mstsc") || axName.Equals("mstscax"))
             {
                 return mstscax;
             }
 
-            if (axName.Equals("rdclientax") || axName.Equals("rdclientax.dll") ||
-                axName.Equals("msrdc") || axName.Equals("msrdc.exe"))
+            if (axName.Equals("msrdc") || axName.Equals("rdclientax"))
             {
                 return rdclientax;
             }
@@ -157,18 +145,32 @@ namespace AxMSTSCLib {
             return mstscax;
         }
 
-        public static object RdpGetClassObject(Guid clsid, string axName)
+        public static object RdpGetClassObject(Guid clsid, string axName, string rdpExDll)
         {
             object obj = null;
-            string libraryName = RdpGetAxDllPath(axName);
-            LibraryModule libraryModule = LibraryModule.LoadModule(libraryName);
-            obj = ComHelper.CreateInstance(libraryModule, clsid);
+
+            lock (loadLock)
+            {
+                if (!string.IsNullOrEmpty(rdpExDll))
+                {
+                    Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", axName);
+                    LibraryModule libraryModule = LibraryModule.LoadModule(rdpExDll);
+                    obj = ComHelper.CreateInstance(libraryModule, clsid);
+                }
+                else
+                {
+                    string axDllPath = RdpGetAxDllPath(axName);
+                    LibraryModule libraryModule = LibraryModule.LoadModule(axDllPath);
+                    obj = ComHelper.CreateInstance(libraryModule, clsid);
+                }
+            }
+
             return obj;
         }
 
         public object RdpCreateInstance(Guid clsid)
         {
-            return RdpGetClassObject(clsid, this.axName);
+            return RdpGetClassObject(clsid, this.axName, this.rdpExDll);
         }
 
         protected override object CreateInstanceCore(Guid clsid)

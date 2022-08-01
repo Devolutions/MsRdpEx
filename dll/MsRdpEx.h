@@ -46,8 +46,27 @@ typedef HRESULT (WINAPI * fnDllDeleteSavedCreds)(WCHAR* a1, WCHAR* a2);
 
 typedef uint64_t (WINAPI * fnDllPreCleanUp)();
 
-struct _MsRdpEx_AxDll
+struct _MsRdpEx_mstscax
 {
+    bool initialized;
+    HMODULE hModule;
+    fnDllCanUnloadNow DllCanUnloadNow;
+    fnDllGetClassObject DllGetClassObject;
+    fnDllRegisterServer DllRegisterServer;
+    fnDllUnregisterServer DllUnregisterServer;
+    fnDllGetTscCtlVer DllGetTscCtlVer;
+    fnDllSetAuthProperties DllSetAuthProperties;
+    fnDllGetClaimsToken1 DllGetClaimsToken;
+    fnDllSetClaimsToken DllSetClaimsToken;
+    fnDllLogoffClaimsToken1 DllLogoffClaimsToken;
+    fnDllCancelAuthentication DllCancelAuthentication;
+    fnDllDeleteSavedCreds DllDeleteSavedCreds;
+};
+typedef struct _MsRdpEx_mstscax MsRdpEx_mstscax;
+
+struct _MsRdpEx_rdclientax
+{
+    bool initialized;
     HMODULE hModule;
     fnDllCanUnloadNow DllCanUnloadNow;
     fnDllGetClassObject DllGetClassObject;
@@ -62,14 +81,19 @@ struct _MsRdpEx_AxDll
     fnDllDeleteSavedCreds DllDeleteSavedCreds;
     fnDllPreCleanUp DllPreCleanUp;
 };
-typedef struct _MsRdpEx_AxDll MsRdpEx_AxDll;
+typedef struct _MsRdpEx_rdclientax MsRdpEx_rdclientax;
 
 void MsRdpEx_SetAxHookEnabled(bool axHookEnabled);
 
-HRESULT MsRdpEx_AxDll_DllGetClassObject(MsRdpEx_AxDll* axDll, REFCLSID rclsid, REFIID riid, LPVOID* ppv);
+HRESULT MsRdpEx_AxDll_DllGetClassObject(fnDllGetClassObject pfnDllGetClassObject, REFCLSID rclsid, REFIID riid, LPVOID* ppv);
 
-MsRdpEx_AxDll* MsRdpEx_AxDll_New(const char* filename);
-void MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll);
+bool CDECL MsRdpEx_mstscax_Load(MsRdpEx_mstscax* dll, const char* filename);
+bool CDECL MsRdpEx_mstscax_Init(MsRdpEx_mstscax* dll);
+void CDECL MsRdpEx_mstscax_Uninit(MsRdpEx_mstscax* dll);
+
+bool CDECL MsRdpEx_rdclientax_Load(MsRdpEx_rdclientax* dll, const char* filename);
+bool CDECL MsRdpEx_rdclientax_Init(MsRdpEx_rdclientax* dll);
+void CDECL MsRdpEx_rdclientax_Uninit(MsRdpEx_rdclientax* dll);
 
 LONG MsRdpEx_AttachHooks();
 LONG MsRdpEx_DetachHooks();

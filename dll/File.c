@@ -1,4 +1,6 @@
 
+#include "MsRdpEx.h"
+
 #include <MsRdpEx/MsRdpEx.h>
 
 #ifdef _WIN32

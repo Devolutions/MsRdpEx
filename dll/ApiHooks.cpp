@@ -11,29 +11,70 @@
 
 #include <MsRdpEx/Detours.h>
 
+HMODULE (WINAPI* Real_LoadLibraryA)(LPCSTR lpLibFileName) = LoadLibraryA;
 HMODULE (WINAPI * Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
+
+HMODULE MsRdpEx_LoadLibrary(const char* filename)
+{
+    HMODULE hModule = NULL;
+    WCHAR* filenameW = NULL;
+
+    if (!filename)
+        return NULL;
+
+    MsRdpEx_LogPrint(DEBUG, "LoadLibraryX: %s", filename);
+
+    if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, filename, -1, &filenameW, 0) < 1)
+        return NULL;
+
+    hModule = Real_LoadLibraryW(filenameW);
+
+    free(filenameW);
+
+    return hModule;
+}
+
+HMODULE Hook_LoadLibraryA(LPCSTR lpLibFileName)
+{
+    HMODULE hModule = NULL;
+    
+    MsRdpEx_LogPrint(DEBUG, "LoadLibraryA: %s", lpLibFileName);
+
+    hModule = Real_LoadLibraryA(lpLibFileName);
+
+    return hModule;
+}
 
 HMODULE Hook_LoadLibraryW(LPCWSTR lpLibFileName)
 {
     HMODULE hModule;
     const char* filename;
     char* lpLibFileNameA = NULL;
+    const char* msrdpexLibraryA = NULL;
+    WCHAR* msrdpexLibraryW = NULL;
     MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, lpLibFileName, -1, &lpLibFileNameA, 0, NULL, NULL);
 
     filename = MsRdpEx_FileBase(lpLibFileNameA);
 
-    MsRdpEx_LogPrint(DEBUG, "LoadLibraryW: %s", lpLibFileNameA);
-
     if (MsRdpEx_StringIEquals(filename, "mstscax.dll")) {
-        hModule = LoadLibraryA(MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH));
+        msrdpexLibraryA = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
+        MsRdpEx_ConvertToUnicode(CP_UTF8, 0, msrdpexLibraryA, -1, &msrdpexLibraryW, 0);
+        MsRdpEx_LogPrint(DEBUG, "LoadLibraryW: \"%s\" -> \"%s\"", lpLibFileNameA, msrdpexLibraryA);
+        hModule = Real_LoadLibraryW(msrdpexLibraryW);
     }
     else if (MsRdpEx_StringIEquals(filename, "rdclientax.dll")) {
-        hModule = LoadLibraryA(MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH));
-    } else {
+        msrdpexLibraryA = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
+        MsRdpEx_ConvertToUnicode(CP_UTF8, 0, msrdpexLibraryA, -1, &msrdpexLibraryW, 0);
+        MsRdpEx_LogPrint(DEBUG, "LoadLibraryW: \"%s\" -> \"%s\"", lpLibFileNameA, msrdpexLibraryA);
+        hModule = Real_LoadLibraryW(msrdpexLibraryW);
+    }
+    else {
+        MsRdpEx_LogPrint(DEBUG, "LoadLibraryW: %s", lpLibFileNameA);
         hModule = Real_LoadLibraryW(lpLibFileName);
     }
 
     free(lpLibFileNameA);
+    free(msrdpexLibraryW);
 
     return hModule;
 }
@@ -326,6 +367,7 @@ LONG MsRdpEx_AttachHooks()
     DetourRestoreAfterWith();
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
+    MSRDPEX_DETOUR_ATTACH(Real_LoadLibraryA, Hook_LoadLibraryA);
     MSRDPEX_DETOUR_ATTACH(Real_LoadLibraryW, Hook_LoadLibraryW);
     //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
     //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
@@ -342,6 +384,7 @@ LONG MsRdpEx_DetachHooks()
     LONG error;
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
+    MSRDPEX_DETOUR_DETACH(Real_LoadLibraryA, Hook_LoadLibraryA);
     MSRDPEX_DETOUR_DETACH(Real_LoadLibraryW, Hook_LoadLibraryW);
     //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
     //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
