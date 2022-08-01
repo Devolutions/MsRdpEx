@@ -14,7 +14,7 @@ static MsRdpEx_AxDll* g_AxDll = NULL;
 HRESULT STDAPICALLTYPE DllCanUnloadNow()
 {
     MsRdpEx_LogPrint(DEBUG, "DllCanUnloadNow");
-    return g_AxDll->DllCanUnloadNow();
+    return S_FALSE;
 }
 
 HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
@@ -26,38 +26,51 @@ HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* p
     MsRdpEx_GuidBinToStr((GUID*)riid, iid, 0);
     MsRdpEx_LogPrint(DEBUG, "DllGetClassObject(%s, %s)", clsid, iid);
 
-    return MsRdpEx_AxDll_DllGetClassObject(g_AxDll, rclsid, riid, ppv);
+    return MsRdpEx_AxDll_DllGetClassObject(g_AxDll->DllGetClassObject, rclsid, riid, ppv);
 }
 
 HRESULT DllRegisterServer()
 {
     MsRdpEx_LogPrint(DEBUG, "DllRegisterServer");
-    return g_AxDll->DllRegisterServer();
+    return S_OK;
 }
 
 HRESULT DllUnregisterServer()
 {
     MsRdpEx_LogPrint(DEBUG, "DllUnregisterServer");
-    return g_AxDll->DllUnregisterServer();
+    return S_OK;
 }
 
 uint64_t DllGetTscCtlVer()
 {
     uint64_t version;
+
+    if (!g_AxDll)
+        return 0;
+
     version = g_AxDll->DllGetTscCtlVer();
     MsRdpEx_LogPrint(DEBUG, "DllGetTscCtlVer: 0x%04X", (unsigned int) version);
+
     return version;
 }
 
 HRESULT DllSetAuthProperties(uint64_t properties)
 {
     MsRdpEx_LogPrint(DEBUG, "DllSetAuthProperties");
+
+    if (!g_AxDll)
+        return E_UNEXPECTED;
+
     return g_AxDll->DllSetAuthProperties(properties);
 }
 
 HRESULT DllSetClaimsToken(uint64_t a1, uint64_t a2, WCHAR* a3)
 {
     MsRdpEx_LogPrint(DEBUG, "DllSetClaimsToken");
+
+    if (!g_AxDll)
+        return E_UNEXPECTED;
+
     return g_AxDll->DllSetClaimsToken(a1, a2, a3);
 }
 
@@ -65,6 +78,10 @@ HRESULT DllSetClaimsToken(uint64_t a1, uint64_t a2, WCHAR* a3)
 HRESULT DllGetClaimsToken(WCHAR* a1, WCHAR* a2, WCHAR* a3, uint64_t a4, HWND a5, WCHAR** a6, WCHAR** a7, WCHAR* a8, WCHAR* a9)
 {
     MsRdpEx_LogPrint(DEBUG, "DllGetClaimsToken1");
+
+    if (!g_AxDll)
+        return E_UNEXPECTED;
+
     return g_AxDll->DllGetClaimsToken(a1, a2, a3, a4, a5, a6, a7, a8, a9);
 }
 #else
@@ -73,6 +90,10 @@ HRESULT DllGetClaimsToken(WCHAR* a1, BSTR a2, void* a3, void* a4, int a5, int a6
     void* a13, void* a14, void* a15, int* a16, int* a17, void* a18)
 {
     MsRdpEx_LogPrint(DEBUG, "DllGetClaimsToken2");
+
+    if (!g_AxDll)
+        return E_UNEXPECTED;
+
     return g_AxDll->DllGetClaimsToken(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18);
 }
 #endif
@@ -81,12 +102,20 @@ HRESULT DllGetClaimsToken(WCHAR* a1, BSTR a2, void* a3, void* a4, int a5, int a6
 HRESULT DllLogoffClaimsToken(WCHAR* a1)
 {
     MsRdpEx_LogPrint(DEBUG, "DllLogoffClaimsToken1");
+
+    if (!g_AxDll)
+        return E_UNEXPECTED;
+
     return g_AxDll->DllLogoffClaimsToken(a1);
 }
 #else
 HRESULT DllLogoffClaimsToken(WCHAR* a1, WCHAR* a2)
 {
     MsRdpEx_LogPrint(DEBUG, "DllLogoffClaimsToken2");
+
+    if (!g_AxDll)
+        return E_UNEXPECTED;
+
     return g_AxDll->DllLogoffClaimsToken(a1, a2);
 }
 #endif
@@ -94,12 +123,20 @@ HRESULT DllLogoffClaimsToken(WCHAR* a1, WCHAR* a2)
 HRESULT DllCancelAuthentication()
 {
     MsRdpEx_LogPrint(DEBUG, "DllCancelAuthentication");
+
+    if (!g_AxDll)
+        return E_UNEXPECTED;
+
     return g_AxDll->DllCancelAuthentication();
 }
 
 HRESULT DllDeleteSavedCreds(WCHAR* a1, WCHAR* a2)
 {
     MsRdpEx_LogPrint(DEBUG, "DllDeleteSavedCreds");
+
+    if (!g_AxDll)
+        return E_UNEXPECTED;
+
     return g_AxDll->DllDeleteSavedCreds(a1, a2);
 }
 
@@ -137,20 +174,17 @@ bool MsRdpEx_ShouldLoad()
 
 static bool g_IsLoaded = false;
 
-void MsRdpEx_Load()
+void MsRdpEx_LoadAxDll()
 {
     char* axName = NULL;
     char* axPath = NULL;
-    MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
-
-    MsRdpEx_LogOpen();
+    uint32_t pathId = 0;
 
     const char* ModuleFilePath = MsRdpEx_GetPath(MSRDPEX_CURRENT_MODULE_PATH);
     const char* ModuleFileName = MsRdpEx_FileBase(ModuleFilePath);
 
     MsRdpEx_LogPrint(DEBUG, "ModuleFilePath: %s", ModuleFilePath);
-
-    uint32_t pathId = 0;
+    
     axName = MsRdpEx_GetEnv("MSRDPEX_AXNAME");
 
     if (axName) {
@@ -190,6 +224,15 @@ void MsRdpEx_Load()
 
     free(axName);
     free(axPath);
+}
+
+void MsRdpEx_Load()
+{
+    MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
+
+    MsRdpEx_LogOpen();
+
+    MsRdpEx_LoadAxDll();
 
     MsRdpEx_AttachHooks();
 

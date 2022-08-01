@@ -87,7 +87,7 @@ namespace AxMSTSCLib {
 
         public IntPtr GetProcAddress(string name)
         {
-            IntPtr ptr = GetProcAddress(_handle, "DllGetClassObject");
+            IntPtr ptr = GetProcAddress(_handle, name);
 
             if (ptr == IntPtr.Zero)
             {

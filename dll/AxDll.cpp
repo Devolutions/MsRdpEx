@@ -12,9 +12,9 @@ void MsRdpEx_SetAxHookEnabled(bool axHookEnabled)
     g_AxHookEnabled = axHookEnabled;
 }
 
-HRESULT CDECL MsRdpEx_AxDll_DllGetClassObject(MsRdpEx_AxDll* axDll, REFCLSID rclsid, REFIID riid, LPVOID* ppv)
+HRESULT CDECL MsRdpEx_AxDll_DllGetClassObject(fnDllGetClassObject pfnDllGetClassObject, REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
-    HRESULT hr = axDll->DllGetClassObject(rclsid, riid, ppv);
+    HRESULT hr = pfnDllGetClassObject(rclsid, riid, ppv);
 
     if (!g_AxHookEnabled)
         return hr;

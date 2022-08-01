@@ -66,7 +66,7 @@ typedef struct _MsRdpEx_AxDll MsRdpEx_AxDll;
 
 void MsRdpEx_SetAxHookEnabled(bool axHookEnabled);
 
-HRESULT MsRdpEx_AxDll_DllGetClassObject(MsRdpEx_AxDll* axDll, REFCLSID rclsid, REFIID riid, LPVOID* ppv);
+HRESULT MsRdpEx_AxDll_DllGetClassObject(fnDllGetClassObject pfnDllGetClassObject, REFCLSID rclsid, REFIID riid, LPVOID* ppv);
 
 MsRdpEx_AxDll* MsRdpEx_AxDll_New(const char* filename);
 void MsRdpEx_AxDll_Free(MsRdpEx_AxDll* dll);
