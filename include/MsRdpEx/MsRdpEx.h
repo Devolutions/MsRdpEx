@@ -51,6 +51,8 @@ bool MsRdpEx_MakePath(const char* path, LPSECURITY_ATTRIBUTES lpAttributes);
 
 uint64_t MsRdpEx_GetUnixTime();
 
+HMODULE MsRdpEx_LoadLibrary(const char* filename);
+
 // Paths Utils
 
 #define MSRDPEX_CURRENT_MODULE_PATH     0x00000001

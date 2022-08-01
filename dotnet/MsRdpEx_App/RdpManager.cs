@@ -11,7 +11,7 @@ namespace MsRdpEx_App
     {
         private static readonly RdpCoreApi coreApi;
 
-        private static bool axHookEnabled = false;
+        private static bool axHookEnabled = true;
 
         public RdpCoreApi CoreApi { get => coreApi; }
 
@@ -19,8 +19,6 @@ namespace MsRdpEx_App
 
         private static RdpCoreApi LoadCoreApi()
         {
-            bool axHookEnabled = true;
-
             RdpCoreApi coreApi = new RdpCoreApi();
 
             string logFilePath = Environment.ExpandEnvironmentVariables("%LocalAppData%\\MsRdpEx\\HostApp.log");

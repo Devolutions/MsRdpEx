@@ -20,14 +20,18 @@ namespace MsRdpEx_App
 {
     public partial class RdpView : Form
     {
-        public string axName = "latest";
-        public string rdpExDll;
+        public string axName = "mstsc";
+        public string rdpExDll = null;
 
         private string outputPath;
         private int captureIndex = 0;
         private string captureOutputPath;
         private bool enableCapture = true;
         private Timer captureTimer = null;
+
+        private int disconnectReason = 0;
+
+        public int DisconnectReason { get => disconnectReason; }
 
         public RdpView(string axName, string rdpExDll)
         {
@@ -176,12 +180,26 @@ namespace MsRdpEx_App
 
         protected void OnConnected(object sender, EventArgs e)
         {
-
+            Debug.WriteLine("RdpOnConnected");
         }
 
         protected void OnConnecting(object sender, EventArgs e)
         {
-            
+            Debug.WriteLine("RdpOnConnecting");
+        }
+
+        protected void OnDisconnected(object sender, IMsTscAxEvents_OnDisconnectedEvent e)
+        {
+            this.disconnectReason = e.discReason;
+            Debug.WriteLine("RdpOnDisconnected: reason: {0}", e.discReason);
+
+            if (this.disconnectReason != 0)
+            {
+                string text = String.Format("Connection Failed: discReason: {0}", this.DisconnectReason);
+                MessageBox.Show(text);
+            }
+
+            this.Close();
         }
 
         protected void OnEnterFullScreenMode(object sender, EventArgs e)
@@ -219,9 +237,11 @@ namespace MsRdpEx_App
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(RdpView));
             this.rdpClient = new AxMSTSCLib.AxMsRdpClient9NotSafeForScripting();
-            this.rdpClient.axName = this.rdpExDll;
+            this.rdpClient.axName = this.axName;
+            this.rdpClient.rdpExDll = this.rdpExDll;
             this.rdpClient.OnConnected += OnConnected;
             this.rdpClient.OnConnecting += OnConnecting;
+            this.rdpClient.OnDisconnected += OnDisconnected;
             this.rdpClient.OnEnterFullScreenMode += OnEnterFullScreenMode;
             this.rdpClient.OnLeaveFullScreenMode += OnLeaveFullScreenMode;
             this.rdpClient.OnConnectionBarPullDown += OnConnectionBarPullDown;

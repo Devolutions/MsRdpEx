@@ -29,7 +29,7 @@ namespace MsRdpEx_App
         public MainDlg()
         {
             InitializeComponent();
-            this.cboRdpClient.SelectedIndex = 1;
+            this.cboRdpClient.SelectedIndex = 0;
             this.cboLaunchMode.SelectedIndex = 0;
             LoadEnvironment();
         }
@@ -123,16 +123,26 @@ namespace MsRdpEx_App
                 return;
             }
 
+            RdpView rdpView;
+
             Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", axName);
 
-            RdpView rdpView = new RdpView(axName, rdpExDll);
+            if (axHookEnabled)
+            {
+                rdpView = new RdpView(axName, rdpExDll);
+            }
+            else
+            {
+                rdpView = new RdpView(axName, null);
+            }
+
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
 
             if (axHookEnabled)
             {
                 RdpInstance rdpInstance = new RdpInstance((IMsRdpExInstance)rdp.GetOcx());
-                rdpInstance.OutputMirrorEnabled = true;
-                rdpInstance.VideoRecordingEnabled = true;
+                rdpInstance.OutputMirrorEnabled = false;
+                rdpInstance.VideoRecordingEnabled = false;
             }
 
             rdp.Server = this.txtComputer.Text;
