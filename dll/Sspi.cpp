@@ -587,8 +587,8 @@ static SECURITY_STATUS SEC_ENTRY sspi_EncryptMessage(PCtxtHandle phContext, ULON
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_LogPrint(TRACE, "sspi_EncryptMessage phContext: %p seqNo: %d cbBuffers: %d ReturnAddress: %p",
-		phContext, MessageSeqNo, pMessage->cBuffers, _ReturnAddress());
+	//MsRdpEx_LogPrint(TRACE, "sspi_EncryptMessage phContext: %p seqNo: %d cbBuffers: %d ReturnAddress: %p",
+	//	phContext, MessageSeqNo, pMessage->cBuffers, _ReturnAddress());
 
 #if 0
 	if (!MsRdpEx_IsAddressInModule(_ReturnAddress(), L"mstscax.dll"))
@@ -635,8 +635,8 @@ static SECURITY_STATUS SEC_ENTRY sspi_DecryptMessage(PCtxtHandle phContext, PSec
 {
 	SECURITY_STATUS status;
 
-	MsRdpEx_LogPrint(TRACE, "sspi_DecryptMessage phContext: %p seqNo: %d ReturnAddress: %p",
-		phContext, MessageSeqNo, _ReturnAddress());
+	//MsRdpEx_LogPrint(TRACE, "sspi_DecryptMessage phContext: %p seqNo: %d ReturnAddress: %p",
+	//	phContext, MessageSeqNo, _ReturnAddress());
 
 	status = Real_DecryptMessage(phContext, pMessage, MessageSeqNo, pfQOP);
 
