@@ -69,6 +69,11 @@ static HRESULT Hook_ITSPropertySet_GetBoolProperty(ITSPropertySet* This, const c
         }
     }
 
+    if (MsRdpEx_StringIEquals(propName, "UseNewOutput")) {
+        // Workaround to prevent disconnect error code 3334 with latest MSRDC
+        *propValue = 1;
+    }
+
     MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetBoolProperty(%s, %d)", propName, *propValue);
 
     return hr;

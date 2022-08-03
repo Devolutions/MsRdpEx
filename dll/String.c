@@ -116,12 +116,18 @@ int MsRdpEx_ConvertToUnicode(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr
 
 bool MsRdpEx_StringEquals(const char* str1, const char* str2)
 {
-	return strcmp(str1, str2) == 0;
+    if (!str1 || !str2)
+        return false;
+
+    return strcmp(str1, str2) == 0;
 }
 
 bool MsRdpEx_StringIEquals(const char* str1, const char* str2)
 {
-	return _stricmp(str1, str2) == 0;
+    if (!str1 || !str2)
+        return false;
+
+    return _stricmp(str1, str2) == 0;
 }
 
 bool MsRdpEx_StringEndsWith(const char* str, const char* val)

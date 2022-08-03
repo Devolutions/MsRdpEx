@@ -77,6 +77,9 @@ namespace MsRdpEx_App
             {
                 this.msrdcExecutable = Path.Combine(Path.GetDirectoryName(msrdcAxLibrary), "msrdc.exe");
             }
+
+            this.msrdcExecutable = "C:\\Users\\mamoreau\\Documents\\Reversing\\MSRDC\\msrdc.exe";
+            this.msrdcAxLibrary = "C:\\Users\\mamoreau\\Documents\\Reversing\\MSRDC\\rdclientax.dll";
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
@@ -92,6 +95,8 @@ namespace MsRdpEx_App
             if (externalMode)
             {
                 string filename = this.mstscExecutable;
+                string rdclientax_dll = null;
+                string mstscax_dll = null;
 
                 if (axName.Equals("msrdc"))
                 {
@@ -119,13 +124,20 @@ namespace MsRdpEx_App
                 startInfo.Environment.Add("MSRDPEX_LOG_ENABLED", "1");
                 startInfo.Environment.Add("MSRDPEX_LOG_LEVEL", "TRACE");
 
+                if (axName.Equals("msrdc"))
+                {
+                    startInfo.Environment.Add("MSRDPEX_RDCLIENTAX_DLL", this.msrdcAxLibrary);
+                }
+                else
+                {
+                    startInfo.Environment.Add("MSRDPEX_MSTSCAX_DLL", this.mstscAxLibrary);
+                }
+
                 Process process = RdpProcess.StartProcess(startInfo);
                 return;
             }
 
             RdpView rdpView;
-
-            Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", axName);
 
             if (axHookEnabled)
             {
@@ -159,6 +171,11 @@ namespace MsRdpEx_App
             rdpView.ClientSize = DesktopSize;
             rdpView.Text = String.Format("{0} ({1})", rdp.Server, axName);
 
+            try {
+                object RequestUseNewOutputPresenter = true;
+                extendedSettings.set_Property("RequestUseNewOutputPresenter", ref RequestUseNewOutputPresenter);
+            } catch { }
+
             if (axHookEnabled)
             {
                 object corePropsVal = extendedSettings.get_Property("CoreProperties");
@@ -169,6 +186,9 @@ namespace MsRdpEx_App
 
                 object ShellMarkRdpSecure = true;
                 baseProps.set_Property("ShellMarkRdpSecure", ref ShellMarkRdpSecure);
+
+                object BandwidthAutodetect = false;
+                coreProps.set_Property("BandwidthAutodetect", ref BandwidthAutodetect);
 
                 object DisableUDPTransport = true;
                 coreProps.set_Property("DisableUDPTransport", ref DisableUDPTransport);
