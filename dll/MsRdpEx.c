@@ -7,6 +7,8 @@
 
 #include <MsRdpEx/Detours.h>
 
+#include <stdarg.h>
+
 static HMODULE g_hModule = NULL;
 
 static bool g_IsOOBClient = false;
@@ -132,51 +134,156 @@ HRESULT DllSetAuthProperties(uint64_t properties)
     return hr;
 }
 
-HRESULT DllSetClaimsToken(uint64_t a1, uint64_t a2, WCHAR* a3)
+HRESULT DllSetClaimsToken(uint64_t a1, uint64_t a2, BSTR refreshToken)
 {
     HRESULT hr = E_UNEXPECTED;
     MsRdpEx_LogPrint(DEBUG, "DllSetClaimsToken");
 
     if (g_IsOOBClient) {
-        hr = g_rdclientax.DllSetClaimsToken(a1, a2, a3);
+        hr = g_rdclientax.DllSetClaimsToken(a1, a2, refreshToken);
     }
     else {
-        hr = g_mstscax.DllSetClaimsToken(a1, a2, a3);
+        hr = g_mstscax.DllSetClaimsToken(a1, a2, refreshToken);
     }
 
     return hr;
 }
 
-HRESULT DllGetClaimsToken(WCHAR* a1, BSTR a2, void* a3, void* a4, int a5, int a6,
-    void* a7, BSTR* a8, BSTR* a9, BSTR* a10, char* a11, void* a12,
-    void* a13, void* a14, void* a15, int* a16, int* a17, void* a18)
+HRESULT DllGetClaimsToken(
+    BSTR clientAddress,
+    BSTR claimsHint,
+    BSTR userNameHint,
+    BSTR userDomainHint,
+    UINT uiSilentRetrievalMode,
+    BOOL allowCredPrompt,
+    HWND parentWindow,
+    BSTR* claimsToken,
+    BSTR* actualAuthority,
+    BSTR* actualUserName,
+    RECT* position,
+    BSTR windowTitle,
+    BSTR logonCertAuthority,
+    BSTR* resultMsg,
+    BSTR wvdActivityId,
+    BOOL* isAcquiredSilently,
+    BOOL* isRetriableError,
+    ...)
 {
     HRESULT hr = E_UNEXPECTED;
 
-    MsRdpEx_LogPrint(DEBUG, "DllGetClaimsToken2");
+    MsRdpEx_LogPrint(DEBUG, "DllGetClaimsToken");
 
     if (g_IsOOBClient) {
-        hr = g_rdclientax.DllGetClaimsToken(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18);
+        va_list vl;
+        va_start(vl, isRetriableError);
+        DWORD version = g_rdclientax.tscCtlVer;
+
+        if (version >= 3004) {
+            BOOL invalidateCache = va_arg(vl, BOOL);
+            BSTR resourceAppId = va_arg(vl, BSTR);
+
+            hr = ((fnDllGetClaimsToken19)g_rdclientax.DllGetClaimsToken)(
+                clientAddress,
+                claimsHint,
+                userNameHint,
+                userDomainHint,
+                uiSilentRetrievalMode,
+                allowCredPrompt,
+                parentWindow,
+                claimsToken,
+                actualAuthority,
+                actualUserName,
+                position,
+                windowTitle,
+                logonCertAuthority,
+                resultMsg,
+                wvdActivityId,
+                isAcquiredSilently,
+                isRetriableError,
+                invalidateCache,
+                resourceAppId);
+        }
+        else if (version >= 2606) {
+            BSTR resourceAppId = va_arg(vl, BSTR);
+
+            hr = ((fnDllGetClaimsToken18)g_rdclientax.DllGetClaimsToken)(
+                clientAddress,
+                claimsHint,
+                userNameHint,
+                userDomainHint,
+                uiSilentRetrievalMode,
+                allowCredPrompt,
+                parentWindow,
+                claimsToken,
+                actualAuthority,
+                actualUserName,
+                position,
+                windowTitle,
+                logonCertAuthority,
+                resultMsg,
+                wvdActivityId,
+                isAcquiredSilently,
+                isRetriableError,
+                resourceAppId);
+        }
+        else {
+            hr = ((fnDllGetClaimsToken17)g_rdclientax.DllGetClaimsToken)(
+                clientAddress,
+                claimsHint,
+                userNameHint,
+                userDomainHint,
+                uiSilentRetrievalMode,
+                allowCredPrompt,
+                parentWindow,
+                claimsToken,
+                actualAuthority,
+                actualUserName,
+                position,
+                windowTitle,
+                logonCertAuthority,
+                resultMsg,
+                wvdActivityId,
+                isAcquiredSilently,
+                isRetriableError);
+        }
+
+        va_end(vl);
     }
     else {
-        // unsupported, not called externally
+        // this function is never called in mstscax.dll
     }
 
     return hr;
 }
 
-HRESULT DllLogoffClaimsToken(WCHAR* a1, WCHAR* a2)
+HRESULT DllLogoffClaimsToken(BSTR claimsHint, ...)
 {
     HRESULT hr = E_UNEXPECTED;
 
-    MsRdpEx_LogPrint(DEBUG, "DllLogoffClaimsToken2");
+    MsRdpEx_LogPrint(DEBUG, "DllLogoffClaimsToken");
+
+    va_list vl;
+    va_start(vl, claimsHint);
 
     if (g_IsOOBClient) {
-        hr = g_rdclientax.DllLogoffClaimsToken(a1, a2);
+        DWORD version = g_rdclientax.tscCtlVer;
+
+        if (version >= 3004) {
+            BSTR clientId = va_arg(vl, BSTR);
+            BSTR username = va_arg(vl, BSTR);
+            hr = ((fnDllLogoffClaimsToken3)g_rdclientax.DllGetClaimsToken)(claimsHint, clientId, username);
+        }
+        else {
+            BSTR clientId = va_arg(vl, BSTR);
+            hr = ((fnDllLogoffClaimsToken2)g_rdclientax.DllGetClaimsToken)(claimsHint, clientId);
+        }
     }
     else {
-        // unsupported, not called externally
+        // this function is never called in mstscax.dll
+        hr = ((fnDllLogoffClaimsToken1)g_rdclientax.DllGetClaimsToken)(claimsHint);
     }
+
+    va_end(vl);
 
     return hr;
 }
@@ -197,17 +304,17 @@ HRESULT DllCancelAuthentication()
     return hr;
 }
 
-HRESULT DllDeleteSavedCreds(WCHAR* a1, WCHAR* a2)
+HRESULT DllDeleteSavedCreds(BSTR workspaceId, BSTR username)
 {
     HRESULT hr = E_UNEXPECTED;
 
     MsRdpEx_LogPrint(DEBUG, "DllDeleteSavedCreds");
 
     if (g_IsOOBClient) {
-        hr = g_rdclientax.DllDeleteSavedCreds(a1, a2);
+        hr = g_rdclientax.DllDeleteSavedCreds(workspaceId, username);
     }
     else {
-        hr = g_mstscax.DllDeleteSavedCreds(a1, a2);
+        hr = g_mstscax.DllDeleteSavedCreds(workspaceId, username);
     }
 
     return hr;
