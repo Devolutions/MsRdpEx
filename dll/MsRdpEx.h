@@ -24,25 +24,102 @@ typedef HRESULT (WINAPI * fnDllUnregisterServer)();
 
 typedef uint64_t (WINAPI * fnDllGetTscCtlVer)();
 
+typedef HRESULT (WINAPI* fnDllGetNewActivityId)(BSTR* pbstrActivityId);
+
+// exported by mstscax.dll, but never called
 typedef HRESULT (WINAPI * fnDllSetAuthProperties)(uint64_t properties);
 
-typedef HRESULT (WINAPI * fnDllSetClaimsToken)(uint64_t a1, uint64_t a2, WCHAR* p3);
+// exported by mstscax.dll, but never called
+// no longer exported by recent rdclientax.dll
+typedef HRESULT (WINAPI * fnDllSetClaimsToken)(uint64_t a1, uint64_t a2, BSTR refreshToken);
 
-typedef HRESULT (WINAPI * fnDllGetClaimsToken1)(WCHAR* a1, WCHAR* a2, WCHAR* a3,
-    uint64_t a4, HWND a5, WCHAR** a6, WCHAR** a7, WCHAR* a8, WCHAR* a9);
+// exported by mstscax.dll, but never called
+typedef HRESULT (WINAPI * fnDllGetClaimsToken9)(
+    BSTR clientAddress,
+    BSTR claimsHint,
+    BSTR userNameHint,
+    BSTR userDomainHint,
+    HWND parentWindow,
+    BSTR* claimsToken,
+    BSTR* actualAuthority,
+    BSTR logonCertAuthority,
+    BSTR wvdActivityId);
 
-typedef HRESULT(WINAPI* fnDllGetClaimsToken2)(
-    WCHAR* a1, BSTR a2, void* a3, void* a4, int a5, int a6,
-    void* a7, BSTR* a8, BSTR* a9, BSTR* a10, char* a11, void* a12,
-    void* a13, void* a14, void* a15, int* a16, int* a17, void* a18);
+// rdclientax.dll 1.2.2322.0, 1.2.2459.0
+typedef HRESULT(WINAPI* fnDllGetClaimsToken17)(
+    BSTR clientAddress,
+    BSTR claimsHint,
+    BSTR userNameHint,
+    BSTR userDomainHint,
+    UINT uiSilentRetrievalMode,
+    BOOL allowCredPrompt,
+    HWND parentWindow,
+    BSTR* claimsToken,
+    BSTR* actualAuthority,
+    BSTR* actualUserName,
+    RECT* position,
+    BSTR windowTitle,
+    BSTR logonCertAuthority,
+    BSTR* resultMsg,
+    BSTR wvdActivityId,
+    BOOL* isAcquiredSilently,
+    BOOL* isRetriableError);
 
-typedef HRESULT (WINAPI * fnDllLogoffClaimsToken1)(WCHAR* a1);
+// rdclientax.dll 1.2.2606.0
+typedef HRESULT(WINAPI* fnDllGetClaimsToken18)(
+    BSTR clientAddress,
+    BSTR claimsHint,
+    BSTR userNameHint,
+    BSTR userDomainHint,
+    UINT uiSilentRetrievalMode,
+    BOOL allowCredPrompt,
+    HWND parentWindow,
+    BSTR* claimsToken,
+    BSTR* actualAuthority,
+    BSTR* actualUserName,
+    RECT* position,
+    BSTR windowTitle,
+    BSTR logonCertAuthority,
+    BSTR* resultMsg,
+    BSTR wvdActivityId,
+    BOOL* isAcquiredSilently,
+    BOOL* isRetriableError,
+    BSTR resourceAppId);
 
-typedef HRESULT(WINAPI* fnDllLogoffClaimsToken2)(WCHAR* a1, WCHAR* a2);
+// rdclientax.dll 1.2.3004, 1.2.3316+
+typedef HRESULT(WINAPI* fnDllGetClaimsToken19)(
+    BSTR clientAddress,
+    BSTR claimsHint,
+    BSTR userNameHint,
+    BSTR userDomainHint,
+    UINT uiSilentRetrievalMode,
+    BOOL allowCredPrompt,
+    HWND parentWindow,
+    BSTR* claimsToken,
+    BSTR* actualAuthority,
+    BSTR* actualUserName,
+    RECT* position,
+    BSTR windowTitle,
+    BSTR logonCertAuthority,
+    BSTR* resultMsg,
+    BSTR wvdActivityId,
+    BOOL* isAcquiredSilently,
+    BOOL* isRetriableError,
+    BOOL invalidateCache,
+    BSTR resourceAppId);
+
+// exported by mstscax.dll, but never called
+typedef HRESULT (WINAPI * fnDllLogoffClaimsToken1)(BSTR claimsHint);
+
+// rdclientax.dll 1.2.2322.0, 1.2.2459.0, 1.2.2606.0
+typedef HRESULT (WINAPI* fnDllLogoffClaimsToken2)(BSTR claimsHint, BSTR clientId);
+
+// rdclientax.dll 1.2.3004.0+
+typedef HRESULT (WINAPI* fnDllLogoffClaimsToken3)(BSTR claimsHint, BSTR clientId, BSTR username);
 
 typedef HRESULT (WINAPI * fnDllCancelAuthentication)();
 
-typedef HRESULT (WINAPI * fnDllDeleteSavedCreds)(WCHAR* a1, WCHAR* a2);
+typedef HRESULT (WINAPI * fnDllDeleteSavedCreds)(BSTR workspaceId, BSTR username);
 
 typedef uint64_t (WINAPI * fnDllPreCleanUp)();
 
@@ -50,13 +127,14 @@ struct _MsRdpEx_mstscax
 {
     bool initialized;
     HMODULE hModule;
+    DWORD tscCtlVer;
     fnDllCanUnloadNow DllCanUnloadNow;
     fnDllGetClassObject DllGetClassObject;
     fnDllRegisterServer DllRegisterServer;
     fnDllUnregisterServer DllUnregisterServer;
     fnDllGetTscCtlVer DllGetTscCtlVer;
     fnDllSetAuthProperties DllSetAuthProperties;
-    fnDllGetClaimsToken1 DllGetClaimsToken;
+    fnDllGetClaimsToken9 DllGetClaimsToken;
     fnDllSetClaimsToken DllSetClaimsToken;
     fnDllLogoffClaimsToken1 DllLogoffClaimsToken;
     fnDllCancelAuthentication DllCancelAuthentication;
@@ -68,15 +146,17 @@ struct _MsRdpEx_rdclientax
 {
     bool initialized;
     HMODULE hModule;
+    DWORD tscCtlVer;
     fnDllCanUnloadNow DllCanUnloadNow;
     fnDllGetClassObject DllGetClassObject;
     fnDllRegisterServer DllRegisterServer;
     fnDllUnregisterServer DllUnregisterServer;
     fnDllGetTscCtlVer DllGetTscCtlVer;
+    fnDllGetNewActivityId DllGetNewActivityId;
     fnDllSetAuthProperties DllSetAuthProperties;
-    fnDllGetClaimsToken2 DllGetClaimsToken;
+    fnDllGetClaimsToken19 DllGetClaimsToken;
     fnDllSetClaimsToken DllSetClaimsToken;
-    fnDllLogoffClaimsToken2 DllLogoffClaimsToken;
+    fnDllLogoffClaimsToken3 DllLogoffClaimsToken;
     fnDllCancelAuthentication DllCancelAuthentication;
     fnDllDeleteSavedCreds DllDeleteSavedCreds;
     fnDllPreCleanUp DllPreCleanUp;

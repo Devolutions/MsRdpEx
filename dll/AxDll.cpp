@@ -57,11 +57,13 @@ bool CDECL MsRdpEx_mstscax_Load(MsRdpEx_mstscax* dll, const char* filename)
     dll->DllUnregisterServer = (fnDllUnregisterServer)GetProcAddress(dll->hModule, "DllUnregisterServer");
     dll->DllGetTscCtlVer = (fnDllGetTscCtlVer)GetProcAddress(dll->hModule, "DllGetTscCtlVer");
     dll->DllSetAuthProperties = (fnDllSetAuthProperties)GetProcAddress(dll->hModule, "DllSetAuthProperties");
-    dll->DllGetClaimsToken = (fnDllGetClaimsToken1)GetProcAddress(dll->hModule, "DllGetClaimsToken");
+    dll->DllGetClaimsToken = (fnDllGetClaimsToken9)GetProcAddress(dll->hModule, "DllGetClaimsToken");
     dll->DllSetClaimsToken = (fnDllSetClaimsToken)GetProcAddress(dll->hModule, "DllSetClaimsToken");
     dll->DllLogoffClaimsToken = (fnDllLogoffClaimsToken1)GetProcAddress(dll->hModule, "DllLogoffClaimsToken");
     dll->DllCancelAuthentication = (fnDllCancelAuthentication)GetProcAddress(dll->hModule, "DllCancelAuthentication");
     dll->DllDeleteSavedCreds = (fnDllDeleteSavedCreds)GetProcAddress(dll->hModule, "DllDeleteSavedCreds");
+
+    dll->tscCtlVer = dll->DllGetTscCtlVer();
 
     success = true;
 exit:
@@ -122,13 +124,16 @@ bool CDECL MsRdpEx_rdclientax_Load(MsRdpEx_rdclientax* dll, const char* filename
     dll->DllRegisterServer = (fnDllRegisterServer)GetProcAddress(dll->hModule, "DllRegisterServer");
     dll->DllUnregisterServer = (fnDllUnregisterServer)GetProcAddress(dll->hModule, "DllUnregisterServer");
     dll->DllGetTscCtlVer = (fnDllGetTscCtlVer)GetProcAddress(dll->hModule, "DllGetTscCtlVer");
+    dll->DllGetNewActivityId = (fnDllGetNewActivityId)GetProcAddress(dll->hModule, "DllGetNewActivityId");
     dll->DllSetAuthProperties = (fnDllSetAuthProperties)GetProcAddress(dll->hModule, "DllSetAuthProperties");
-    dll->DllGetClaimsToken = (fnDllGetClaimsToken2)GetProcAddress(dll->hModule, "DllGetClaimsToken");
+    dll->DllGetClaimsToken = (fnDllGetClaimsToken19)GetProcAddress(dll->hModule, "DllGetClaimsToken");
     dll->DllSetClaimsToken = (fnDllSetClaimsToken)GetProcAddress(dll->hModule, "DllSetClaimsToken");
-    dll->DllLogoffClaimsToken = (fnDllLogoffClaimsToken2)GetProcAddress(dll->hModule, "DllLogoffClaimsToken");
+    dll->DllLogoffClaimsToken = (fnDllLogoffClaimsToken3)GetProcAddress(dll->hModule, "DllLogoffClaimsToken");
     dll->DllCancelAuthentication = (fnDllCancelAuthentication)GetProcAddress(dll->hModule, "DllCancelAuthentication");
     dll->DllDeleteSavedCreds = (fnDllDeleteSavedCreds)GetProcAddress(dll->hModule, "DllDeleteSavedCreds");
     dll->DllPreCleanUp = (fnDllPreCleanUp)GetProcAddress(dll->hModule, "DllPreCleanUp");
+
+    dll->tscCtlVer = dll->DllGetTscCtlVer();
 
     success = true;
 exit:
