@@ -24,6 +24,8 @@ typedef HRESULT (WINAPI * fnDllUnregisterServer)();
 
 typedef uint64_t (WINAPI * fnDllGetTscCtlVer)();
 
+typedef HRESULT (WINAPI* fnDllGetNewActivityId)(BSTR* pbstrActivityId);
+
 typedef HRESULT (WINAPI * fnDllSetAuthProperties)(uint64_t properties);
 
 typedef HRESULT (WINAPI * fnDllSetClaimsToken)(uint64_t a1, uint64_t a2, WCHAR* p3);
@@ -73,6 +75,7 @@ struct _MsRdpEx_rdclientax
     fnDllRegisterServer DllRegisterServer;
     fnDllUnregisterServer DllUnregisterServer;
     fnDllGetTscCtlVer DllGetTscCtlVer;
+    fnDllGetNewActivityId DllGetNewActivityId;
     fnDllSetAuthProperties DllSetAuthProperties;
     fnDllGetClaimsToken2 DllGetClaimsToken;
     fnDllSetClaimsToken DllSetClaimsToken;

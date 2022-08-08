@@ -5,6 +5,7 @@ EXPORTS
     DllRegisterServer   PRIVATE
     DllUnregisterServer PRIVATE
     DllGetTscCtlVer
+    DllGetNewActivityId
     DllSetAuthProperties
     DllGetClaimsToken
     DllSetClaimsToken

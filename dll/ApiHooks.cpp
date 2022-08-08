@@ -12,7 +12,7 @@
 #include <MsRdpEx/Detours.h>
 
 HMODULE (WINAPI* Real_LoadLibraryA)(LPCSTR lpLibFileName) = LoadLibraryA;
-HMODULE (WINAPI * Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
+HMODULE (WINAPI* Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
 
 HMODULE MsRdpEx_LoadLibrary(const char* filename)
 {
@@ -77,6 +77,17 @@ HMODULE Hook_LoadLibraryW(LPCWSTR lpLibFileName)
     free(msrdpexLibraryW);
 
     return hModule;
+}
+
+FARPROC (WINAPI* Real_GetProcAddress)(HMODULE hModule, LPCSTR lpProcName) = GetProcAddress;
+
+FARPROC Hook_GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
+{
+    FARPROC procAddr;
+
+    procAddr = Real_GetProcAddress(hModule, lpProcName);
+
+    return procAddr;
 }
 
 INT (WINAPI* Real_GetAddrInfoW)(PCWSTR pNodeName, PCWSTR pServiceName,
@@ -369,6 +380,7 @@ LONG MsRdpEx_AttachHooks()
     DetourUpdateThread(GetCurrentThread());
     MSRDPEX_DETOUR_ATTACH(Real_LoadLibraryA, Hook_LoadLibraryA);
     MSRDPEX_DETOUR_ATTACH(Real_LoadLibraryW, Hook_LoadLibraryW);
+    //MSRDPEX_DETOUR_ATTACH(Real_GetProcAddress, Hook_GetProcAddress);
     //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
     //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
     MSRDPEX_DETOUR_ATTACH(Real_BitBlt, Hook_BitBlt);
@@ -386,6 +398,7 @@ LONG MsRdpEx_DetachHooks()
     DetourUpdateThread(GetCurrentThread());
     MSRDPEX_DETOUR_DETACH(Real_LoadLibraryA, Hook_LoadLibraryA);
     MSRDPEX_DETOUR_DETACH(Real_LoadLibraryW, Hook_LoadLibraryW);
+    //MSRDPEX_DETOUR_DETACH(Real_GetProcAddress, Hook_GetProcAddress);
     //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
     //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
     MSRDPEX_DETOUR_DETACH(Real_BitBlt, Hook_BitBlt);

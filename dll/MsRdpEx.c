@@ -98,6 +98,24 @@ uint64_t DllGetTscCtlVer()
     return version;
 }
 
+HRESULT DllGetNewActivityId(BSTR* pbstrActivityId)
+{
+    HRESULT hr = E_UNEXPECTED;
+
+    MsRdpEx_LogPrint(DEBUG, "DllGetNewActivityId");
+
+    if (g_IsOOBClient) {
+        if (g_rdclientax.DllGetNewActivityId) {
+            hr = g_rdclientax.DllGetNewActivityId(pbstrActivityId);
+        }
+    }
+    else {
+        // unsupported
+    }
+
+    return hr;
+}
+
 HRESULT DllSetAuthProperties(uint64_t properties)
 {
     HRESULT hr = E_UNEXPECTED;
@@ -235,6 +253,9 @@ static bool g_IsLoaded = false;
 
 void MsRdpEx_Load()
 {
+    if (g_IsLoaded)
+        return;
+
     g_IsClientProcess = MsRdpEx_DetectClientProcess(&g_IsOOBClient);
 
     MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);

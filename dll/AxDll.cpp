@@ -122,6 +122,7 @@ bool CDECL MsRdpEx_rdclientax_Load(MsRdpEx_rdclientax* dll, const char* filename
     dll->DllRegisterServer = (fnDllRegisterServer)GetProcAddress(dll->hModule, "DllRegisterServer");
     dll->DllUnregisterServer = (fnDllUnregisterServer)GetProcAddress(dll->hModule, "DllUnregisterServer");
     dll->DllGetTscCtlVer = (fnDllGetTscCtlVer)GetProcAddress(dll->hModule, "DllGetTscCtlVer");
+    dll->DllGetNewActivityId = (fnDllGetNewActivityId)GetProcAddress(dll->hModule, "DllGetNewActivityId");
     dll->DllSetAuthProperties = (fnDllSetAuthProperties)GetProcAddress(dll->hModule, "DllSetAuthProperties");
     dll->DllGetClaimsToken = (fnDllGetClaimsToken2)GetProcAddress(dll->hModule, "DllGetClaimsToken");
     dll->DllSetClaimsToken = (fnDllSetClaimsToken)GetProcAddress(dll->hModule, "DllSetClaimsToken");
