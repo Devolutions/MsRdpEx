@@ -671,6 +671,22 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "GatewayPassword")) {
                 pMsRdpExtendedSettings->SetGatewayPassword(entry->value);
             }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetUserName")) {
+                VARIANT value;
+                bstr_t propName = _com_util::ConvertStringToBSTR("UserName");
+                bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+                value.bstrVal = propValue;
+                value.vt = VT_BSTR;
+                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+            }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetDomain")) {
+                VARIANT value;
+                bstr_t propName = _com_util::ConvertStringToBSTR("Domain");
+                bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+                value.bstrVal = propValue;
+                value.vt = VT_BSTR;
+                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+            }
         }
 
         MsRdpEx_ArrayListIt_Finish(it);

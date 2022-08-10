@@ -62,7 +62,7 @@ set(MSRDPEX_SOURCES
     RdpSettings.cpp
     TSObjects.cpp
     TSObjects.h
-    MsRdpEx.c
+    MsRdpEx.cpp
     MsRdpEx.h)
 
 add_library(MsRdpEx_Dll SHARED

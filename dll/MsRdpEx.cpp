@@ -8,6 +8,7 @@
 #include <MsRdpEx/Detours.h>
 
 #include <stdarg.h>
+#include <comutil.h>
 
 static HMODULE g_hModule = NULL;
 
@@ -29,8 +30,8 @@ HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* p
     char clsid[MSRDPEX_GUID_STRING_SIZE];
     char iid[MSRDPEX_GUID_STRING_SIZE];
 
-    MsRdpEx_GuidBinToStr((GUID*)rclsid, clsid, 0);
-    MsRdpEx_GuidBinToStr((GUID*)riid, iid, 0);
+    MsRdpEx_GuidBinToStr((GUID*)&rclsid, clsid, 0);
+    MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
     if (g_IsClientProcess) {
         if (g_IsOOBClient) {
@@ -164,7 +165,7 @@ HRESULT DllGetClaimsToken(
     BSTR windowTitle,
     BSTR logonCertAuthority,
     BSTR* resultMsg,
-    BSTR wvdActivityId,
+    BSTR avdActivityId,
     BOOL* isAcquiredSilently,
     BOOL* isRetriableError,
     ...)
@@ -182,6 +183,50 @@ HRESULT DllGetClaimsToken(
             BOOL invalidateCache = va_arg(vl, BOOL);
             BSTR resourceAppId = va_arg(vl, BSTR);
 
+            char* clientAddressA = NULL;
+            char* claimsHintA = NULL;
+            char* userNameHintA = NULL;
+            char* userDomainHintA = NULL;
+            char* windowTitleA = NULL;
+            char* logonCertAuthorityA = NULL;
+            char* avdActivityIdA = NULL;
+            char* claimsTokenA = NULL;
+            char* actualAuthorityA = NULL;
+            char* actualUserNameA = NULL;
+            char* resultMsgA = NULL;
+
+            if (clientAddress)
+                clientAddressA = _com_util::ConvertBSTRToString(clientAddress);
+
+            if (claimsHint)
+                claimsHintA = _com_util::ConvertBSTRToString(claimsHint);
+
+            if (userNameHint)
+                userNameHintA = _com_util::ConvertBSTRToString(userNameHint);
+
+            if (userDomainHint)
+                userDomainHintA = _com_util::ConvertBSTRToString(userDomainHint);
+
+            if (windowTitle)
+                windowTitleA = _com_util::ConvertBSTRToString(windowTitle);
+
+            if (logonCertAuthority)
+                logonCertAuthorityA = _com_util::ConvertBSTRToString(logonCertAuthority);
+
+            if (avdActivityId)
+                avdActivityIdA = _com_util::ConvertBSTRToString(avdActivityId);
+
+            MsRdpEx_LogPrint(DEBUG, "DllGetClaimsToken19");
+            MsRdpEx_LogPrint(DEBUG, "    clientAddress: %s", clientAddressA);
+            MsRdpEx_LogPrint(DEBUG, "    claimsHint: %s", claimsHintA);
+            MsRdpEx_LogPrint(DEBUG, "    userNameHint: %s", userNameHintA);
+            MsRdpEx_LogPrint(DEBUG, "    userDomainHint: %s", userDomainHintA);
+            MsRdpEx_LogPrint(DEBUG, "    uiSilentRetrievalMode: %d", uiSilentRetrievalMode);
+            MsRdpEx_LogPrint(DEBUG, "    allowCredPrompt: %d", allowCredPrompt);
+            MsRdpEx_LogPrint(DEBUG, "    windowTitle: %s", windowTitleA);
+            MsRdpEx_LogPrint(DEBUG, "    logonCertAuthority: %s", logonCertAuthorityA);
+            MsRdpEx_LogPrint(DEBUG, "    avdActivityId: %s", avdActivityIdA);
+
             hr = ((fnDllGetClaimsToken19)g_rdclientax.DllGetClaimsToken)(
                 clientAddress,
                 claimsHint,
@@ -197,11 +242,46 @@ HRESULT DllGetClaimsToken(
                 windowTitle,
                 logonCertAuthority,
                 resultMsg,
-                wvdActivityId,
+                avdActivityId,
                 isAcquiredSilently,
                 isRetriableError,
                 invalidateCache,
                 resourceAppId);
+            
+            if (claimsToken && *claimsToken)
+                claimsTokenA = _com_util::ConvertBSTRToString(*claimsToken);
+
+            if (actualAuthority && *actualAuthority)
+                actualAuthorityA = _com_util::ConvertBSTRToString(*actualAuthority);
+
+            if (actualUserName && *actualUserName)
+                actualUserNameA = _com_util::ConvertBSTRToString(*actualUserName);
+
+            if (resultMsg && *resultMsg)
+                resultMsgA = _com_util::ConvertBSTRToString(*resultMsg);
+
+            BOOL bisAcquiredSilently = isAcquiredSilently ? *isAcquiredSilently : FALSE;
+            BOOL bIsRetriableError = isRetriableError ? *isRetriableError : FALSE;
+            
+            //MsRdpEx_LogPrint(DEBUG, "    claimsToken: %s", claimsTokenA);
+            MsRdpEx_LogPrint(DEBUG, "    actualAuthority: %s", actualAuthorityA);
+            MsRdpEx_LogPrint(DEBUG, "    actualUserName: %s", actualUserNameA);
+            MsRdpEx_LogPrint(DEBUG, "    resultMsg: %s", resultMsgA);
+            MsRdpEx_LogPrint(DEBUG, "    isAcquiredSilently: %d", bisAcquiredSilently);
+            MsRdpEx_LogPrint(DEBUG, "    isRetriableError: %d", bIsRetriableError);
+            MsRdpEx_LogPrint(DEBUG, "    hresult: 0x%08X", hr);
+
+            free(clientAddressA);
+            free(claimsHintA);
+            free(userNameHintA);
+            free(userDomainHintA);
+            free(windowTitleA);
+            free(logonCertAuthorityA);
+            free(avdActivityIdA);
+            free(claimsTokenA);
+            free(actualAuthorityA);
+            free(actualUserNameA);
+            free(resultMsgA);
         }
         else if (version >= 2606) {
             BSTR resourceAppId = va_arg(vl, BSTR);
@@ -221,7 +301,7 @@ HRESULT DllGetClaimsToken(
                 windowTitle,
                 logonCertAuthority,
                 resultMsg,
-                wvdActivityId,
+                avdActivityId,
                 isAcquiredSilently,
                 isRetriableError,
                 resourceAppId);
@@ -242,7 +322,7 @@ HRESULT DllGetClaimsToken(
                 windowTitle,
                 logonCertAuthority,
                 resultMsg,
-                wvdActivityId,
+                avdActivityId,
                 isAcquiredSilently,
                 isRetriableError);
         }
