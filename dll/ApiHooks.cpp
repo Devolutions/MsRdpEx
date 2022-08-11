@@ -6,10 +6,14 @@
 #include <MsRdpEx/Sspi.h>
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/RdpInstance.h>
+#include <MsRdpEx/Environment.h>
 
 #include <MsRdpEx/OutputMirror.h>
 
 #include <MsRdpEx/Detours.h>
+
+#include <wincred.h>
+#include <psapi.h>
 
 HMODULE (WINAPI* Real_LoadLibraryA)(LPCSTR lpLibFileName) = LoadLibraryA;
 HMODULE (WINAPI* Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
@@ -322,7 +326,41 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
     return wndClassAtom;
 }
 
-#include <psapi.h>
+BOOL (WINAPI * Real_CredReadW)(LPCWSTR TargetName, DWORD Type, DWORD Flags, PCREDENTIALW* Credential) = CredReadW;
+
+BOOL Hook_CredReadW(LPCWSTR TargetName, DWORD Type, DWORD Flags, PCREDENTIALW* Credential)
+{
+    BOOL success = FALSE;
+    char* TargetNameA = NULL;
+
+    MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, TargetName, -1, &TargetNameA, 0, NULL, NULL);
+
+    if (TargetName && TargetNameA && !wcsncmp(TargetName, L"TERMSRV/", 8)) {
+        WCHAR* CredTargetNameW = NULL;
+        char* CredTargetNameA = MsRdpEx_GetEnv("MSRDPEX_CRED_TARGET_NAME");
+
+        if (CredTargetNameA && !MsRdpEx_StringEquals(CredTargetNameA, TargetNameA)) {
+            MsRdpEx_ConvertToUnicode(CP_UTF8, 0, CredTargetNameA, -1, &CredTargetNameW, 0);
+
+            success = Real_CredReadW(CredTargetNameW, Type, Flags, Credential);
+
+            MsRdpEx_LogPrint(DEBUG, "CredReadW(OldTargetName=\"%s\")", TargetNameA);
+            MsRdpEx_LogPrint(DEBUG, "CredReadW(NewTargetName=\"%s\", Type=%d, Flags=0x%08X), success: %d", CredTargetNameA, Type, Flags, success);
+        }
+
+        free(CredTargetNameA);
+        free(CredTargetNameW);
+    }
+
+    if (!success) {
+        success = Real_CredReadW(TargetName, Type, Flags, Credential);
+
+        MsRdpEx_LogPrint(DEBUG, "CredReadW(TargetName=\"%s\", Type=%d, Flags=0x%08X), success: %d", TargetNameA, Type, Flags, success);
+    }
+
+    free(TargetNameA);
+    return success;
+}
 
 bool MsRdpEx_IsAddressInModule(PVOID pAddress, LPCTSTR pszModule)
 {
@@ -386,6 +424,7 @@ LONG MsRdpEx_AttachHooks()
     MSRDPEX_DETOUR_ATTACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_ATTACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassExW, Hook_RegisterClassExW);
+    MSRDPEX_DETOUR_ATTACH(Real_CredReadW, Hook_CredReadW);
     MsRdpEx_AttachSspiHooks();
     error = DetourTransactionCommit();
     return error;
@@ -404,6 +443,7 @@ LONG MsRdpEx_DetachHooks()
     MSRDPEX_DETOUR_DETACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_DETACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassExW, Hook_RegisterClassExW);
+    MSRDPEX_DETOUR_DETACH(Real_CredReadW, Hook_CredReadW);
     MsRdpEx_DetachSspiHooks();
     error = DetourTransactionCommit();
     MsRdpEx_GlobalUninit();
