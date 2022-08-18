@@ -29,7 +29,7 @@ namespace MsRdpEx_App
         public MainDlg()
         {
             InitializeComponent();
-            this.cboRdpClient.SelectedIndex = 0;
+            this.cboRdpClient.SelectedIndex = 1;
             this.cboLaunchMode.SelectedIndex = 0;
             LoadEnvironment();
         }
@@ -76,6 +76,135 @@ namespace MsRdpEx_App
             if (!string.IsNullOrEmpty(msrdcAxLibrary))
             {
                 this.msrdcExecutable = Path.Combine(Path.GetDirectoryName(msrdcAxLibrary), "msrdc.exe");
+            }
+        }
+
+        private void ParseRdpFile(string filename, AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp)
+        {
+            IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)rdp.GetOcx();
+            var advancedSettings = rdp.AdvancedSettings9;
+            var transportSettings = rdp.TransportSettings4;
+            var remoteProgram = rdp.RemoteProgram2;
+
+            object corePropsVal = extendedSettings.get_Property("CoreProperties");
+            IMsRdpExtendedSettings coreProps = (IMsRdpExtendedSettings)corePropsVal;
+
+            object basePropsVal = extendedSettings.get_Property("BaseProperties");
+            IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
+
+            string[] lines = File.ReadAllLines(filename);
+
+            foreach (string line in lines)
+            {
+                int sc1 = line.IndexOf(':');
+                int sc2 = (sc1 > 0) ? sc1 + 2 : -1;
+                if ((sc1 > 0) && (sc2 < line.Length) && (line[sc2] == ':'))
+                {
+                    string name = line.Substring(0, sc1);
+                    char type = line[sc1 + 1];
+                    string value = line.Substring(sc2 + 1, line.Length - sc2 - 1);
+
+                    Debug.WriteLine("{0}:{1}:{2}", name, type, value);
+
+                    if (type == 's')
+                    {
+                        switch (name.ToLower())
+                        {
+                            case "full address":
+                                rdp.Server = value;
+                                break;
+
+                            case "alternate full address":
+                                break;
+
+                            case "loadbalanceinfo":
+                                advancedSettings.LoadBalanceInfo = value;
+                                break;
+
+                            case "workspace id":
+                                baseProps.set_Property("WorkspaceID", value);
+                                break;
+
+                            case "gatewayhostname":
+                                transportSettings.GatewayHostname = value;
+                                break;
+
+                            case "remoteapplicationname":
+                                remoteProgram.RemoteApplicationName = value;
+                                break;
+
+                            case "remoteapplicationprogram":
+                                remoteProgram.RemoteApplicationProgram = value;
+                                break;
+
+                            case "remotedesktopname":
+                                coreProps.set_Property("RemoteDesktopName", value);
+                                break;
+
+                            case "wvd endpoint pool":
+                                coreProps.set_Property("HostPoolId", value);
+                                break;
+
+                            case "diagnosticserviceurl":
+                                coreProps.set_Property("RDmiDiagnosticsUrl", value);
+                                break;
+
+                            case "hubdiscoverygeourl":
+                                coreProps.set_Property("RDmiEHDiscoveryUrl", value);
+                                break;
+
+                            case "resourceprovider":
+                                coreProps.set_Property("RDmiResourceProvider", value);
+                                break;
+
+                            case "armpath":
+                                coreProps.set_Property("armPath", value);
+                                break;
+
+                            case "geo":
+                                break;
+                        }
+                    }
+                    else if (type == 'i')
+                    {
+                        uint iValue = uint.Parse(value);
+                        bool bValue = iValue == 0 ? false : true;
+
+                        switch (name.ToLower())
+                        {
+                            case "authentication level":
+                                advancedSettings.AuthenticationLevel = iValue;
+                                break;
+
+                            case "enablecredsspsupport":
+                                advancedSettings.EnableCredSspSupport = bValue;
+                                break;
+
+                            case "promptcredentialonce":
+                                break;
+
+                            case "audiomode":
+                                advancedSettings.AudioRedirectionMode = iValue;
+                                break;
+
+                            case "gatewayusagemethod":
+                                transportSettings.GatewayUsageMethod = iValue;
+                                break;
+
+                            case "gatewayprofileusagemethod":
+                                transportSettings.GatewayProfileUsageMethod = iValue;
+                                break;
+
+                            case "gatewaybrokeringtype":
+                                transportSettings.GatewayBrokeringType = iValue;
+                                break;
+
+                            case "gatewaycredentialssource":
+                                transportSettings.GatewayCredsSource = iValue;
+                                break;
+                        }
+                    }
+                }
             }
         }
 
@@ -179,30 +308,17 @@ namespace MsRdpEx_App
                 object basePropsVal = extendedSettings.get_Property("BaseProperties");
                 IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
 
-                object ShellMarkRdpSecure = true;
-                baseProps.set_Property("ShellMarkRdpSecure", ref ShellMarkRdpSecure);
-
                 object BandwidthAutodetect = false;
                 coreProps.set_Property("BandwidthAutodetect", ref BandwidthAutodetect);
 
                 object DisableUDPTransport = true;
                 coreProps.set_Property("DisableUDPTransport", ref DisableUDPTransport);
 
-                object UsingSavedCreds = false;
-                coreProps.set_Property("UsingSavedCreds", ref UsingSavedCreds);
-
-                object DisableCTRLAltDel = false;
-                coreProps.set_Property("DisableCTRLAltDel", ref DisableCTRLAltDel);
-
                 object EnableCredSspSupport = true;
                 coreProps.set_Property("EnableCredSspSupport", ref EnableCredSspSupport);
-
-                object PromptForCredentials = false;
-                baseProps.set_Property("PromptForCredentials", ref PromptForCredentials);
-
-                object AllowCredentialSaving = false;
-                baseProps.set_Property("AllowCredentialSaving", ref AllowCredentialSaving);
             }
+
+            ParseRdpFile(this.rdpFileName, rdp);
 
             rdp.Connect();
 
