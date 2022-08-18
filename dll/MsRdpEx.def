@@ -15,3 +15,8 @@ EXPORTS
     DllPreCleanUp
     MsRdpEx_CreateInstance
     MsRdpEx_LaunchProcess
+    MsRdpEx_GetClaimsToken
+    MsRdpEx_LogoffClaimsToken
+    MsRdpEx_CancelAuthentication
+    MsRdpEx_DeleteSavedCreds
+    MsRdpEx_PreCleanUp

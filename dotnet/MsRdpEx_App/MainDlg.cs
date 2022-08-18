@@ -77,9 +77,6 @@ namespace MsRdpEx_App
             {
                 this.msrdcExecutable = Path.Combine(Path.GetDirectoryName(msrdcAxLibrary), "msrdc.exe");
             }
-
-            this.msrdcExecutable = "C:\\Users\\mamoreau\\Documents\\Reversing\\MSRDC\\msrdc.exe";
-            this.msrdcAxLibrary = "C:\\Users\\mamoreau\\Documents\\Reversing\\MSRDC\\rdclientax.dll";
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
@@ -95,8 +92,6 @@ namespace MsRdpEx_App
             if (externalMode)
             {
                 string filename = this.mstscExecutable;
-                string rdclientax_dll = null;
-                string mstscax_dll = null;
 
                 if (axName.Equals("msrdc"))
                 {
