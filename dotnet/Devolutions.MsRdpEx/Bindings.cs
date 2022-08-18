@@ -1,4 +1,5 @@
 using System;
+using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -167,8 +168,110 @@ namespace MsRdpEx
             return process;
         }
 
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
         [DllImport("MsRdpEx.dll")]
         public static extern uint MsRdpEx_CreateInstance(ref Guid riid,
             [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
+
+        [DllImport("MsRdpEx.dll")]
+        public static extern uint MsRdpEx_GetClaimsToken(
+            [MarshalAs(UnmanagedType.BStr)] string clientAddress,
+            [MarshalAs(UnmanagedType.BStr)] string claimsHint,
+            [MarshalAs(UnmanagedType.BStr)] string userNameHint,
+            [MarshalAs(UnmanagedType.BStr)] string userDomainHint,
+            uint uiSilentRetrievalMode,
+            [MarshalAs(UnmanagedType.Bool)] bool allowCredPrompt,
+            IntPtr parentWindow,
+            [MarshalAs(UnmanagedType.BStr)] ref string claimsToken,
+            [MarshalAs(UnmanagedType.BStr)] ref string actualAuthority,
+            [MarshalAs(UnmanagedType.BStr)] ref string actualUserName,
+            ref RECT position,
+            [MarshalAs(UnmanagedType.BStr)] string windowTitle,
+            [MarshalAs(UnmanagedType.BStr)] string logonCertAuthority,
+            [MarshalAs(UnmanagedType.BStr)] ref string resultMsg,
+            [MarshalAs(UnmanagedType.BStr)] string avdActivityId,
+            [MarshalAs(UnmanagedType.Bool)] ref bool isAcquiredSilently,
+            [MarshalAs(UnmanagedType.Bool)] ref bool isRetriableError,
+            [MarshalAs(UnmanagedType.Bool)] bool invalidateCache,
+            [MarshalAs(UnmanagedType.BStr)] string resourceAppId);
+
+        [DllImport("MsRdpEx.dll")]
+        public static extern uint MsRdpEx_LogoffClaimsToken(
+            [MarshalAs(UnmanagedType.BStr)] string claimsHint,
+            [MarshalAs(UnmanagedType.BStr)] string clientId,
+            [MarshalAs(UnmanagedType.BStr)] string username);
+
+        [DllImport("MsRdpEx.dll")]
+        public static extern void MsRdpEx_CancelAuthentication();
+
+        [DllImport("MsRdpEx.dll")]
+        public static extern uint MsRdpEx_DeleteSavedCreds(
+            [MarshalAs(UnmanagedType.BStr)] string workspaceId,
+            [MarshalAs(UnmanagedType.BStr)] string username);
+
+        [DllImport("MsRdpEx.dll")]
+        public static extern uint MsRdpEx_PreCleanUp();
+
+        public enum SilentRetrievalMode
+        {
+            None,                     // 0
+            All,                      // 1
+            GetDefaultAccount,        // 2
+            GetTokenFromUsername,     // 3
+            GetTokenFromWebAccount    // 4
+        }
+
+        public static uint GetClaimsToken(
+            string feedAddress,
+            string claimsHint,
+            string userName,
+            string domain,
+            SilentRetrievalMode silentRetrievalMode,
+            bool allowCredPrompt,
+            IntPtr mainWindowHandle,
+            string credentialWindowMessage = "",
+            bool invalidateCache = false,
+            string resourceAppId = "")
+        {
+            uint hr;
+            string claimsToken = "";
+            string actualUserName = "";
+            string actualAuthority = "";
+            RECT position = default(RECT);
+            string resultMsg = "";
+            string avdActivityId = "";
+            bool isAcquiredSilently = false;
+            bool isRetriableError = false;
+
+            hr = MsRdpEx_GetClaimsToken(
+                feedAddress,
+                claimsHint,
+                userName,
+                domain,
+                (uint)silentRetrievalMode,
+                allowCredPrompt,
+                mainWindowHandle,
+                ref claimsToken,
+                ref actualAuthority,
+                ref actualUserName,
+                ref position,
+                credentialWindowMessage,
+                "",
+                ref resultMsg,
+                avdActivityId,
+                ref isAcquiredSilently,
+                ref isRetriableError,
+                invalidateCache,
+                resourceAppId);
+
+            return hr;
+        }
     }
 }
