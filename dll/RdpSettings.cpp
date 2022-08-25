@@ -3,12 +3,14 @@
 
 #include <MsRdpEx/Memory.h>
 #include <MsRdpEx/RdpFile.h>
+#include <MsRdpEx/Environment.h>
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/Detours.h>
 
 #include <intrin.h>
 
 #include "TSObjects.h"
+#include "KdcProxy.h"
 
 extern "C" const GUID IID_ITSPropertySet;
 
@@ -686,6 +688,9 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
                 value.bstrVal = propValue;
                 value.vt = VT_BSTR;
                 pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+            }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "KDCProxyURL")) {
+                MsRdpEx_SetKdcProxyUrl(NULL, entry->value);
             }
         }
 

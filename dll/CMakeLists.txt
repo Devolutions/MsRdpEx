@@ -38,6 +38,8 @@ set(MSRDPEX_SOURCES
     HashTable.c
     Environment.c
     NameResolver.c
+    KdcProxy.h
+    KdcProxy.cpp
     Sspi.cpp
     Stream.cpp
     Detours.cpp

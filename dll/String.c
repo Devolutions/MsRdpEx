@@ -130,6 +130,52 @@ bool MsRdpEx_StringIEquals(const char* str1, const char* str2)
     return _stricmp(str1, str2) == 0;
 }
 
+bool MsRdpEx_StartsWith(const char* str, const char* val)
+{
+    size_t strLen;
+    size_t valLen;
+
+    if (!str || !val)
+        return false;
+
+    strLen = strlen(str);
+    valLen = strlen(val);
+
+    if ((strLen < 1) || (valLen < 1))
+        return false;
+
+    if (valLen > strLen)
+        return false;
+
+    if (!strncmp(str, val, valLen))
+        return true;
+
+    return false;
+}
+
+bool MsRdpEx_IStartsWith(const char* str, const char* val)
+{
+    size_t strLen;
+    size_t valLen;
+
+    if (!str || !val)
+        return false;
+
+    strLen = strlen(str);
+    valLen = strlen(val);
+
+    if ((strLen < 1) || (valLen < 1))
+        return false;
+
+    if (valLen > strLen)
+        return false;
+
+    if (!_strnicmp(str, val, valLen))
+        return true;
+
+    return false;
+}
+
 bool MsRdpEx_StringEndsWith(const char* str, const char* val)
 {
     size_t strLen;

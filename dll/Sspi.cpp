@@ -9,6 +9,8 @@
 
 #include <MsRdpEx/Detours.h>
 
+#include "KdcProxy.h"
+
 static bool g_PcapInitialized = false;
 
 static MsRdpEx_PcapFile* g_PcapFile = NULL;
@@ -258,7 +260,7 @@ static bool sspi_SetKdcProxySettings(PCredHandle phCredential, const char* proxy
 
 	DWORD cchProxyServer = wcslen(pProxyServerW);
 	SecPkgCredentials_KdcProxySettingsW* pKdcProxySettings = NULL;
-	DWORD cbKdcProxySettings = sizeof(SecPkgCredentials_KdcProxySettingsW);
+	DWORD cbKdcProxySettings = (DWORD) sizeof(SecPkgCredentials_KdcProxySettingsW);
 	DWORD cbProxyServer = (cchProxyServer + 1) * sizeof(WCHAR);
 	unsigned long cbBuffer = cbKdcProxySettings + cbProxyServer;
 	uint8_t* pBuffer = (uint8_t*) calloc(1, cbBuffer);
@@ -314,10 +316,15 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 		pszPackageA ? pszPackageA : "",
 		(void*)phCredential->dwLower, (void*) phCredential->dwUpper);
 
-	char* proxyServer = NULL;
+	if (MsRdpEx_StringIEquals(pszPackageA, "CREDSSP") && MsRdpEx_StartsWith(pszPrincipalA, "TERMSRV/")) {
+		char* proxyServer = NULL;
+		char* targetName = &pszPrincipalA[8];
+		
+		proxyServer = MsRdpEx_GetKdcProxyUrl(targetName);
 
-	if (proxyServer && (MsRdpEx_StringIEquals(pszPackageA, "CREDSSP") || MsRdpEx_StringIEquals(pszPackageA, "TSSSP"))) {
-		sspi_SetKdcProxySettings(phCredential, proxyServer);
+		if (proxyServer) {
+			sspi_SetKdcProxySettings(phCredential, proxyServer);
+		}
 	}
 
 	free(pszPrincipalA);
