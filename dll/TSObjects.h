@@ -28,10 +28,17 @@ extern "C" {
 struct tagPROPERTY_ENTRY_EX
 {
     const char* propName;
-    uint8_t propType;
-    uint8_t padding1[23];
-    uint8_t padding2[32];
-    uint64_t padding3;
+    uint32_t propType;
+    uint32_t padding1;
+    void* propValue;
+    void* defaultValue;
+    uint32_t minValue;
+    uint32_t maxValue;
+    uint64_t padding2;
+    void* propValidator; // CTSStringValidator, CTSRangeValidator, CTSNullValidator
+    uint32_t propSize; // only used with SecureString type
+    uint32_t padding3;
+    uint64_t padding4;
 };
 typedef struct tagPROPERTY_ENTRY_EX PROPERTY_ENTRY_EX;
 
