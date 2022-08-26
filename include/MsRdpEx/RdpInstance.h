@@ -11,6 +11,7 @@ struct __declspec(novtable)
     IMsRdpExInstance : public IUnknown
 {
 public:
+    virtual HRESULT __stdcall GetSessionId(GUID* pSessionId) = 0;
     virtual HRESULT __stdcall GetRdpClient(LPVOID* ppvObject) = 0;
     virtual HRESULT __stdcall GetOutputMirrorObject(LPVOID* ppvObject) = 0;
     virtual HRESULT __stdcall SetOutputMirrorObject(LPVOID pvObject) = 0;
@@ -41,6 +42,8 @@ bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance);
 CMsRdpExInstance* MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(HWND hWnd);
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, void* pUserData);
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_FindBySessionId(GUID* sessionId);
 
 MsRdpEx_InstanceManager* MsRdpEx_InstanceManager_Get();
 void MsRdpEx_InstanceManager_Release();

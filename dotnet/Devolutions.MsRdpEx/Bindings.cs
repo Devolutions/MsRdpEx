@@ -93,6 +93,8 @@ namespace MsRdpEx
     [Guid("94CDA65A-EFDF-4453-B8B2-2493A12D31C7")]
     public interface IMsRdpExInstance
     {
+        void GetSessionId(out Guid sessionId);
+
         void GetRdpClient([MarshalAs(UnmanagedType.IUnknown)] out object rdpClient);
 
         void GetOutputMirrorObject(out IntPtr outputMirror);

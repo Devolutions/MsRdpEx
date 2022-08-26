@@ -15,6 +15,11 @@ public:
     {
         m_refCount = 0;
         m_pMsRdpClient = pMsRdpClient;
+        MsRdpEx_GuidGenerate(&m_sessionId);
+
+        char sessionId[MSRDPEX_GUID_STRING_SIZE];
+        MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, sessionId, 0);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExInstance SessionId: %s", sessionId);
     }
 
     ~CMsRdpExInstance()
@@ -79,6 +84,12 @@ public:
 
     // IMsRdpExInstance
 public:
+    HRESULT STDMETHODCALLTYPE GetSessionId(GUID* pSessionId)
+    {
+        MsRdpEx_GuidCopy(pSessionId, &m_sessionId);
+        return S_OK;
+    }
+
     HRESULT STDMETHODCALLTYPE GetRdpClient(LPVOID* ppvObject)
     {
         IUnknown* pMsRdpClient = (IUnknown*)m_pMsRdpClient;
@@ -171,6 +182,7 @@ public:
     }
 
 public:
+    GUID m_sessionId;
     ULONG m_refCount = NULL;
     bool m_outputMirrorEnabled = false;
     bool m_videoRecordingEnabled = false;
@@ -325,6 +337,34 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
     if (found) {
         obj->AttachOutputWindow(hOutputWnd, pUserData);
     }
+
+    return found ? obj : NULL;
+}
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_FindBySessionId(GUID* sessionId)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx)
+        return NULL;
+
+    bool found = false;
+    CMsRdpExInstance* obj = NULL;
+    MsRdpEx_ArrayListIt* it = NULL;
+
+    it = MsRdpEx_ArrayList_It(ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        obj = (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+
+        found = MsRdpEx_GuidIsEqual(&obj->m_sessionId, sessionId);
+
+        if (found)
+            break;
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
 
     return found ? obj : NULL;
 }

@@ -168,12 +168,15 @@ public:
         pUnknown->QueryInterface(IID_IMsRdpClient9, (LPVOID*)&m_pMsRdpClient9);
         pUnknown->QueryInterface(IID_IMsRdpClient10, (LPVOID*)&m_pMsRdpClient10);
 
-        m_pMsRdpExtendedSettings = CMsRdpExtendedSettings_New(pUnknown, (IUnknown*) m_pMsTscAx);
-        ((IMsRdpExtendedSettings*)m_pMsRdpExtendedSettings)->AddRef();
-
         m_pMsRdpExInstance = CMsRdpExInstance_New(this);
-        ((IMsRdpExInstance*)m_pMsRdpExInstance)->AddRef();
+        IMsRdpExInstance* pMsRdpExInstance = (IMsRdpExInstance*)m_pMsRdpExInstance;
+        pMsRdpExInstance->AddRef();
+        pMsRdpExInstance->GetSessionId(&m_sessionId);
         MsRdpEx_InstanceManager_Add(m_pMsRdpExInstance);
+
+        m_pMsRdpExtendedSettings = CMsRdpExtendedSettings_New(pUnknown, (IUnknown*)m_pMsTscAx, &m_sessionId);
+        IMsRdpExtendedSettings* pMsRdpExtendedSettings = (IMsRdpExtendedSettings*)m_pMsRdpExtendedSettings;
+        pMsRdpExtendedSettings->AddRef();
 
         void* pCorePropsRaw = NULL;
         m_pMsRdpExtendedSettings->GetCorePropsRawPtr(&pCorePropsRaw);
@@ -697,6 +700,7 @@ public:
     }
 
 private:
+    GUID m_sessionId;
     ULONG m_refCount;
     IUnknown* m_pUnknown;
     IDispatch* m_pDispatch;

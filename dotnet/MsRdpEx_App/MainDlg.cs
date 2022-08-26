@@ -163,6 +163,10 @@ namespace MsRdpEx_App
 
                             case "geo":
                                 break;
+
+                            case "kdcproxyurl":
+                                extendedSettings.set_Property("KDCProxyURL", value);
+                                break;
                         }
                     }
                     else if (type == 'i')
@@ -279,6 +283,9 @@ namespace MsRdpEx_App
                 RdpInstance rdpInstance = new RdpInstance((IMsRdpExInstance)rdp.GetOcx());
                 rdpInstance.OutputMirrorEnabled = false;
                 rdpInstance.VideoRecordingEnabled = false;
+
+                Guid sessionId = rdpInstance.SessionId;
+                Debug.WriteLine("SessionId: {0}", sessionId);
             }
 
             rdp.Server = this.txtComputer.Text;

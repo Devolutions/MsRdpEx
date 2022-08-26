@@ -316,11 +316,8 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 		pszPackageA ? pszPackageA : "",
 		(void*)phCredential->dwLower, (void*) phCredential->dwUpper);
 
-	if (MsRdpEx_StringIEquals(pszPackageA, "CREDSSP") && MsRdpEx_StartsWith(pszPrincipalA, "TERMSRV/")) {
-		char* proxyServer = NULL;
-		char* targetName = &pszPrincipalA[8];
-		
-		proxyServer = MsRdpEx_GetKdcProxyUrl(targetName);
+	if (MsRdpEx_StringIEquals(pszPackageA, "CREDSSP")) {
+		char* proxyServer = MsRdpEx_GetKdcProxyName();
 
 		if (proxyServer) {
 			sspi_SetKdcProxySettings(phCredential, proxyServer);
