@@ -39,7 +39,9 @@ public:
     HRESULT __stdcall AttachRdpClient(IMsTscAx* pMsTscAx);
     HRESULT __stdcall LoadRdpFile(const char* rdpFileName);
     HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw);
-    HRESULT __stdcall GetSessionId(GUID* pSessionId);
+    HRESULT __stdcall PrepareSspiSessionIdHack();
+    char* __stdcall GetKdcProxyUrl();
+    char* __stdcall GetKdcProxyName();
 
 private:
     GUID m_sessionId;
@@ -59,6 +61,8 @@ extern "C" {
 #endif
 
 CMsRdpExtendedSettings* CMsRdpExtendedSettings_New(IUnknown* pUnknown, IUnknown* pMsTscAx, GUID* pSessionId);
+
+char* MsRdpEx_KdcProxyUrlToName(const char* kdcProxyUrl);
 
 #ifdef __cplusplus
 }

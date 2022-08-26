@@ -28,6 +28,10 @@ public:
             MsRdpEx_OutputMirror_Free(m_OutputMirror);
             m_OutputMirror = NULL;
         }
+
+        if (m_pMsRdpExtendedSettings) {
+            m_pMsRdpExtendedSettings->Release();
+        }
     }
 
     // IUnknown interface
@@ -171,6 +175,13 @@ public:
         return S_OK;
     }
 
+    HRESULT STDMETHODCALLTYPE AttachExtendedSettings(CMsRdpExtendedSettings* pExtendedSettings)
+    {
+        m_pMsRdpExtendedSettings = pExtendedSettings;
+        m_pMsRdpExtendedSettings->AddRef();
+        return S_OK;
+    }
+
     bool STDMETHODCALLTYPE GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint32_t* pWidth, uint32_t* pHeight)
     {
         MsRdpEx_OutputMirror* outputMirror = m_OutputMirror;
@@ -191,6 +202,7 @@ public:
     HWND m_hOutputPresenterWnd = NULL;
     MsRdpEx_OutputMirror* m_OutputMirror = NULL;
     ITSPropertySet* m_pCorePropsRaw = NULL;
+    CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
 };
 
 CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient)
@@ -367,6 +379,21 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_FindBySessionId(GUID* sessionId)
     MsRdpEx_ArrayListIt_Finish(it);
 
     return found ? obj : NULL;
+}
+
+CMsRdpExtendedSettings* MsRdpEx_FindExtendedSettingsBySessionId(GUID* sessionId)
+{
+    CMsRdpExInstance* instance = NULL;
+    CMsRdpExtendedSettings* settings = NULL;
+    
+    instance = MsRdpEx_InstanceManager_FindBySessionId(sessionId);
+
+    if (!instance)
+        return NULL;
+
+    settings = instance->m_pMsRdpExtendedSettings;
+
+    return settings;
 }
 
 MsRdpEx_InstanceManager* MsRdpEx_InstanceManager_New()

@@ -130,7 +130,7 @@ bool MsRdpEx_StringIEquals(const char* str1, const char* str2)
     return _stricmp(str1, str2) == 0;
 }
 
-bool MsRdpEx_StartsWith(const char* str, const char* val)
+bool MsRdpEx_StringStartsWith(const char* str, const char* val)
 {
     size_t strLen;
     size_t valLen;
@@ -153,7 +153,7 @@ bool MsRdpEx_StartsWith(const char* str, const char* val)
     return false;
 }
 
-bool MsRdpEx_IStartsWith(const char* str, const char* val)
+bool MsRdpEx_IStringStartsWith(const char* str, const char* val)
 {
     size_t strLen;
     size_t valLen;

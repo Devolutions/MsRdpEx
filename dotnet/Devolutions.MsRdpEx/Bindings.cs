@@ -119,6 +119,8 @@ namespace MsRdpEx
 
         void AttachOutputWindow(IntPtr hOutputWnd, IntPtr pUserData);
 
+        void AttachExtendedSettings(IntPtr pExtendedSettings);
+
         [MethodImpl(MethodImplOptions.PreserveSig)]
         [return: MarshalAs(UnmanagedType.U1)]
         bool GetShadowBitmap(ref IntPtr phDC, ref IntPtr phBitmap, ref UInt32 pWidth, ref UInt32 pHeight);

@@ -10,7 +10,6 @@
 #include <intrin.h>
 
 #include "TSObjects.h"
-#include "KdcProxy.h"
 
 extern "C" const GUID IID_ITSPropertySet;
 
@@ -733,7 +732,6 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "KDCProxyURL")) {
                 pMsRdpExtendedSettings->SetKdcProxyUrl(entry->value);
-                MsRdpEx_SetKdcProxyUrl(entry->value);
             }
         }
 
@@ -751,9 +749,70 @@ HRESULT CMsRdpExtendedSettings::GetCorePropsRawPtr(LPVOID* ppCorePropsRaw)
     return S_OK;
 }
 
+HRESULT CMsRdpExtendedSettings::PrepareSspiSessionIdHack()
+{
+    HRESULT hr = S_OK;
+    char fakeKdcProxyName[256];
+    char sessionId[MSRDPEX_GUID_STRING_SIZE];
+
+    MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, sessionId, 0);
+    sprintf_s(fakeKdcProxyName, sizeof(fakeKdcProxyName) - 1, "MsRdpEx/%s", sessionId);
+
+    BSTR fakeKdcProxyNameB = _com_util::ConvertStringToBSTR(fakeKdcProxyName);
+    m_CoreProps->SetBStrProperty("KDCProxyName", fakeKdcProxyNameB);
+    SysFreeString(fakeKdcProxyNameB);
+
+    return hr;
+}
+
+char* CMsRdpExtendedSettings::GetKdcProxyUrl()
+{
+    if (m_KdcProxyUrl)
+        return _strdup(m_KdcProxyUrl);
+
+    return NULL;
+}
+
+char* CMsRdpExtendedSettings::GetKdcProxyName()
+{
+    return MsRdpEx_KdcProxyUrlToName(m_KdcProxyUrl);
+}
+
 CMsRdpExtendedSettings* CMsRdpExtendedSettings_New(IUnknown* pUnknown, IUnknown* pMsTscAx, GUID* pSessionId)
 {
     CMsRdpExtendedSettings* settings = new CMsRdpExtendedSettings(pUnknown, pSessionId);
     settings->AttachRdpClient((IMsTscAx*) pMsTscAx);
     return settings;
+}
+
+char* MsRdpEx_KdcProxyUrlToName(const char* kdcProxyUrl)
+{
+    char* path = NULL;
+    const char* host = NULL;
+    char* kdcProxyName = NULL;
+
+    // https://<host>[:<port>][/path]
+    // <host>:[:<port>][:<path>]
+
+    if (!kdcProxyUrl)
+        return NULL;
+
+    host = strstr(kdcProxyUrl, "://");
+
+    if (!host)
+        return NULL;
+
+    host = &host[3];
+
+    kdcProxyName = _strdup(host);
+
+    if (!kdcProxyName)
+        return NULL;
+
+    path = (char*)strchr(kdcProxyName, '/');
+
+    if (path)
+        *path = ':';
+
+    return kdcProxyName;
 }

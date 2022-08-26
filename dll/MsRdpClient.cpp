@@ -177,6 +177,7 @@ public:
         m_pMsRdpExtendedSettings = CMsRdpExtendedSettings_New(pUnknown, (IUnknown*)m_pMsTscAx, &m_sessionId);
         IMsRdpExtendedSettings* pMsRdpExtendedSettings = (IMsRdpExtendedSettings*)m_pMsRdpExtendedSettings;
         pMsRdpExtendedSettings->AddRef();
+        pMsRdpExInstance->AttachExtendedSettings(m_pMsRdpExtendedSettings);
 
         void* pCorePropsRaw = NULL;
         m_pMsRdpExtendedSettings->GetCorePropsRawPtr(&pCorePropsRaw);
@@ -497,6 +498,7 @@ public:
         CMsRdpExtendedSettings* pMsRdpExtendedSettings = m_pMsRdpExtendedSettings;
 
         m_pMsRdpExtendedSettings->LoadRdpFile(NULL);
+        m_pMsRdpExtendedSettings->PrepareSspiSessionIdHack();
 
         return m_pMsTscAx->raw_Connect();
     }

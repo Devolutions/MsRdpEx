@@ -4,12 +4,12 @@
 
 #include <MsRdpEx/Sspi.h>
 #include <MsRdpEx/Environment.h>
+#include <MsRdpEx/RdpSettings.h>
+#include <MsRdpEx/RdpInstance.h>
 
 #include <intrin.h>
 
 #include <MsRdpEx/Detours.h>
-
-#include "KdcProxy.h"
 
 static bool g_PcapInitialized = false;
 
@@ -303,7 +303,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 
 	if (g_SspiDump) {
 		if (pAuthData && MsRdpEx_StringIEquals(pszPackageA, "CREDSSP")) {
-			sspi_DumpCredSspAuthData(pAuthData);
+			//sspi_DumpCredSspAuthData(pAuthData);
 		}
 	}
 
@@ -315,14 +315,6 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 		pszPrincipalA ? pszPrincipalA : "",
 		pszPackageA ? pszPackageA : "",
 		(void*)phCredential->dwLower, (void*) phCredential->dwUpper);
-
-	if (MsRdpEx_StringIEquals(pszPackageA, "CREDSSP")) {
-		char* proxyServer = MsRdpEx_GetKdcProxyName();
-
-		if (proxyServer) {
-			sspi_SetKdcProxySettings(phCredential, proxyServer);
-		}
-	}
 
 	free(pszPrincipalA);
 	free(pszPackageA);
@@ -697,7 +689,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_SetContextAttributesW(PCtxtHandle phContex
 static SECURITY_STATUS SEC_ENTRY sspi_SetCredentialsAttributesW(PCredHandle phCredential,
 	unsigned long ulAttribute, void* pBuffer, unsigned long cbBuffer)
 {
-	SECURITY_STATUS status;
+	SECURITY_STATUS status = S_OK;
 
 	MsRdpEx_LogPrint(DEBUG, "sspi_SetCredentialsAttributesW: ulAttribute: %d cbBuffer: %d phCredential: %p,%p",
 		ulAttribute, cbBuffer, (void*)phCredential->dwLower, (void*)phCredential->dwUpper);
@@ -713,14 +705,35 @@ static SECURITY_STATUS SEC_ENTRY sspi_SetCredentialsAttributesW(PCredHandle phCr
 			MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pProxyServerW, cchProxyServer, &pProxyServerA, 0, NULL, NULL);
 		}
 
-		MsRdpEx_LogPrint(DEBUG, "KdcProxySettings: Version: %d Flags: 0x%08X", pKdcProxySettings->Version, pKdcProxySettings->Flags);
+		if (MsRdpEx_StringStartsWith(pProxyServerA, "MsRdpEx/")) {
+			GUID sessionId;
+			char* guidStr = &pProxyServerA[8];
+			if (MsRdpEx_GuidStrToBin(guidStr, &sessionId, 0)) {
+				CMsRdpExtendedSettings* extendedSettings = MsRdpEx_FindExtendedSettingsBySessionId(&sessionId);
+				if (extendedSettings) {
+					char* kdcProxyName = extendedSettings->GetKdcProxyName();
+					if (kdcProxyName) {
+						sspi_SetKdcProxySettings(phCredential, kdcProxyName);
+						free(kdcProxyName);
+					}
+				}
+			}
+		}
+		else
+		{
+			MsRdpEx_LogPrint(DEBUG, "KdcProxySettings: Version: %d Flags: 0x%08X", pKdcProxySettings->Version, pKdcProxySettings->Flags);
 
-		if (pProxyServerA) {
-			MsRdpEx_LogPrint(DEBUG, "ProxyServer: %s", pProxyServerA);
+			if (pProxyServerA) {
+				MsRdpEx_LogPrint(DEBUG, "ProxyServer: %s", pProxyServerA);
+			}
+
+			status = Real_SetCredentialsAttributesW(phCredential, ulAttribute, pBuffer, cbBuffer);
 		}
 	}
-
-	status = Real_SetCredentialsAttributesW(phCredential, ulAttribute, pBuffer, cbBuffer);
+	else
+	{
+		status = Real_SetCredentialsAttributesW(phCredential, ulAttribute, pBuffer, cbBuffer);
+	}
 
 	return status;
 }
