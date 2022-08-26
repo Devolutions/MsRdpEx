@@ -3,6 +3,7 @@
 
 #include <MsRdpEx/Memory.h>
 #include <MsRdpEx/RdpFile.h>
+#include <MsRdpEx/Environment.h>
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/Detours.h>
 
@@ -329,10 +330,12 @@ private:
     ITSPropertySet* m_pTSPropertySet;
 };
 
-CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown)
+CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown, GUID* pSessionId)
 {
     m_refCount = 0;
     m_pUnknown = pUnknown;
+
+    MsRdpEx_GuidCopy(&m_sessionId, pSessionId);
 
     pUnknown->QueryInterface(IID_IMsRdpExtendedSettings, (LPVOID*)&m_pMsRdpExtendedSettings);
 
@@ -342,6 +345,8 @@ CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown)
 
 CMsRdpExtendedSettings::~CMsRdpExtendedSettings()
 {
+    this->SetKdcProxyUrl(NULL);
+
     if (m_pMsRdpExtendedSettings)
         m_pMsRdpExtendedSettings->Release();
 }
@@ -401,13 +406,34 @@ ULONG STDMETHODCALLTYPE CMsRdpExtendedSettings::Release()
 }
 
 HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VARIANT* pValue) {
+    HRESULT hr = E_INVALIDARG;
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
     MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::put_Property(%s)", propName);
-    return m_pMsRdpExtendedSettings->put_Property(bstrPropertyName, pValue);
+
+    if (MsRdpEx_StringEquals(propName, "KDCProxyURL"))
+    {
+        if (pValue->vt != VT_BSTR)
+            goto end;
+
+        char* propValue = _com_util::ConvertBSTRToString(pValue->bstrVal);
+
+        if (propValue) {
+            hr = this->SetKdcProxyUrl(propValue);
+        }
+
+        free(propValue);
+    }
+    else
+    {
+        hr = m_pMsRdpExtendedSettings->put_Property(bstrPropertyName, pValue);
+    }
+
+end:
+    return hr;
 }
 
 HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VARIANT* pValue) {
-    HRESULT hr = S_OK;
+    HRESULT hr = E_INVALIDARG;
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
     MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::get_Property(%s)", propName);
 
@@ -420,7 +446,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
 
         pValue->vt = VT_UNKNOWN;
         pValue->punkVal = NULL;
-        return m_CoreProps->QueryInterface(IID_IUnknown, (LPVOID*) &pValue->punkVal);
+        hr = m_CoreProps->QueryInterface(IID_IUnknown, (LPVOID*) &pValue->punkVal);
     }
     else if (MsRdpEx_StringEquals(propName, "BaseProperties")) {
         if (!m_BaseProps) {
@@ -429,7 +455,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
 
         pValue->vt = VT_UNKNOWN;
         pValue->punkVal = NULL;
-        return m_BaseProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
+        hr = m_BaseProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
     }
     else if (MsRdpEx_StringEquals(propName, "TransportProperties")) {
         if (!m_TransportProps) {
@@ -438,10 +464,17 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
 
         pValue->vt = VT_UNKNOWN;
         pValue->punkVal = NULL;
-        return m_TransportProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
+        hr = m_TransportProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
     }
-
-    hr = m_pMsRdpExtendedSettings->get_Property(bstrPropertyName, pValue);
+    else if (MsRdpEx_StringEquals(propName, "KDCProxyURL")) {
+        pValue->vt = VT_BSTR;
+        const char* kdcProxyUrl = m_KdcProxyUrl ? m_KdcProxyUrl : "";
+        pValue->bstrVal = _com_util::ConvertStringToBSTR(kdcProxyUrl);
+        hr = S_OK;
+    }
+    else {
+        hr = m_pMsRdpExtendedSettings->get_Property(bstrPropertyName, pValue);
+    }
 
     return hr;
 }
@@ -505,6 +538,16 @@ HRESULT __stdcall CMsRdpExtendedSettings::SetGatewayPassword(const char* passwor
     bstr_t propValue = _com_util::ConvertStringToBSTR(password);
     m_TransportProps->SetSecureStringProperty("GatewayPassword", propValue);
 
+    return S_OK;
+}
+
+HRESULT __stdcall CMsRdpExtendedSettings::SetKdcProxyUrl(const char* kdcProxyUrl) {
+    free(m_KdcProxyUrl);
+    m_KdcProxyUrl = NULL;
+
+    if (kdcProxyUrl) {
+        m_KdcProxyUrl = _strdup(kdcProxyUrl);
+    }
     return S_OK;
 }
 
@@ -687,6 +730,9 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
                 value.vt = VT_BSTR;
                 pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
             }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "KDCProxyURL")) {
+                pMsRdpExtendedSettings->SetKdcProxyUrl(entry->value);
+            }
         }
 
         MsRdpEx_ArrayListIt_Finish(it);
@@ -703,9 +749,70 @@ HRESULT CMsRdpExtendedSettings::GetCorePropsRawPtr(LPVOID* ppCorePropsRaw)
     return S_OK;
 }
 
-CMsRdpExtendedSettings* CMsRdpExtendedSettings_New(IUnknown* pUnknown, IUnknown* pMsTscAx)
+HRESULT CMsRdpExtendedSettings::PrepareSspiSessionIdHack()
 {
-    CMsRdpExtendedSettings* settings = new CMsRdpExtendedSettings(pUnknown);
+    HRESULT hr = S_OK;
+    char fakeKdcProxyName[256];
+    char sessionId[MSRDPEX_GUID_STRING_SIZE];
+
+    MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, sessionId, 0);
+    sprintf_s(fakeKdcProxyName, sizeof(fakeKdcProxyName) - 1, "MsRdpEx/%s", sessionId);
+
+    BSTR fakeKdcProxyNameB = _com_util::ConvertStringToBSTR(fakeKdcProxyName);
+    m_CoreProps->SetBStrProperty("KDCProxyName", fakeKdcProxyNameB);
+    SysFreeString(fakeKdcProxyNameB);
+
+    return hr;
+}
+
+char* CMsRdpExtendedSettings::GetKdcProxyUrl()
+{
+    if (m_KdcProxyUrl)
+        return _strdup(m_KdcProxyUrl);
+
+    return NULL;
+}
+
+char* CMsRdpExtendedSettings::GetKdcProxyName()
+{
+    return MsRdpEx_KdcProxyUrlToName(m_KdcProxyUrl);
+}
+
+CMsRdpExtendedSettings* CMsRdpExtendedSettings_New(IUnknown* pUnknown, IUnknown* pMsTscAx, GUID* pSessionId)
+{
+    CMsRdpExtendedSettings* settings = new CMsRdpExtendedSettings(pUnknown, pSessionId);
     settings->AttachRdpClient((IMsTscAx*) pMsTscAx);
     return settings;
+}
+
+char* MsRdpEx_KdcProxyUrlToName(const char* kdcProxyUrl)
+{
+    char* path = NULL;
+    const char* host = NULL;
+    char* kdcProxyName = NULL;
+
+    // https://<host>[:<port>][/path]
+    // <host>:[:<port>][:<path>]
+
+    if (!kdcProxyUrl)
+        return NULL;
+
+    host = strstr(kdcProxyUrl, "://");
+
+    if (!host)
+        return NULL;
+
+    host = &host[3];
+
+    kdcProxyName = _strdup(host);
+
+    if (!kdcProxyName)
+        return NULL;
+
+    path = (char*)strchr(kdcProxyName, '/');
+
+    if (path)
+        *path = ':';
+
+    return kdcProxyName;
 }

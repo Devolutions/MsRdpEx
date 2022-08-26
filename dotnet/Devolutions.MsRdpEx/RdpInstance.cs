@@ -10,6 +10,11 @@ namespace MsRdpEx
             this.iface = iface;
         }
 
+        public Guid SessionId
+        {
+            get { Guid val; iface.GetSessionId(out val); return val; }
+        }
+
         public bool OutputMirrorEnabled {
             get { bool val; iface.GetOutputMirrorEnabled(out val); return val; }
             set { iface.SetOutputMirrorEnabled(value); }

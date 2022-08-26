@@ -15,6 +15,11 @@ public:
     {
         m_refCount = 0;
         m_pMsRdpClient = pMsRdpClient;
+        MsRdpEx_GuidGenerate(&m_sessionId);
+
+        char sessionId[MSRDPEX_GUID_STRING_SIZE];
+        MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, sessionId, 0);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpExInstance SessionId: %s", sessionId);
     }
 
     ~CMsRdpExInstance()
@@ -22,6 +27,10 @@ public:
         if (m_OutputMirror) {
             MsRdpEx_OutputMirror_Free(m_OutputMirror);
             m_OutputMirror = NULL;
+        }
+
+        if (m_pMsRdpExtendedSettings) {
+            m_pMsRdpExtendedSettings->Release();
         }
     }
 
@@ -79,6 +88,12 @@ public:
 
     // IMsRdpExInstance
 public:
+    HRESULT STDMETHODCALLTYPE GetSessionId(GUID* pSessionId)
+    {
+        MsRdpEx_GuidCopy(pSessionId, &m_sessionId);
+        return S_OK;
+    }
+
     HRESULT STDMETHODCALLTYPE GetRdpClient(LPVOID* ppvObject)
     {
         IUnknown* pMsRdpClient = (IUnknown*)m_pMsRdpClient;
@@ -160,6 +175,13 @@ public:
         return S_OK;
     }
 
+    HRESULT STDMETHODCALLTYPE AttachExtendedSettings(CMsRdpExtendedSettings* pExtendedSettings)
+    {
+        m_pMsRdpExtendedSettings = pExtendedSettings;
+        m_pMsRdpExtendedSettings->AddRef();
+        return S_OK;
+    }
+
     bool STDMETHODCALLTYPE GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint32_t* pWidth, uint32_t* pHeight)
     {
         MsRdpEx_OutputMirror* outputMirror = m_OutputMirror;
@@ -171,6 +193,7 @@ public:
     }
 
 public:
+    GUID m_sessionId;
     ULONG m_refCount = NULL;
     bool m_outputMirrorEnabled = false;
     bool m_videoRecordingEnabled = false;
@@ -179,6 +202,7 @@ public:
     HWND m_hOutputPresenterWnd = NULL;
     MsRdpEx_OutputMirror* m_OutputMirror = NULL;
     ITSPropertySet* m_pCorePropsRaw = NULL;
+    CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
 };
 
 CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient)
@@ -327,6 +351,49 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
     }
 
     return found ? obj : NULL;
+}
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_FindBySessionId(GUID* sessionId)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx)
+        return NULL;
+
+    bool found = false;
+    CMsRdpExInstance* obj = NULL;
+    MsRdpEx_ArrayListIt* it = NULL;
+
+    it = MsRdpEx_ArrayList_It(ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        obj = (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+
+        found = MsRdpEx_GuidIsEqual(&obj->m_sessionId, sessionId);
+
+        if (found)
+            break;
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+
+    return found ? obj : NULL;
+}
+
+CMsRdpExtendedSettings* MsRdpEx_FindExtendedSettingsBySessionId(GUID* sessionId)
+{
+    CMsRdpExInstance* instance = NULL;
+    CMsRdpExtendedSettings* settings = NULL;
+    
+    instance = MsRdpEx_InstanceManager_FindBySessionId(sessionId);
+
+    if (!instance)
+        return NULL;
+
+    settings = instance->m_pMsRdpExtendedSettings;
+
+    return settings;
 }
 
 MsRdpEx_InstanceManager* MsRdpEx_InstanceManager_New()

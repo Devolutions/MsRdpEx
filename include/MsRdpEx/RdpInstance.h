@@ -2,7 +2,7 @@
 #define MSRDPEX_INSTANCE_H
 
 #include <MsRdpEx/MsRdpEx.h>
-
+#include <MsRdpEx/RdpSettings.h>
 #include <MsRdpEx/OutputMirror.h>
 
 #include <comdef.h>
@@ -11,6 +11,7 @@ struct __declspec(novtable)
     IMsRdpExInstance : public IUnknown
 {
 public:
+    virtual HRESULT __stdcall GetSessionId(GUID* pSessionId) = 0;
     virtual HRESULT __stdcall GetRdpClient(LPVOID* ppvObject) = 0;
     virtual HRESULT __stdcall GetOutputMirrorObject(LPVOID* ppvObject) = 0;
     virtual HRESULT __stdcall SetOutputMirrorObject(LPVOID pvObject) = 0;
@@ -23,6 +24,7 @@ public:
     virtual HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw) = 0;
     virtual HRESULT __stdcall SetCorePropsRawPtr(LPVOID pCorePropsRaw) = 0;
     virtual HRESULT __stdcall AttachOutputWindow(HWND hOutputWnd, void* pUserData) = 0;
+    virtual HRESULT __stdcall AttachExtendedSettings(CMsRdpExtendedSettings* pExtendedSettings) = 0;
     virtual bool __stdcall GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint32_t* pWidth, uint32_t* pHeight) = 0;
 };
 
@@ -41,6 +43,10 @@ bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance);
 CMsRdpExInstance* MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(HWND hWnd);
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, void* pUserData);
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_FindBySessionId(GUID* sessionId);
+
+CMsRdpExtendedSettings* MsRdpEx_FindExtendedSettingsBySessionId(GUID* sessionId);
 
 MsRdpEx_InstanceManager* MsRdpEx_InstanceManager_Get();
 void MsRdpEx_InstanceManager_Release();
