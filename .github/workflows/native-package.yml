@@ -15,7 +15,7 @@ jobs:
           Install-Module -Name VsDevShell -Force
 
       - name: Check out ${{ github.repository }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Build Detours (${{matrix.arch}})
         shell: pwsh
@@ -36,7 +36,7 @@ jobs:
           Copy-Item "$BuildDir/Release/MsRdpEx.exe" "dependencies/MsRdpEx/$ArchDir"
 
       - name: Upload MsRdpEx (${{matrix.arch}})
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: MsRdpEx-${{matrix.arch}}
           path: dependencies/MsRdpEx/${{matrix.arch}}
