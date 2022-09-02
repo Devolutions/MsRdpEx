@@ -122,7 +122,7 @@ jobs:
 
   publish:
     name: Publish NuGet package
-    runs-on: ubuntu-20.04
+    runs-on: windows-2022
     environment: nuget-publish
     if: needs.preflight.outputs.dry-run == 'false'
     needs:
@@ -150,7 +150,7 @@ jobs:
               'push', 
               "$File",
               '--api-key',
-              "${{ secrets.NUGET_API_KEY }}",
+              '${{ secrets.NUGET_API_KEY }}',
               '--source',
               'https://api.nuget.org/v3/index.json',
               '--skip-duplicate'
