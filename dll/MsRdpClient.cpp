@@ -203,6 +203,7 @@ public:
         if (m_pMsRdpExtendedSettings) {
             IMsRdpExtendedSettings* pMsRdpExtendedSettings = (IMsRdpExtendedSettings*) m_pMsRdpExtendedSettings;
             pMsRdpExtendedSettings->Release();
+            pMsRdpExtendedSettings = NULL;
         }
         
         if (m_pMsRdpExInstance) {
@@ -496,15 +497,25 @@ public:
         MsRdpEx_LogPrint(DEBUG, "CMsRdpClient::Connect");
 
         CMsRdpExtendedSettings* pMsRdpExtendedSettings = m_pMsRdpExtendedSettings;
-
         m_pMsRdpExtendedSettings->LoadRdpFile(NULL);
         m_pMsRdpExtendedSettings->PrepareSspiSessionIdHack();
 
-        return m_pMsTscAx->raw_Connect();
+        hr = m_pMsTscAx->raw_Connect();
+
+        return hr;
     }
 
     HRESULT __stdcall raw_Disconnect() {
-        return m_pMsTscAx->raw_Disconnect();
+        HRESULT hr;
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpClient::Disconnect");
+
+        hr = m_pMsTscAx->raw_Disconnect();
+
+        // Disconnect invalidates internal TSPropertySet pointers
+        CMsRdpExtendedSettings* pMsRdpExtendedSettings = m_pMsRdpExtendedSettings;
+        pMsRdpExtendedSettings->AttachRdpClient((IMsTscAx*)m_pMsTscAx);
+
+        return hr;
     }
 
     HRESULT __stdcall raw_CreateVirtualChannels(BSTR newVal) {
@@ -703,22 +714,22 @@ public:
 
 private:
     GUID m_sessionId;
-    ULONG m_refCount;
-    IUnknown* m_pUnknown;
-    IDispatch* m_pDispatch;
-    IMsTscAx* m_pMsTscAx;
-    IMsRdpClient* m_pMsRdpClient;
-    IMsRdpClient2* m_pMsRdpClient2;
-    IMsRdpClient3* m_pMsRdpClient3;
-    IMsRdpClient4* m_pMsRdpClient4;
-    IMsRdpClient5* m_pMsRdpClient5;
-    IMsRdpClient6* m_pMsRdpClient6;
-    IMsRdpClient7* m_pMsRdpClient7;
-    IMsRdpClient8* m_pMsRdpClient8;
-    IMsRdpClient9* m_pMsRdpClient9;
-    IMsRdpClient10* m_pMsRdpClient10;
-    CMsRdpExInstance* m_pMsRdpExInstance;
-    CMsRdpExtendedSettings* m_pMsRdpExtendedSettings;
+    ULONG m_refCount = 0;
+    IUnknown* m_pUnknown = NULL;
+    IDispatch* m_pDispatch = NULL;
+    IMsTscAx* m_pMsTscAx = NULL;
+    IMsRdpClient* m_pMsRdpClient = NULL;
+    IMsRdpClient2* m_pMsRdpClient2 = NULL;
+    IMsRdpClient3* m_pMsRdpClient3 = NULL;
+    IMsRdpClient4* m_pMsRdpClient4 = NULL;
+    IMsRdpClient5* m_pMsRdpClient5 = NULL;
+    IMsRdpClient6* m_pMsRdpClient6 = NULL;
+    IMsRdpClient7* m_pMsRdpClient7 = NULL;
+    IMsRdpClient8* m_pMsRdpClient8 = NULL;
+    IMsRdpClient9* m_pMsRdpClient9 = NULL;
+    IMsRdpClient10* m_pMsRdpClient10 = NULL;
+    CMsRdpExInstance* m_pMsRdpExInstance = NULL;
+    CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
 };
 
 class CClassFactory : IClassFactory

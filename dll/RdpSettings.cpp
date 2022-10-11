@@ -170,7 +170,10 @@ public:
     ~CMsRdpPropertySet()
     {
         m_pUnknown->Release();
-        if (m_pTSPropertySet) m_pTSPropertySet->vtbl->Release(m_pTSPropertySet);
+        if (m_pTSPropertySet) {
+            m_pTSPropertySet->vtbl->Release(m_pTSPropertySet);
+            m_pTSPropertySet = NULL;
+        }
     }
 
     // IUnknown interface
