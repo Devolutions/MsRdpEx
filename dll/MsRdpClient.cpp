@@ -511,10 +511,6 @@ public:
 
         hr = m_pMsTscAx->raw_Disconnect();
 
-        // Disconnect invalidates internal TSPropertySet pointers
-        CMsRdpExtendedSettings* pMsRdpExtendedSettings = m_pMsRdpExtendedSettings;
-        pMsRdpExtendedSettings->AttachRdpClient((IMsTscAx*)m_pMsTscAx);
-
         return hr;
     }
 

@@ -29,6 +29,8 @@ namespace MsRdpEx_App
         private bool enableCapture = true;
         private Timer captureTimer = null;
 
+        private bool closeOnDisconnect = true;
+
         private int disconnectReason = 0;
 
         public int DisconnectReason { get => disconnectReason; }
@@ -52,6 +54,74 @@ namespace MsRdpEx_App
                 captureTimer.Interval = (1000); // 1 second
                 captureTimer.Tick += new EventHandler(CaptureTimer_Tick);
                 captureTimer.Start();
+            }
+        }
+
+        private const int WM_SYSCOMMAND = 0x112;
+        private const int MF_STRING = 0x00000000;
+        private const int MF_SEPARATOR = 0x00000800;
+        private const int MF_CHECKED = 0x00000008;
+        private const int MF_UNCHECKED = 0x00000000;
+        private const int MF_ENABLED = 0x00000000;
+        private const int MF_DISABLED = 0x00000002;
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetSystemMenu(IntPtr hWnd, bool bRevert);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool AppendMenu(IntPtr hMenu, int uFlags, int uIDNewItem, string lpNewItem);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool InsertMenu(IntPtr hMenu, int uPosition, int uFlags, int uIDNewItem, string lpNewItem);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool CheckMenuItem(IntPtr hMenu, int uIDCheckItem, int uFlags);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool EnableMenuItem(IntPtr hMenu, int uIDEnableItem, int uFlags);
+
+        private const int SYSMENU_RDP_CONNECT_ID = 0x1;
+        private const int SYSMENU_RDP_DISCONNECT_ID = 0x2;
+        private const int SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID = 0x3;
+
+        private IntPtr hSysMenu = IntPtr.Zero;
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+
+            this.hSysMenu = GetSystemMenu(this.Handle, false);
+            AppendMenu(this.hSysMenu, MF_SEPARATOR, 0, string.Empty);
+            AppendMenu(this.hSysMenu, MF_STRING, SYSMENU_RDP_CONNECT_ID, "Connect");
+            AppendMenu(this.hSysMenu, MF_STRING, SYSMENU_RDP_DISCONNECT_ID, "Disconnect");
+            AppendMenu(this.hSysMenu, MF_STRING | MF_CHECKED, SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID, "Close on Disconnect");
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+
+            if (m.Msg == WM_SYSCOMMAND)
+            {
+                switch ((int)m.WParam)
+                {
+                    case SYSMENU_RDP_CONNECT_ID:
+                        this.rdpClient.Connect();
+                        EnableMenuItem(this.hSysMenu, SYSMENU_RDP_CONNECT_ID, MF_DISABLED);
+                        EnableMenuItem(this.hSysMenu, SYSMENU_RDP_DISCONNECT_ID, MF_ENABLED);
+                        break;
+
+                    case SYSMENU_RDP_DISCONNECT_ID:
+                        this.rdpClient.Disconnect();
+                        EnableMenuItem(this.hSysMenu, SYSMENU_RDP_CONNECT_ID, MF_ENABLED);
+                        EnableMenuItem(this.hSysMenu, SYSMENU_RDP_DISCONNECT_ID, MF_DISABLED);
+                        break;
+
+                    case SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID:
+                        this.closeOnDisconnect = this.closeOnDisconnect ? false : true;
+                        CheckMenuItem(this.hSysMenu, SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID, this.closeOnDisconnect ? MF_CHECKED : MF_UNCHECKED);
+                        break;
+                }
             }
         }
 
@@ -199,7 +269,10 @@ namespace MsRdpEx_App
                 MessageBox.Show(text);
             }
 
-            this.Close();
+            if (this.closeOnDisconnect)
+            {
+                this.Close();
+            }
         }
 
         protected void OnEnterFullScreenMode(object sender, EventArgs e)
