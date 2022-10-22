@@ -450,6 +450,10 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         pValue->vt = VT_UNKNOWN;
         pValue->punkVal = NULL;
         hr = m_CoreProps->QueryInterface(IID_IUnknown, (LPVOID*) &pValue->punkVal);
+
+        if (pValue->punkVal) {
+            pValue->punkVal->AddRef();
+        }
     }
     else if (MsRdpEx_StringEquals(propName, "BaseProperties")) {
         if (!m_BaseProps) {
@@ -459,6 +463,10 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         pValue->vt = VT_UNKNOWN;
         pValue->punkVal = NULL;
         hr = m_BaseProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
+
+        if (pValue->punkVal) {
+            pValue->punkVal->AddRef();
+        }
     }
     else if (MsRdpEx_StringEquals(propName, "TransportProperties")) {
         if (!m_TransportProps) {
@@ -468,6 +476,10 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         pValue->vt = VT_UNKNOWN;
         pValue->punkVal = NULL;
         hr = m_TransportProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
+
+        if (pValue->punkVal) {
+            pValue->punkVal->AddRef();
+        }
     }
     else if (MsRdpEx_StringEquals(propName, "KDCProxyURL")) {
         pValue->vt = VT_BSTR;
