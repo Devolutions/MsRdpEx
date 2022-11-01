@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Diagnostics;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
 
 using MSTSCLib;
 
@@ -29,7 +30,7 @@ namespace MsRdpEx_App
         public MainDlg()
         {
             InitializeComponent();
-            this.cboRdpClient.SelectedIndex = 1;
+            this.cboRdpClient.SelectedIndex = 0;
             this.cboLaunchMode.SelectedIndex = 0;
             LoadEnvironment();
         }
@@ -77,6 +78,118 @@ namespace MsRdpEx_App
             {
                 this.msrdcExecutable = Path.Combine(Path.GetDirectoryName(msrdcAxLibrary), "msrdc.exe");
             }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct CryptProtectPromptStruct
+        {
+            public int Size;
+            public int Flags;
+            public IntPtr Window;
+            public string Message;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct DataBlob
+        {
+            public int Size;
+            public IntPtr Data;
+        }
+
+        public const int CRYPTPROTECT_LOCAL_MACHINE = 0x00000004;
+        public const int CRYPTPROTECT_UI_FORBIDDEN = 0x00000001;
+        public const int CRYPTPROTECT_AUDIT = 0x00000010;
+
+        [DllImport("crypt32.dll", CharSet = CharSet.Unicode)]
+        public static extern bool CryptProtectData(
+            ref DataBlob dataIn,
+            IntPtr description,
+            IntPtr optionalEntropy,
+            IntPtr reserved,
+            IntPtr promptStruct,
+            int flags,
+            out DataBlob dataOut);
+
+        [DllImport("crypt32.dll", CharSet = CharSet.Unicode)]
+        public static extern bool CryptUnprotectData(
+            ref DataBlob dataIn,
+            IntPtr description,
+            IntPtr optionalEntropy,
+            IntPtr reserved,
+            IntPtr promptStruct,
+            int flags,
+            out DataBlob dataOut);
+
+        public static byte[] TsCryptEncryptString(string inputString)
+        {
+            DataBlob inputBlob;
+            DataBlob outputBlob;
+            byte[] outputData = null;
+
+            byte[] stringBytes = Encoding.Unicode.GetBytes(inputString);
+            byte[] inputData = new byte[stringBytes.Length + 2];
+            Buffer.BlockCopy(stringBytes, 0, inputData, 0, stringBytes.Length);
+
+            inputBlob.Size = inputData.Length;
+            inputBlob.Data = Marshal.AllocHGlobal(inputData.Length);
+            Marshal.Copy(inputData, 0, inputBlob.Data, inputBlob.Size);
+
+            if (CryptProtectData(ref inputBlob, IntPtr.Zero, IntPtr.Zero,
+                IntPtr.Zero, IntPtr.Zero, CRYPTPROTECT_UI_FORBIDDEN, out outputBlob))
+            {
+                outputData = new byte[outputBlob.Size];
+                Marshal.Copy(outputBlob.Data, outputData, 0, outputBlob.Size);
+            }
+
+            Marshal.FreeHGlobal(inputBlob.Data);
+            Marshal.FreeHGlobal(outputBlob.Data);
+
+            return outputData;
+        }
+
+        public static string TsCryptDecryptString(byte[] inputBytes)
+        {
+            DataBlob inputBlob;
+            DataBlob outputBlob;
+            byte[] outputData = null;
+
+            inputBlob.Size = inputBytes.Length;
+            inputBlob.Data = Marshal.AllocHGlobal(inputBytes.Length);
+            Marshal.Copy(inputBytes, 0, inputBlob.Data, inputBlob.Size);
+
+            if (CryptUnprotectData(ref inputBlob, IntPtr.Zero, IntPtr.Zero,
+                IntPtr.Zero, IntPtr.Zero, CRYPTPROTECT_UI_FORBIDDEN, out outputBlob))
+            {
+                outputData = new byte[outputBlob.Size];
+                Marshal.Copy(outputBlob.Data, outputData, 0, outputBlob.Size);
+            }
+
+            Marshal.FreeHGlobal(inputBlob.Data);
+            Marshal.FreeHGlobal(outputBlob.Data);
+
+            if (outputData != null)
+            {
+                return Encoding.Unicode.GetString(outputData).TrimEnd((Char)0);
+            }
+
+            return null;
+        }
+
+        public static string EncryptAuthCookieString(string cookieString)
+        {
+            byte[] cookieBytes = TsCryptEncryptString(cookieString);
+
+            if (cookieBytes != null)
+            {
+                return Convert.ToBase64String(cookieBytes);
+            }
+
+            return null;
+        }
+
+        public static string DecryptAuthCookieString(string cookieString)
+        {
+            return TsCryptDecryptString(Convert.FromBase64String(cookieString));
         }
 
         private void ParseRdpFile(string filename, AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp)
@@ -167,6 +280,14 @@ namespace MsRdpEx_App
                             case "kdcproxyurl":
                                 extendedSettings.set_Property("KDCProxyURL", value);
                                 break;
+
+                            case "gatewayaccesstoken":
+                                {
+                                    string encryptedAuthCookie = EncryptAuthCookieString(value);
+                                    transportSettings.GatewayEncryptedAuthCookie = encryptedAuthCookie; // "Cookie based authentication"
+                                    transportSettings.GatewayEncryptedAuthCookieSize = (uint)encryptedAuthCookie.Length;
+                                }
+                                break;
                         }
                     }
                     else if (type == 'i')
@@ -210,6 +331,17 @@ namespace MsRdpEx_App
                     }
                 }
             }
+
+            /*
+            transportSettings.GatewaySupportUrl = ""; // "Support URL"
+            transportSettings.GatewayEncryptedOtpCookie = null; // "Encrypted OTP Cookie"
+            transportSettings.GatewayEncryptedOtpCookieSize = 0;
+            transportSettings.GatewayAuthCookieServerAddr = ""; // "Cookie based authentication server address"
+            transportSettings.GatewayAuthLoginPage = ""; // "Login web page address"
+            extendedSettings.set_Property("GatewayCertificateLogonAuthority", ""); // "GatewayCertificateLogonAuthority"
+            transportSettings.GatewayPreAuthServerAddr = ""; // "Pre-authentication server address"
+            transportSettings.GatewayPreAuthRequirement = 0;
+            */
         }
 
         private void btnConnect_Click(object sender, EventArgs e)

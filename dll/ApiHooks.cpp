@@ -362,6 +362,72 @@ BOOL Hook_CredReadW(LPCWSTR TargetName, DWORD Type, DWORD Flags, PCREDENTIALW* C
     return success;
 }
 
+#include <dpapi.h>
+#pragma comment(lib, "crypt32.lib")
+
+BOOL(WINAPI* Real_CryptProtectMemory)(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags) = CryptProtectMemory;
+BOOL(WINAPI* Real_CryptUnprotectMemory)(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags) = CryptUnprotectMemory;
+
+BOOL Hook_CryptProtectMemory(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags)
+{
+    BOOL success;
+
+    MsRdpEx_LogPrint(DEBUG, "CryptProtectMemory(cbDataIn=%d, dwFlags=%d)", cbDataIn, dwFlags);
+
+    success = Real_CryptProtectMemory(pDataIn, cbDataIn, dwFlags);
+
+    return success;
+}
+
+BOOL Hook_CryptUnprotectMemory(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags)
+{
+    BOOL success;
+
+    MsRdpEx_LogPrint(DEBUG, "CryptUnprotectMemory(cbDataIn=%d, dwFlags=%d)", cbDataIn, dwFlags);
+
+    success = Real_CryptUnprotectMemory(pDataIn, cbDataIn, dwFlags);
+
+    return success;
+}
+
+BOOL(WINAPI* Real_CryptProtectData)(DATA_BLOB* pDataIn, LPCWSTR szDataDescr, DATA_BLOB* pOptionalEntropy,
+    PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT* pPromptStruct, DWORD dwFlags, DATA_BLOB* pDataOut) = CryptProtectData;
+
+BOOL(WINAPI* Real_CryptUnprotectData)(DATA_BLOB* pDataIn, LPWSTR* ppszDataDescr, DATA_BLOB* pOptionalEntropy,
+    PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT* pPromptStruct, DWORD dwFlags, DATA_BLOB* pDataOut) = CryptUnprotectData;
+
+BOOL Hook_CryptProtectData(DATA_BLOB* pDataIn, LPCWSTR szDataDescr, DATA_BLOB* pOptionalEntropy,
+    PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT* pPromptStruct, DWORD dwFlags, DATA_BLOB* pDataOut)
+{
+    BOOL success;
+
+    MsRdpEx_LogPrint(DEBUG, "CryptProtectData(pDataIn->cbData=%d, dwFlags=%d):", pDataIn->cbData, dwFlags);
+    MsRdpEx_LogDump(TRACE, (uint8_t*)pDataIn->pbData, (size_t)pDataIn->cbData);
+
+    success = Real_CryptProtectData(pDataIn, szDataDescr, pOptionalEntropy, pvReserved, pPromptStruct, dwFlags, pDataOut);
+
+    MsRdpEx_LogPrint(DEBUG, "CryptProtectData(pDataOut->cbData=%d):", pDataOut->cbData);
+    MsRdpEx_LogDump(TRACE, (uint8_t*)pDataOut->pbData, (size_t)pDataOut->cbData);
+
+    return success;
+}
+
+BOOL Hook_CryptUnprotectData(DATA_BLOB* pDataIn, LPWSTR* ppszDataDescr, DATA_BLOB* pOptionalEntropy,
+    PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT* pPromptStruct, DWORD dwFlags, DATA_BLOB* pDataOut)
+{
+    BOOL success;
+
+    MsRdpEx_LogPrint(DEBUG, "CryptUnprotectData(pDataIn->cbData=%d, dwFlags=%d):", pDataIn->cbData, dwFlags);
+    MsRdpEx_LogDump(TRACE, (uint8_t*)pDataIn->pbData, (size_t)pDataIn->cbData);
+
+    success = Real_CryptUnprotectData(pDataIn, ppszDataDescr, pOptionalEntropy, pvReserved, pPromptStruct, dwFlags, pDataOut);
+
+    MsRdpEx_LogPrint(DEBUG, "CryptUnprotectData(pDataOut->cbData=%d):", pDataOut->cbData);
+    MsRdpEx_LogDump(TRACE, (uint8_t*)pDataOut->pbData, (size_t)pDataOut->cbData);
+
+    return success;
+}
+
 bool MsRdpEx_IsAddressInModule(PVOID pAddress, LPCTSTR pszModule)
 {
     bool result;
@@ -425,6 +491,10 @@ LONG MsRdpEx_AttachHooks()
     MSRDPEX_DETOUR_ATTACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MSRDPEX_DETOUR_ATTACH(Real_CredReadW, Hook_CredReadW);
+    //MSRDPEX_DETOUR_ATTACH(Real_CryptProtectMemory, Hook_CryptProtectMemory);
+    //MSRDPEX_DETOUR_ATTACH(Real_CryptUnprotectMemory, Hook_CryptUnprotectMemory);
+    //MSRDPEX_DETOUR_ATTACH(Real_CryptProtectData, Hook_CryptProtectData);
+    //MSRDPEX_DETOUR_ATTACH(Real_CryptUnprotectData, Hook_CryptUnprotectData);
     MsRdpEx_AttachSspiHooks();
     error = DetourTransactionCommit();
     return error;
@@ -444,6 +514,10 @@ LONG MsRdpEx_DetachHooks()
     MSRDPEX_DETOUR_DETACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MSRDPEX_DETOUR_DETACH(Real_CredReadW, Hook_CredReadW);
+    //MSRDPEX_DETOUR_DETACH(Real_CryptProtectMemory, Hook_CryptProtectMemory);
+    //MSRDPEX_DETOUR_DETACH(Real_CryptUnprotectMemory, Hook_CryptUnprotectMemory);
+    //MSRDPEX_DETOUR_DETACH(Real_CryptProtectData, Hook_CryptProtectData);
+    //MSRDPEX_DETOUR_DETACH(Real_CryptUnprotectData, Hook_CryptUnprotectData);
     MsRdpEx_DetachSspiHooks();
     error = DetourTransactionCommit();
     MsRdpEx_GlobalUninit();
