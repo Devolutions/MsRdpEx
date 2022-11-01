@@ -428,6 +428,11 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
     }
     else
     {
+        if (pValue->vt == VT_BSTR) {
+            char* propValueA = _com_util::ConvertBSTRToString((BSTR)pValue->bstrVal);
+            MsRdpEx_LogPrint(TRACE, "CMsRdpExtendedSettings::put_Property(%s, \"%s\")", propName, propValueA);
+        }
+
         hr = m_pMsRdpExtendedSettings->put_Property(bstrPropertyName, pValue);
     }
 
