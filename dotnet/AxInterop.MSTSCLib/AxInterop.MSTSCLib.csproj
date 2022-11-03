@@ -6,7 +6,7 @@
     <Platforms>Win32;x64;ARM64</Platforms>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ProcessorArchitecture>MSIL</ProcessorArchitecture>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net40</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>

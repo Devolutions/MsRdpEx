@@ -775,6 +775,11 @@ HRESULT CMsRdpExtendedSettings::PrepareSspiSessionIdHack()
     char fakeKdcProxyName[256];
     char sessionId[MSRDPEX_GUID_STRING_SIZE];
 
+    if (!m_CoreProps) {
+        MsRdpEx_LogPrint(ERROR, "PrepareSspiSessionIdHack - m_CoreProps is NULL!");
+        return E_UNEXPECTED;
+    }
+
     MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, sessionId, 0);
     sprintf_s(fakeKdcProxyName, sizeof(fakeKdcProxyName) - 1, "MsRdpEx/%s", sessionId);
 
