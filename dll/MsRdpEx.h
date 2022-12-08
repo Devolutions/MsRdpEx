@@ -175,6 +175,8 @@ bool CDECL MsRdpEx_rdclientax_Load(MsRdpEx_rdclientax* dll, const char* filename
 bool CDECL MsRdpEx_rdclientax_Init(MsRdpEx_rdclientax* dll);
 void CDECL MsRdpEx_rdclientax_Uninit(MsRdpEx_rdclientax* dll);
 
+bool MsRdpEx_GetAxHookEnabled();
+
 LONG MsRdpEx_AttachHooks();
 LONG MsRdpEx_DetachHooks();
 

@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>Devolutions.MsRdpEx</AssemblyName>
     <PackageId>Devolutions.MsRdpEx</PackageId>
-    <Version>2022.11.2.0</Version>
+    <Version>2022.12.8.0</Version>
     <Authors>mamoreau@devolutions.net</Authors>
     <Company>Devolutions</Company>
     <Description>Microsoft RDP Extensions</Description>

@@ -93,7 +93,6 @@ static VOID WriteCLSID(REFCLSID rclsid)
     LPOLESTR polestrCLSID;
     if (StringFromCLSID(rclsid, &polestrCLSID) == S_OK)
     {
-        HKEY hKey;
         LONG lStatus;
         char szSubKey[128];
         char szValue[128];
@@ -123,7 +122,6 @@ static VOID WriteIID(REFIID riid)
 
     if (StringFromIID(riid, &polestrIID) == S_OK)
     {
-        HKEY hKey;
         LONG lStatus;
         char szSubKey[128];
         char szValue[128];

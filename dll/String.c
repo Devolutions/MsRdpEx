@@ -327,7 +327,7 @@ bool MsRdpEx_GuidBinToStr(const GUID* guid, char* str, uint32_t flags)
 bool MsRdpEx_GuidStrToBin(const char* str, GUID* guid, uint32_t flags)
 {
 	int index;
-	uint8_t bin[36];
+	uint8_t bin[36] = { 0 };
 
 	if (!str || !guid)
 		return false;

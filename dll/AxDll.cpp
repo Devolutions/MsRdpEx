@@ -7,21 +7,13 @@
 
 #include <MsRdpEx/Environment.h>
 
-static bool g_AxHookEnabled = true;
-
-extern bool g_IsClientProcess;
-extern bool g_IsOOBClient;
-
-void MsRdpEx_SetAxHookEnabled(bool axHookEnabled)
-{
-    g_AxHookEnabled = axHookEnabled;
-}
+extern bool g_AxHookEnabled;
 
 HRESULT CDECL MsRdpEx_AxDll_DllGetClassObject(fnDllGetClassObject pfnDllGetClassObject, REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
     HRESULT hr = pfnDllGetClassObject(rclsid, riid, ppv);
 
-    if (!g_AxHookEnabled)
+    if (!MsRdpEx_GetAxHookEnabled())
         return hr;
 
     if (riid == IID_IClassFactory)

@@ -6,7 +6,7 @@
 static bool g_LogInitialized = false;
 
 static FILE* g_LogFile = NULL;
-static bool g_LogEnabled = true;
+static bool g_LogEnabled = false;
 static char g_LogFilePath[MSRDPEX_MAX_PATH] = { 0 };
 
 static uint32_t g_LogLevel = MSRDPEX_LOG_DEBUG;
@@ -54,11 +54,11 @@ bool MsRdpEx_Log(const char* format, ...)
 void MsRdpEx_LogHexDump(const uint8_t* data, size_t size)
 {
     int i, ln, hn;
-	const uint8_t* p = data;
+    const uint8_t* p = data;
     size_t width = 16;
     size_t offset = 0;
     size_t chunk = 0;
-    char line[512];
+    char line[512] = { 0 };
     char* bin2hex = "0123456789ABCDEF";
 
     while (offset < size) {
@@ -109,7 +109,7 @@ void MsRdpEx_LogEnvInit()
     if (g_LogInitialized)
         return;
 
-    bool logEnabled = MsRdpEx_GetEnvBool("MSRDPEX_LOG_LEVEL", false);
+    bool logEnabled = MsRdpEx_EnvExists("MSRDPEX_LOG_LEVEL");
 
     if (logEnabled) {
         // only set if true to avoid overriding current value

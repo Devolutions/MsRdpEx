@@ -106,6 +106,7 @@ uint8_t* MsRdpEx_FileLoad(const char* filename, size_t* size, uint32_t zpad)
 		free(data);
 		data = NULL;
 		*size = 0;
+		goto exit;
 	}
 
 	if (zpad) {
@@ -196,7 +197,7 @@ bool MsRdpEx_GetFileBuildVersion(const char* filename, uint64_t* version)
     if (!buffer)
         goto exit;
 
-    if (!GetFileVersionInfoA(filename, dwHandle, size, buffer))
+    if (!GetFileVersionInfoA(filename, 0, size, buffer))
         goto exit;
     
     size = sizeof(VS_FIXEDFILEINFO);

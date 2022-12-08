@@ -12,6 +12,7 @@
 
 static HMODULE g_hModule = NULL;
 
+static bool g_AxHookEnabled = true;
 static bool g_IsOOBClient = false;
 static bool g_IsClientProcess = false;
 
@@ -576,12 +577,48 @@ bool MsRdpEx_DetectClientProcess(bool* pIsOOBClient)
 
 static bool g_IsLoaded = false;
 
+bool MsRdpEx_GetAxHookEnabled()
+{
+    return g_AxHookEnabled;
+}
+
+void MsRdpEx_SetAxHookEnabled(bool axHookEnabled)
+{
+    LONG err = NO_ERROR;
+
+    if (g_IsLoaded && (axHookEnabled == g_AxHookEnabled))
+    {
+        return;
+    }
+
+    if (axHookEnabled)
+    {
+        err = MsRdpEx_AttachHooks();
+    }
+    else
+    {
+        err = MsRdpEx_DetachHooks();
+    }
+
+    if (err != NO_ERROR)
+    {
+        MsRdpEx_LogPrint(ERROR, "Failed to change hook state: %ld", err);
+        return;
+    }
+
+    g_AxHookEnabled = axHookEnabled;
+}
+
 void MsRdpEx_Load()
 {
+    bool axHookEnabled;
+
     if (g_IsLoaded)
         return;
 
     g_IsClientProcess = MsRdpEx_DetectClientProcess(&g_IsOOBClient);
+
+    axHookEnabled = MsRdpEx_GetEnvBool("MSRDPEX_HOOK_ENABLED", true);
 
     MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
 
@@ -596,7 +633,7 @@ void MsRdpEx_Load()
         }
     }
 
-    MsRdpEx_AttachHooks();
+    MsRdpEx_SetAxHookEnabled(axHookEnabled);
 
     g_IsLoaded = true;
 }

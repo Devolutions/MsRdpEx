@@ -56,6 +56,7 @@ HMODULE Hook_LoadLibraryW(LPCWSTR lpLibFileName)
     char* lpLibFileNameA = NULL;
     const char* msrdpexLibraryA = NULL;
     WCHAR* msrdpexLibraryW = NULL;
+
     MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, lpLibFileName, -1, &lpLibFileNameA, 0, NULL, NULL);
 
     filename = MsRdpEx_FileBase(lpLibFileNameA);
@@ -475,9 +476,17 @@ void MsRdpEx_GlobalUninit()
     MsRdpEx_InstanceManager_Release();
 }
 
+static bool g_IsHooked = false;
+
 LONG MsRdpEx_AttachHooks()
 {
     LONG error;
+
+    if (g_IsHooked)
+    {
+        return NO_ERROR;
+    }
+
     MsRdpEx_GlobalInit();
     DetourRestoreAfterWith();
     DetourTransactionBegin();
@@ -497,12 +506,28 @@ LONG MsRdpEx_AttachHooks()
     //MSRDPEX_DETOUR_ATTACH(Real_CryptUnprotectData, Hook_CryptUnprotectData);
     MsRdpEx_AttachSspiHooks();
     error = DetourTransactionCommit();
+
+    if (error == NO_ERROR)
+    {
+        g_IsHooked = true;
+    }
+    else
+    {
+        MsRdpEx_GlobalUninit();
+    }
+
     return error;
 }
 
 LONG MsRdpEx_DetachHooks()
 {
     LONG error;
+
+    if (!g_IsHooked)
+    {
+        return NO_ERROR;
+    }
+
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
     MSRDPEX_DETOUR_DETACH(Real_LoadLibraryA, Hook_LoadLibraryA);
@@ -520,6 +545,12 @@ LONG MsRdpEx_DetachHooks()
     //MSRDPEX_DETOUR_DETACH(Real_CryptUnprotectData, Hook_CryptUnprotectData);
     MsRdpEx_DetachSspiHooks();
     error = DetourTransactionCommit();
+
+    if (error == NO_ERROR)
+    {
+        g_IsHooked = false;
+    }
+
     MsRdpEx_GlobalUninit();
     return error;
 }
