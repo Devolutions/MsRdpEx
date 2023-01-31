@@ -102,7 +102,8 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 			const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
 			sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\%llu.webm", appDataPath, timestamp);
 			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
-			MsRdpEx_VideoRecorder_SetFilename(ctx->videoRecorder, filename);
+			MsRdpEx_VideoRecorder_SetFileName(ctx->videoRecorder, filename);
+			MsRdpEx_VideoRecorder_Init(ctx->videoRecorder);
 		}
 	}
 
@@ -126,6 +127,7 @@ bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx)
 	}
 
 	if (ctx->videoRecorder) {
+		MsRdpEx_VideoRecorder_Uninit(ctx->videoRecorder);
 		MsRdpEx_VideoRecorder_Free(ctx->videoRecorder);
 		ctx->videoRecorder = NULL;
 	}
