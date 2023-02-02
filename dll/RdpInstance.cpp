@@ -3,6 +3,7 @@
 
 #include <MsRdpEx/Memory.h>
 #include <MsRdpEx/ArrayList.h>
+#include <MsRdpEx/Environment.h>
 
 #include "TSObjects.h"
 
@@ -20,6 +21,10 @@ public:
         char sessionId[MSRDPEX_GUID_STRING_SIZE];
         MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, sessionId, 0);
         MsRdpEx_LogPrint(DEBUG, "CMsRdpExInstance SessionId: %s", sessionId);
+
+        m_outputMirrorEnabled = MsRdpEx_GetEnvBool("MSRDPEX_OUTPUT_MIRROR_ENABLED", false);
+        m_videoRecordingEnabled = MsRdpEx_GetEnvBool("MSRDPEX_VIDEO_RECORDING_ENABLED", false);
+        m_dumpBitmapUpdates = MsRdpEx_GetEnvBool("MSRDPEX_DUMP_BITMAP_UPDATES", false);
     }
 
     ~CMsRdpExInstance()

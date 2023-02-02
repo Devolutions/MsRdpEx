@@ -17,10 +17,13 @@ struct _MsRdpEx_OutputMirror
 	HBITMAP hShadowBitmap;
 	HGDIOBJ hShadowObject;
 	uint32_t captureIndex;
+	uint64_t captureBaseTime;
+	char capturePath[MSRDPEX_MAX_PATH];
 
 	bool dumpBitmapUpdates;
 	bool videoRecordingEnabled;
 	MsRdpEx_VideoRecorder* videoRecorder;
+	FILE* frameMetadataFile;
 };
 
 void MsRdpEx_OutputMirror_SetSourceDC(MsRdpEx_OutputMirror* ctx, HDC hSourceDC)
@@ -48,7 +51,10 @@ void MsRdpEx_OutputMirror_GetFrameSize(MsRdpEx_OutputMirror* ctx, uint32_t* fram
 
 bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 {
+	uint64_t captureTime;
 	char filename[MSRDPEX_MAX_PATH];
+
+	captureTime = GetTickCount64() - ctx->captureBaseTime;
 
 	if (ctx->videoRecordingEnabled && ctx->videoRecorder) {
 		MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
@@ -57,9 +63,17 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 	}
 
 	if (ctx->dumpBitmapUpdates) {
-		const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
-		sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\image_%04d.bmp", appDataPath, ctx->captureIndex);
+		char metadata[1024];
+
+		sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\frame_%04d.bmp", ctx->capturePath, ctx->captureIndex);
 		MsRdpEx_WriteBitmapFile(filename, ctx->bitmapData, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitsPerPixel);
+
+		sprintf_s(metadata, sizeof(metadata), "%llu|%dx%d|%s|%dx%d|%dx%d\n",
+			captureTime,
+			ctx->bitmapWidth, ctx->bitmapHeight,
+			MsRdpEx_FileBase(filename),
+			0, 0, ctx->bitmapWidth, ctx->bitmapHeight);
+		fwrite(metadata, 1, strlen(metadata), ctx->frameMetadataFile);
 	}
 
 	ctx->captureIndex++;
@@ -93,17 +107,32 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 		ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitsPerPixel, &ctx->bitmapData);
 	ctx->hShadowObject = SelectObject(ctx->hShadowDC, ctx->hShadowBitmap);
 
+	ctx->captureBaseTime = GetTickCount64();
+
+	const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
+	sprintf_s(ctx->capturePath, MSRDPEX_MAX_PATH, "%s\\capture", appDataPath);
+
 	if (ctx->videoRecordingEnabled) {
+		char filename[MSRDPEX_MAX_PATH];
+		uint64_t timestamp = MsRdpEx_GetUnixTime();
+
+		MsRdpEx_MakePath(ctx->capturePath, NULL);
+
 		ctx->videoRecorder = MsRdpEx_VideoRecorder_New();
 
 		if (ctx->videoRecorder) {
-			char filename[MSRDPEX_MAX_PATH];
-			uint64_t timestamp = MsRdpEx_GetUnixTime();
-			const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
-			sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\%llu.webm", appDataPath, timestamp);
+			sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\%llu.webm", ctx->capturePath, timestamp);
 			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
 			MsRdpEx_VideoRecorder_SetFileName(ctx->videoRecorder, filename);
 			MsRdpEx_VideoRecorder_Init(ctx->videoRecorder);
+		}
+
+		if (ctx->dumpBitmapUpdates) {
+			char metadata[1024];
+			sprintf_s(metadata, sizeof(metadata), "FrameTime|FrameSize|FrameFile|UpdatePos|UpdateSize\n");
+			sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\frame_meta.psv", ctx->capturePath);
+			ctx->frameMetadataFile = MsRdpEx_FileOpen(filename, "wb");
+			fwrite(metadata, 1, strlen(metadata), ctx->frameMetadataFile);
 		}
 	}
 
@@ -130,6 +159,11 @@ bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx)
 		MsRdpEx_VideoRecorder_Uninit(ctx->videoRecorder);
 		MsRdpEx_VideoRecorder_Free(ctx->videoRecorder);
 		ctx->videoRecorder = NULL;
+	}
+
+	if (ctx->frameMetadataFile) {
+		fclose(ctx->frameMetadataFile);
+		ctx->frameMetadataFile = NULL;
 	}
 	
 	return true;
