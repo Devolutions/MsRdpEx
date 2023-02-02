@@ -1,6 +1,7 @@
 
 #include "MsRdpEx.h"
 
+#include <MsRdpEx/Environment.h>
 #include <MsRdpEx/VideoRecorder.h>
 #include <MsRdpEx/OutputMirror.h>
 
@@ -109,8 +110,15 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 
 	ctx->captureBaseTime = GetTickCount64();
 
-	const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
-	sprintf_s(ctx->capturePath, MSRDPEX_MAX_PATH, "%s\\capture", appDataPath);
+	char* capturePath = MsRdpEx_GetEnv("MSRDPEX_CAPTURE_PATH");
+
+	if (capturePath) {
+		strcpy_s(ctx->capturePath, MSRDPEX_MAX_PATH, capturePath);
+		free(capturePath);
+	} else {
+		const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
+		sprintf_s(ctx->capturePath, MSRDPEX_MAX_PATH, "%s\\capture", appDataPath);
+	}
 
 	if (ctx->videoRecordingEnabled) {
 		char filename[MSRDPEX_MAX_PATH];
@@ -121,7 +129,15 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 		ctx->videoRecorder = MsRdpEx_VideoRecorder_New();
 
 		if (ctx->videoRecorder) {
-			sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\%llu.webm", ctx->capturePath, timestamp);
+			char* videoFileName = MsRdpEx_GetEnv("MSRDPEX_VIDEO_FILENAME");
+
+			if (videoFileName) {
+				strcpy_s(filename, MSRDPEX_MAX_PATH, videoFileName);
+				free(videoFileName);
+			} else {
+				sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\%llu.webm", ctx->capturePath, timestamp);
+			}
+
 			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
 			MsRdpEx_VideoRecorder_SetFileName(ctx->videoRecorder, filename);
 			MsRdpEx_VideoRecorder_Init(ctx->videoRecorder);

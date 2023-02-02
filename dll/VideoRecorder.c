@@ -1,6 +1,7 @@
 
 #include "MsRdpEx.h"
 
+#include <MsRdpEx/Environment.h>
 #include <MsRdpEx/VideoRecorder.h>
 
 void* MsRdpEx_LoadFunc(HMODULE hModule, const char* name, void** ppFunc)
@@ -17,14 +18,20 @@ MsRdpEx_VideoRecorder* MsRdpEx_VideoRecorder_New()
 {
     HMODULE hModule;
     MsRdpEx_VideoRecorder* ctx;
-    const char* filename = "xmf.dll";
+    char* libraryPath = MsRdpEx_GetEnv("MSRDPEX_XMF_DLL");
 
-    hModule = LoadLibraryA(filename);
+    if (!libraryPath) {
+        libraryPath = _strdup("xmf.dll");
+    }
+
+    hModule = MsRdpEx_LoadLibrary(libraryPath);
 
     if (!hModule) {
-        MsRdpEx_LogPrint(DEBUG, "LoadLibrary(%s): not found", filename);
+        MsRdpEx_LogPrint(DEBUG, "LoadLibrary(%s): not found", libraryPath);
         return NULL;
     }
+
+    free(libraryPath);
 
     ctx = (MsRdpEx_VideoRecorder*) malloc(sizeof(MsRdpEx_VideoRecorder));
 
