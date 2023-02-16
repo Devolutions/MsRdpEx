@@ -172,7 +172,7 @@ namespace MsRdpEx_App
             return hOPWindowClassWnd;
         }
 
-        private Bitmap ShadowToBitmap(IntPtr hWnd, IntPtr hShadowDC, IntPtr hShadowBitmap, int shadowWidth, int shadowHeight)
+        private Bitmap ShadowToBitmap(IntPtr hWnd, IntPtr hShadowDC, IntPtr hShadowBitmap, int shadowWidth, int shadowHeight, int captureWidth, int captureHeight)
         {
             Graphics g = Graphics.FromHwnd(hWnd);
 
@@ -181,8 +181,8 @@ namespace MsRdpEx_App
                 return null;
             }
 
-            int width = shadowWidth;
-            int height = shadowHeight;
+            int width = captureWidth;
+            int height = captureHeight;
 
             int srcX = 0;
             int srcY = 0;
@@ -213,8 +213,12 @@ namespace MsRdpEx_App
             IntPtr dc = memoryGraphics.GetHdc();
 
             SetStretchBltMode(dc, 4);
-            StretchBlt(dc, dstX, dstY, dstWidth, dstHeight,
-                hShadowDC, srcX, srcY, srcWidth, srcHeight, TernaryRasterOperations.SRCCOPY);
+
+            if (!StretchBlt(dc, dstX, dstY, dstWidth, dstHeight,
+                hShadowDC, srcX, srcY, srcWidth, srcHeight, TernaryRasterOperations.SRCCOPY))
+            {
+                bmp = null;
+            }
 
             memoryGraphics.ReleaseHdc(dc);
             memoryGraphics.Dispose();
@@ -236,15 +240,26 @@ namespace MsRdpEx_App
 
             IntPtr hShadowDC = IntPtr.Zero;
             IntPtr hShadowBitmap = IntPtr.Zero;
+            IntPtr shadowData = IntPtr.Zero;
             UInt32 shadowWidth = 0;
             UInt32 shadowHeight = 0;
+            UInt32 shadowStep = 0;
 
-            if (rdpInstance.GetShadowBitmap(ref hShadowDC, ref hShadowBitmap, ref shadowWidth, ref shadowHeight))
+            int captureWidth = 1024;
+            int captureHeight = 768;
+
+            if (rdpInstance.GetShadowBitmap(ref hShadowDC, ref hShadowBitmap, ref shadowData, ref shadowWidth, ref shadowHeight, ref shadowStep))
             {
-                Bitmap bitmap = ShadowToBitmap(hWnd, hShadowDC, hShadowBitmap, (int)shadowWidth, (int)shadowHeight);
-                string bitmapName = String.Format("capture_{0:0000}.bmp", captureIndex++);
-                string filename = Path.Combine(captureOutputPath, bitmapName);
-                bitmap.Save(filename);
+                rdpInstance.LockShadowBitmap();
+                Bitmap bitmap = ShadowToBitmap(hWnd, hShadowDC, hShadowBitmap, (int)shadowWidth, (int)shadowHeight, captureWidth, captureHeight);
+                rdpInstance.UnlockShadowBitmap();
+
+                if (bitmap != null)
+                {
+                    string bitmapName = String.Format("capture_{0:0000}.bmp", captureIndex++);
+                    string filename = Path.Combine(captureOutputPath, bitmapName);
+                    bitmap.Save(filename);
+                }
             }
         }
 

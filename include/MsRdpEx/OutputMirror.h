@@ -23,7 +23,11 @@ void MsRdpEx_OutputMirror_SetDumpBitmapUpdates(MsRdpEx_OutputMirror* ctx, bool d
 void MsRdpEx_OutputMirror_SetVideoRecordingEnabled(MsRdpEx_OutputMirror* ctx, bool videoRecordingEnabled);
 
 bool MsRdpEx_OutputMirror_GetShadowBitmap(MsRdpEx_OutputMirror* ctx,
-	HDC* phDC, HBITMAP* phBitmap, uint32_t* pWidth, uint32_t* pHeight);
+	HDC* phDC, HBITMAP* phBitmap, uint8_t** pBitmapData,
+	uint32_t* pBitmapWidth, uint32_t* pBitmapHeight, uint32_t* pBitmapStep);
+
+void MsRdpEx_OutputMirror_Lock(MsRdpEx_OutputMirror* ctx);
+void MsRdpEx_OutputMirror_Unlock(MsRdpEx_OutputMirror* ctx);
 
 bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx);
 bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx);

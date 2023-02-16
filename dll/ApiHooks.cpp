@@ -200,8 +200,11 @@ bool MsRdpEx_CaptureBlt(
         MsRdpEx_OutputMirror_Init(outputMirror);
     }
 
+    MsRdpEx_OutputMirror_Lock(outputMirror);
     HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
+    MsRdpEx_OutputMirror_Unlock(outputMirror);
+
     MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 
     captured = true;
