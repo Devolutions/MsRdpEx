@@ -25,7 +25,19 @@ struct _MsRdpEx_OutputMirror
 	bool videoRecordingEnabled;
 	MsRdpEx_VideoRecorder* videoRecorder;
 	FILE* frameMetadataFile;
+
+    CRITICAL_SECTION lock;
 };
+
+void MsRdpEx_OutputMirror_Lock(MsRdpEx_OutputMirror* ctx)
+{
+	EnterCriticalSection(&ctx->lock);
+}
+
+void MsRdpEx_OutputMirror_Unlock(MsRdpEx_OutputMirror* ctx)
+{
+	LeaveCriticalSection(&ctx->lock);
+}
 
 void MsRdpEx_OutputMirror_SetSourceDC(MsRdpEx_OutputMirror* ctx, HDC hSourceDC)
 {
@@ -92,12 +104,27 @@ void MsRdpEx_OutputMirror_SetVideoRecordingEnabled(MsRdpEx_OutputMirror* ctx, bo
 }
 
 bool MsRdpEx_OutputMirror_GetShadowBitmap(MsRdpEx_OutputMirror* ctx,
-	HDC* phDC, HBITMAP* phBitmap, uint32_t* pWidth, uint32_t* pHeight)
+	HDC* phDC, HBITMAP* phBitmap, uint8_t** pBitmapData,
+	uint32_t* pBitmapWidth, uint32_t* pBitmapHeight, uint32_t* pBitmapStep)
 {
-	*phDC = ctx->hShadowDC;
-	*phBitmap = ctx->hShadowBitmap;
-	*pWidth = ctx->bitmapWidth;
-	*pHeight = ctx->bitmapHeight;
+	if (phDC)
+		*phDC = ctx->hShadowDC;
+
+	if (phBitmap)
+		*phBitmap = ctx->hShadowBitmap;
+
+	if (pBitmapData)
+		*pBitmapData = ctx->bitmapData;
+
+	if (pBitmapWidth)
+		*pBitmapWidth = ctx->bitmapWidth;
+
+	if (pBitmapHeight)
+		*pBitmapHeight = ctx->bitmapHeight;
+
+	if (pBitmapStep)
+		*pBitmapStep = ctx->bitmapStep;
+	
 	return true;
 }
 
@@ -198,6 +225,8 @@ MsRdpEx_OutputMirror* MsRdpEx_OutputMirror_New()
 	ctx->videoRecordingEnabled = false;
 	ctx->dumpBitmapUpdates = false;
 
+    InitializeCriticalSectionAndSpinCount(&ctx->lock, 4000);
+
 	return ctx;
 }
 
@@ -207,6 +236,8 @@ void MsRdpEx_OutputMirror_Free(MsRdpEx_OutputMirror* ctx)
 		return;
 
 	MsRdpEx_OutputMirror_Uninit(ctx);
+
+    DeleteCriticalSection(&ctx->lock);
 
 	free(ctx);
 }

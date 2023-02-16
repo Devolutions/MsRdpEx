@@ -32,9 +32,11 @@ namespace MsRdpEx
             set { iface.SetDumpBitmapUpdates(value); }
         }
 
-        public bool GetShadowBitmap(ref IntPtr phDC, ref IntPtr phBitmap, ref UInt32 pWidth, ref UInt32 pHeight)
+        public bool GetShadowBitmap(ref IntPtr phDC, ref IntPtr phBitmap, ref IntPtr pBitmapData,
+            ref UInt32 pBitmapWidth, ref UInt32 pBitmapHeight, ref UInt32 pBitmapStep)
         {
-            return iface.GetShadowBitmap(ref phDC, ref phBitmap, ref pWidth, ref pHeight);
+            return iface.GetShadowBitmap(ref phDC, ref phBitmap, ref pBitmapData,
+                ref pBitmapWidth, ref pBitmapHeight, ref pBitmapStep);
         }
     }
 }

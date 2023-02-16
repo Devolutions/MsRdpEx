@@ -123,7 +123,14 @@ namespace MsRdpEx
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         [return: MarshalAs(UnmanagedType.U1)]
-        bool GetShadowBitmap(ref IntPtr phDC, ref IntPtr phBitmap, ref UInt32 pWidth, ref UInt32 pHeight);
+        bool GetShadowBitmap(ref IntPtr phDC, ref IntPtr phBitmap, ref IntPtr pBitmapData,
+            ref UInt32 pBitmapWidth, ref UInt32 pBitmapHeight, ref UInt32 pBitmapStep);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void LockShadowBitmap();
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void UnlockShadowBitmap();
     }
 
     public static class Bindings

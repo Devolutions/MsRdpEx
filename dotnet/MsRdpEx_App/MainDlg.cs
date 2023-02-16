@@ -428,7 +428,7 @@ namespace MsRdpEx_App
             IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)rdp.GetOcx();
             object boolValue = false;
             extendedSettings.set_Property("EnableHardwareMode", ref boolValue);
-            Size DesktopSize = new Size(1024, 768);
+            Size DesktopSize = new Size(1920, 1080);
             rdp.DesktopWidth = DesktopSize.Width;
             rdp.DesktopHeight = DesktopSize.Height;
             rdpView.ClientSize = DesktopSize;
@@ -457,7 +457,10 @@ namespace MsRdpEx_App
                 coreProps.set_Property("EnableCredSspSupport", ref EnableCredSspSupport);
             }
 
-            ParseRdpFile(this.rdpFileName, rdp);
+            if (File.Exists(this.rdpFileName))
+            {
+                ParseRdpFile(this.rdpFileName, rdp);
+            }
 
             rdp.Connect();
 

@@ -187,14 +187,36 @@ public:
         return S_OK;
     }
 
-    bool STDMETHODCALLTYPE GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint32_t* pWidth, uint32_t* pHeight)
+    bool STDMETHODCALLTYPE GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint8_t** pBitmapData,
+        uint32_t* pBitmapWidth, uint32_t* pBitmapHeight, uint32_t* pBitmapStep)
     {
         MsRdpEx_OutputMirror* outputMirror = m_OutputMirror;
 
         if (!outputMirror)
             return false;
 
-        return MsRdpEx_OutputMirror_GetShadowBitmap(outputMirror, phDC, phBitmap, pWidth, pHeight);
+        return MsRdpEx_OutputMirror_GetShadowBitmap(outputMirror,
+            phDC, phBitmap, pBitmapData, pBitmapWidth, pBitmapHeight, pBitmapStep);
+    }
+
+    void STDMETHODCALLTYPE LockShadowBitmap()
+    {
+        MsRdpEx_OutputMirror* outputMirror = m_OutputMirror;
+
+        if (!outputMirror)
+            return;
+
+        MsRdpEx_OutputMirror_Lock(outputMirror);
+    }
+
+    void STDMETHODCALLTYPE UnlockShadowBitmap()
+    {
+        MsRdpEx_OutputMirror* outputMirror = m_OutputMirror;
+
+        if (!outputMirror)
+            return;
+
+        MsRdpEx_OutputMirror_Unlock(outputMirror);
     }
 
 public:
