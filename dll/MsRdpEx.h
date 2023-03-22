@@ -108,6 +108,30 @@ typedef HRESULT(WINAPI* fnDllGetClaimsToken19)(
     BOOL invalidateCache,
     BSTR resourceAppId);
 
+// rdclientax.dll 1.2.4065.0+
+typedef HRESULT(WINAPI* fnDllGetClaimsToken21)(
+    BSTR clientAddress,
+    BSTR claimsHint,
+    BSTR userNameHint,
+    BSTR userDomainHint,
+    UINT uiSilentRetrievalMode,
+    BOOL allowCredPrompt,
+    HWND parentWindow,
+    void* cloudPCParameters,
+    BSTR* claimsToken,
+    BSTR* actualAuthority,
+    BSTR* actualUserName,
+    RECT* position,
+    BSTR windowTitle,
+    BSTR logonCertAuthority,
+    BSTR* resultMsg,
+    BSTR wvdActivityId,
+    BOOL* isAcquiredSilently,
+    BOOL* isRetriableError,
+    BSTR diagnosticsUrl,
+    BOOL invalidateCache,
+    BSTR resourceAppId);
+
 // exported by mstscax.dll, but never called
 typedef HRESULT (WINAPI * fnDllLogoffClaimsToken1)(BSTR claimsHint);
 
