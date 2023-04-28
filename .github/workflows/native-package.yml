@@ -32,8 +32,8 @@ jobs:
           cmake -G "Visual Studio 17 2022" -A $MsvcArch -DWITH_DOTNET=OFF -B $BuildDir
           cmake --build $BuildDir --config Release
           New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$ArchDir" | Out-Null
-          Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$ArchDir"
-          Copy-Item "$BuildDir/Release/MsRdpEx.exe" "dependencies/MsRdpEx/$ArchDir"
+          Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$ArchDir/MsRdpEx.dll"
+          Copy-Item "$BuildDir/Release/MsRdpEx_Exe.exe" "dependencies/MsRdpEx/$ArchDir/MsRdpEx.exe"
 
       - name: Upload MsRdpEx (${{matrix.arch}})
         uses: actions/upload-artifact@v3
