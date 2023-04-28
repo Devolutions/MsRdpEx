@@ -192,9 +192,28 @@ namespace MsRdpEx_App
             return TsCryptDecryptString(Convert.FromBase64String(cookieString));
         }
 
+        [DllImport("oleaut32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        static extern IntPtr SysAllocStringByteLen(IntPtr psz, uint len);
+
+        public static void SetLoadBalanceInfo(IMsRdpClientAdvancedSettings advancedSettings, string loadBalanceInfo)
+        {
+            loadBalanceInfo += "\r\n";
+            byte[] bytes = Encoding.UTF8.GetBytes(loadBalanceInfo);
+            uint byteLen = (uint)bytes.Length;
+
+            IntPtr bstrPtr = SysAllocStringByteLen(IntPtr.Zero, byteLen);
+            Marshal.Copy(bytes, 0, bstrPtr, (int)byteLen);
+
+            IMsRdpClientAdvancedSettingsLB lbSettings = (IMsRdpClientAdvancedSettingsLB)advancedSettings;
+            lbSettings.LoadBalanceInfo = bstrPtr;
+            
+            Marshal.ZeroFreeBSTR(bstrPtr);
+        }
+
         private void ParseRdpFile(string filename, AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp)
         {
             IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)rdp.GetOcx();
+            IMsRdpPreferredRedirectionInfo redirectionInfo = (IMsRdpPreferredRedirectionInfo)rdp.GetOcx();
             var advancedSettings = rdp.AdvancedSettings9;
             var transportSettings = rdp.TransportSettings4;
             var remoteProgram = rdp.RemoteProgram2;
@@ -231,7 +250,7 @@ namespace MsRdpEx_App
                                 break;
 
                             case "loadbalanceinfo":
-                                advancedSettings.LoadBalanceInfo = value;
+                                SetLoadBalanceInfo((IMsRdpClientAdvancedSettings)advancedSettings, value);
                                 break;
 
                             case "workspace id":
@@ -306,6 +325,7 @@ namespace MsRdpEx_App
                                 break;
 
                             case "promptcredentialonce":
+                                transportSettings.GatewayCredSharing = iValue;
                                 break;
 
                             case "audiomode":
@@ -327,21 +347,14 @@ namespace MsRdpEx_App
                             case "gatewaycredentialssource":
                                 transportSettings.GatewayCredsSource = iValue;
                                 break;
+
+                            case "use redirection server name":
+                                redirectionInfo.UseRedirectionServerName = bValue;
+                                break;
                         }
                     }
                 }
             }
-
-            /*
-            transportSettings.GatewaySupportUrl = ""; // "Support URL"
-            transportSettings.GatewayEncryptedOtpCookie = null; // "Encrypted OTP Cookie"
-            transportSettings.GatewayEncryptedOtpCookieSize = 0;
-            transportSettings.GatewayAuthCookieServerAddr = ""; // "Cookie based authentication server address"
-            transportSettings.GatewayAuthLoginPage = ""; // "Login web page address"
-            extendedSettings.set_Property("GatewayCertificateLogonAuthority", ""); // "GatewayCertificateLogonAuthority"
-            transportSettings.GatewayPreAuthServerAddr = ""; // "Pre-authentication server address"
-            transportSettings.GatewayPreAuthRequirement = 0;
-            */
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
