@@ -28,9 +28,9 @@ jobs:
           $IsDryRun = '${{ github.event.inputs.dry-run }}' -Eq 'true' -Or '${{ github.event_name }}' -Eq 'schedule'
 
           if ($IsDryRun) {
-            Write-Host '::set-output name=dry-run::true'
+            echo "dry-run=true" >> $Env:GITHUB_OUTPUT
           } else {
-            Write-Host '::set-output name=dry-run::false'
+            echo "dry-run="false" >> $Env:GITHUB_OUTPUT
           }
 
   build-native:
