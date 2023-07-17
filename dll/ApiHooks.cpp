@@ -432,6 +432,71 @@ BOOL Hook_CryptUnprotectData(DATA_BLOB* pDataIn, LPWSTR* ppszDataDescr, DATA_BLO
     return success;
 }
 
+#include <bcrypt.h>
+
+static HMODULE g_hBCrypt = NULL;
+
+typedef NTSTATUS(WINAPI* fnBCryptImportKey)(BCRYPT_ALG_HANDLE hAlgorithm, BCRYPT_KEY_HANDLE hImportKey,
+    LPCWSTR pszBlobType, BCRYPT_KEY_HANDLE* phKey, PUCHAR pbKeyObject, ULONG cbKeyObject, PUCHAR pbInput, ULONG cbInput, ULONG dwFlags);
+
+typedef NTSTATUS(WINAPI* fnBCryptImportKeyPair)(BCRYPT_ALG_HANDLE hAlgorithm, BCRYPT_KEY_HANDLE hImportKey,
+    LPCWSTR pszBlobType, BCRYPT_KEY_HANDLE* phKey, PUCHAR pbInput, ULONG cbInput, ULONG dwFlags);
+
+typedef NTSTATUS(WINAPI* fnBCryptEncrypt)(BCRYPT_KEY_HANDLE hKey, PUCHAR pbInput,
+    ULONG cbInput, VOID* pPaddingInfo, PUCHAR pbIV, ULONG cbIV, PUCHAR pbOutput, ULONG cbOutput, ULONG* pcbResult, ULONG dwFlags);
+
+static fnBCryptImportKey Real_BCryptImportKey = NULL;
+static fnBCryptImportKeyPair Real_BCryptImportKeyPair = NULL;
+static fnBCryptEncrypt Real_BCryptEncrypt = NULL;
+
+NTSTATUS Hook_BCryptImportKey(BCRYPT_ALG_HANDLE hAlgorithm, BCRYPT_KEY_HANDLE hImportKey,
+    LPCWSTR pszBlobType, BCRYPT_KEY_HANDLE* phKey, PUCHAR pbKeyObject, ULONG cbKeyObject, PUCHAR pbInput, ULONG cbInput, ULONG dwFlags)
+{
+    NTSTATUS success;
+
+    MsRdpEx_LogPrint(TRACE, "BCryptImportKey(pbInput=%s, cbInput=%d):", pbInput, cbInput);
+    MsRdpEx_LogDump(TRACE, (uint8_t*)pbInput, (size_t)cbInput);
+
+    success = Real_BCryptImportKey(hAlgorithm, hImportKey, pszBlobType, phKey, pbKeyObject, cbKeyObject, pbInput, cbInput, dwFlags);
+
+    // MsRdpEx_LogPrint(DEBUG, "CryptUnprotectData(pDataOut->cbData=%d):", pDataOut->cbData);
+    // MsRdpEx_LogDump(TRACE, (uint8_t*)pDataOut->pbData, (size_t)cbInput);
+
+    return success;
+}
+
+NTSTATUS Hook_BCryptImportKeyPair(BCRYPT_ALG_HANDLE hAlgorithm, BCRYPT_KEY_HANDLE hImportKey,
+    LPCWSTR pszBlobType, BCRYPT_KEY_HANDLE* phKey, PUCHAR pbInput, ULONG cbInput, ULONG dwFlags)
+{
+    NTSTATUS success;
+
+    MsRdpEx_LogPrint(TRACE, "BCryptImportKeyPair(pbInput=%s, cbInput=%d):", pbInput, cbInput);
+    MsRdpEx_LogDump(TRACE, (uint8_t*)pbInput, (size_t)cbInput);
+
+    success = Real_BCryptImportKeyPair(hAlgorithm, hImportKey, pszBlobType, phKey, pbInput, cbInput, dwFlags);
+
+    // MsRdpEx_LogPrint(DEBUG, "CryptUnprotectData(pDataOut->cbData=%d):", pDataOut->cbData);
+    // MsRdpEx_LogDump(TRACE, (uint8_t*)pDataOut->pbData, (size_t)cbInput);
+
+    return success;
+}
+
+NTSTATUS Hook_BCryptEncrypt(BCRYPT_KEY_HANDLE hKey, PUCHAR pbInput,
+    ULONG cbInput, VOID* pPaddingInfo, PUCHAR pbIV, ULONG cbIV, PUCHAR pbOutput, ULONG cbOutput, ULONG* pcbResult, ULONG dwFlags)
+{
+    NTSTATUS success;
+
+    MsRdpEx_LogPrint(TRACE, "BCryptEncrypt(pbInput=%s, cbInput=%d):", pbInput, cbInput);
+    MsRdpEx_LogDump(TRACE, (uint8_t*)pbInput, (size_t)cbInput);
+
+    success = Real_BCryptEncrypt(hKey, pbInput, cbInput, pPaddingInfo, pbIV, cbIV, pbOutput, cbOutput, pcbResult, dwFlags);
+
+    // MsRdpEx_LogPrint(DEBUG, "CryptUnprotectData(pDataOut->cbData=%d):", pDataOut->cbData);
+    // MsRdpEx_LogDump(TRACE, (uint8_t*)pDataOut->pbData, (size_t)cbInput);
+
+    return success;
+}
+
 bool MsRdpEx_IsAddressInModule(PVOID pAddress, LPCTSTR pszModule)
 {
     bool result;
@@ -507,6 +572,19 @@ LONG MsRdpEx_AttachHooks()
     //MSRDPEX_DETOUR_ATTACH(Real_CryptUnprotectMemory, Hook_CryptUnprotectMemory);
     //MSRDPEX_DETOUR_ATTACH(Real_CryptProtectData, Hook_CryptProtectData);
     //MSRDPEX_DETOUR_ATTACH(Real_CryptUnprotectData, Hook_CryptUnprotectData);
+
+    g_hBCrypt = GetModuleHandleA("ncrypt.dll");
+
+    if (g_hBCrypt) {
+        MSRDPEX_GETPROCADDRESS(Real_BCryptImportKey, fnBCryptImportKey, g_hBCrypt, "BCryptImportKey");
+        MSRDPEX_GETPROCADDRESS(Real_BCryptImportKeyPair, fnBCryptImportKeyPair, g_hBCrypt, "BCryptImportKeyPair");
+        MSRDPEX_GETPROCADDRESS(Real_BCryptEncrypt, fnBCryptEncrypt, g_hBCrypt, "BCryptEncrypt");
+
+        MSRDPEX_DETOUR_ATTACH(Real_BCryptImportKey, Hook_BCryptImportKey);
+        MSRDPEX_DETOUR_ATTACH(Real_BCryptImportKeyPair, Hook_BCryptImportKeyPair);
+        MSRDPEX_DETOUR_ATTACH(Real_BCryptEncrypt, Hook_BCryptEncrypt);
+    }
+
     MsRdpEx_AttachSspiHooks();
     error = DetourTransactionCommit();
 
@@ -546,6 +624,13 @@ LONG MsRdpEx_DetachHooks()
     //MSRDPEX_DETOUR_DETACH(Real_CryptUnprotectMemory, Hook_CryptUnprotectMemory);
     //MSRDPEX_DETOUR_DETACH(Real_CryptProtectData, Hook_CryptProtectData);
     //MSRDPEX_DETOUR_DETACH(Real_CryptUnprotectData, Hook_CryptUnprotectData);
+
+    if (g_hBCrypt) {
+        MSRDPEX_DETOUR_DETACH(Real_BCryptImportKey, Hook_BCryptImportKey);
+        MSRDPEX_DETOUR_DETACH(Real_BCryptImportKeyPair, Hook_BCryptImportKeyPair);
+        MSRDPEX_DETOUR_DETACH(Real_BCryptEncrypt, Hook_BCryptEncrypt);
+    }
+
     MsRdpEx_DetachSspiHooks();
     error = DetourTransactionCommit();
 
