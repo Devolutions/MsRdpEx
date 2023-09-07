@@ -130,6 +130,22 @@ bool MsRdpEx_StringIEquals(const char* str1, const char* str2)
     return _stricmp(str1, str2) == 0;
 }
 
+bool MsRdpEx_StringEqualsW(const WCHAR* str1, const WCHAR* str2)
+{
+    if (!str1 || !str2)
+        return false;
+
+    return wcscmp(str1, str2) == 0;
+}
+
+bool MsRdpEx_StringIEqualsW(const WCHAR* str1, const WCHAR* str2)
+{
+    if (!str1 || !str2)
+        return false;
+
+    return _wcsicmp(str1, str2) == 0;
+}
+
 bool MsRdpEx_StringStartsWith(const char* str, const char* val)
 {
     size_t strLen;

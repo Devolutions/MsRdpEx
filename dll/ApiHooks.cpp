@@ -432,6 +432,128 @@ BOOL Hook_CryptUnprotectData(DATA_BLOB* pDataIn, LPWSTR* ppszDataDescr, DATA_BLO
     return success;
 }
 
+typedef LSTATUS(WINAPI* Func_RegOpenKeyExW)(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult);
+typedef LSTATUS(WINAPI* Func_RegQueryValueExW)(HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData);
+typedef LSTATUS(WINAPI* Func_RegCloseKey)(HKEY hKey);
+
+Func_RegOpenKeyExW Real_RegOpenKeyExW = NULL;
+Func_RegQueryValueExW Real_RegQueryValueExW = NULL;
+Func_RegCloseKey Real_RegCloseKey = NULL;
+
+static HKEY g_hKeySecurityProviders = NULL;
+
+LSTATUS Hook_RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult)
+{
+    LSTATUS lstatus;
+    char* lpSubKeyA = NULL;
+
+    if (lpSubKey)
+    {
+        MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, lpSubKey, -1, &lpSubKeyA, 0, NULL, NULL);
+        MsRdpEx_LogPrint(DEBUG, "RegOpenKeyExW(%s)", lpSubKeyA);
+    }
+
+    lstatus = Real_RegOpenKeyExW(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+
+    if (phkResult && MsRdpEx_StringEqualsW(lpSubKey, L"System\\CurrentControlSet\\Control\\SecurityProviders"))
+    {
+        g_hKeySecurityProviders = *phkResult;
+    }
+
+    free(lpSubKeyA);
+
+    return lstatus;
+}
+
+LSTATUS WINAPI Hook_RegQueryValueExW(HKEY hKey, LPCWSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType, LPBYTE lpData, LPDWORD lpcbData)
+{
+    LSTATUS lstatus;
+    char* lpValueNameA = NULL;
+    bool interceptedCall = false;
+
+    if (lpValueName)
+    {
+        MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, lpValueName, -1, &lpValueNameA, 0, NULL, NULL);
+        MsRdpEx_LogPrint(TRACE, "RegQueryValueExW(%s, lpType: %p, lpData: %p, lpcbData: %p (%d))",
+            lpValueNameA, lpType, lpData, lpcbData, lpcbData ? *lpcbData : -1);
+    }
+
+    if ((hKey == g_hKeySecurityProviders) && MsRdpEx_StringEqualsW(lpValueName, L"SecurityProviders")
+        && MsRdpEx_EnvExists("MSRDPEX_CREDSSP_DLL"))
+    {
+        WCHAR* credsspDllW = NULL;
+        char* credsspDll = MsRdpEx_GetEnv("MSRDPEX_CREDSSP_DLL");
+
+        // DLL needs to be named "credssp.dll" to work (no workaround yet)
+        if (credsspDll && MsRdpEx_IStringEndsWith(credsspDll, "credssp.dll"))
+        {
+            MsRdpEx_ConvertToUnicode(CP_UTF8, 0, credsspDll, -1, &credsspDllW, 0);
+
+            if (credsspDllW)
+            {
+                size_t cbData = (wcslen(credsspDllW) + 1) * 2;
+
+                if (!lpData)
+                {
+                    if (lpType)
+                        *lpType = REG_SZ;
+
+                    if (lpcbData)
+                        *lpcbData = cbData;
+
+                    interceptedCall = true;
+                    lstatus = ERROR_SUCCESS;
+                }
+                else if (lpcbData)
+                {
+                    if (lpType)
+                        *lpType = REG_SZ;
+
+                    if (*lpcbData >= cbData)
+                    {
+                        *lpcbData = cbData;
+                        memcpy(lpData, (void*)credsspDllW, cbData);
+
+                        interceptedCall = true;
+                        lstatus = ERROR_SUCCESS;
+                    }
+                    else
+                    {
+                        interceptedCall = true;
+                        lstatus = ERROR_MORE_DATA;
+                    }
+                }
+            }
+        }
+
+        free(credsspDllW);
+        free(credsspDll);
+    }
+    
+    if (!interceptedCall)
+    {
+        lstatus = Real_RegQueryValueExW(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
+    }
+
+    free(lpValueNameA);
+
+    return lstatus;
+}
+
+LSTATUS Hook_RegCloseKey(HKEY hKey)
+{
+    LSTATUS lstatus;
+
+    lstatus = Real_RegCloseKey(hKey);
+
+    if (hKey == g_hKeySecurityProviders)
+    {
+        g_hKeySecurityProviders = NULL;
+    }
+
+    return lstatus;
+}
+
 bool MsRdpEx_IsAddressInModule(PVOID pAddress, LPCTSTR pszModule)
 {
     bool result;
@@ -481,6 +603,8 @@ void MsRdpEx_GlobalUninit()
 
 static bool g_IsHooked = false;
 
+static HMODULE g_hKernelBase = NULL;
+
 LONG MsRdpEx_AttachHooks()
 {
     LONG error;
@@ -489,6 +613,11 @@ LONG MsRdpEx_AttachHooks()
     {
         return NO_ERROR;
     }
+
+    g_hKernelBase = GetModuleHandleA("KernelBase.dll");
+    MSRDPEX_GETPROCADDRESS(Real_RegOpenKeyExW, Func_RegOpenKeyExW, g_hKernelBase, "RegOpenKeyExW");
+    MSRDPEX_GETPROCADDRESS(Real_RegQueryValueExW, Func_RegQueryValueExW, g_hKernelBase, "RegQueryValueExW");
+    MSRDPEX_GETPROCADDRESS(Real_RegCloseKey, Func_RegCloseKey, g_hKernelBase, "RegCloseKey");
 
     MsRdpEx_GlobalInit();
     DetourRestoreAfterWith();
@@ -499,14 +628,21 @@ LONG MsRdpEx_AttachHooks()
     //MSRDPEX_DETOUR_ATTACH(Real_GetProcAddress, Hook_GetProcAddress);
     //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
     //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
+
     MSRDPEX_DETOUR_ATTACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_ATTACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassExW, Hook_RegisterClassExW);
+    
     MSRDPEX_DETOUR_ATTACH(Real_CredReadW, Hook_CredReadW);
     //MSRDPEX_DETOUR_ATTACH(Real_CryptProtectMemory, Hook_CryptProtectMemory);
     //MSRDPEX_DETOUR_ATTACH(Real_CryptUnprotectMemory, Hook_CryptUnprotectMemory);
     //MSRDPEX_DETOUR_ATTACH(Real_CryptProtectData, Hook_CryptProtectData);
     //MSRDPEX_DETOUR_ATTACH(Real_CryptUnprotectData, Hook_CryptUnprotectData);
+    
+    MSRDPEX_DETOUR_ATTACH(Real_RegOpenKeyExW, Hook_RegOpenKeyExW);
+    MSRDPEX_DETOUR_ATTACH(Real_RegQueryValueExW, Hook_RegQueryValueExW);
+    MSRDPEX_DETOUR_ATTACH(Real_RegCloseKey, Hook_RegCloseKey);
+    
     MsRdpEx_AttachSspiHooks();
     error = DetourTransactionCommit();
 
@@ -538,14 +674,21 @@ LONG MsRdpEx_DetachHooks()
     //MSRDPEX_DETOUR_DETACH(Real_GetProcAddress, Hook_GetProcAddress);
     //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
     //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
+    
     MSRDPEX_DETOUR_DETACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_DETACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassExW, Hook_RegisterClassExW);
+
     MSRDPEX_DETOUR_DETACH(Real_CredReadW, Hook_CredReadW);
     //MSRDPEX_DETOUR_DETACH(Real_CryptProtectMemory, Hook_CryptProtectMemory);
     //MSRDPEX_DETOUR_DETACH(Real_CryptUnprotectMemory, Hook_CryptUnprotectMemory);
     //MSRDPEX_DETOUR_DETACH(Real_CryptProtectData, Hook_CryptProtectData);
     //MSRDPEX_DETOUR_DETACH(Real_CryptUnprotectData, Hook_CryptUnprotectData);
+    
+    MSRDPEX_DETOUR_DETACH(Real_RegOpenKeyExW, Hook_RegOpenKeyExW);
+    MSRDPEX_DETOUR_DETACH(Real_RegQueryValueExW, Hook_RegQueryValueExW);
+    MSRDPEX_DETOUR_DETACH(Real_RegCloseKey, Hook_RegCloseKey);
+    
     MsRdpEx_DetachSspiHooks();
     error = DetourTransactionCommit();
 

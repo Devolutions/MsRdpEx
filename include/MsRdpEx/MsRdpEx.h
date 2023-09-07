@@ -85,6 +85,9 @@ int MsRdpEx_ConvertToUnicode(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr
 bool MsRdpEx_StringEquals(const char* str1, const char* str2);
 bool MsRdpEx_StringIEquals(const char* str1, const char* str2);
 
+bool MsRdpEx_StringEqualsW(const WCHAR* str1, const WCHAR* str2);
+bool MsRdpEx_StringIEqualsW(const WCHAR* str1, const WCHAR* str2);
+
 bool MsRdpEx_StringStartsWith(const char* str, const char* val);
 bool MsRdpEx_IStringStartsWith(const char* str, const char* val);
 
