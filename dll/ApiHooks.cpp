@@ -41,10 +41,25 @@ HMODULE MsRdpEx_LoadLibrary(const char* filename)
 HMODULE Hook_LoadLibraryA(LPCSTR lpLibFileName)
 {
     HMODULE hModule = NULL;
-    
-    MsRdpEx_LogPrint(DEBUG, "LoadLibraryA: %s", lpLibFileName);
+    bool interceptedCall = false;
+    const char* filename = MsRdpEx_FileBase(lpLibFileName);
 
-    hModule = Real_LoadLibraryA(lpLibFileName);
+    if (MsRdpEx_StringIEquals(filename, "winscard.dll")) {
+        char* winscardDll = MsRdpEx_GetEnv("MSRDPEX_WINSCARD_DLL");
+
+        if (MsRdpEx_FileExists(winscardDll)) {
+            MsRdpEx_LogPrint(DEBUG, "LoadLibraryA: \"%s\" -> \"%s\"", lpLibFileName, winscardDll);
+            hModule = Real_LoadLibraryA(winscardDll);
+            interceptedCall = true;
+        }
+
+        free(winscardDll);
+    }
+    
+    if (!interceptedCall) {
+        MsRdpEx_LogPrint(DEBUG, "LoadLibraryA: %s", lpLibFileName);
+        hModule = Real_LoadLibraryA(lpLibFileName);
+    }
 
     return hModule;
 }
