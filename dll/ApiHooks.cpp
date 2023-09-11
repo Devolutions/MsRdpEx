@@ -99,6 +99,65 @@ HMODULE Hook_LoadLibraryW(LPCWSTR lpLibFileName)
     return hModule;
 }
 
+typedef HMODULE(WINAPI* Func_LoadLibraryExA)(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
+typedef HMODULE(WINAPI* Func_LoadLibraryExW)(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
+
+Func_LoadLibraryExA Real_LoadLibraryExA = NULL;
+Func_LoadLibraryExW Real_LoadLibraryExW = NULL;
+
+HMODULE Hook_LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+{
+    HMODULE hModule = NULL;
+    const char* filename = MsRdpEx_FileBase(lpLibFileName);
+
+    MsRdpEx_LogPrint(DEBUG, "LoadLibraryExA: %s", lpLibFileName);
+    hModule = Real_LoadLibraryExA(lpLibFileName, hFile, dwFlags);
+
+    return hModule;
+}
+
+HMODULE Hook_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+{
+    HMODULE hModule;
+    const char* filename;
+    char* lpLibFileNameA = NULL;
+    bool interceptedCall = false;
+
+    MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, lpLibFileName, -1, &lpLibFileNameA, 0, NULL, NULL);
+
+    filename = MsRdpEx_FileBase(lpLibFileNameA);
+
+    if (MsRdpEx_StringIEquals(filename, "credssp.dll")) {
+        char* credsspDllA = MsRdpEx_GetEnv("MSRDPEX_CREDSSP_DLL");
+
+        if (credsspDllA)
+        {
+            WCHAR* credsspDllW = NULL;
+            MsRdpEx_ConvertToUnicode(CP_UTF8, 0, credsspDllA, -1, &credsspDllW, 0);
+
+            if (credsspDllW) {
+                MsRdpEx_LogPrint(DEBUG, "LoadLibraryExW: \"%s\" -> \"%s\"", lpLibFileNameA, credsspDllA);
+                hModule = Real_LoadLibraryExW(credsspDllW, hFile, dwFlags);
+                interceptedCall = true;
+            }
+
+            free(credsspDllW);
+        }
+
+        free(credsspDllA);
+    }
+
+    if (!interceptedCall)
+    {
+        MsRdpEx_LogPrint(DEBUG, "LoadLibraryExW: %s", lpLibFileNameA);
+        hModule = Real_LoadLibraryExW(lpLibFileName, hFile, dwFlags);
+    }
+
+    free(lpLibFileNameA);
+
+    return hModule;
+}
+
 FARPROC (WINAPI* Real_GetProcAddress)(HMODULE hModule, LPCSTR lpProcName) = GetProcAddress;
 
 FARPROC Hook_GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
@@ -633,6 +692,8 @@ LONG MsRdpEx_AttachHooks()
     MSRDPEX_GETPROCADDRESS(Real_RegOpenKeyExW, Func_RegOpenKeyExW, g_hKernelBase, "RegOpenKeyExW");
     MSRDPEX_GETPROCADDRESS(Real_RegQueryValueExW, Func_RegQueryValueExW, g_hKernelBase, "RegQueryValueExW");
     MSRDPEX_GETPROCADDRESS(Real_RegCloseKey, Func_RegCloseKey, g_hKernelBase, "RegCloseKey");
+    MSRDPEX_GETPROCADDRESS(Real_LoadLibraryExA, Func_LoadLibraryExA, g_hKernelBase, "LoadLibraryExA");
+    MSRDPEX_GETPROCADDRESS(Real_LoadLibraryExW, Func_LoadLibraryExW, g_hKernelBase, "LoadLibraryExW");
 
     MsRdpEx_GlobalInit();
     DetourRestoreAfterWith();
@@ -640,6 +701,8 @@ LONG MsRdpEx_AttachHooks()
     DetourUpdateThread(GetCurrentThread());
     MSRDPEX_DETOUR_ATTACH(Real_LoadLibraryA, Hook_LoadLibraryA);
     MSRDPEX_DETOUR_ATTACH(Real_LoadLibraryW, Hook_LoadLibraryW);
+    MSRDPEX_DETOUR_ATTACH(Real_LoadLibraryExA, Hook_LoadLibraryExA);
+    MSRDPEX_DETOUR_ATTACH(Real_LoadLibraryExW, Hook_LoadLibraryExW);
     //MSRDPEX_DETOUR_ATTACH(Real_GetProcAddress, Hook_GetProcAddress);
     //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
     //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
@@ -654,9 +717,9 @@ LONG MsRdpEx_AttachHooks()
     //MSRDPEX_DETOUR_ATTACH(Real_CryptProtectData, Hook_CryptProtectData);
     //MSRDPEX_DETOUR_ATTACH(Real_CryptUnprotectData, Hook_CryptUnprotectData);
     
-    MSRDPEX_DETOUR_ATTACH(Real_RegOpenKeyExW, Hook_RegOpenKeyExW);
-    MSRDPEX_DETOUR_ATTACH(Real_RegQueryValueExW, Hook_RegQueryValueExW);
-    MSRDPEX_DETOUR_ATTACH(Real_RegCloseKey, Hook_RegCloseKey);
+    //MSRDPEX_DETOUR_ATTACH(Real_RegOpenKeyExW, Hook_RegOpenKeyExW);
+    //MSRDPEX_DETOUR_ATTACH(Real_RegQueryValueExW, Hook_RegQueryValueExW);
+    //MSRDPEX_DETOUR_ATTACH(Real_RegCloseKey, Hook_RegCloseKey);
     
     MsRdpEx_AttachSspiHooks();
     error = DetourTransactionCommit();
@@ -686,6 +749,8 @@ LONG MsRdpEx_DetachHooks()
     DetourUpdateThread(GetCurrentThread());
     MSRDPEX_DETOUR_DETACH(Real_LoadLibraryA, Hook_LoadLibraryA);
     MSRDPEX_DETOUR_DETACH(Real_LoadLibraryW, Hook_LoadLibraryW);
+    MSRDPEX_DETOUR_DETACH(Real_LoadLibraryExA, Hook_LoadLibraryExA);
+    MSRDPEX_DETOUR_DETACH(Real_LoadLibraryExW, Hook_LoadLibraryExW);
     //MSRDPEX_DETOUR_DETACH(Real_GetProcAddress, Hook_GetProcAddress);
     //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
     //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
@@ -700,9 +765,9 @@ LONG MsRdpEx_DetachHooks()
     //MSRDPEX_DETOUR_DETACH(Real_CryptProtectData, Hook_CryptProtectData);
     //MSRDPEX_DETOUR_DETACH(Real_CryptUnprotectData, Hook_CryptUnprotectData);
     
-    MSRDPEX_DETOUR_DETACH(Real_RegOpenKeyExW, Hook_RegOpenKeyExW);
-    MSRDPEX_DETOUR_DETACH(Real_RegQueryValueExW, Hook_RegQueryValueExW);
-    MSRDPEX_DETOUR_DETACH(Real_RegCloseKey, Hook_RegCloseKey);
+    //MSRDPEX_DETOUR_DETACH(Real_RegOpenKeyExW, Hook_RegOpenKeyExW);
+    //MSRDPEX_DETOUR_DETACH(Real_RegQueryValueExW, Hook_RegQueryValueExW);
+    //MSRDPEX_DETOUR_DETACH(Real_RegCloseKey, Hook_RegCloseKey);
     
     MsRdpEx_DetachSspiHooks();
     error = DetourTransactionCommit();
