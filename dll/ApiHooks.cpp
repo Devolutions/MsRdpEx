@@ -57,7 +57,8 @@ HMODULE Hook_LoadLibraryA(LPCSTR lpLibFileName)
     }
     
     if (!interceptedCall) {
-        MsRdpEx_LogPrint(DEBUG, "LoadLibraryA: %s", lpLibFileName);
+        // LoadLibraryA calls LoadLibraryExW under the hood, don't log here
+        //MsRdpEx_LogPrint(DEBUG, "LoadLibraryA: %s", lpLibFileName);
         hModule = Real_LoadLibraryA(lpLibFileName);
     }
 
@@ -89,7 +90,8 @@ HMODULE Hook_LoadLibraryW(LPCWSTR lpLibFileName)
         hModule = Real_LoadLibraryW(msrdpexLibraryW);
     }
     else {
-        MsRdpEx_LogPrint(DEBUG, "LoadLibraryW: %s", lpLibFileNameA);
+        // LoadLibraryW calls LoadLibraryExW under the hood, don't log here
+        //MsRdpEx_LogPrint(DEBUG, "LoadLibraryW: %s", lpLibFileNameA);
         hModule = Real_LoadLibraryW(lpLibFileName);
     }
 
@@ -110,11 +112,14 @@ HMODULE Hook_LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
     HMODULE hModule = NULL;
     const char* filename = MsRdpEx_FileBase(lpLibFileName);
 
-    MsRdpEx_LogPrint(DEBUG, "LoadLibraryExA: %s", lpLibFileName);
+    // LoadLibraryExA calls LoadLibraryExW under the hood, don't log here
+    //MsRdpEx_LogPrint(DEBUG, "LoadLibraryExA: %s", lpLibFileName);
     hModule = Real_LoadLibraryExA(lpLibFileName, hFile, dwFlags);
 
     return hModule;
 }
+
+static LPCWSTR LoadLibraryExW_LastFileName = NULL;
 
 HMODULE Hook_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 {
@@ -149,8 +154,13 @@ HMODULE Hook_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 
     if (!interceptedCall)
     {
-        MsRdpEx_LogPrint(DEBUG, "LoadLibraryExW: %s", lpLibFileNameA);
+        // reduce log verbosity for repeated LoadLibraryExW calls
+        if (lpLibFileName != LoadLibraryExW_LastFileName) {
+            MsRdpEx_LogPrint(DEBUG, "LoadLibraryExW: %s", lpLibFileNameA);
+        }
+
         hModule = Real_LoadLibraryExW(lpLibFileName, hFile, dwFlags);
+        LoadLibraryExW_LastFileName = lpLibFileName;
     }
 
     free(lpLibFileNameA);

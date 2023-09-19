@@ -577,13 +577,12 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
 
     m_pMsTscAx = pMsTscAx;
 
-    size_t maxPtrCount = 1000;
     ITSObjectBase* pTSWin32CoreApi = NULL;
     ITSPropertySet* pTSCoreProps = NULL;
     ITSPropertySet* pTSBaseProps = NULL;
     ITSPropertySet* pTSTransportProps = NULL;
 
-    for (int i = 0; i < maxPtrCount; i++) {
+    for (int i = 0; i < 500; i++) {
         ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)m_pMsTscAx)[i];
         if (MsRdpEx_CanReadUnsafePtr(ppTSObject, 8)) {
             ITSObjectBase* pTSObject = *ppTSObject;
@@ -610,31 +609,9 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
         }
     }
 
-    for (int i = 0; i < maxPtrCount; i++) {
-        ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)pTSWin32CoreApi)[i];
-        if (MsRdpEx_CanReadUnsafePtr(ppTSObject, 8)) {
-            ITSObjectBase* pTSObject = *ppTSObject;
-            if (MsRdpEx_CanReadUnsafePtr(pTSObject, sizeof(ITSObjectBase))) {
-                if (pTSObject->marker == TSOBJECT_MARKER) {
-                    MsRdpEx_LogPrint(DEBUG, "TSWin32CoreApi(%d): 0x%08X name: %s refCount: %d",
-                        i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
-
-                    if (MsRdpEx_StringEqualsUnsafePtr(pTSObject->name, "CTSPropertySet")) {
-                        ITSPropertySet* pTSProps = (ITSPropertySet*)pTSObject;
-
-                        if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
-                            pTSCoreProps = pTSProps;
-                        }
-                        else if (!pTSBaseProps && TsPropertyMap_IsBaseProps(pTSProps)) {
-                            pTSBaseProps = pTSProps;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    MsRdpEx_LogPrint(DEBUG, "pTSCoreProps1: %p", pTSCoreProps);
+    MsRdpEx_LogPrint(DEBUG, "pTSCoreProps: %p", pTSCoreProps);
+    MsRdpEx_LogPrint(DEBUG, "pTSBaseProps: %p", pTSBaseProps);
+    MsRdpEx_LogPrint(DEBUG, "CTSWin32CoreApi: %p", pTSWin32CoreApi);
 
     if (pTSCoreProps)
     {
