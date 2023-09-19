@@ -7,7 +7,7 @@ on:
         description: 'Dry run'
         required: true
         type: boolean
-        default: 'true'
+        default: true
   schedule:
     - cron: '32 5 * * 1' # 05:32 AM UTC every Monday
 
@@ -30,7 +30,7 @@ jobs:
           if ($IsDryRun) {
             echo "dry-run=true" >> $Env:GITHUB_OUTPUT
           } else {
-            echo "dry-run="false" >> $Env:GITHUB_OUTPUT
+            echo "dry-run=false" >> $Env:GITHUB_OUTPUT
           }
 
   build-native:
