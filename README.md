@@ -58,6 +58,7 @@ MsRdpEx processes additional .RDP file options that are not normally supported b
 | RestrictedLogon:i:value | Enable Restricted Admin Mode | 0/1 | 0 |
 | UserSpecifiedServerName:s:value | Server name used for TLS and Kerberos server validation | explicit server name (usually the machine FQDN) | same as DNS hostname used for RDP server |
 | DisableUDPTransport:i:value | Disable RDP UDP transport (TCP only) | 0/1 | 0 | 
+| ConnectToChildSession:i:value | Connect to child session | 0/1 | 0 |
 | EnableHardwareMode:i:value | Disable DirectX client presenter (force GDI client presenter) | 0/1 | 1 |
 | ClearTextPassword:s:value | Target RDP server password - use for testing only | Insecure password | - |
 | GatewayPassword:s:value | RD Gateway server password - use for testing only | Insecure password | - |

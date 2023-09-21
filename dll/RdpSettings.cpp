@@ -698,6 +698,13 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
                     pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
                 }
             }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "ConnectToChildSession")) {
+                VARIANT value;
+                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                    pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+                }
+            }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableHardwareMode")) {
                 VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
