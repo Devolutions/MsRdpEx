@@ -174,6 +174,12 @@ public:
         return S_OK;
     }
 
+    HRESULT STDMETHODCALLTYPE AttachInputWindow(HWND hInputWnd, void* pUserData)
+    {
+        m_hInputCaptureWnd = hInputWnd;
+        return S_OK;
+    }
+
     HRESULT STDMETHODCALLTYPE AttachOutputWindow(HWND hOutputWnd, void* pUserData)
     {
         m_hOutputPresenterWnd = hOutputWnd;
@@ -185,6 +191,12 @@ public:
         m_pMsRdpExtendedSettings = pExtendedSettings;
         m_pMsRdpExtendedSettings->AddRef();
         return S_OK;
+    }
+
+    bool STDMETHODCALLTYPE GetExtendedSettings(CMsRdpExtendedSettings** ppExtendedSettings)
+    {
+        *ppExtendedSettings = m_pMsRdpExtendedSettings;
+        return m_pMsRdpExtendedSettings ? true : false;
     }
 
     bool STDMETHODCALLTYPE GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint8_t** pBitmapData,
@@ -219,6 +231,18 @@ public:
         MsRdpEx_OutputMirror_Unlock(outputMirror);
     }
 
+    void STDMETHODCALLTYPE GetLastMousePosition(int32_t* posX, int32_t* posY)
+    {
+        *posX = m_LastMousePosX;
+        *posY = m_LastMousePosY;
+    }
+
+    void STDMETHODCALLTYPE SetLastMousePosition(int32_t posX, int32_t posY)
+    {
+        m_LastMousePosX = posX;
+        m_LastMousePosY = posY;
+    }
+
 public:
     GUID m_sessionId;
     ULONG m_refCount = NULL;
@@ -226,10 +250,13 @@ public:
     bool m_videoRecordingEnabled = false;
     bool m_dumpBitmapUpdates = false;
     CMsRdpClient* m_pMsRdpClient = NULL;
+    HWND m_hInputCaptureWnd = NULL;
     HWND m_hOutputPresenterWnd = NULL;
     MsRdpEx_OutputMirror* m_OutputMirror = NULL;
     ITSPropertySet* m_pCorePropsRaw = NULL;
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
+    int32_t m_LastMousePosX = 0;
+    int32_t m_LastMousePosY = 0;
 };
 
 CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient)
@@ -318,7 +345,6 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
 
     size_t maxPtrCount = 200;
     ITSPropertySet* pTSCoreProps = NULL;
-    ITSPropertySet* pTSBaseProps = NULL;
 
     for (int i = 0; i < maxPtrCount; i++) {
         ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)pUserData)[i];
@@ -334,9 +360,7 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
 
                         if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
                             pTSCoreProps = pTSProps;
-                        }
-                        else if (!pTSBaseProps && TsPropertyMap_IsBaseProps(pTSProps)) {
-                            pTSBaseProps = pTSProps;
+                            break;
                         }
                     }
                 }
@@ -362,8 +386,6 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
 
         obj->GetCorePropsRawPtr(&pCorePropsRaw2);
 
-        MsRdpEx_LogPrint(DEBUG, "pCorePropsRaw: %p == %p", pCorePropsRaw1, pCorePropsRaw2);
-
         if (pCorePropsRaw1 == pCorePropsRaw2)
         {
             found = true;
@@ -375,6 +397,100 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
 
     if (found) {
         obj->AttachOutputWindow(hOutputWnd, pUserData);
+    }
+
+    return found ? obj : NULL;
+}
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_FindByInputCaptureHwnd(HWND hWnd)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx)
+        return NULL;
+
+    bool found = false;
+    CMsRdpExInstance* obj = NULL;
+    MsRdpEx_ArrayListIt* it = NULL;
+
+    it = MsRdpEx_ArrayList_It(ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        obj = (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+
+        found = (obj->m_hInputCaptureWnd == hWnd) ? true : false;
+
+        if (found)
+            break;
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+
+    return found ? obj : NULL;
+}
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_AttachInputWindow(HWND hInputWnd, void* pUserData)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx)
+        return NULL;
+
+    size_t maxPtrCount = 200;
+    ITSPropertySet* pTSCoreProps = NULL;
+
+    for (int i = 0; i < maxPtrCount; i++) {
+        ITSObjectBase** ppTSObject = (ITSObjectBase**)&((size_t*)pUserData)[i];
+        if (MsRdpEx_CanReadUnsafePtr(ppTSObject, 8)) {
+            ITSObjectBase* pTSObject = *ppTSObject;
+            if (MsRdpEx_CanReadUnsafePtr(pTSObject, sizeof(ITSObjectBase))) {
+                if (pTSObject->marker == TSOBJECT_MARKER) {
+                    MsRdpEx_LogPrint(DEBUG, "CIHWnd(%d): 0x%08X name: %s refCount: %d",
+                        i, (size_t)pTSObject, pTSObject->name, pTSObject->refCount);
+
+                    if (MsRdpEx_StringEqualsUnsafePtr(pTSObject->name, "CTSPropertySet")) {
+                        ITSPropertySet* pTSProps = (ITSPropertySet*)pTSObject;
+
+                        if (!pTSCoreProps && TsPropertyMap_IsCoreProps(pTSProps)) {
+                            pTSCoreProps = pTSProps;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void* pCorePropsRaw1 = (void*)pTSCoreProps;
+    void* pCorePropsRaw2 = NULL;
+
+    if (!pCorePropsRaw1)
+        return NULL;
+
+    bool found = false;
+    CMsRdpExInstance* obj = NULL;
+    MsRdpEx_ArrayListIt* it = NULL;
+
+    it = MsRdpEx_ArrayList_It(ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        obj = (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+
+        obj->GetCorePropsRawPtr(&pCorePropsRaw2);
+
+        if (pCorePropsRaw1 == pCorePropsRaw2)
+        {
+            found = true;
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+
+    if (found) {
+        obj->AttachInputWindow(hInputWnd, pUserData);
     }
 
     return found ? obj : NULL;

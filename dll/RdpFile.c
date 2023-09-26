@@ -53,7 +53,7 @@ bool MsRdpEx_RdpFileEntry_GetBoolValue(MsRdpEx_RdpFileEntry* entry, bool* pValue
 	return true;
 }
 
-bool MsRdpEx_RdpFileEntry_GetVBoolValue(MsRdpEx_RdpFileEntry* entry, VARIANT* pVariant)
+bool MsRdpEx_RdpFileEntry_GetVBoolValue(MsRdpEx_RdpFileEntry* entry, _Out_ VARIANT* pVariant)
 {
 	bool bVal = false;
 
@@ -63,6 +63,20 @@ bool MsRdpEx_RdpFileEntry_GetVBoolValue(MsRdpEx_RdpFileEntry* entry, VARIANT* pV
 	VariantInit(pVariant);
 	pVariant->vt = VT_BOOL;
 	pVariant->boolVal = bVal ? VARIANT_TRUE : VARIANT_FALSE;
+
+	return true;
+}
+
+bool MsRdpEx_RdpFileEntry_GetIntValue(MsRdpEx_RdpFileEntry* entry, _Out_ VARIANT* pVariant)
+{
+	if (entry->type != 'i')
+		return false;
+
+	int iValue = atoi(entry->value);
+
+	VariantInit(pVariant);
+	pVariant->vt = VT_I4;
+	pVariant->intVal = iValue;
 
 	return true;
 }
@@ -108,10 +122,18 @@ char* MsRdpEx_GetRdpFilenameFromCommandLine()
 		goto exit;
 	}
 
-	MsRdpEx_LogPrint(DEBUG, "cmdline(argc=%d): %s", argc, cmdlineA);
+	MsRdpEx_LogPrint(DEBUG, "cmdline(argc=%d): '%s'", argc, cmdlineA);
 
 	if (argc < 2)
 		goto exit;
+
+	for (index = 0; index < argc; index++)
+	{
+		char* argA = NULL;
+		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, argsW[index], -1, &argA, 0, NULL, NULL);
+		MsRdpEx_LogPrint(DEBUG, "arg[%d]: '%s'", index, argA);
+		free(argA);
+	}
 
 	if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, argsW[1], -1, &filename, 0, NULL, NULL) < 0) {
 		goto exit;
