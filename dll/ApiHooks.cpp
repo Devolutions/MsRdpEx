@@ -12,6 +12,7 @@
 
 #include <MsRdpEx/Detours.h>
 
+#include <windowsx.h>
 #include <wincred.h>
 #include <psapi.h>
 
@@ -351,8 +352,6 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	if (uMsg == WM_NCCREATE)
 	{
 		CREATESTRUCTW* createStruct = (CREATESTRUCTW*) lParam;
-		void* lpCreateParams = createStruct->lpCreateParams;
-
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, createStruct->lpszName, -1, &lpWindowNameA, 0, NULL, NULL);
         MsRdpEx_LogPrint(DEBUG, "Window Create: %s", lpWindowNameA);
 	}
@@ -408,6 +407,147 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
     }
 
     wndClassAtom = Real_RegisterClassExW(wndClassEx);
+
+    free(lpClassNameA);
+
+    return wndClassAtom;
+}
+
+static WNDPROC Real_IHWndProc = NULL;
+
+#define MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID        4301
+#define MOUSE_JIGGLER_SPECIAL_KEY_TIMER_ID       4302
+
+LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    LRESULT result;
+    char* lpWindowNameA = NULL;
+    IMsRdpExInstance* instance = NULL;
+    CMsRdpExtendedSettings* pExtendedSettings = NULL;
+
+    //MsRdpEx_LogPrint(DEBUG, "IHWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
+
+    if (uMsg == WM_NCCREATE)
+    {
+        CREATESTRUCTW* createStruct = (CREATESTRUCTW*)lParam;
+        MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, createStruct->lpszName, -1, &lpWindowNameA, 0, NULL, NULL);
+        MsRdpEx_LogPrint(DEBUG, "Window Create: %s", lpWindowNameA);
+    }
+    else
+    {
+        instance = (IMsRdpExInstance*)MsRdpEx_InstanceManager_FindByInputCaptureHwnd(hWnd);
+
+        if (instance)
+            instance->GetExtendedSettings(&pExtendedSettings);
+    }
+
+    result = Real_IHWndProc(hWnd, uMsg, wParam, lParam);
+
+    if (uMsg == WM_NCCREATE)
+    {
+        CREATESTRUCTW* createStruct = (CREATESTRUCTW*)lParam;
+        void* pUserData = createStruct->lpCreateParams;
+
+        instance = (IMsRdpExInstance*)MsRdpEx_InstanceManager_AttachInputWindow(hWnd, pUserData);
+
+        if (instance)
+        {
+            instance->GetExtendedSettings(&pExtendedSettings);
+
+            if (pExtendedSettings)
+            {
+                bool mouseJigglerEnabled = pExtendedSettings->GetMouseJigglerEnabled();
+                uint32_t mouseJigglerInterval = pExtendedSettings->GetMouseJigglerInterval();
+                uint32_t mouseJigglerMethod = pExtendedSettings->GetMouseJigglerMethod();
+
+                MsRdpEx_LogPrint(DEBUG, "Mouse Jiggler: Enabled=%d, Interval=%d, Method=%d",
+                    mouseJigglerEnabled ? 1 : 0, mouseJigglerInterval, mouseJigglerMethod);
+
+                UINT_PTR timerEventId = MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID;
+
+                switch (mouseJigglerMethod)
+                {
+                    case 0:
+                        timerEventId = MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID;
+                        break;
+
+                    case 1:
+                        timerEventId = MOUSE_JIGGLER_SPECIAL_KEY_TIMER_ID;
+                        break;
+                }
+
+                SetTimer(hWnd, timerEventId, mouseJigglerInterval * 1000, NULL);
+            }
+        }
+        else
+        {
+            MsRdpEx_LogPrint(DEBUG, "Failed to attach input window! hWnd: %p pUserData: %p", hWnd, pUserData);
+        }
+    }
+    else if (uMsg == WM_TIMER)
+    {
+        if (wParam == MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID)
+        {
+            if (instance)
+            {
+                int32_t oldPosX = 0;
+                int32_t oldPosY = 0;
+                instance->GetLastMousePosition(&oldPosX, &oldPosY);
+
+                int32_t newPosX = oldPosX + 1;
+                int32_t newPosY = oldPosY + 1;
+                SendMessage(hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(newPosX, newPosY));
+                SendMessage(hWnd, WM_MOUSEMOVE, 0, MAKELPARAM(oldPosX, oldPosY));
+            }
+        }
+        else if (wParam == MOUSE_JIGGLER_SPECIAL_KEY_TIMER_ID)
+        {
+            if (instance)
+            {
+                uint32_t specialKey = VK_F15; // 'F15' is ignored by most applications
+                SendMessage(hWnd, WM_KEYDOWN, (WPARAM)specialKey, (LPARAM)0x0);
+                SendMessage(hWnd, WM_KEYUP, (WPARAM)specialKey, (LPARAM)0x0);
+            }
+        }
+    }
+    else if (uMsg == WM_MOUSEMOVE)
+    {
+        int32_t mousePosX = GET_X_LPARAM(lParam);
+        int32_t mousePosY = GET_Y_LPARAM(lParam);
+
+        if (instance)
+        {
+            instance->SetLastMousePosition(mousePosX, mousePosY);
+        }
+    }
+    else if (uMsg == WM_NCDESTROY)
+    {
+        KillTimer(hWnd, MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID);
+        KillTimer(hWnd, MOUSE_JIGGLER_SPECIAL_KEY_TIMER_ID);
+    }
+
+    free(lpWindowNameA);
+
+    return result;
+}
+
+ATOM(WINAPI* Real_RegisterClassW)(const WNDCLASSW* wndClass) = RegisterClassW;
+
+ATOM Hook_RegisterClassW(WNDCLASSW* wndClass)
+{
+    ATOM wndClassAtom;
+    char* lpClassNameA = NULL;
+
+    MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, wndClass->lpszClassName, -1, &lpClassNameA, 0, NULL, NULL);
+
+    MsRdpEx_LogPrint(DEBUG, "RegisterClassW: %s", lpClassNameA);
+
+    if (MsRdpEx_StringEquals(lpClassNameA, "IHWindowClass")) {
+        Real_IHWndProc = wndClass->lpfnWndProc;
+        wndClass->lpfnWndProc = Hook_IHWndProc;
+    }
+
+    wndClassAtom = Real_RegisterClassW(wndClass);
 
     free(lpClassNameA);
 
@@ -720,6 +860,7 @@ LONG MsRdpEx_AttachHooks()
     MSRDPEX_DETOUR_ATTACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_ATTACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassExW, Hook_RegisterClassExW);
+    MSRDPEX_DETOUR_ATTACH(Real_RegisterClassW, Hook_RegisterClassW);
     
     MSRDPEX_DETOUR_ATTACH(Real_CredReadW, Hook_CredReadW);
     //MSRDPEX_DETOUR_ATTACH(Real_CryptProtectMemory, Hook_CryptProtectMemory);
@@ -768,6 +909,7 @@ LONG MsRdpEx_DetachHooks()
     MSRDPEX_DETOUR_DETACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_DETACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassExW, Hook_RegisterClassExW);
+    MSRDPEX_DETOUR_DETACH(Real_RegisterClassW, Hook_RegisterClassW);
 
     MSRDPEX_DETOUR_DETACH(Real_CredReadW, Hook_CredReadW);
     //MSRDPEX_DETOUR_DETACH(Real_CryptProtectMemory, Hook_CryptProtectMemory);

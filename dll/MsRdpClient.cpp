@@ -497,6 +497,7 @@ public:
         CMsRdpExtendedSettings* pMsRdpExtendedSettings = m_pMsRdpExtendedSettings;
         m_pMsRdpExtendedSettings->LoadRdpFile(NULL);
         m_pMsRdpExtendedSettings->PrepareSspiSessionIdHack();
+        m_pMsRdpExtendedSettings->PrepareMouseJiggler();
 
         hr = m_pMsTscAx->raw_Connect();
 

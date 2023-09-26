@@ -351,6 +351,22 @@ namespace MsRdpEx_App
                             case "use redirection server name":
                                 redirectionInfo.UseRedirectionServerName = bValue;
                                 break;
+
+                            case "allowbackgroundinput":
+                                advancedSettings.allowBackgroundInput = bValue ? 1 : 0;
+                                break;
+
+                            case "enablemousejiggler":
+                                extendedSettings.set_Property("EnableMouseJiggler", bValue);
+                                break;
+
+                            case "mousejigglerinterval":
+                                extendedSettings.set_Property("MouseJigglerInterval", iValue);
+                                break;
+
+                            case "mousejigglermethod":
+                                extendedSettings.set_Property("MouseJigglerMethod", iValue);
+                                break;
                         }
                     }
                 }
@@ -369,17 +385,17 @@ namespace MsRdpEx_App
 
             if (externalMode)
             {
-                string filename = this.mstscExecutable;
+                string executableFileName = this.mstscExecutable;
 
                 if (axName.Equals("msrdc"))
                 {
-                    filename = this.msrdcExecutable;
+                    executableFileName = this.msrdcExecutable;
                 }
 
-                string workingDirectory = Path.GetDirectoryName(filename);
+                string workingDirectory = Path.GetDirectoryName(executableFileName);
 
                 List<string> args = new List<string>();
-                args.Add(filename);
+                args.Add('"' + executableFileName + '"');
 
                 if (this.rdpFileName != null)
                 {
@@ -389,7 +405,7 @@ namespace MsRdpEx_App
                 string arguments = string.Join(' ', args.ToArray());
 
                 ProcessStartInfo startInfo = new ProcessStartInfo();
-                startInfo.FileName = filename;
+                startInfo.FileName = executableFileName;
                 startInfo.UseShellExecute = false;
                 startInfo.WorkingDirectory = workingDirectory;
                 startInfo.Arguments = arguments;

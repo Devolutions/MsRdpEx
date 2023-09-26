@@ -22,7 +22,8 @@ typedef struct _MsRdpEx_RdpFileEntry MsRdpEx_RdpFileEntry;
 bool MsRdpEx_RdpFileEntry_IsMatch(MsRdpEx_RdpFileEntry* entry, char type, const char* name);
 
 bool MsRdpEx_RdpFileEntry_GetBoolValue(MsRdpEx_RdpFileEntry* entry, bool* pValue);
-bool MsRdpEx_RdpFileEntry_GetVBoolValue(MsRdpEx_RdpFileEntry* entry, VARIANT* pVariant);
+bool MsRdpEx_RdpFileEntry_GetVBoolValue(MsRdpEx_RdpFileEntry* entry, _Out_ VARIANT* pVariant);
+bool MsRdpEx_RdpFileEntry_GetIntValue(MsRdpEx_RdpFileEntry* entry, _Out_ VARIANT* pVariant);
 
 MsRdpEx_RdpFileEntry* MsRdpEx_RdpFileEntry_New(char type, const char* name, const char* value);
 void MsRdpEx_RdpFileEntry_Free(MsRdpEx_RdpFileEntry* entry);

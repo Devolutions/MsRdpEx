@@ -117,9 +117,15 @@ namespace MsRdpEx
 
         void SetCorePropsRawPtr(IntPtr pCorePropsRaw);
 
+        void AttachInputWindow(IntPtr hInputWnd, IntPtr pUserData);
+
         void AttachOutputWindow(IntPtr hOutputWnd, IntPtr pUserData);
 
         void AttachExtendedSettings(IntPtr pExtendedSettings);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [return: MarshalAs(UnmanagedType.U1)]
+        bool GetExtendedSettings(out IntPtr ppExtendedSettings);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         [return: MarshalAs(UnmanagedType.U1)]
@@ -131,6 +137,12 @@ namespace MsRdpEx
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         void UnlockShadowBitmap();
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void GetLastMousePosition(ref Int32 posX, ref Int32 posY);
+
+        [MethodImpl(MethodImplOptions.PreserveSig)]
+        void SetLastMousePosition(Int32 posX, Int32 posY);
     }
 
     public static class Bindings

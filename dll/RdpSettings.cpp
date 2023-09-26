@@ -425,6 +425,31 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         }
 
         free(propValue);
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "EnableMouseJiggler"))
+    {
+        if (pValue->vt != VT_BOOL)
+            goto end;
+
+        m_MouseJigglerEnabled = pValue->boolVal ? true : false;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "MouseJigglerInterval"))
+    {
+        if ((pValue->vt != VT_UI4) && (pValue->vt != VT_I4))
+            goto end;
+
+        m_MouseJigglerInterval = (uint32_t) pValue->uintVal;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "MouseJigglerMethod"))
+    {
+        if ((pValue->vt != VT_UI4) && (pValue->vt != VT_I4))
+            goto end;
+
+        m_MouseJigglerMethod = (uint32_t) pValue->uintVal;
+        hr = S_OK;
     }
     else
     {
@@ -490,6 +515,21 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         pValue->vt = VT_BSTR;
         const char* kdcProxyUrl = m_KdcProxyUrl ? m_KdcProxyUrl : "";
         pValue->bstrVal = _com_util::ConvertStringToBSTR(kdcProxyUrl);
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "EnableMouseJiggler")) {
+        pValue->vt = VT_BOOL;
+        pValue->boolVal = m_MouseJigglerEnabled ? VARIANT_TRUE : VARIANT_FALSE;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "MouseJigglerInterval")) {
+        pValue->vt = VT_I4;
+        pValue->intVal = (INT) m_MouseJigglerInterval;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "MouseJigglerMethod")) {
+        pValue->vt = VT_I4;
+        pValue->intVal = (INT) m_MouseJigglerMethod;
         hr = S_OK;
     }
     else {
@@ -660,31 +700,30 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
 
         while (!MsRdpEx_ArrayListIt_Done(it))
         {
+            VARIANT value;
+            VariantInit(&value);
+
             entry = (MsRdpEx_RdpFileEntry*) MsRdpEx_ArrayListIt_Next(it);
 
             if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableCredentialsDelegation")) {
-                VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
                     bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                     pMsRdpExtendedSettings->PutProperty(propName, &value);
                 }
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RedirectedAuthentication")) {
-                VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
                     bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                     pMsRdpExtendedSettings->PutProperty(propName, &value);
                 }
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RestrictedLogon")) {
-                VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
                     bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                     pMsRdpExtendedSettings->PutProperty(propName, &value);
                 }
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "UserSpecifiedServerName")) {
-                VARIANT value;
                 bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                 bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
                 value.bstrVal = propValue;
@@ -692,22 +731,43 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
                 pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableUDPTransport")) {
-                VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
                     bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                     pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
                 }
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "ConnectToChildSession")) {
-                VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
                     bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                     pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
                 }
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableHardwareMode")) {
-                VARIANT value;
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                    pMsRdpExtendedSettings->put_Property(propName, &value);
+                }
+            }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "AllowBackgroundInput")) {
+                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                    pMsRdpExtendedSettings->put_BaseProperty(propName, &value);
+                }
+            }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableMouseJiggler")) {
+                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                    pMsRdpExtendedSettings->put_Property(propName, &value);
+                }
+            }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "MouseJigglerInterval")) {
+                if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                    pMsRdpExtendedSettings->put_Property(propName, &value);
+                }
+            }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "MouseJigglerMethod")) {
+                if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
                     bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                     pMsRdpExtendedSettings->put_Property(propName, &value);
                 }
@@ -719,7 +779,6 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
                 pMsRdpExtendedSettings->SetGatewayPassword(entry->value);
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetUserName")) {
-                VARIANT value;
                 bstr_t propName = _com_util::ConvertStringToBSTR("UserName");
                 bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
                 value.bstrVal = propValue;
@@ -727,7 +786,6 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
                 pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
             }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetDomain")) {
-                VARIANT value;
                 bstr_t propName = _com_util::ConvertStringToBSTR("Domain");
                 bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
                 value.bstrVal = propValue;
@@ -774,6 +832,32 @@ HRESULT CMsRdpExtendedSettings::PrepareSspiSessionIdHack()
     return hr;
 }
 
+HRESULT CMsRdpExtendedSettings::PrepareMouseJiggler()
+{
+    HRESULT hr = S_OK;
+    VARIANT enableMouseJiggler;
+    VARIANT allowBackgroundInput;
+    bstr_t enableMouseJigglerName = _com_util::ConvertStringToBSTR("EnableMouseJiggler");
+    bstr_t allowBackgroundInputName = _com_util::ConvertStringToBSTR("AllowBackgroundInput");
+
+    if (!m_BaseProps) {
+        MsRdpEx_LogPrint(ERROR, "PrepareMouseJiggler - m_BaseProps is NULL!");
+        return E_UNEXPECTED;
+    }
+
+    VariantInit(&enableMouseJiggler);
+    VariantInit(&allowBackgroundInput);
+    hr = this->get_Property(enableMouseJigglerName, &enableMouseJiggler);
+    hr = this->get_BaseProperty(allowBackgroundInputName, &allowBackgroundInput);
+
+    if (enableMouseJiggler.boolVal == VARIANT_TRUE) {
+        allowBackgroundInput.boolVal = VARIANT_TRUE;
+        m_BaseProps->put_Property(allowBackgroundInputName, &allowBackgroundInput);
+    }
+
+    return hr;
+}
+
 char* CMsRdpExtendedSettings::GetKdcProxyUrl()
 {
     if (m_KdcProxyUrl)
@@ -785,6 +869,21 @@ char* CMsRdpExtendedSettings::GetKdcProxyUrl()
 char* CMsRdpExtendedSettings::GetKdcProxyName()
 {
     return MsRdpEx_KdcProxyUrlToName(m_KdcProxyUrl);
+}
+
+bool CMsRdpExtendedSettings::GetMouseJigglerEnabled()
+{
+    return m_MouseJigglerEnabled;
+}
+
+uint32_t CMsRdpExtendedSettings::GetMouseJigglerInterval()
+{
+    return m_MouseJigglerInterval;
+}
+
+uint32_t CMsRdpExtendedSettings::GetMouseJigglerMethod()
+{
+    return m_MouseJigglerMethod;
 }
 
 CMsRdpExtendedSettings* CMsRdpExtendedSettings_New(IUnknown* pUnknown, IUnknown* pMsTscAx, GUID* pSessionId)

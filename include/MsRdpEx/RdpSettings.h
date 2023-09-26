@@ -7,6 +7,9 @@
 
 #include <comdef.h>
 
+#define MOUSE_JIGGLER_METHOD_MOUSE_MOVE         0
+#define MOUSE_JIGGLER_METHOD_SPECIAL_KEY        1
+
 class CMsRdpExtendedSettings;
 class CMsRdpPropertySet;
 
@@ -40,8 +43,12 @@ public:
     HRESULT __stdcall LoadRdpFile(const char* rdpFileName);
     HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw);
     HRESULT __stdcall PrepareSspiSessionIdHack();
+    HRESULT __stdcall PrepareMouseJiggler();
     char* __stdcall GetKdcProxyUrl();
     char* __stdcall GetKdcProxyName();
+    bool GetMouseJigglerEnabled();
+    uint32_t GetMouseJigglerInterval();
+    uint32_t GetMouseJigglerMethod();
 
 private:
     GUID m_sessionId;
@@ -54,6 +61,9 @@ private:
     CMsRdpPropertySet* m_BaseProps = NULL;
     CMsRdpPropertySet* m_TransportProps = NULL;
     char* m_KdcProxyUrl = NULL;
+    bool m_MouseJigglerEnabled = false;
+    uint32_t m_MouseJigglerInterval = 60;
+    uint32_t m_MouseJigglerMethod = 0;
 };
 
 #ifdef __cplusplus

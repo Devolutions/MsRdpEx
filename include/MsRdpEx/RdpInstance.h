@@ -23,12 +23,16 @@ public:
     virtual HRESULT __stdcall SetDumpBitmapUpdates(bool dumpBitmapUpdates) = 0;
     virtual HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw) = 0;
     virtual HRESULT __stdcall SetCorePropsRawPtr(LPVOID pCorePropsRaw) = 0;
+    virtual HRESULT __stdcall AttachInputWindow(HWND hOutputWnd, void* pUserData) = 0;
     virtual HRESULT __stdcall AttachOutputWindow(HWND hOutputWnd, void* pUserData) = 0;
     virtual HRESULT __stdcall AttachExtendedSettings(CMsRdpExtendedSettings* pExtendedSettings) = 0;
+    virtual bool __stdcall GetExtendedSettings(CMsRdpExtendedSettings** ppExtendedSettings) = 0;
     virtual bool __stdcall GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint8_t** pBitmapData,
         uint32_t* pBitmapWidth, uint32_t* pBitmapHeight, uint32_t* pBitmapStep) = 0;
     virtual void __stdcall LockShadowBitmap() = 0;
     virtual void __stdcall UnlockShadowBitmap() = 0;
+    virtual void __stdcall GetLastMousePosition(int32_t* posX, int32_t* posY) = 0;
+    virtual void __stdcall SetLastMousePosition(int32_t posX, int32_t posY) = 0;
 };
 
 class CMsRdpExInstance;
@@ -46,6 +50,10 @@ bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance);
 CMsRdpExInstance* MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(HWND hWnd);
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, void* pUserData);
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_FindByInputCaptureHwnd(HWND hWnd);
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_AttachInputWindow(HWND hInputWnd, void* pUserData);
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_FindBySessionId(GUID* sessionId);
 
