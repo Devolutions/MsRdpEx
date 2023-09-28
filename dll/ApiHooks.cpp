@@ -12,9 +12,9 @@
 
 #include <MsRdpEx/Detours.h>
 
-#include <windowsx.h>
 #include <wincred.h>
 #include <psapi.h>
+#include <windowsx.h>
 
 HMODULE (WINAPI* Real_LoadLibraryA)(LPCSTR lpLibFileName) = LoadLibraryA;
 HMODULE (WINAPI* Real_LoadLibraryW)(LPCWSTR lpLibFileName) = LoadLibraryW;
@@ -463,7 +463,7 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                 MsRdpEx_LogPrint(DEBUG, "Mouse Jiggler: Enabled=%d, Interval=%d, Method=%d",
                     mouseJigglerEnabled ? 1 : 0, mouseJigglerInterval, mouseJigglerMethod);
 
-                UINT_PTR timerEventId = MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID;
+                uint32_t timerEventId = MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID;
 
                 switch (mouseJigglerMethod)
                 {
