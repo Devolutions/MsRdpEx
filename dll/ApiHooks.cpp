@@ -169,15 +169,178 @@ HMODULE Hook_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
     return hModule;
 }
 
-FARPROC (WINAPI* Real_GetProcAddress)(HMODULE hModule, LPCSTR lpProcName) = GetProcAddress;
+typedef struct _DELAYLOAD_PROC_DESCRIPTOR
+{
+    ULONG ImportDescribedByName;
+    union
+    {
+        PCSTR Name;
+        ULONG Ordinal;
+    } Description;
+} DELAYLOAD_PROC_DESCRIPTOR, *PDELAYLOAD_PROC_DESCRIPTOR;
+
+typedef struct _DELAYLOAD_INFO
+{
+    ULONG Size;
+    PCIMAGE_DELAYLOAD_DESCRIPTOR DelayloadDescriptor;
+    PIMAGE_THUNK_DATA ThunkAddress;
+    PCSTR TargetDllName;
+    DELAYLOAD_PROC_DESCRIPTOR TargetApiDescriptor;
+    PVOID TargetModuleBase;
+    PVOID Unused;
+    ULONG LastError;
+} DELAYLOAD_INFO, *PDELAYLOAD_INFO;
+
+typedef PVOID(NTAPI* PDELAYLOAD_FAILURE_DLL_CALLBACK)(ULONG NotificationReason, PDELAYLOAD_INFO DelayloadInfo);
+
+typedef PVOID(NTAPI* PDELAYLOAD_FAILURE_SYSTEM_ROUTINE)(PCSTR DllName, PCSTR ProcedureName);
+
+typedef PVOID(NTAPI* Func_LdrResolveDelayLoadedAPI)(PVOID ParentModuleBase,
+    PCIMAGE_DELAYLOAD_DESCRIPTOR DelayloadDescriptor,
+    PDELAYLOAD_FAILURE_DLL_CALLBACK FailureDllHook,
+    PDELAYLOAD_FAILURE_SYSTEM_ROUTINE FailureSystemHook,
+    PIMAGE_THUNK_DATA ThunkAddress, ULONG Flags);
+
+Func_LdrResolveDelayLoadedAPI Real_LdrResolveDelayLoadedAPI = NULL;
+
+PVOID NTAPI Hook_LdrResolveDelayLoadedAPI(PVOID ParentModuleBase,
+    PCIMAGE_DELAYLOAD_DESCRIPTOR DelayloadDescriptor,
+    PDELAYLOAD_FAILURE_DLL_CALLBACK FailureDllHook,
+    PDELAYLOAD_FAILURE_SYSTEM_ROUTINE FailureSystemHook,
+    PIMAGE_THUNK_DATA ThunkAddress, ULONG Flags)
+{
+    PVOID ldrResult = NULL;
+    const char* DllName = (const char*) &((uint8_t*)ParentModuleBase)[DelayloadDescriptor->DllNameRVA];
+
+    MsRdpEx_LogPrint(DEBUG, "LdrResolveDelayLoadedAPI: DllName: %s", DllName);
+
+    ldrResult = Real_LdrResolveDelayLoadedAPI(ParentModuleBase,
+        DelayloadDescriptor, FailureDllHook, FailureSystemHook, ThunkAddress, Flags);
+    
+    return ldrResult;
+}
+
+typedef struct _UNICODE_STRING
+{
+	USHORT Length;
+	USHORT MaximumLength;
+	PWSTR  Buffer;
+} UNICODE_STRING, * PUNICODE_STRING;
+
+typedef struct _OBJECT_ATTRIBUTES
+{
+	ULONG Length;
+	HANDLE RootDirectory;
+	PUNICODE_STRING ObjectName;
+	ULONG Attributes;
+	PVOID SecurityDescriptor;
+	PVOID SecurityQualityOfService;
+} OBJECT_ATTRIBUTES, * POBJECT_ATTRIBUTES;
+
+typedef struct _IO_STATUS_BLOCK {
+	union {
+		NTSTATUS Status;
+		PVOID Pointer;
+	};
+	ULONG_PTR Information;
+} IO_STATUS_BLOCK, * PIO_STATUS_BLOCK;
+
+typedef NTSTATUS (NTAPI * Func_NtCreateFile)(
+	PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
+	POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER AllocationSize,
+	ULONG FileAttributes, ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions,
+	PVOID EaBuffer, ULONG EaLength);
+
+Func_NtCreateFile Real_NtCreateFile = NULL;
+
+NTSTATUS Hook_NtCreateFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
+    POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER AllocationSize,
+    ULONG FileAttributes, ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions,
+    PVOID EaBuffer, ULONG EaLength)
+{
+    NTSTATUS ntstatus;
+    char* pObjectNameA = NULL;
+
+    MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, ObjectAttributes->ObjectName->Buffer,
+        ObjectAttributes->ObjectName->Length, &pObjectNameA, 0, NULL, NULL);
+
+    MsRdpEx_LogPrint(DEBUG, "NtCreateFile: %s", pObjectNameA);
+
+    ntstatus = Real_NtCreateFile(FileHandle, DesiredAccess,
+        ObjectAttributes, IoStatusBlock, AllocationSize,
+        FileAttributes, ShareAccess, CreateDisposition,
+        CreateOptions, EaBuffer, EaLength);
+
+    free(pObjectNameA);
+
+    return ntstatus;
+}
+
+typedef NTSTATUS(NTAPI* Func_NtOpenFile)(PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
+    POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock,
+    ULONG ShareAccess, ULONG OpenOptions);
+
+Func_NtOpenFile Real_NtOpenFile = NULL;
+
+NTSTATUS Hook_NtOpenFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
+    POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock,
+    ULONG ShareAccess, ULONG OpenOptions)
+{
+    NTSTATUS ntstatus;
+    char* pObjectNameA = NULL;
+    bool interceptedCall = false;
+
+    if (ObjectAttributes && ObjectAttributes->ObjectName && ObjectAttributes->ObjectName->Buffer &&
+        MsRdpEx_IStringEndsWithW(ObjectAttributes->ObjectName->Buffer, L"WinSCard.dll"))
+    {
+        char* winscardDll = MsRdpEx_GetEnv("MSRDPEX_WINSCARD_DLL");
+
+        MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, ObjectAttributes->ObjectName->Buffer,
+            ObjectAttributes->ObjectName->Length, &pObjectNameA, 0, NULL, NULL);
+
+        if (MsRdpEx_FileExists(winscardDll)) {
+            char NewFilePathA[MSRDPEX_MAX_PATH];
+            WCHAR* NewFilePathW = NULL;
+            OBJECT_ATTRIBUTES NewObjectAttributes;
+            UNICODE_STRING NewObjectName;
+
+            sprintf_s(NewFilePathA, MSRDPEX_MAX_PATH, "\\??\\%s", winscardDll);
+            MsRdpEx_ConvertToUnicode(CP_UTF8, 0, NewFilePathA, -1, &NewFilePathW, 0);
+            CopyMemory(&NewObjectAttributes, ObjectAttributes, sizeof(OBJECT_ATTRIBUTES));
+            NewObjectName.Buffer = NewFilePathW;
+            NewObjectName.Length = wcslen(NewFilePathW) * 2;
+            NewObjectName.MaximumLength = NewObjectAttributes.ObjectName->Length;
+            NewObjectAttributes.ObjectName = &NewObjectName;
+
+            MsRdpEx_LogPrint(DEBUG, "NtOpenFile: replacing %s with %s", pObjectNameA, NewFilePathA);
+            ntstatus = Real_NtOpenFile(FileHandle, DesiredAccess, &NewObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
+            interceptedCall = true;
+
+            free(NewFilePathW);
+        }
+
+        free(winscardDll);
+    }
+
+    if (!interceptedCall)
+    {
+        ntstatus = Real_NtOpenFile(FileHandle, DesiredAccess, ObjectAttributes, IoStatusBlock, ShareAccess, OpenOptions);
+    }
+
+    free(pObjectNameA);
+
+    return ntstatus;
+}
+
+FARPROC(WINAPI* Real_GetProcAddress)(HMODULE hModule, LPCSTR lpProcName) = GetProcAddress;
 
 FARPROC Hook_GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 {
-    FARPROC procAddr;
+	FARPROC procAddr;
 
-    procAddr = Real_GetProcAddress(hModule, lpProcName);
+	procAddr = Real_GetProcAddress(hModule, lpProcName);
 
-    return procAddr;
+	return procAddr;
 }
 
 INT (WINAPI* Real_GetAddrInfoW)(PCWSTR pNodeName, PCWSTR pServiceName,
@@ -827,6 +990,7 @@ void MsRdpEx_GlobalUninit()
 
 static bool g_IsHooked = false;
 
+static HMODULE g_hNtDll = NULL;
 static HMODULE g_hKernelBase = NULL;
 
 LONG MsRdpEx_AttachHooks()
@@ -837,6 +1001,11 @@ LONG MsRdpEx_AttachHooks()
     {
         return NO_ERROR;
     }
+
+    g_hNtDll = GetModuleHandleA("ntdll.dll");
+    MSRDPEX_GETPROCADDRESS(Real_LdrResolveDelayLoadedAPI, Func_LdrResolveDelayLoadedAPI, g_hNtDll, "LdrResolveDelayLoadedAPI");
+    MSRDPEX_GETPROCADDRESS(Real_NtCreateFile, Func_NtCreateFile, g_hNtDll, "NtCreateFile");
+    MSRDPEX_GETPROCADDRESS(Real_NtOpenFile, Func_NtOpenFile, g_hNtDll, "NtOpenFile");
 
     g_hKernelBase = GetModuleHandleA("KernelBase.dll");
     MSRDPEX_GETPROCADDRESS(Real_RegOpenKeyExW, Func_RegOpenKeyExW, g_hKernelBase, "RegOpenKeyExW");
@@ -856,6 +1025,10 @@ LONG MsRdpEx_AttachHooks()
     //MSRDPEX_DETOUR_ATTACH(Real_GetProcAddress, Hook_GetProcAddress);
     //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
     //MSRDPEX_DETOUR_ATTACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
+
+    //MSRDPEX_DETOUR_ATTACH(Real_LdrResolveDelayLoadedAPI, Hook_LdrResolveDelayLoadedAPI);
+    //MSRDPEX_DETOUR_ATTACH(Real_NtCreateFile, Hook_NtCreateFile);
+    MSRDPEX_DETOUR_ATTACH(Real_NtOpenFile, Hook_NtOpenFile);
 
     MSRDPEX_DETOUR_ATTACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_ATTACH(Real_StretchBlt, Hook_StretchBlt);
@@ -905,6 +1078,10 @@ LONG MsRdpEx_DetachHooks()
     //MSRDPEX_DETOUR_DETACH(Real_GetProcAddress, Hook_GetProcAddress);
     //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoW, Hook_GetAddrInfoW);
     //MSRDPEX_DETOUR_DETACH(Real_GetAddrInfoExW, Hook_GetAddrInfoExW);
+
+    //MSRDPEX_DETOUR_DETACH(Real_LdrResolveDelayLoadedAPI, Hook_LdrResolveDelayLoadedAPI);
+    //MSRDPEX_DETOUR_DETACH(Real_NtCreateFile, Hook_NtCreateFile);
+    MSRDPEX_DETOUR_DETACH(Real_NtOpenFile, Hook_NtOpenFile);
     
     MSRDPEX_DETOUR_DETACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_DETACH(Real_StretchBlt, Hook_StretchBlt);
