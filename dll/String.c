@@ -244,6 +244,32 @@ bool MsRdpEx_IStringEndsWith(const char* str, const char* val)
     return false;
 }
 
+bool MsRdpEx_IStringEndsWithW(const WCHAR* str, const WCHAR* val)
+{
+    int strLen;
+    int valLen;
+    const WCHAR* p;
+
+    if (!str || !val)
+        return false;
+
+    strLen = wcslen(str);
+    valLen = wcslen(val);
+
+    if ((strLen < 1) || (valLen < 1))
+        return false;
+
+    if (valLen > strLen)
+        return false;
+
+    p = &str[strLen - valLen];
+
+    if (!_wcsicmp(p, val))
+        return true;
+
+    return false;
+}
+
 static GUID GUID_NIL =
 {
 	0x00000000, 0x0000, 0x0000,

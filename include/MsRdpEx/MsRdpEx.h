@@ -94,6 +94,8 @@ bool MsRdpEx_IStringStartsWith(const char* str, const char* val);
 bool MsRdpEx_StringEndsWith(const char* str, const char* val);
 bool MsRdpEx_IStringEndsWith(const char* str, const char* val);
 
+bool MsRdpEx_IStringEndsWithW(const WCHAR* str, const WCHAR* val);
+
 #define MSRDPEX_STRING_FLAG_UPPERCASE       0x00000001
 #define MSRDPEX_STRING_FLAG_NO_TERMINATOR   0x00000002
 #define MSRDPEX_GUID_STRING_SIZE            37 /* enough space for a GUID string + null terminator */
