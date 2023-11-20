@@ -55,18 +55,38 @@ static HRESULT Hook_ITSPropertySet_SetBoolProperty(ITSPropertySet* This, const c
     return hr;
 }
 
+static int g_UiShowConnectionInformation = 0;
+
 static HRESULT Hook_ITSPropertySet_GetBoolProperty(ITSPropertySet* This, const char* propName, int* propValue)
 {
     HRESULT hr;
 
     hr = Real_ITSPropertySet_GetBoolProperty(This, propName, propValue);
 
-    if (MsRdpEx_StringIEquals(propName, "TSGTransportIsUsed")) {
-        if (MsRdpEx_IsAddressInModule(_ReturnAddress(), L"mstscax.dll") ||
-            MsRdpEx_IsAddressInModule(_ReturnAddress(), L"rdclientax.dll")) {
-            // Workaround to apply KDCProxyName value when not using RD Gateway
-            // This enables injection of KDC proxy settings at all times.
-            *propValue = 1;
+    // KDC proxy client hack: oh, the things we wouldn't do for Kerberos!
+    // CTscSslFilter::InitializeKDCProxyClient doesn't set KDCProxyName unless TSGTransportIsUsed is true
+    // CTsConnectionInfoDlg::GetExpandedInfoString crashes if we set TSGTransportIsUsed true when it's not
+    // CTscSslFilter::OnConnected checks IgnoreAuthenticationLevel, NegotiateSecurityLayer right before calling
+    // CTscSslFilter::InitializeKDCProxyClient, so use this to our advantage to filter out undesired call sites.
+    // We use a basic g_UiShowConnectionInformation state machine, checking for caller DLLs, and hope for the best.
+    if (MsRdpEx_IsAddressInModule(_ReturnAddress(), L"mstscax.dll") ||
+        MsRdpEx_IsAddressInModule(_ReturnAddress(), L"rdclientax.dll")) {
+        if (MsRdpEx_StringIEquals(propName, "IgnoreAuthenticationLevel")) {
+            if (g_UiShowConnectionInformation == 0) {
+                g_UiShowConnectionInformation = 1;
+            }
+        }
+        else if (MsRdpEx_StringIEquals(propName, "NegotiateSecurityLayer")) {
+            if (g_UiShowConnectionInformation == 1) { // 
+                g_UiShowConnectionInformation = 2;
+            }
+        }
+        else if (MsRdpEx_StringIEquals(propName, "TSGTransportIsUsed")) {
+            if (g_UiShowConnectionInformation == 2) {
+                g_UiShowConnectionInformation = 0;
+                *propValue = 1; // bypass if (TSGTransportIsUsed) { /* break Kerberos */ }
+                MsRdpEx_LogPrint(TRACE, "TSGTransportIsUsed is a lie!");
+            }
         }
     }
 
