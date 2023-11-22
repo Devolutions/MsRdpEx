@@ -1,0 +1,16 @@
+﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+	<?include $(sys.CURRENTDIR)Variables.wxi ?>
+	<Package
+		Name="$(var.VendorName) $(var.ProductName)" Manufacturer="$(var.VendorFullName)"
+		Version="$(var.ProductVersion)" UpgradeCode="$(var.UpgradeCode)"
+		Scope="perMachine" Language="1033">
+		<MajorUpgrade AllowSameVersionUpgrades="no" DowngradeErrorMessage="!(loc.DowngradeError)" />
+		<Icon Id="MsRdpEx.ico" SourceFile="MsRdpEx.ico" />
+		<Property Id="ARPPRODUCTICON" Value="MsRdpEx.ico" />
+		<Property Id="ARPHELPLINK" Value="$(var.InfoURL)" />
+		<MediaTemplate EmbedCab="yes" />
+		<Feature Id="Main">
+			<ComponentGroupRef Id="MsRdpEx" />
+		</Feature>
+	</Package>
+</Wix>

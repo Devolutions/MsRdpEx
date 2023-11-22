@@ -1,4 +1,0 @@
-
-IDI_APP_ICON ICON "mstsc.ico"
-
-#include "version.rc"

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Include>
+	<?define VendorName = "Devolutions" ?>
+	<?define VendorFullName = "Devolutions Inc." ?>
+
+	<?define ProductName = "MsRdpEx" ?>
+	<?define ProductVersion = "1.0.0.0" ?>
+
+	<!-- Upgrade code HAS to be the same for all updates. Once you've chosen it don't change it. -->
+	<?define UpgradeCode="76169e12-8976-11ee-b9d1-0242ac120002" ?>
+
+	<!-- The URL for add/remove programs -->
+	<?define InfoURL="https://github.com/Devolutions/MsRdpEx" ?>
+
+	<!-- Source Windows Terminal directory to copy files from -->
+	<?if $(var.Platform) = x64 ?>
+		<?define BinDir="..\dependencies\MsRdpEx\x64" ?>
+		<?define ProgramFilesId="ProgramFiles64Folder" ?>
+	<?elseif $(var.Platform) = Win32 ?>
+		<?define BinDir="..\dependencies\MsRdpEx\x86" ?>
+		<?define ProgramFilesId="ProgramFilesFolder" ?>
+	<?else ?>
+		<?define BinDir="..\dependencies\MsRdpEx\arm64" ?>
+		<?define ProgramFilesId="ProgramFiles64Folder" ?>
+	<?endif ?>
+</Include>

@@ -1,3 +1,3 @@
 
-add_subdirectory(mstsc)
-add_subdirectory(msrdc)
+add_subdirectory(mstscex)
+add_subdirectory(msrdcex)

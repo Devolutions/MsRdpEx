@@ -39,6 +39,7 @@ jobs:
         shell: pwsh
         run: |
           $IsMasterBranch = ('${{ github.ref_name }}' -eq 'master')
+          $IsScheduledJob = ('${{ github.event_name }}' -eq 'schedule')
           $DryRun = [System.Boolean]::Parse('${{ inputs.dry-run }}')
 
           $PackageEnv = if ($IsMasterBranch) {
@@ -50,12 +51,12 @@ jobs:
           if (-Not $IsMasterBranch) {
             $DryRun = $true # force dry run when not on master branch
           }
-          if ('${{ github.event_name }}' -Eq 'schedule') {
+          if ($IsScheduledJob) {
             $DryRun = $true # force dry run for scheduled runs
           }
 
           $PackageVersion = '${{ github.event.inputs.version }}'
-          if ($PackageVersion -eq 'latest') {
+          if ([string]::IsNullOrEmpty($PackageVersion) -or $PackageVersion -eq 'latest') {
             $PackageVersion = (Get-Date -Format "yyyy.MM.dd") + ".0"
           }
 
@@ -132,8 +133,8 @@ jobs:
           New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$Arch" | Out-Null
           Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$Arch"
           Copy-Item "$BuildDir/Release/MsRdpEx.pdb" "dependencies/MsRdpEx/$Arch"
-          Copy-Item "$BuildDir/Release/mstsc.exe" "dependencies/MsRdpEx/$Arch"
-          Copy-Item "$BuildDir/Release/msrdc.exe" "dependencies/MsRdpEx/$Arch"
+          Copy-Item "$BuildDir/Release/mstscex.exe" "dependencies/MsRdpEx/$Arch"
+          Copy-Item "$BuildDir/Release/msrdcex.exe" "dependencies/MsRdpEx/$Arch"
           Compress-Archive "dependencies\MsRdpEx\$Arch\*" ".\package\MsRdpEx-$PackageVersion-$Arch.zip" -CompressionLevel Optimal
 
       - name: Upload MsRdpEx (${{matrix.arch}})
@@ -179,6 +180,26 @@ jobs:
             ($Name, $Version, $Arch) = $_.BaseName -Split '-'
             Expand-Archive $_ "dependencies\$Name\$Arch\" -Force
           }
+
+      - name: Build MsRdpEx MSI installers
+        shell: pwsh
+        run: |
+          $PackageVersion = '${{ needs.preflight.outputs.package-version }}'
+          $ShortVersion = $PackageVersion.Substring(2) # MSI short version
+          $WixVariables = Get-Content .\installer\Variables.wxi
+          $WixVariables = $WixVariables -Replace 'ProductVersion = "([^"]*)"', "ProductVersion = `"$ShortVersion`""
+          Set-Content .\installer\Variables.wxi $WixVariables
+          foreach ($Arch in @('x86','x64','arm64')) {
+            $MsvcArch = @{"x86"="Win32";"x64"="x64";"arm64"="ARM64"}[$Arch]
+            dotnet build /p:Configuration=Release /p:Platform=$MsvcArch installer/MsRdpEx.sln
+            Move-Item "installer\bin\$MsvcArch\Release\en-US\MsRdpEx.msi" "package\MsRdpEx-$PackageVersion-$Arch.msi"
+          }
+
+      - name: Upload MsRdpEx nuget package
+        uses: actions/upload-artifact@v3
+        with:
+          name: MsRdpEx-msi
+          path: package/*.msi
 
       - name: Build MsRdpEx nuget package
         shell: pwsh

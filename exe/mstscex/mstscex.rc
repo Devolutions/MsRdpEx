@@ -1,0 +1,4 @@
+
+IDI_APP_ICON ICON "mstscex.ico"
+
+#include "version.rc"

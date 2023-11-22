@@ -1,0 +1,10 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+	<?include $(sys.CURRENTDIR)Variables.wxi ?>
+	<Fragment>
+		<StandardDirectory Id="$(var.ProgramFilesId)">
+			<Directory Id="VENDORDIR" Name="Devolutions">
+				<Directory Id="INSTALLDIR" Name="MsRdpEx" ></Directory>
+			</Directory>
+		</StandardDirectory>
+	</Fragment>
+</Wix>

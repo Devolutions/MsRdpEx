@@ -1,0 +1,12 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+	<?include $(sys.CURRENTDIR)Variables.wxi ?>
+	<Fragment>
+		<ComponentGroup Id="MsRdpEx" Directory="INSTALLDIR">
+			<Component Guid="4d9715ac-8976-11ee-b9d1-0242ac120002">
+				<File Source="$(var.BinDir)\mstscex.exe"></File>
+				<File Source="$(var.BinDir)\msrdcex.exe"></File>
+				<File Source="$(var.BinDir)\MsRdpEx.dll"></File>
+			</Component>
+		</ComponentGroup>
+	</Fragment>
+</Wix>
