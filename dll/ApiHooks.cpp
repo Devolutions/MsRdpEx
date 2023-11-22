@@ -976,6 +976,12 @@ bool MsRdpEx_IsAddressInModule(PVOID pAddress, LPCTSTR pszModule)
     return result;
 }
 
+bool MsRdpEx_IsAddressInRdpAxModule(PVOID pAddress)
+{
+    return MsRdpEx_IsAddressInModule(pAddress, L"mstscax.dll") ||
+        MsRdpEx_IsAddressInModule(pAddress, L"rdclientax.dll");
+}
+
 void MsRdpEx_GlobalInit()
 {
     MsRdpEx_NameResolver_Get();

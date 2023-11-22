@@ -205,6 +205,7 @@ LONG MsRdpEx_AttachHooks();
 LONG MsRdpEx_DetachHooks();
 
 bool MsRdpEx_IsAddressInModule(PVOID pAddress, LPCTSTR pszModule);
+bool MsRdpEx_IsAddressInRdpAxModule(PVOID pAddress);
 
 LONG MsRdpEx_GetRectWidth(LPRECT rect);
 LONG MsRdpEx_GetRectHeight(LPRECT rect);

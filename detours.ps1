@@ -1,3 +1,7 @@
+param(
+    [string] $GitRepo = 'https://github.com/microsoft/Detours',
+    [string] $GitCommit = '4b8c659' # July 24, 2023
+)
 
 $RepoRoot = $PSScriptRoot
 
@@ -8,12 +12,12 @@ Push-Location
 Set-Location $SourcesDir
 
 if (-Not (Test-Path -Path "detours")) {
-    & 'git' 'clone' 'https://github.com/microsoft/Detours' 'detours'
+    & 'git' 'clone' $GitRepo 'detours'
 }
 
 Set-Location "detours/src"
 
-& 'git' 'checkout' '45a76a3' # August 17, 2021
+& 'git' 'checkout' $GitCommit
 
 if (-Not (Test-Path Env:VSCMD_ARG_TGT_ARCH)) {
     throw "VSCMD_ARG_TGT_ARCH is not set, use a Visual Studio developer shell"

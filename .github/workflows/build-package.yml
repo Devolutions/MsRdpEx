@@ -1,0 +1,250 @@
+name: build package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'release version'
+        default: "latest"
+        required: true
+      detours-git-commit:
+          description: 'Detours git commit'
+          default: '4b8c659'
+          required: true
+      skip-publish:
+        description: 'Skip publishing'
+        required: true
+        type: boolean
+        default: false
+      dry-run:
+        description: Dry run (simulate)
+        required: true
+        type: boolean
+        default: true
+  schedule:
+    - cron: '32 5 * * 1' # 05:32 AM UTC every Monday
+
+jobs:
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-22.04
+    outputs:
+      package-env: ${{ steps.info.outputs.package-env }}
+      package-version: ${{ steps.info.outputs.package-version }}
+      dry-run: ${{ steps.info.outputs.dry-run }}
+
+    steps:
+      - name: Package information
+        id: info
+        shell: pwsh
+        run: |
+          $IsMasterBranch = ('${{ github.ref_name }}' -eq 'master')
+          $DryRun = [System.Boolean]::Parse('${{ inputs.dry-run }}')
+
+          $PackageEnv = if ($IsMasterBranch) {
+            "publish-prod"
+          } else {
+            "publish-test"
+          }
+          
+          if (-Not $IsMasterBranch) {
+            $DryRun = $true # force dry run when not on master branch
+          }
+          if ('${{ github.event_name }}' -Eq 'schedule') {
+            $DryRun = $true # force dry run for scheduled runs
+          }
+
+          $PackageVersion = '${{ github.event.inputs.version }}'
+          if ($PackageVersion -eq 'latest') {
+            $PackageVersion = (Get-Date -Format "yyyy.MM.dd") + ".0"
+          }
+
+          if ($PackageVersion -NotMatch '^\d+\.\d+\.\d+\.\d+$') {
+            throw "invalid version format: $PackageVersion, expected: 1.2.3.4"
+          }
+
+          echo "package-env=$PackageEnv" >> $Env:GITHUB_OUTPUT
+          echo "package-version=$PackageVersion" >> $Env:GITHUB_OUTPUT
+          echo "dry-run=$($DryRun.ToString().ToLower())" >> $Env:GITHUB_OUTPUT
+
+          echo "::notice::Version: $PackageVersion"
+          echo "::notice::DryRun: $DryRun"
+
+  build-native:
+    name: Build native library
+    runs-on: windows-2022
+    needs: [preflight]
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ x86, x64, arm64 ]
+
+    steps:
+      - name: Configure runner
+        shell: pwsh
+        run: |
+          Install-Module -Name VsDevShell -Force
+
+      - name: Check out ${{ github.repository }}
+        uses: actions/checkout@v3
+
+      - name: Set package version
+        shell: pwsh
+        run: |
+          $PackageVersion = '${{ needs.preflight.outputs.package-version }}'
+          $csprojPath = "dotnet\Devolutions.MsRdpEx\Devolutions.MsRdpEx.csproj"
+          $csprojContent = Get-Content $csprojPath -Raw
+          $csprojContent = $csprojContent -Replace '(<Version>).*?(</Version>)', "<Version>$PackageVersion</Version>"
+          Set-Content -Path $csprojPath -Value $csprojContent -Encoding UTF8
+
+      - name: Restore Detours Cache (${{matrix.arch}})
+        id: cache-detours
+        uses: actions/cache/restore@v3
+        with:
+          path: dependencies/detours
+          key: detours-${{ matrix.arch }}-${{ inputs.detours-git-commit }}
+
+      - name: Build Detours (${{matrix.arch}})
+        if: steps.cache-detours.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          Enter-VsDevShell ${{matrix.arch}}
+          $GitCommit = '${{ inputs.detours-git-commit }}'
+          .\detours.ps1 -GitCommit $GitCommit
+
+      - name: Save Detours Cache (${{matrix.arch}})
+        if: steps.cache-detours.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v3
+        with:
+          path: dependencies/detours
+          key: detours-${{ matrix.arch }}-${{ inputs.detours-git-commit }}
+
+      - name: Build MsRdpEx.dll (${{matrix.arch}})
+        shell: pwsh
+        run: |
+          $ArchDir = "${{matrix.arch}}"
+          $BuildDir = "build-$ArchDir"
+          $MsvcArch = @{"x86"="Win32";"x64"="x64";"arm64"="ARM64"}["${{matrix.arch}}"]
+          cmake -G "Visual Studio 17 2022" -A $MsvcArch -DWITH_DOTNET=OFF -B $BuildDir
+          cmake --build $BuildDir --config Release
+          New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$ArchDir" | Out-Null
+          Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$ArchDir"
+          Copy-Item "$BuildDir/Release/MsRdpEx.pdb" "dependencies/MsRdpEx/$ArchDir"
+          Copy-Item "$BuildDir/Release/MsRdpEx_Exe.exe" "dependencies/MsRdpEx/$ArchDir/MsRdpEx.exe"
+
+      - name: Upload native components
+        uses: actions/upload-artifact@v3
+        with:
+          name: MsRdpEx-${{matrix.arch}}
+          path: dependencies/MsRdpEx/${{matrix.arch}}
+
+  build-managed:
+    name: Build managed library
+    runs-on: windows-2022
+    needs: [preflight, build-native]
+
+    steps:
+      - name: Check out ${{ github.repository }}
+        uses: actions/checkout@v3
+
+      - name: Set package version
+        shell: pwsh
+        run: |
+          $PackageVersion = '${{ needs.preflight.outputs.package-version }}'
+          $csprojPath = "dotnet\Devolutions.MsRdpEx\Devolutions.MsRdpEx.csproj"
+          $csprojContent = Get-Content $csprojPath -Raw
+          $csprojContent = $csprojContent -Replace '(<Version>).*?(</Version>)', "<Version>$PackageVersion</Version>"
+          Set-Content -Path $csprojPath -Value $csprojContent -Encoding UTF8
+
+      - name: Prepare dependencies
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "dependencies/MsRdpEx" | Out-Null
+
+      - name: Download native components
+        uses: actions/download-artifact@v3
+        with:
+          path: dependencies/MsRdpEx
+
+      - name: Rename dependencies
+        shell: pwsh
+        run: |
+          Set-PSDebug -Trace 1
+          Set-Location "dependencies/MsRdpEx"
+          $(Get-Item ".\MsRdpEx-*") | ForEach-Object { ($p1,$p2) = $_.Name -Split '-'; Rename-Item $_ $p2 }
+          Get-ChildItem * -Recurse
+
+      - name: Build nuget package
+        shell: pwsh
+        run: |
+          Set-PSDebug -Trace 1
+          $BuildDir = "build-dotnet"
+          cmake -G "Visual Studio 17 2022" -A x64 -DWITH_DOTNET=ON -DWITH_NATIVE=OFF -B $BuildDir
+          cmake --build $BuildDir --config Release
+          & dotnet pack .\dotnet\Devolutions.MsRdpEx -o package
+
+      - name: Upload managed components
+        uses: actions/upload-artifact@v3
+        with:
+          name: MsRdpEx-nupkg
+          path: package/*.nupkg
+
+  publish:
+    name: Publish packages
+    runs-on: ubuntu-22.04
+    needs: [preflight, build-native, build-managed]
+    environment: ${{ needs.preflight.outputs.package-env }}
+    if: ${{ fromJSON(inputs.skip-publish) == false }}
+
+    steps:
+      - name: Download NuGet package artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: MsRdpEx-nupkg
+          path: package
+
+      - name: Publish to nuget.org
+        shell: pwsh
+        run: |
+          $DryRun = [System.Boolean]::Parse('${{ needs.preflight.outputs.dry-run }}')
+          $NugetPackage = (Get-Item ./package/*.nupkg) | Resolve-Path -Relative
+
+          $PushArgs = @(
+            'nuget', 'push', "$NugetPackage",
+            '--api-key', '${{ secrets.NUGET_API_KEY }}',
+            '--source', 'https://api.nuget.org/v3/index.json',
+            '--skip-duplicate', '--no-symbols'
+          )
+          Write-Host "dotnet $($PushArgs -Join ' ')"
+          if ($DryRun) {
+            Write-Host "Dry Run: skipping nuget.org publishing!"
+          } else {
+            & 'dotnet' $PushArgs
+          }
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: package
+        run: |
+          $PackageVersion = '${{ needs.preflight.outputs.package-version }}'
+          $DryRun = [System.Boolean]::Parse('${{ needs.preflight.outputs.dry-run }}')
+
+          $HashPath = 'checksums'
+          $Files = Get-Item * | % { Get-FileHash -Algorithm SHA256 $_.FullName }
+          $Files | % { "$($_.Hash)  $(Split-Path $_.Path -Leaf)" } | Out-File -FilePath $HashPath -Append -Encoding ASCII
+
+          echo "::group::checksums"
+          Get-Content $HashPath
+          echo "::endgroup::"
+
+          $ReleaseTag = "v$Version"
+          $ReleaseTitle = "MsRdpEx v${Version}"
+          $Repository = $Env:GITHUB_REPOSITORY
+
+          if ($DryRun) {
+            Write-Host "Dry Run: skipping GitHub release!"
+          } else {
+            & gh release create $ReleaseTag --repo $Repository --title $ReleaseTitle ./*
+          }
