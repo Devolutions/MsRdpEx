@@ -1,0 +1,4 @@
+
+IDI_APP_ICON ICON "msrdc.ico"
+
+#include "version.rc"

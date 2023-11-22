@@ -80,14 +80,14 @@ jobs:
         arch: [ x86, x64, arm64 ]
 
     steps:
+      - name: Check out ${{ github.repository }}
+        uses: actions/checkout@v3
+
       - name: Configure runner
         shell: pwsh
         run: |
           Install-Module -Name VsDevShell -Force
           New-Item .\package -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
-
-      - name: Check out ${{ github.repository }}
-        uses: actions/checkout@v3
 
       - name: Set package version
         shell: pwsh
@@ -132,7 +132,8 @@ jobs:
           New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$Arch" | Out-Null
           Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$Arch"
           Copy-Item "$BuildDir/Release/MsRdpEx.pdb" "dependencies/MsRdpEx/$Arch"
-          Copy-Item "$BuildDir/Release/MsRdpEx_Exe.exe" "dependencies/MsRdpEx/$Arch/MsRdpEx.exe"
+          Copy-Item "$BuildDir/Release/mstsc.exe" "dependencies/MsRdpEx/$Arch"
+          Copy-Item "$BuildDir/Release/msrdc.exe" "dependencies/MsRdpEx/$Arch"
           Compress-Archive "dependencies\MsRdpEx\$Arch\*" ".\package\MsRdpEx-$PackageVersion-$Arch.zip" -CompressionLevel Optimal
 
       - name: Upload MsRdpEx (${{matrix.arch}})
