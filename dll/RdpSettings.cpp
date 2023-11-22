@@ -55,7 +55,7 @@ static HRESULT Hook_ITSPropertySet_SetBoolProperty(ITSPropertySet* This, const c
     return hr;
 }
 
-static int g_UiShowConnectionInformation = 0;
+static int g_InitializeKDCProxyClient = 0;
 
 static HRESULT Hook_ITSPropertySet_GetBoolProperty(ITSPropertySet* This, const char* propName, int* propValue)
 {
@@ -68,25 +68,25 @@ static HRESULT Hook_ITSPropertySet_GetBoolProperty(ITSPropertySet* This, const c
     // CTsConnectionInfoDlg::GetExpandedInfoString crashes if we set TSGTransportIsUsed true when it's not
     // CTscSslFilter::OnConnected checks IgnoreAuthenticationLevel, NegotiateSecurityLayer right before calling
     // CTscSslFilter::InitializeKDCProxyClient, so use this to our advantage to filter out undesired call sites.
-    // We use a basic g_UiShowConnectionInformation state machine, checking for caller DLLs, and hope for the best.
-    if (MsRdpEx_IsAddressInModule(_ReturnAddress(), L"mstscax.dll") ||
-        MsRdpEx_IsAddressInModule(_ReturnAddress(), L"rdclientax.dll")) {
-        if (MsRdpEx_StringIEquals(propName, "IgnoreAuthenticationLevel")) {
-            if (g_UiShowConnectionInformation == 0) {
-                g_UiShowConnectionInformation = 1;
-            }
+    // We use a basic g_InitializeKDCProxyClient state machine, checking for caller DLLs, and hope for the best.
+    if (MsRdpEx_StringIEquals(propName, "IgnoreAuthenticationLevel") &&
+        MsRdpEx_IsAddressInRdpAxModule(_ReturnAddress())) {
+        if (g_InitializeKDCProxyClient == 0) {
+            g_InitializeKDCProxyClient = 1;
         }
-        else if (MsRdpEx_StringIEquals(propName, "NegotiateSecurityLayer")) {
-            if (g_UiShowConnectionInformation == 1) { // 
-                g_UiShowConnectionInformation = 2;
-            }
+    }
+    else if (MsRdpEx_StringIEquals(propName, "NegotiateSecurityLayer") &&
+        MsRdpEx_IsAddressInRdpAxModule(_ReturnAddress())) {
+        if (g_InitializeKDCProxyClient == 1) {
+            g_InitializeKDCProxyClient = 2;
         }
-        else if (MsRdpEx_StringIEquals(propName, "TSGTransportIsUsed")) {
-            if (g_UiShowConnectionInformation == 2) {
-                g_UiShowConnectionInformation = 0;
-                *propValue = 1; // bypass if (TSGTransportIsUsed) { /* break Kerberos */ }
-                MsRdpEx_LogPrint(TRACE, "TSGTransportIsUsed is a lie!");
-            }
+    }
+    else if (MsRdpEx_StringIEquals(propName, "TSGTransportIsUsed") &&
+        MsRdpEx_IsAddressInRdpAxModule(_ReturnAddress())) {
+        if (g_InitializeKDCProxyClient == 2) {
+            g_InitializeKDCProxyClient = 0;
+            *propValue = 1; // bypass if (TSGTransportIsUsed) { /* break Kerberos */ }
+            MsRdpEx_LogPrint(TRACE, "TSGTransportIsUsed is a lie!");
         }
     }
 
