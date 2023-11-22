@@ -84,6 +84,7 @@ jobs:
         shell: pwsh
         run: |
           Install-Module -Name VsDevShell -Force
+          New-Item .\package -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
 
       - name: Check out ${{ github.repository }}
         uses: actions/checkout@v3
@@ -119,24 +120,26 @@ jobs:
           path: dependencies/detours
           key: detours-${{ matrix.arch }}-${{ inputs.detours-git-commit }}
 
-      - name: Build MsRdpEx.dll (${{matrix.arch}})
+      - name: Build MsRdpEx (${{matrix.arch}})
         shell: pwsh
         run: |
-          $ArchDir = "${{matrix.arch}}"
-          $BuildDir = "build-$ArchDir"
+          $Arch = "${{matrix.arch}}"
+          $BuildDir = "build-$Arch"
+          $PackageVersion = '${{ needs.preflight.outputs.package-version }}'
           $MsvcArch = @{"x86"="Win32";"x64"="x64";"arm64"="ARM64"}["${{matrix.arch}}"]
           cmake -G "Visual Studio 17 2022" -A $MsvcArch -DWITH_DOTNET=OFF -B $BuildDir
           cmake --build $BuildDir --config Release
-          New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$ArchDir" | Out-Null
-          Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$ArchDir"
-          Copy-Item "$BuildDir/Release/MsRdpEx.pdb" "dependencies/MsRdpEx/$ArchDir"
-          Copy-Item "$BuildDir/Release/MsRdpEx_Exe.exe" "dependencies/MsRdpEx/$ArchDir/MsRdpEx.exe"
+          New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$Arch" | Out-Null
+          Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$Arch"
+          Copy-Item "$BuildDir/Release/MsRdpEx.pdb" "dependencies/MsRdpEx/$Arch"
+          Copy-Item "$BuildDir/Release/MsRdpEx_Exe.exe" "dependencies/MsRdpEx/$Arch/MsRdpEx.exe"
+          Compress-Archive "dependencies\MsRdpEx\$Arch\*" ".\package\MsRdpEx-$PackageVersion-$Arch.zip" -CompressionLevel Optimal
 
-      - name: Upload native components
+      - name: Upload MsRdpEx (${{matrix.arch}})
         uses: actions/upload-artifact@v3
         with:
-          name: MsRdpEx-${{matrix.arch}}
-          path: dependencies/MsRdpEx/${{matrix.arch}}
+          name: MsRdpEx-zip
+          path: package/*.zip
 
   build-managed:
     name: Build managed library
@@ -147,6 +150,12 @@ jobs:
       - name: Check out ${{ github.repository }}
         uses: actions/checkout@v3
 
+      - name: Configure runner
+        shell: pwsh
+        run: |
+          New-Item .\package -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
+          New-Item ".\dependencies\MsRdpEx" -ItemType Directory | Out-Null
+
       - name: Set package version
         shell: pwsh
         run: |
@@ -156,25 +165,21 @@ jobs:
           $csprojContent = $csprojContent -Replace '(<Version>).*?(</Version>)', "<Version>$PackageVersion</Version>"
           Set-Content -Path $csprojPath -Value $csprojContent -Encoding UTF8
 
-      - name: Prepare dependencies
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path "dependencies/MsRdpEx" | Out-Null
-
-      - name: Download native components
+      - name: Download packages
         uses: actions/download-artifact@v3
         with:
-          path: dependencies/MsRdpEx
+          name: MsRdpEx-zip
+          path: package
 
-      - name: Rename dependencies
+      - name: Extract native dependencies
         shell: pwsh
         run: |
-          Set-PSDebug -Trace 1
-          Set-Location "dependencies/MsRdpEx"
-          $(Get-Item ".\MsRdpEx-*") | ForEach-Object { ($p1,$p2) = $_.Name -Split '-'; Rename-Item $_ $p2 }
-          Get-ChildItem * -Recurse
+          Get-Item .\package\*.zip | ForEach-Object {
+            ($Name, $Version, $Arch) = $_.BaseName -Split '-'
+            Expand-Archive $_ "dependencies\$Name\$Arch\" -Force
+          }
 
-      - name: Build nuget package
+      - name: Build MsRdpEx nuget package
         shell: pwsh
         run: |
           Set-PSDebug -Trace 1
@@ -183,7 +188,7 @@ jobs:
           cmake --build $BuildDir --config Release
           & dotnet pack .\dotnet\Devolutions.MsRdpEx -o package
 
-      - name: Upload managed components
+      - name: Upload MsRdpEx nuget package
         uses: actions/upload-artifact@v3
         with:
           name: MsRdpEx-nupkg
@@ -197,7 +202,13 @@ jobs:
     if: ${{ fromJSON(inputs.skip-publish) == false }}
 
     steps:
-      - name: Download NuGet package artifact
+      - name: Download zip native package
+        uses: actions/download-artifact@v3
+        with:
+          name: MsRdpEx-zip
+          path: package
+
+      - name: Download nuget managed package
         uses: actions/download-artifact@v3
         with:
           name: MsRdpEx-nupkg
