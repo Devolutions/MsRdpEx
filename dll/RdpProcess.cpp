@@ -237,7 +237,7 @@ public:
     {
         HRESULT hr = S_OK;
         uint32_t appPathId = 0;
-        char szCommandLine[2048];
+        char* lpCommandLine = NULL;
         STARTUPINFOA* startupInfo;
         PROCESS_INFORMATION* processInfo;
         const char* axNameEnv = NULL;
@@ -279,15 +279,14 @@ public:
             lpApplicationName = MsRdpEx_GetPath(appPathId);
         }
 
-        ZeroMemory(szCommandLine, sizeof(szCommandLine));
+        char quotedAppFilePath[MSRDPEX_MAX_PATH];
+        sprintf_s(quotedAppFilePath, MSRDPEX_MAX_PATH - 1, "\"%s\"", lpApplicationName);
 
-        for (int i = 1; i < argc; i++)
-        {
-            strncat(szCommandLine, argv[i], sizeof(szCommandLine) - 1);
-            strncat(szCommandLine, " ", sizeof(szCommandLine) - 1);
-        }
+        char* argv0 = argv[0];
+        argv[0] = (char*) quotedAppFilePath;
+        lpCommandLine = MsRdpEx_StringJoin(argv, argc, ' ');
+        argv[0] = argv0;
 
-        char* lpCommandLine = szCommandLine;
         DWORD dwCreationFlags = CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED;
         const char* lpDllName = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
 
@@ -305,6 +304,8 @@ public:
             lpDllName, /* lpDllName */
             NULL /* pfCreateProcessW */
         );
+
+        free(lpCommandLine);
 
         if (!fSuccess) {
             hr = E_FAIL;
