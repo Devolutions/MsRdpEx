@@ -371,8 +371,8 @@ jobs:
           Get-Content $HashPath
           echo "::endgroup::"
 
-          $ReleaseTag = "v$Version"
-          $ReleaseTitle = "MsRdpEx v${Version}"
+          $ReleaseTag = "v$PackageVersion"
+          $ReleaseTitle = "MsRdpEx v${PackageVersion}"
           $Repository = $Env:GITHUB_REPOSITORY
 
           if ($DryRun) {
