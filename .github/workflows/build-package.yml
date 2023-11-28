@@ -11,13 +11,18 @@ on:
           description: 'Detours git commit'
           default: '4b8c659'
           required: true
+      sign-nuget:
+        description: 'Sign nuget package'
+        required: true
+        type: boolean
+        default: false
       skip-publish:
         description: 'Skip publishing'
         required: true
         type: boolean
         default: false
       dry-run:
-        description: Dry run (simulate)
+        description: 'Dry run (simulate)'
         required: true
         type: boolean
         default: true
@@ -42,7 +47,7 @@ jobs:
           $IsScheduledJob = ('${{ github.event_name }}' -eq 'schedule')
           $DryRun = [System.Boolean]::Parse('${{ inputs.dry-run }}')
 
-          $PackageEnv = if ($IsMasterBranch) {
+          $PackageEnv = if ($IsMasterBranch -And -Not $IsScheduledJob) {
             "publish-prod"
           } else {
             "publish-test"
@@ -89,6 +94,7 @@ jobs:
         run: |
           Install-Module -Name VsDevShell -Force
           New-Item .\package -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
+          New-Item .\symbols -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
 
       - name: Set package version
         shell: pwsh
@@ -131,10 +137,11 @@ jobs:
           cmake -G "Visual Studio 17 2022" -A $MsvcArch -DWITH_DOTNET=OFF -B $BuildDir
           cmake --build $BuildDir --config Release
           New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$Arch" | Out-Null
-          Copy-Item "$BuildDir/Release/MsRdpEx.dll" "dependencies/MsRdpEx/$Arch"
-          Copy-Item "$BuildDir/Release/MsRdpEx.pdb" "dependencies/MsRdpEx/$Arch"
-          Copy-Item "$BuildDir/Release/mstscex.exe" "dependencies/MsRdpEx/$Arch"
-          Copy-Item "$BuildDir/Release/msrdcex.exe" "dependencies/MsRdpEx/$Arch"
+          @('MsRdpEx.dll','MsRdpEx.pdb','mstscex.exe','msrdcex.exe') | % {
+            Copy-Item "$BuildDir/Release/$_" "dependencies/MsRdpEx/$Arch"
+          }
+          Compress-Archive "dependencies\MsRdpEx\$Arch\*.pdb" ".\symbols\MsRdpEx-$PackageVersion-$Arch.symbols.zip" -CompressionLevel Optimal
+          Remove-Item "dependencies\MsRdpEx\$Arch\*.pdb" | Out-Null
           Compress-Archive "dependencies\MsRdpEx\$Arch\*" ".\package\MsRdpEx-$PackageVersion-$Arch.zip" -CompressionLevel Optimal
 
       - name: Upload MsRdpEx (${{matrix.arch}})
@@ -143,10 +150,17 @@ jobs:
           name: MsRdpEx-zip
           path: package/*.zip
 
+      - name: Upload MsRdpEx symbols (${{matrix.arch}})
+        uses: actions/upload-artifact@v3
+        with:
+          name: MsRdpEx-symbols
+          path: symbols/*.zip
+
   build-managed:
     name: Build managed library
     runs-on: windows-2022
     needs: [preflight, build-native]
+    environment: ${{ needs.preflight.outputs.package-env }}
 
     steps:
       - name: Check out ${{ github.repository }}
@@ -158,6 +172,18 @@ jobs:
           New-Item .\package -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
           New-Item ".\dependencies\MsRdpEx" -ItemType Directory | Out-Null
 
+      - name: Install code signing tools
+        run: |
+          dotnet tool install --global AzureSignTool
+          dotnet tool install --global NuGetKeyVaultSignTool
+          Install-Module -Name Devolutions.Authenticode -Force
+
+          # trust test code signing CA
+          $TestCertsUrl = "https://raw.githubusercontent.com/Devolutions/devolutions-authenticode/master/data/certs"
+          Invoke-WebRequest -Uri "$TestCertsUrl/authenticode-test-ca.crt" -OutFile ".\authenticode-test-ca.crt"
+          Import-Certificate -FilePath ".\authenticode-test-ca.crt" -CertStoreLocation "cert:\LocalMachine\Root"
+          Remove-Item ".\authenticode-test-ca.crt" -ErrorAction SilentlyContinue | Out-Null
+
       - name: Set package version
         shell: pwsh
         run: |
@@ -167,7 +193,7 @@ jobs:
           $csprojContent = $csprojContent -Replace '(<Version>).*?(</Version>)', "<Version>$PackageVersion</Version>"
           Set-Content -Path $csprojPath -Value $csprojContent -Encoding UTF8
 
-      - name: Download packages
+      - name: Download native dependencies
         uses: actions/download-artifact@v3
         with:
           name: MsRdpEx-zip
@@ -181,7 +207,68 @@ jobs:
             Expand-Archive $_ "dependencies\$Name\$Arch\" -Force
           }
 
-      - name: Build MsRdpEx MSI installers
+      - name: Code sign zip packages
+        shell: pwsh
+        run: |
+          $Params = @('sign',
+            '-kvt', '${{ secrets.AZURE_TENANT_ID }}',
+            '-kvu', '${{ secrets.CODE_SIGNING_KEYVAULT_URL }}',
+            '-kvi', '${{ secrets.CODE_SIGNING_CLIENT_ID }}',
+            '-kvs', '${{ secrets.CODE_SIGNING_CLIENT_SECRET }}',
+            '-kvc', '${{ secrets.CODE_SIGNING_CERTIFICATE_NAME }}',
+            '-tr', '${{ vars.CODE_SIGNING_TIMESTAMP_SERVER }}',
+            '-v')
+          Get-Item .\package\*.zip | ForEach-Object {
+            $ZipFile = $_.FullName
+            ($Name, $Version, $Arch) = $_.BaseName -Split '-'
+            $BinDir = "dependencies\$Name\$Arch"
+            Get-ChildItem -Path "$BinDir/*" -Include @("*.exe","*.dll") | ForEach-Object {
+              AzureSignTool @Params $_.FullName
+            }
+            Remove-Item $ZipFile | Out-Null
+            Compress-Archive "$BinDir\*" $ZipFile -CompressionLevel Optimal
+            Get-ZipAuthenticodeDigest $ZipFile -Export
+            AzureSignTool @Params "${ZipFile}.sig.ps1"
+            Import-ZipAuthenticodeSignature $ZipFile -Remove
+          }
+
+      - name: Upload zip packages
+        uses: actions/upload-artifact@v3
+        with:
+          name: MsRdpEx-zip
+          path: package/*.zip
+
+      - name: Build nuget package
+        shell: pwsh
+        run: |
+          Set-PSDebug -Trace 1
+          $BuildDir = "build-dotnet"
+          cmake -G "Visual Studio 17 2022" -A x64 -DWITH_DOTNET=ON -DWITH_NATIVE=OFF -B $BuildDir
+          cmake --build $BuildDir --config Release
+          & dotnet pack .\dotnet\Devolutions.MsRdpEx -o package
+  
+      - name: Code sign nuget package
+        if: ${{ fromJSON(inputs.sign-nuget) == true }}
+        shell: pwsh
+        run: |
+          $NugetPackage = (Get-Item ".\package\*.nupkg" | Select-Object -First 1) | Resolve-Path -Relative
+          $Params = @('sign', $NugetPackage,
+            '-kvt', '${{ secrets.AZURE_TENANT_ID }}',
+            '-kvu', '${{ secrets.CODE_SIGNING_KEYVAULT_URL }}',
+            '-kvi', '${{ secrets.CODE_SIGNING_CLIENT_ID }}',
+            '-kvs', '${{ secrets.CODE_SIGNING_CLIENT_SECRET }}',
+            '-kvc', '${{ secrets.CODE_SIGNING_CERTIFICATE_NAME }}',
+            '-tr', '${{ vars.CODE_SIGNING_TIMESTAMP_SERVER }}',
+            '-v')
+          & NuGetKeyVaultSignTool @Params
+  
+      - name: Upload nuget package
+        uses: actions/upload-artifact@v3
+        with:
+          name: MsRdpEx-nupkg
+          path: package/*.nupkg
+
+      - name: Build MSI packages
         shell: pwsh
         run: |
           $PackageVersion = '${{ needs.preflight.outputs.package-version }}'
@@ -195,26 +282,26 @@ jobs:
             Move-Item "installer\bin\$MsvcArch\Release\en-US\MsRdpEx.msi" "package\MsRdpEx-$PackageVersion-$Arch.msi"
           }
 
-      - name: Upload MsRdpEx nuget package
+      - name: Code sign MSI packages
+        shell: pwsh
+        run: |
+          $Params = @('sign',
+            '-kvt', '${{ secrets.AZURE_TENANT_ID }}',
+            '-kvu', '${{ secrets.CODE_SIGNING_KEYVAULT_URL }}',
+            '-kvi', '${{ secrets.CODE_SIGNING_CLIENT_ID }}',
+            '-kvs', '${{ secrets.CODE_SIGNING_CLIENT_SECRET }}',
+            '-kvc', '${{ secrets.CODE_SIGNING_CERTIFICATE_NAME }}',
+            '-tr', '${{ vars.CODE_SIGNING_TIMESTAMP_SERVER }}',
+            '-v')
+          Get-ChildItem .\package\*.msi | ForEach-Object {
+            AzureSignTool @Params $_.FullName
+          }
+
+      - name: Upload MSI packages
         uses: actions/upload-artifact@v3
         with:
           name: MsRdpEx-msi
           path: package/*.msi
-
-      - name: Build MsRdpEx nuget package
-        shell: pwsh
-        run: |
-          Set-PSDebug -Trace 1
-          $BuildDir = "build-dotnet"
-          cmake -G "Visual Studio 17 2022" -A x64 -DWITH_DOTNET=ON -DWITH_NATIVE=OFF -B $BuildDir
-          cmake --build $BuildDir --config Release
-          & dotnet pack .\dotnet\Devolutions.MsRdpEx -o package
-
-      - name: Upload MsRdpEx nuget package
-        uses: actions/upload-artifact@v3
-        with:
-          name: MsRdpEx-nupkg
-          path: package/*.nupkg
 
   publish:
     name: Publish packages
@@ -224,16 +311,28 @@ jobs:
     if: ${{ fromJSON(inputs.skip-publish) == false }}
 
     steps:
-      - name: Download zip native package
+      - name: Download zip package
         uses: actions/download-artifact@v3
         with:
           name: MsRdpEx-zip
           path: package
 
-      - name: Download nuget managed package
+      - name: Download nuget package
         uses: actions/download-artifact@v3
         with:
           name: MsRdpEx-nupkg
+          path: package
+
+      - name: Download MSI package
+        uses: actions/download-artifact@v3
+        with:
+          name: MsRdpEx-msi
+          path: package
+
+      - name: Download symbols package
+        uses: actions/download-artifact@v3
+        with:
+          name: MsRdpEx-symbols
           path: package
 
       - name: Publish to nuget.org

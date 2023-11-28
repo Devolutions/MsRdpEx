@@ -657,7 +657,7 @@ void MsRdpEx_FreeStringVector(int argc, char** argv)
 
 char** MsRdpEx_GetArgumentVector(int* argc)
 {
-	int index;
+	int argi;
 	char* arg = NULL;
     char** args = NULL;
 	LPWSTR* argsW = NULL;
@@ -685,17 +685,15 @@ char** MsRdpEx_GetArgumentVector(int* argc)
 
     args[0] = arg;
 
-    for (index = 0; index < *argc; index++) {
+    for (argi = 0; argi < *argc; argi++) {
         arg = NULL;
 
-        if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, argsW[index], -1, &arg, 0, NULL, NULL) < 0) {
+        if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, argsW[argi], -1, &arg, 0, NULL, NULL) < 0) {
             goto exit;
         }
 
-        args[index + 1] = arg;
+        args[argi] = arg;
     }
-
-    *argc = *argc + 1;
 
 exit:
 	LocalFree(argsW);
