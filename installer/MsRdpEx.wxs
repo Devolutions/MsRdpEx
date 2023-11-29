@@ -2,9 +2,17 @@
 	<?include $(sys.CURRENTDIR)Variables.wxi ?>
 	<Fragment>
 		<ComponentGroup Id="MsRdpEx" Directory="INSTALLDIR">
-			<Component Guid="4d9715ac-8976-11ee-b9d1-0242ac120002">
-				<File Source="$(var.BinDir)\mstscex.exe"></File>
-				<File Source="$(var.BinDir)\msrdcex.exe"></File>
+			<Component Guid="440f46b4-7cfb-4fc5-a7a5-dea9a025f226">
+				<File Id="mstscex.exe" Source="$(var.BinDir)\mstscex.exe" KeyPath="yes">
+					<Shortcut Name="mstscex" Directory="ProgramMenuFolder" WorkingDirectory="INSTALLDIR" Icon="mstscex.ico" Advertise="yes" />
+				</File>
+			</Component>
+			<Component Guid="e8e77820-39b6-48bf-b299-ae59e8a1e966">
+				<File Id="msrdcex.exe" Source="$(var.BinDir)\msrdcex.exe" KeyPath="yes">
+					<Shortcut Name="msrdcex" Directory="ProgramMenuFolder" WorkingDirectory="INSTALLDIR" Icon="msrdcex.ico" Advertise="yes" />
+				</File>
+			</Component>
+			<Component Guid="17d5f23d-df19-42e2-bd40-7db9306fac2b">
 				<File Source="$(var.BinDir)\MsRdpEx.dll"></File>
 			</Component>
 		</ComponentGroup>
