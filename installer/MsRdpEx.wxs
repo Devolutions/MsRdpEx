@@ -6,11 +6,24 @@
 				<File Id="mstscex.exe" Source="$(var.BinDir)\mstscex.exe" KeyPath="yes">
 					<Shortcut Name="mstscex" Directory="ProgramMenuFolder" WorkingDirectory="INSTALLDIR" Icon="mstscex.ico" Advertise="yes" />
 				</File>
+				<ProgId Id="MsRdpEx.RDP" Description="Remote Desktop (Extended)" Icon="mstscex.exe" Advertise="no">
+					<Extension Id="rdp" ContentType="application/rdp">
+						<Verb Id="open" Command="Open" TargetFile="mstscex.exe" Argument='"%1"' />
+						<Verb Id="edit" Command="Edit" TargetFile="mstscex.exe" Argument='-edit "%1"' />
+						<Verb Id="connect" Command="Connect" TargetFile="mstscex.exe" Argument='"%1"' />
+					</Extension>
+				</ProgId>
 			</Component>
 			<Component Guid="e8e77820-39b6-48bf-b299-ae59e8a1e966">
 				<File Id="msrdcex.exe" Source="$(var.BinDir)\msrdcex.exe" KeyPath="yes">
 					<Shortcut Name="msrdcex" Directory="ProgramMenuFolder" WorkingDirectory="INSTALLDIR" Icon="msrdcex.ico" Advertise="yes" />
 				</File>
+				<ProgId Id="MsRdpEx.RDPW" Description="Remote Desktop (Extended)" Icon="msrdcex.exe" Advertise="no">
+					<Extension Id="rdpw" ContentType="application/rdpw">
+						<Verb Id="open" Command="Open" TargetFile="msrdcex.exe" Argument='"%1"' />
+						<Verb Id="connect" Command="Connect" TargetFile="msrdcex.exe" Argument='"%1"' />
+					</Extension>
+				</ProgId>
 			</Component>
 			<Component Guid="17d5f23d-df19-42e2-bd40-7db9306fac2b">
 				<File Source="$(var.BinDir)\MsRdpEx.dll"></File>
