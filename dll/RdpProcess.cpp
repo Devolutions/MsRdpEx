@@ -280,12 +280,29 @@ public:
         }
 
         char quotedAppFilePath[MSRDPEX_MAX_PATH];
+        char quotedRdpFilePath[MSRDPEX_MAX_PATH];
+
         sprintf_s(quotedAppFilePath, MSRDPEX_MAX_PATH - 1, "\"%s\"", lpApplicationName);
 
-        char* argv0 = argv[0];
-        argv[0] = (char*) quotedAppFilePath;
-        lpCommandLine = MsRdpEx_StringJoin(argv, argc, ' ');
-        argv[0] = argv0;
+        if ((argc >= 2) && (MsRdpEx_IStringEndsWith(argv[1], ".rdp") || MsRdpEx_IStringEndsWith(argv[1], ".rdpw")))
+        {
+            sprintf_s(quotedRdpFilePath, MSRDPEX_MAX_PATH - 1, "\"%s\"", argv[1]);
+
+            char* argv0 = argv[0];
+            char* argv1 = argv[1];
+            argv[0] = (char*)quotedAppFilePath;
+            argv[1] = (char*)quotedRdpFilePath;
+            lpCommandLine = MsRdpEx_StringJoin(argv, argc, ' ');
+            argv[0] = argv0;
+            argv[1] = argv1;
+        }
+        else
+        {
+            char* argv0 = argv[0];
+            argv[0] = (char*) quotedAppFilePath;
+            lpCommandLine = MsRdpEx_StringJoin(argv, argc, ' ');
+            argv[0] = argv0;
+        }
 
         DWORD dwCreationFlags = CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED;
         const char* lpDllName = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
