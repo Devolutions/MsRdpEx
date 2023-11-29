@@ -8,13 +8,34 @@ After installation, the launcher executables and API hooking DLL can be found in
 
 ![MsRdpEx Installed](./images/MsRdpEx_installed.png)
 
-## Launching MsRdpEx
-
-mstscex.exe launches mstsc.exe with MsRdpEx.dll injected, enabling the MsRdpEx extensions. The goal is to easily launch mstsc.exe with or without the API hooking, which is why no other generic DLL injection technique like [AppInit_DLLs](https://learn.microsoft.com/en-us/windows/win32/dlls/secure-boot-and-appinit-dlls) is used. As far as AVs are concerned, this should not trigger any alarms.
+The installer automatically associates .RDP files with mstscex, and .RDPW files with msrdcex, so you can get started right away. Simply revert the file type association to use the original Microsoft Remote Desktop Clients without the extensions, or launch mstsc.exe/msrdc.exe manually.
 
 This repository also contains a C# [nuget package](https://www.nuget.org/packages/Devolutions.MsRdpEx) that can be used to consume the RDP ActiveX interface with or without API hooking, along with launching mstsc.exe or msrdc.exe as external processes using MsRdpEx.dll.
 
-The simplest way to get started is to launch mstscex.exe with a .RDP file. Make sure that MsRdpEx.dll is in the same directory as mstscex.exe:
+## Extended .RDP File Options
+
+MsRdpEx processes additional .RDP file options that are not normally supported by mstsc.exe:
+
+| RDP setting                        | Description            | Values                 | Default value          |
+|------------------------------------|------------------------|------------------------|:----------------------:|
+| KDCProxyURL:s:value | Kerberos KDC Proxy HTTPS URL | KDC Proxy HTTPS *URL*, not using error-prone KDCProxyName format, and unrestricted in length, like https://<hostname>:443/KdcProxy | - |
+| UserSpecifiedServerName:s:value | Server name used for TLS and Kerberos server validation | explicit server name (usually the machine FQDN) | same as DNS hostname used for RDP server |
+| EnableMouseJiggler:i:value | Enable RDP mouse jiggler | 0/1 | 0 |
+| MouseJigglerInterval:i:value | RDP mouse jiggler interval in seconds | Interval in seconds | 60 |
+| MouseJigglerMethod:i:value | RDP mouse jiggler method | 0/1 | 0 |
+| AllowBackgroundInput:i:value | Allow background input events when window is not in focus | 0/1 | 0 |
+| DisableCredentialsDelegation:i:value | Disable CredSSP credential delegation | 0/1 | 0 |
+| RedirectedAuthentication:i:value | Enable Remote Credential Guard | 0/1 | 0 |
+| RestrictedLogon:i:value | Enable Restricted Admin Mode | 0/1 | 0 |
+| DisableUDPTransport:i:value | Disable RDP UDP transport (TCP only) | 0/1 | 0 |
+| ConnectToChildSession:i:value | Connect to child session | 0/1 | 0 |
+| EnableHardwareMode:i:value | Disable DirectX client presenter (force GDI client presenter) | 0/1 | 1 |
+| ClearTextPassword:s:value | Target RDP server password - use for testing only | Insecure password | - |
+| GatewayPassword:s:value | RD Gateway server password - use for testing only | Insecure password | - |
+
+## Extended RDP client logs
+
+MsRdpEx also supports extended logging controlled by environment variables:
 
 ```powershell
 $Env:MSRDPEX_LOG_LEVEL="DEBUG"
@@ -30,22 +51,6 @@ $Env:MSRDPEX_LOG_FILE_PATH="C:\Windows\Temp\MsRdpEx.log"
 ```
 
 The trace log level is extremely verbose, so it should only be used when necessary. The MsRdpEx logging is very helpful in understanding the Microsoft RDP client internals.
-
-## Extended .RDP File Options
-
-MsRdpEx processes additional .RDP file options that are not normally supported by mstsc.exe: 
-
-| RDP setting                        | Description            | Values                 | Default value          |
-|------------------------------------|------------------------|------------------------|:----------------------:|
-| DisableCredentialsDelegation:i:value | Disable CredSSP credential delegation | 0/1 | 0 |
-| RedirectedAuthentication:i:value | Enable Remote Credential Guard | 0/1 | 0 |
-| RestrictedLogon:i:value | Enable Restricted Admin Mode | 0/1 | 0 |
-| UserSpecifiedServerName:s:value | Server name used for TLS and Kerberos server validation | explicit server name (usually the machine FQDN) | same as DNS hostname used for RDP server |
-| DisableUDPTransport:i:value | Disable RDP UDP transport (TCP only) | 0/1 | 0 | 
-| ConnectToChildSession:i:value | Connect to child session | 0/1 | 0 |
-| EnableHardwareMode:i:value | Disable DirectX client presenter (force GDI client presenter) | 0/1 | 1 |
-| ClearTextPassword:s:value | Target RDP server password - use for testing only | Insecure password | - |
-| GatewayPassword:s:value | RD Gateway server password - use for testing only | Insecure password | - |
 
 ## Building from source
 
