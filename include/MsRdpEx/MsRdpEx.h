@@ -64,6 +64,7 @@ HMODULE MsRdpEx_LoadLibrary(const char* filename);
 #define MSRDPEX_MSTSCAX_DLL_PATH        0x00000200
 #define MSRDPEX_MSRDC_EXE_PATH          0x00000400
 #define MSRDPEX_RDCLIENTAX_DLL_PATH     0x00000800
+#define MSRDPEX_DEFAULT_RDP_PATH        0x00001000
 #define MSRDPEX_ALL_PATHS               0xFFFFFFFF
 
 bool MsRdpEx_InitPaths(uint32_t pathIds);

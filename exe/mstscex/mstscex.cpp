@@ -7,9 +7,8 @@ int WINAPI wWinMain(
     _In_ int nShowCmd)
 {
     HRESULT hr;
-    const char* axName = "msrdc";
 
-    hr = MsRdpEx_LaunchProcess(-1, NULL, NULL, axName);
+    hr = MsRdpEx_LaunchProcess(-1, NULL, NULL, "mstsc");
 
     return 0;
 }
