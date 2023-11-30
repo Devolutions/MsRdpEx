@@ -11,7 +11,7 @@ windows_rc_generate_version_info(
 source_group("Resources" FILES mstscex.rc)
 
 add_executable(mstscex WIN32
-	mstscex.c
+	mstscex.cpp
 	mstscex.rc)
 
 target_link_libraries(mstscex MsRdpEx_Dll)

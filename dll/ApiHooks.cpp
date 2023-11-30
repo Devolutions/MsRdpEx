@@ -717,6 +717,86 @@ ATOM Hook_RegisterClassW(WNDCLASSW* wndClass)
     return wndClassAtom;
 }
 
+#define ID_MAINDLG_COMPUTER_TEXTBOX     5012
+
+static DLGPROC Real_MainDlgProc = NULL;
+
+HWND MsRdpEx_GetMsgWindowHandle()
+{
+    char buffer[32];
+    HWND hWndMsg = NULL;
+
+    if (GetEnvironmentVariableA("MSRDPEX_HWNDMSG", buffer, sizeof(buffer)) > 0)
+    {
+        hWndMsg = (HWND)_strtoui64(buffer, NULL, 0);
+    }
+
+    return hWndMsg;
+}
+
+INT_PTR CALLBACK Hook_MainDlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    INT_PTR dlgResult = FALSE;
+    bool interceptedCall = false;
+
+    HWND hWndMsg = MsRdpEx_GetMsgWindowHandle();
+
+    if (hWndMsg)
+    {
+        if (uMsg == WM_DESTROY)
+        {
+            MsRdpEx_LogPrint(DEBUG, "MainDlgProc WM_DESTROY");
+            PostMessage(hWndMsg, 0x0401, NULL, NULL);
+        }
+        else if (uMsg == WM_COMMAND)
+        {
+            MsRdpEx_LogPrint(DEBUG, "MainDlgProc WM_COMMAND: %d", (int)wParam);
+
+            if (wParam == IDOK) // "Connect" button
+            {
+                char connectionStringA[256];
+                GetDlgItemTextA(hWnd, ID_MAINDLG_COMPUTER_TEXTBOX, connectionStringA, 256);
+                MsRdpEx_LogPrint(DEBUG, "MainDlgProc: Connect(%s)", connectionStringA);
+
+                PostMessage(hWndMsg, 0x0402, NULL, NULL);
+                interceptedCall = true;
+                dlgResult = TRUE;
+            }
+        }
+    }
+
+    if (!interceptedCall) {
+        dlgResult = Real_MainDlgProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    return dlgResult;
+}
+
+HWND (WINAPI* Real_CreateDialogParamW)(HINSTANCE hInstance,
+    LPCWSTR lpTemplateName, HWND hWndParent,
+    DLGPROC lpDialogFunc, LPARAM dwInitParam) = CreateDialogParamW;
+
+HWND Hook_CreateDialogParamW(HINSTANCE hInstance,
+    LPCWSTR lpTemplateName, HWND hWndParent,
+    DLGPROC lpDialogFunc, LPARAM dwInitParam)
+{
+    HWND hWndDialog;
+    HWND hWndMsg = MsRdpEx_GetMsgWindowHandle();
+
+    if (hWndMsg)
+    {
+        if (lpTemplateName == MAKEINTRESOURCE(15001)) {
+            MsRdpEx_LogPrint(DEBUG, "CreateDialogParamW: CMainDlg");
+            Real_MainDlgProc = lpDialogFunc;
+            lpDialogFunc = Hook_MainDlgProc;
+        }
+    }
+
+    hWndDialog = Real_CreateDialogParamW(hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam);
+
+    return hWndDialog;
+}
+
 BOOL (WINAPI * Real_CredReadW)(LPCWSTR TargetName, DWORD Type, DWORD Flags, PCREDENTIALW* Credential) = CredReadW;
 
 BOOL Hook_CredReadW(LPCWSTR TargetName, DWORD Type, DWORD Flags, PCREDENTIALW* Credential)
@@ -1040,6 +1120,7 @@ LONG MsRdpEx_AttachHooks()
     MSRDPEX_DETOUR_ATTACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassW, Hook_RegisterClassW);
+    MSRDPEX_DETOUR_ATTACH(Real_CreateDialogParamW, Hook_CreateDialogParamW);
     
     MSRDPEX_DETOUR_ATTACH(Real_CredReadW, Hook_CredReadW);
     //MSRDPEX_DETOUR_ATTACH(Real_CryptProtectMemory, Hook_CryptProtectMemory);
@@ -1093,6 +1174,7 @@ LONG MsRdpEx_DetachHooks()
     MSRDPEX_DETOUR_DETACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassW, Hook_RegisterClassW);
+    MSRDPEX_DETOUR_DETACH(Real_CreateDialogParamW, Hook_CreateDialogParamW);
 
     MSRDPEX_DETOUR_DETACH(Real_CredReadW, Hook_CredReadW);
     //MSRDPEX_DETOUR_DETACH(Real_CryptProtectMemory, Hook_CryptProtectMemory);

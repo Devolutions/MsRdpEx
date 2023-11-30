@@ -13,10 +13,15 @@ EXPORTS
     DllCancelAuthentication
     DllDeleteSavedCreds
     DllPreCleanUp
-    MsRdpEx_CreateInstance
-    MsRdpEx_LaunchProcess
     MsRdpEx_GetClaimsToken
     MsRdpEx_LogoffClaimsToken
     MsRdpEx_CancelAuthentication
     MsRdpEx_DeleteSavedCreds
     MsRdpEx_PreCleanUp
+    MsRdpEx_InitPaths
+    MsRdpEx_GetPath
+    MsRdpEx_CreateInstance
+    MsRdpEx_LaunchProcess
+    MsRdpExProcess_CreateInstance
+    MsRdpEx_GetArgumentVector
+    MsRdpEx_FreeArgumentVector

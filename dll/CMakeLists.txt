@@ -48,7 +48,6 @@ set(MSRDPEX_SOURCES
     String.c
     MsRdpClient.cpp
     MsRdpClient.h
-    AxDll.cpp
     ApiHooks.cpp
     OutputMirror.c
     VideoRecorder.c
@@ -69,9 +68,20 @@ add_library(MsRdpEx_Dll SHARED
     ${MSRDPEX_SOURCES}
     ${MSRDPEX_HEADERS}
     ${MSRDPEX_RESOURCES}
+    AxDll.cpp
     MsRdpEx.def)
 
-set_target_properties(MsRdpEx_Dll PROPERTIES OUTPUT_NAME "MsRdpEx")
+set(MSRDPEX_LIBS
+    detours
+    version.lib
+    userenv.lib
+    user32.lib
+    rpcrt4.lib
+    ws2_32.lib
+    secur32.lib
+    credui.lib
+    advapi32.lib)
 
-target_link_libraries(MsRdpEx_Dll detours
-    version.lib userenv.lib user32.lib rpcrt4.lib ws2_32.lib secur32.lib credui.lib advapi32.lib)
+target_link_libraries(MsRdpEx_Dll ${MSRDPEX_LIBS})
+
+set_target_properties(MsRdpEx_Dll PROPERTIES OUTPUT_NAME "MsRdpEx")

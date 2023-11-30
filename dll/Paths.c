@@ -17,6 +17,8 @@ static char g_MSTSCAX_DLL_PATH[MSRDPEX_MAX_PATH] = { 0 };
 static char g_MSRDC_EXE_PATH[MSRDPEX_MAX_PATH] = { 0 };
 static char g_RDCLIENTAX_DLL_PATH[MSRDPEX_MAX_PATH] = { 0 };
 
+static char g_DEFAULT_RDP_PATH[MSRDPEX_MAX_PATH] = { 0 };
+
 bool MsRdpEx_PathCchRenameExtension(char* pszPath, size_t cchPath, const char* pszExt)
 {
     size_t length = strlen(pszPath);
@@ -122,6 +124,10 @@ bool MsRdpEx_InitPaths(uint32_t pathIds)
         }
     }
 
+    if (pathIds & MSRDPEX_DEFAULT_RDP_PATH) {
+        ExpandEnvironmentStringsA("%UserProfile%\\Documents\\Default.rdp", g_DEFAULT_RDP_PATH, MSRDPEX_MAX_PATH);
+    }
+
     return true;
 }
 
@@ -165,6 +171,10 @@ const char* MsRdpEx_GetPath(uint32_t pathId)
 
         case MSRDPEX_RDCLIENTAX_DLL_PATH:
             path = (const char*) g_RDCLIENTAX_DLL_PATH;
+            break;
+
+        case MSRDPEX_DEFAULT_RDP_PATH:
+            path = (const char*) g_DEFAULT_RDP_PATH;
             break;
     }
 
