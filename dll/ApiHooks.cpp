@@ -1088,12 +1088,12 @@ LONG MsRdpEx_AttachHooks()
         return NO_ERROR;
     }
 
-    g_hNtDll = GetModuleHandleA("ntdll.dll");
+    g_hNtDll = GetModuleHandleW(L"ntdll.dll");
     MSRDPEX_GETPROCADDRESS(Real_LdrResolveDelayLoadedAPI, Func_LdrResolveDelayLoadedAPI, g_hNtDll, "LdrResolveDelayLoadedAPI");
     MSRDPEX_GETPROCADDRESS(Real_NtCreateFile, Func_NtCreateFile, g_hNtDll, "NtCreateFile");
     MSRDPEX_GETPROCADDRESS(Real_NtOpenFile, Func_NtOpenFile, g_hNtDll, "NtOpenFile");
 
-    g_hKernelBase = GetModuleHandleA("KernelBase.dll");
+    g_hKernelBase = GetModuleHandleW(L"KernelBase.dll");
     MSRDPEX_GETPROCADDRESS(Real_RegOpenKeyExW, Func_RegOpenKeyExW, g_hKernelBase, "RegOpenKeyExW");
     MSRDPEX_GETPROCADDRESS(Real_RegQueryValueExW, Func_RegQueryValueExW, g_hKernelBase, "RegQueryValueExW");
     MSRDPEX_GETPROCADDRESS(Real_RegCloseKey, Func_RegCloseKey, g_hKernelBase, "RegCloseKey");

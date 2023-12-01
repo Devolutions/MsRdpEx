@@ -5,31 +5,72 @@
 
 bool MsRdpEx_SetEnv(const char* name, const char* value)
 {
-	return SetEnvironmentVariableA(name, value) ? true : false;
+	bool result = false;
+	WCHAR* nameW = NULL;
+	WCHAR* valueW = NULL;
+
+	if (!name)
+	{
+		goto exit;
+	}
+
+	if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, name, -1, &nameW, 0) < 1) {
+		goto exit;
+	}
+
+	if (value) { // optional
+		if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, value, -1, &valueW, 0) < 1) {
+			goto exit;
+		}
+	}
+
+	result = SetEnvironmentVariableW(nameW, valueW) ? true : false;
+
+exit:
+	free(nameW);
+	free(valueW);
+	return result;
 }
 
 char* MsRdpEx_GetEnv(const char* name)
 {
-	uint32_t size;
-	char* env = NULL;
+	DWORD nSizeW;
+	WCHAR* nameW = NULL;
+	WCHAR* valueW = NULL;
+	char* value = NULL;
 
-	size = GetEnvironmentVariableA(name, NULL, 0);
-
-	if (!size)
-		return NULL;
-
-	env = (char*) malloc(size);
-
-	if (!env)
-		return NULL;
-
-	if (GetEnvironmentVariableA(name, env, size) != size - 1)
+	if (!name)
 	{
-		free(env);
-		return NULL;
+		goto exit;
 	}
 
-	return env;
+	if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, name, -1, &nameW, 0) < 1) {
+		goto exit;
+	}
+
+	nSizeW = GetEnvironmentVariableW(nameW, NULL, 0);
+
+	if (!nSizeW)
+		return NULL;
+
+	valueW = (WCHAR*) malloc((nSizeW + 1) * 2);
+
+	if (!valueW) {
+		goto exit;
+	}
+
+	nSizeW = GetEnvironmentVariableW(nameW, valueW, nSizeW);
+
+	valueW[nSizeW] = '\0';
+
+	if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, valueW, -1, &value, 0, NULL, NULL) < 0) {
+		goto exit;
+	}
+
+exit:
+	free(nameW);
+	free(valueW);
+	return value;
 }
 
 bool MsRdpEx_EnvExists(const char* name)

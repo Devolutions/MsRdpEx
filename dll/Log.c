@@ -174,7 +174,7 @@ void MsRdpEx_LogOpen()
         sprintf_s(g_LogFilePath, MSRDPEX_MAX_PATH, "%s\\MsRdpEx.log", appDataPath);
     }
 
-    g_LogFile = fopen(g_LogFilePath, "wb");
+    g_LogFile = MsRdpEx_FileOpen(g_LogFilePath, "wb");
 }
 
 void MsRdpEx_LogClose()

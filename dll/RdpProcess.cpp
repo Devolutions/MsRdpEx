@@ -9,6 +9,78 @@
 
 extern "C" const GUID IID_IMsRdpExProcess;
 
+BOOL MsRdpEx_DetourCreateProcessWithDllEx(
+    LPCSTR lpApplicationName, LPSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory,
+    LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInfo, LPCSTR lpDllName,
+    PDETOUR_CREATE_PROCESS_ROUTINEA pfCreateProcessA)
+{
+    BOOL fSuccess = FALSE;
+    WCHAR* lpApplicationNameW = NULL;
+    WCHAR* lpCommandLineW = NULL;
+    WCHAR* lpCurrentDirectoryW = NULL;
+    LPVOID lpEnvironmentW = NULL;
+    STARTUPINFOW startupInfoW = { 0 };
+
+    if (lpApplicationName && (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, lpApplicationName, -1, &lpApplicationNameW, 0) < 1)) {
+        goto exit;
+    }
+
+    if (lpCommandLine && (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, lpCommandLine, -1, &lpCommandLineW, 0) < 1)) {
+        goto exit;
+    }
+
+    if (lpCurrentDirectory && (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, lpCurrentDirectory, -1, &lpCurrentDirectoryW, 0) < 1)) {
+        goto exit;
+    }
+
+    if (lpEnvironment) {
+        lpEnvironmentW = MsRdpEx_ConvertStringBlockToUnicode((const char*)lpEnvironment);
+
+        if (!lpEnvironmentW) {
+            goto exit;
+        }
+    }
+
+#if 0
+    fSuccess = DetourCreateProcessWithDllExA(
+        lpApplicationName, lpCommandLine,
+        NULL, NULL,
+        bInheritHandles, dwCreationFlags,
+        lpEnvironment, lpCurrentDirectory,
+        lpStartupInfo, lpProcessInfo,
+        lpDllName,
+        NULL);
+#else
+    dwCreationFlags |= CREATE_UNICODE_ENVIRONMENT;
+
+    // lpDllName is ANSI and doesn't support Unicode
+    // https://github.com/microsoft/Detours/issues/283
+
+    fSuccess = DetourCreateProcessWithDllExW(
+        lpApplicationNameW, lpCommandLineW,
+        NULL, NULL,
+        bInheritHandles, dwCreationFlags,
+        lpEnvironmentW, lpCurrentDirectoryW,
+        &startupInfoW, lpProcessInfo,
+        lpDllName,
+        NULL);
+
+    if (lpStartupInfo) {
+        // only lpReserved, lpDesktop, lpTitle struct fields are LPWSTR
+        CopyMemory(&startupInfoW, lpStartupInfo, sizeof(LPSTARTUPINFOA));
+    }
+#endif
+
+exit:
+    free(lpApplicationNameW);
+    free(lpCommandLineW);
+    free(lpCurrentDirectoryW);
+    MsRdpEx_FreeStringBlock((const char*)lpEnvironmentW);
+    return fSuccess;
+}
+
 class CMsRdpExProcess : public IMsRdpExProcess
 {
 public:
@@ -187,7 +259,7 @@ public:
             "Arguments=\"%s\", WorkingDirectory=\"%s\", DllName=\"%s\")",
             lpApplicationName, lpCommandLine, lpCurrentDirectory, lpDllName);
 
-        BOOL fSuccess = DetourCreateProcessWithDllExA(
+        BOOL fSuccess = MsRdpEx_DetourCreateProcessWithDllEx(
             lpApplicationName, /* lpApplicationName */
             lpCommandLine, /* lpCommandLine */
             NULL, /* lpProcessAttributes */
@@ -238,7 +310,7 @@ public:
         }
 
         if (axName) {
-            SetEnvironmentVariableA("MSRDPEX_AXNAME", axName);
+            MsRdpEx_SetEnv("MSRDPEX_AXNAME", axName);
 
             if (!appName)
                 appName = axName;
@@ -291,7 +363,7 @@ public:
         DWORD dwCreationFlags = CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED;
         const char* lpDllName = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
 
-        BOOL fSuccess = DetourCreateProcessWithDllExA(
+        BOOL fSuccess = MsRdpEx_DetourCreateProcessWithDllEx(
             lpApplicationName, /* lpApplicationName */
             lpCommandLine, /* lpCommandLine */
             NULL, /* lpProcessAttributes */

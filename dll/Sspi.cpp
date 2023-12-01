@@ -764,12 +764,12 @@ static SECURITY_STATUS SEC_ENTRY sspi_QueryCredentialsAttributesExW(PCredHandle 
 
 LONG MsRdpEx_AttachSspiHooks()
 {
-	g_hSspiCli = GetModuleHandleA("sspicli.dll");
+	g_hSspiCli = GetModuleHandleW(L"sspicli.dll");
 
 	if (!g_hSspiCli)
 		return -1;
 
-	g_hSecur32 = GetModuleHandleA("secur32.dll");
+	g_hSecur32 = GetModuleHandleW(L"secur32.dll");
 
 	if (!g_hSecur32)
 		return -1;
