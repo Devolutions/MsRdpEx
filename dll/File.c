@@ -182,27 +182,33 @@ uint64_t MsRdpEx_FileSize(const char* filename)
 
 bool MsRdpEx_GetFileBuildVersion(const char* filename, uint64_t* version)
 {
+	bool success = false;
     DWORD dwHandle = 0;
-    char* buffer = NULL;
-    bool success = false;
+    WCHAR* buffer = NULL;
+	WCHAR* filenameW = NULL;
     VS_FIXEDFILEINFO* pvi = NULL;
+
+	if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, filename, -1, &filenameW, 0) < 1)
+	{
+		goto exit;
+	}
     
-    DWORD size = GetFileVersionInfoSizeA(filename, &dwHandle);
+    DWORD size = GetFileVersionInfoSizeW(filenameW, &dwHandle);
 
     if (size < 1)
         goto exit;
 
-    buffer = (char*) malloc(size);
+    buffer = (WCHAR*) malloc(size);
 
     if (!buffer)
         goto exit;
 
-    if (!GetFileVersionInfoA(filename, 0, size, buffer))
+    if (!GetFileVersionInfoW(filenameW, 0, size, buffer))
         goto exit;
     
     size = sizeof(VS_FIXEDFILEINFO);
 
-    if (!VerQueryValueA(buffer, "\\", (LPVOID*) &pvi, (UINT*) &size))
+    if (!VerQueryValueW(buffer, L"\\", (LPVOID*) &pvi, (UINT*) &size))
         goto exit;
 
     *version = (uint64_t)(pvi->dwFileVersionLS >> 16);
@@ -210,14 +216,28 @@ bool MsRdpEx_GetFileBuildVersion(const char* filename, uint64_t* version)
     success = true;
 
 exit:
+	free(filenameW);
     free(buffer);
     return success;
 }
 
 bool MsRdpEx_MakePath(const char* path, LPSECURITY_ATTRIBUTES lpAttributes)
 {
-    bool result;
-    result = SHCreateDirectoryExA(NULL, path, lpAttributes) == ERROR_SUCCESS;
+	bool result = false;
+	WCHAR* pathW = NULL;
+
+	if (!path)
+		return false;
+
+	if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, path, -1, &pathW, 0) < 1)
+	{
+		goto exit;
+	}
+
+    result = SHCreateDirectoryExW(NULL, pathW, lpAttributes) == ERROR_SUCCESS;
+
+exit:
+	free(pathW);
     return result;
 }
 

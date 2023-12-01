@@ -636,6 +636,33 @@ char* MsRdpEx_CloneStringBlock(const char* argb)
     return copyb;
 }
 
+WCHAR* MsRdpEx_ConvertStringBlockToUnicode(const char* argb)
+{
+    int length = 0;
+    size_t size = 0;
+    char* arg = NULL;
+    char** args = NULL;
+    WCHAR* copyb = NULL;
+
+    if (!argb)
+        return NULL;
+
+    arg = (char*)argb;
+    do
+    {
+        length = strlen(arg);
+        arg = &arg[length + 1];
+        size += (length + 1);
+    } while (length > 0);
+    size += 1;
+
+    if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, argb, size, &copyb, 0) < 1) {
+        return NULL;
+    }
+
+    return copyb;
+}
+
 void MsRdpEx_FreeStringBlock(const char* argb)
 {
     free((void*) argb);

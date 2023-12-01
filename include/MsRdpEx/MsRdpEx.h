@@ -119,6 +119,7 @@ char* MsRdpEx_StringJoin(char* value[], size_t count, const char sep);
 char** MsRdpEx_GetStringVectorFromBlock(int* argc, const char* argb);
 char* MsRdpEx_GetStringBlockFromVector(int argc, char** argv);
 char* MsRdpEx_CloneStringBlock(const char* argb);
+WCHAR* MsRdpEx_ConvertStringBlockToUnicode(const char* argb);
 void MsRdpEx_FreeStringBlock(const char* argb);
 void MsRdpEx_FreeStringVector(int argc, char** argv);
 
