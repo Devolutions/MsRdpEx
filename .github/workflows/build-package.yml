@@ -246,7 +246,30 @@ jobs:
           cmake -G "Visual Studio 17 2022" -A x64 -DWITH_DOTNET=ON -DWITH_NATIVE=OFF -B $BuildDir
           cmake --build $BuildDir --config Release
           & dotnet pack .\dotnet\Devolutions.MsRdpEx -o package
-  
+
+      - name: Code sign nuget contents
+        shell: pwsh
+        run: |
+          Set-PSDebug -Trace 1
+          $NugetBaseName = $(Get-Item ./package/*.nupkg).BaseName
+          $PackedFile = "./package/${NugetBaseName}.nupkg"
+          $UnpackedDir = "./package/${NugetBaseName}"
+          $OutputDirectory = $(Get-Item $PackedFile).Directory.FullName
+          Expand-Archive -Path $PackedFile -Destination $UnpackedDir -Force
+          $Params = @('sign',
+            '-kvt', '${{ secrets.AZURE_TENANT_ID }}',
+            '-kvu', '${{ secrets.CODE_SIGNING_KEYVAULT_URL }}',
+            '-kvi', '${{ secrets.CODE_SIGNING_CLIENT_ID }}',
+            '-kvs', '${{ secrets.CODE_SIGNING_CLIENT_SECRET }}',
+            '-kvc', '${{ secrets.CODE_SIGNING_CERTIFICATE_NAME }}',
+            '-tr', '${{ vars.CODE_SIGNING_TIMESTAMP_SERVER }}',
+            '-v')
+          Get-ChildItem "$UnpackedDir\lib" -Include @("*.dll") -Recurse | ForEach-Object {
+            AzureSignTool @Params $_.FullName
+          }
+          Remove-Item $PackedFile -ErrorAction SilentlyContinue | Out-Null
+          Compress-Archive -Path "$UnpackedDir\*" -Destination $PackedFile -CompressionLevel Optimal
+            
       - name: Code sign nuget package
         if: ${{ fromJSON(inputs.sign-nuget) == true }}
         shell: pwsh
