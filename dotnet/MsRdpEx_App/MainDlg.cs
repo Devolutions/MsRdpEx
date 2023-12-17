@@ -195,7 +195,7 @@ namespace MsRdpEx_App
         [DllImport("oleaut32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         static extern IntPtr SysAllocStringByteLen(IntPtr psz, uint len);
 
-        public static void SetLoadBalanceInfo(IMsRdpClientAdvancedSettings advancedSettings, string loadBalanceInfo)
+        public static void SetLoadBalanceInfo(IMsRdpClientAdvancedSettings8 advancedSettings, string loadBalanceInfo)
         {
             loadBalanceInfo += "\r\n";
             byte[] bytes = Encoding.UTF8.GetBytes(loadBalanceInfo);
@@ -205,13 +205,14 @@ namespace MsRdpEx_App
             Marshal.Copy(bytes, 0, bstrPtr, (int)byteLen);
 
             IMsRdpClientAdvancedSettingsLB lbSettings = (IMsRdpClientAdvancedSettingsLB)advancedSettings;
-            lbSettings.LoadBalanceInfo = bstrPtr;
+            lbSettings.SetLoadBalanceInfo(bstrPtr);
             
             Marshal.ZeroFreeBSTR(bstrPtr);
         }
 
         private void ParseRdpFile(string filename, AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp)
         {
+            /*
             IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)rdp.GetOcx();
             IMsRdpPreferredRedirectionInfo redirectionInfo = (IMsRdpPreferredRedirectionInfo)rdp.GetOcx();
             var advancedSettings = rdp.AdvancedSettings9;
@@ -371,6 +372,7 @@ namespace MsRdpEx_App
                     }
                 }
             }
+            */
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
@@ -402,7 +404,7 @@ namespace MsRdpEx_App
                     args.Add(this.rdpFileName);
                 }
 
-                string arguments = string.Join(' ', args.ToArray());
+                string arguments = string.Join(" ", args.ToArray());
 
                 ProcessStartInfo startInfo = new ProcessStartInfo();
                 startInfo.FileName = executableFileName;
@@ -451,12 +453,11 @@ namespace MsRdpEx_App
 
             rdp.Server = this.txtComputer.Text;
             rdp.UserName = this.txtUserName.Text;
-            rdp.AdvancedSettings9.EnableCredSspSupport = true;
+            rdp.AdvancedSettings9.SetEnableCredSspSupport(true);
             IMsTscNonScriptable secured = (IMsTscNonScriptable)rdp.GetOcx();
-            secured.ClearTextPassword = this.txtPassword.Text;
+            secured.SetClearTextPassword(this.txtPassword.Text);
             IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)rdp.GetOcx();
-            object boolValue = false;
-            extendedSettings.set_Property("EnableHardwareMode", ref boolValue);
+            extendedSettings.SetProperty("EnableHardwareMode", false);
             Size DesktopSize = new Size(1920, 1080);
             rdp.DesktopWidth = DesktopSize.Width;
             rdp.DesktopHeight = DesktopSize.Height;
@@ -464,26 +465,20 @@ namespace MsRdpEx_App
             rdpView.Text = String.Format("{0} ({1})", rdp.Server, axName);
 
             try {
-                object RequestUseNewOutputPresenter = true;
-                extendedSettings.set_Property("RequestUseNewOutputPresenter", ref RequestUseNewOutputPresenter);
+                extendedSettings.SetProperty("RequestUseNewOutputPresenter", true);
             } catch { }
 
             if (axHookEnabled)
             {
-                object corePropsVal = extendedSettings.get_Property("CoreProperties");
+                object corePropsVal = extendedSettings.GetProperty("CoreProperties");
                 IMsRdpExtendedSettings coreProps = (IMsRdpExtendedSettings)corePropsVal;
 
-                object basePropsVal = extendedSettings.get_Property("BaseProperties");
+                object basePropsVal = extendedSettings.GetProperty("BaseProperties");
                 IMsRdpExtendedSettings baseProps = (IMsRdpExtendedSettings)basePropsVal;
 
-                object BandwidthAutodetect = false;
-                coreProps.set_Property("BandwidthAutodetect", ref BandwidthAutodetect);
-
-                object DisableUDPTransport = true;
-                coreProps.set_Property("DisableUDPTransport", ref DisableUDPTransport);
-
-                object EnableCredSspSupport = true;
-                coreProps.set_Property("EnableCredSspSupport", ref EnableCredSspSupport);
+                coreProps.SetProperty("BandwidthAutodetect", false);
+                coreProps.SetProperty("DisableUDPTransport", true);
+                coreProps.SetProperty("EnableCredSspSupport", true);
             }
 
             if (File.Exists(this.rdpFileName))

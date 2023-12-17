@@ -1,13 +1,42 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
+
+// NOTE: this is actually IMsRdpClientAdvancedSettings and part of the TLB - no need to duplicate it here
 
 namespace MSTSCLib
 {
-    [ComImport]
+    [GeneratedComInterface]
     [Guid("3C65B4AB-12B3-465B-ACD4-B8DAD3BFF9E2")]
-    public interface IMsRdpClientAdvancedSettingsLB : IMsTscAdvancedSettings
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public unsafe partial interface IMsRdpClientAdvancedSettingsLB // : IMsTscAdvancedSettings
     {
+        void GetTypeInfoCount( // virtual HRESULT STDMETHODCALLTYPE GetTypeInfoCount
+            out int count); // /* [out] */ __RPC__out UINT *pctinfo
+
+        void GetTypeInfo( // virtual HRESULT STDMETHODCALLTYPE GetTypeInfo
+            int index, // /* [in] */ UINT iTInfo
+            int language, // /* [in] */ LCID lcid
+            [MarshalAs(UnmanagedType.Interface)] out object type); // /* [out] */ __RPC__deref_out_opt ITypeInfo **ppTInfo
+
+        void GetIDsOfNames( // virtual HRESULT STDMETHODCALLTYPE GetIDsOfNames
+            in Guid riid, // /* [in] */ __RPC__in REFIID riid
+            nint* rgszNames, // /* [size_is][in] */ __RPC__in_ecount_full(cNames) LPOLESTR *rgszNames
+            int cNames, // /* [range][in] */ __RPC__in_range(0,16384) UINT cNames
+            int lcid, // /* [in] */ LCID lcid
+            int* rgDispId); // /* [size_is][out] */ __RPC__out_ecount_full(cNames) DISPID* rgDispId
+
+        void Invoke( // virtual /* [local] */ HRESULT STDMETHODCALLTYPE Invoke
+            int dispIdMember, // /* [annotation][in] */ _In_ DISPID dispIdMember
+            in Guid riid, // /* [annotation][in] */ _In_ REFIID riid
+            int lcid, // /* [annotation][in] */ _In_ LCID lcid
+            IDispatchFlags wFlags, // /* [annotation][in] */ _In_ WORD wFlags
+            nint pDispParams, // /* [annotation][out][in] */ _In_ DISPPARAMS *pDispParams
+            nint pVarResult, // /* [annotation][out] */ _Out_opt_ VARIANT *pVarResult
+            nint pExcepInfo, // /* [annotation][out] */ _Out_opt_ EXCEPINFO *pExcepInfo
+            int* puArgErr); // /* [annotation][out] */ _Out_opt_ UINT *puArgErr
+
         void put_Compress();
         void get_Compress();
         void put_BitmapPeristence();
@@ -122,16 +151,10 @@ namespace MSTSCLib
         void get_GrabFocusOnConnect();
 
         [DispId(190)]
-        IntPtr LoadBalanceInfo
-        {
-            [MethodImpl(MethodImplOptions.InternalCall)]
-            [DispId(190)]
-            [param: In]
-            set;
-            [MethodImpl(MethodImplOptions.InternalCall)]
-            [DispId(190)]
-            get;
-        }
+        void SetLoadBalanceInfo(IntPtr value);
+
+        [DispId(190)]
+        IntPtr GetLoadBalanceInfo();
 
         void put_RedirectDrives();
         void get_RedirectDrives();

@@ -3,10 +3,11 @@ using System;
 using System.IO;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace AxMSTSCLib {
 
-    internal static class ComHelper
+    internal static partial class ComHelper
     {
         private static Guid IID_IUnknown = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
         private static Guid IID_IClassFactory = new Guid(0x00000001, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
@@ -14,23 +15,22 @@ namespace AxMSTSCLib {
         private delegate int DllGetClassObject(
             ref Guid clsid,
             ref Guid iid,
-            [Out, MarshalAs(UnmanagedType.Interface)] out IClassFactory classFactory);
+            /*[Out, MarshalAs(UnmanagedType.Interface)] out IClassFactory*/ out nint classFactory);
 
         internal static object CreateInstance(LibraryModule libraryModule, Guid clsid)
         {
             object obj;
             var classFactory = GetClassFactory(libraryModule, clsid);
             classFactory.CreateInstance(null, ref IID_IUnknown, out obj);
-            Marshal.ReleaseComObject(classFactory);
             return obj;
         }
 
-        internal static IClassFactory GetClassFactory(LibraryModule libraryModule, Guid clsid)
+        internal static unsafe IClassFactory GetClassFactory(LibraryModule libraryModule, Guid clsid)
         {
             IntPtr ptr = libraryModule.GetProcAddress("DllGetClassObject");
             var callback = (DllGetClassObject) Marshal.GetDelegateForFunctionPointer(ptr, typeof(DllGetClassObject));
 
-            IClassFactory classFactory;
+            nint classFactory;
             var hr = callback(ref clsid, ref IID_IClassFactory, out classFactory);
 
             if (hr != 0)
@@ -38,20 +38,26 @@ namespace AxMSTSCLib {
                 throw new Win32Exception(hr, "Cannot create class factory");
             }
 
-            return classFactory;
+#if NET8_0_OR_GREATER
+            try { return ComInterfaceMarshaller<IClassFactory>.ConvertToManaged((void*)classFactory); }
+            finally { ComInterfaceMarshaller<IClassFactory>.Free((void*)classFactory); }
+#else
+            try { return (IClassFactory)Marshal.GetObjectForIUnknown(classFactory); }
+            finally { Marshal.Release(classFactory); }
+#endif
         }
     }
 
     [Guid("00000001-0000-0000-c000-000000000046")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    [ComImport]
-    internal interface IClassFactory
+    [GeneratedComInterface]
+    internal partial interface IClassFactory
     {
         void CreateInstance(
-            [MarshalAs(UnmanagedType.IUnknown)] object pUnkOuter,
+            [MarshalAs(UnmanagedType.Interface)] object pUnkOuter,
             ref Guid riid,
-            [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
-        void LockServer(bool fLock);
+            [MarshalAs(UnmanagedType.Interface)] out object ppvObject);
+        void LockServer([MarshalAs(UnmanagedType.Bool)] bool fLock);
     }
 
     internal class LibraryModule
@@ -175,7 +181,20 @@ namespace AxMSTSCLib {
 
         protected override object CreateInstanceCore(Guid clsid)
         {
+#if NET8_0_OR_GREATER
+            // TODO: Currently AxHost doesn't understand ComWrappers (source generator) based COM objects even though the documentation says it should be able to cast into a ComImport interface?
+            // https://github.com/dotnet/runtime/blob/main/docs/design/libraries/ComInterfaceGenerator/Compatibility.md#interop-with-comimport
+
+            if (ComWrappers.TryGetComInstance(RdpCreateInstance(clsid), out var pUnkPtr))
+            {
+                try { return Marshal.GetObjectForIUnknown(pUnkPtr); }
+                finally { Marshal.Release(pUnkPtr); }
+            }
+
+            return new InvalidOperationException("Could not obtain IUnknown pointer from COM object.");
+#else
             return RdpCreateInstance(clsid);
+#endif
         }
 
         public AxHostEx(string clsid): base(clsid) { }

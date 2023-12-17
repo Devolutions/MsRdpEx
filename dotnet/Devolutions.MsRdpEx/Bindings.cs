@@ -2,6 +2,7 @@ using System;
 using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace MsRdpEx
 {
@@ -16,9 +17,10 @@ namespace MsRdpEx
         Off = 6
     }
 
+    [GeneratedComInterface]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [Guid("13F6E86F-EE7D-44D1-AA94-1136B784441D")]
-    public interface IMsRdpExCoreApi
+    public partial interface IMsRdpExCoreApi
     {
         void Load();
         void Unload();
@@ -30,7 +32,7 @@ namespace MsRdpEx
         void SetLogEnabled([MarshalAs(UnmanagedType.U1)] bool logEnabled);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        void SetLogLevel([MarshalAs(UnmanagedType.U4)] MsRdpEx_LogLevel logLevel);
+        void SetLogLevel(MsRdpEx_LogLevel logLevel);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetLogFilePath([MarshalAs(UnmanagedType.LPStr)] string logFilePath);
@@ -46,16 +48,17 @@ namespace MsRdpEx
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         [return: MarshalAs(UnmanagedType.U1)]
-        bool QueryInstanceByWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.IUnknown)] out object rdpInstance);
+        bool QueryInstanceByWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.Interface)] out object rdpInstance);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         [return: MarshalAs(UnmanagedType.U1)]
-        bool OpenInstanceForWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.IUnknown)] out object rdpInstance);
+        bool OpenInstanceForWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.Interface)] out object rdpInstance);
     }
 
+    [GeneratedComInterface]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [Guid("338784B3-3363-45A2-8ECD-80A65DBAF636")]
-    public interface IMsRdpExProcess
+    public partial interface IMsRdpExProcess
     {
         [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetFileName([MarshalAs(UnmanagedType.LPStr)] string filename);
@@ -74,7 +77,7 @@ namespace MsRdpEx
 
         void StartWithInfo();
 
-        void Start(int argc, ref IntPtr[] argv,
+        void Start(int argc, [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] ref IntPtr[] argv,
             [MarshalAs(UnmanagedType.LPStr)] string appName,
             [MarshalAs(UnmanagedType.LPStr)] string axName);
 
@@ -89,13 +92,14 @@ namespace MsRdpEx
         uint GetExitCode();
     }
 
+    [GeneratedComInterface]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [Guid("94CDA65A-EFDF-4453-B8B2-2493A12D31C7")]
-    public interface IMsRdpExInstance
+    public partial interface IMsRdpExInstance
     {
         void GetSessionId(out Guid sessionId);
 
-        void GetRdpClient([MarshalAs(UnmanagedType.IUnknown)] out object rdpClient);
+        void GetRdpClient([MarshalAs(UnmanagedType.Interface)] out object rdpClient);
 
         void GetOutputMirrorObject(out IntPtr outputMirror);
 

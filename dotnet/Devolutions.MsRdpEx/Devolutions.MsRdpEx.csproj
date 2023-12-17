@@ -11,15 +11,16 @@
     <Platforms>Win32;x64;ARM64</Platforms>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ProcessorArchitecture>MSIL</ProcessorArchitecture>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
-    <LangVersion>8</LangVersion>
+    <LangVersion>11</LangVersion>
     <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -33,24 +34,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="Interop.MSTSCLib">
-      <Private>False</Private>
-      <HintPath>..\Interop.MSTSCLib\Interop.MSTSCLib.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
-      <CopyLocal>True</CopyLocal>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(OutputPath)/Interop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/Interop.MSTSCLib.dll" Pack="true" />
-    <Content Include="$(OutputPath)/AxInterop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/AxInterop.MSTSCLib.dll" Pack="true" />
-    <Content Include="../../dependencies/MsRdpEx/x86/MsRdpEx.dll" PackagePath="runtimes/win-x86/native/MsRdpEx.dll" Pack="true" />
-    <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll" PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" />
-    <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll" PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" />
+    <Content Include="$(OutputPath)/Interop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/Interop.MSTSCLib.dll" Pack="true" Visible="false" />
+    <Content Include="$(OutputPath)/AxInterop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
+    <Content Include="../../dependencies/MsRdpEx/x86/MsRdpEx.dll" PackagePath="runtimes/win-x86/native/MsRdpEx.dll" Pack="true" Visible="false" />
+    <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll" PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" Visible="false" />
+    <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll" PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" Visible="false" />
     <Content Include="Devolutions.MsRdpEx.targets" PackagePath="build/Devolutions.MsRdpEx.targets" Pack="true" />
   </ItemGroup>
 

@@ -6,12 +6,14 @@
     <Platforms>Win32;x64;ARM64</Platforms>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <ProcessorArchitecture>MSIL</ProcessorArchitecture>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <LangVersion>11</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -23,12 +25,4 @@
     <Optimize>True</Optimize>
     <DebugType>None</DebugType>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Reference Include="Interop.MSTSCLib">
-      <Private>True</Private>
-      <HintPath>..\Interop.MSTSCLib\Interop.MSTSCLib.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-  </ItemGroup>
 </Project>
