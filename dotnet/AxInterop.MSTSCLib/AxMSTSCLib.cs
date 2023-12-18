@@ -18502,7 +18502,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient9NotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
