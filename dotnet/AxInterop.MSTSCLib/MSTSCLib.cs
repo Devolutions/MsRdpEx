@@ -9,6 +9,14 @@ namespace MSTSCLib
     #region IDispatch
 
     [GeneratedComInterface]
+    [Guid("00000000-0000-0000-C000-000000000046")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public partial interface IUnknown
+    {
+        // IUnknown methods are provided by the infrastructure
+    }
+
+    [GeneratedComInterface]
     [Guid("00020400-0000-0000-C000-000000000046")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public unsafe partial interface IDispatch
@@ -1894,7 +1902,11 @@ namespace MSTSCLib
                     case VariantType.Boolean:
                         return variant.Content1 != 0;
                     case VariantType.IUnknown:
+#if NET8_0_OR_GREATER
+                        return ComInterfaceMarshaller<IUnknown>.ConvertToManaged((void*)variant.Content1);
+#else
                         return Marshal.GetObjectForIUnknown(variant.Content1);
+#endif
                     default:
                         throw new NotSupportedException();
                 }
