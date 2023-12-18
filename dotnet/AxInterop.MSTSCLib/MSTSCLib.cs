@@ -6,6 +6,8 @@ using System.Runtime.InteropServices.Marshalling;
 
 namespace MSTSCLib
 {
+    #region IDispatch
+
     [GeneratedComInterface]
     [Guid("00020400-0000-0000-C000-000000000046")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -46,6 +48,10 @@ namespace MSTSCLib
         PropertyPut = 0x4, // DISPATCH_PROPERTYPUT = 0x4
         PropertyPutRef = 0x8, // DISPATCH_PROPERTYPUTREF = 0x8
     }
+
+    #endregion
+
+    #region IMsRdpClient
 
     [GeneratedComInterface]
     [Guid("327BB5CD-834E-4400-AEF2-B30E15E5D682")]
@@ -296,6 +302,8 @@ namespace MSTSCLib
         void DetachEvent([MarshalAs(UnmanagedType.BStr)] string eventName, IDispatch callback);
     }
 
+    #endregion
+
     [GeneratedComInterface]
     [Guid("FDD029F9-467A-4C49-8529-64B521DBD1B4")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -319,6 +327,8 @@ namespace MSTSCLib
 
         void SetRemoteApplicationArgs([MarshalAs(UnmanagedType.BStr)] string value);
     }
+
+    #region Advanced Settings
 
     [GeneratedComInterface]
     [Guid("89ACB528-2557-4D16-8625-226A30E97E9A")]
@@ -1524,6 +1534,10 @@ namespace MSTSCLib
         ////}
     }
 
+    #endregion
+
+    #region IMsRdpClientTransportSettings
+
     [GeneratedComInterface]
     [Guid("720298C0-A099-46F5-9F82-96921BAE4701")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -1757,6 +1771,8 @@ namespace MSTSCLib
         uint GetGatewayBrokeringType();
     }
 
+    #endregion
+
     [GeneratedComInterface]
     [Guid("302D8188-0052-4807-806A-362B628F9AC5")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -1765,6 +1781,8 @@ namespace MSTSCLib
         void SetProperty([MarshalAs(UnmanagedType.BStr)] string PropertyName, in VARIANT value);
         void GetProperty([MarshalAs(UnmanagedType.BStr)] string PropertyName, out VARIANT value);
     }
+
+    #region Variant
 
     [Flags]
     public enum VariantType : ushort // typedef unsigned short VARTYPE
@@ -1851,6 +1869,8 @@ namespace MSTSCLib
         public VariantBool(short value) => Value = value;
         public VariantBool(bool value) => Value = value ? TrueValue : FalseValue;
     }
+
+    #endregion
 
     public static unsafe partial class IMsRdpExtendedSettingsExtensions
     {
