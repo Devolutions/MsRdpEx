@@ -339,9 +339,9 @@ namespace MSTSCLib
     #region Advanced Settings
 
     [GeneratedComInterface]
-    [Guid("89ACB528-2557-4D16-8625-226A30E97E9A")]
+    [Guid("809945CC-4B3B-4A92-A6B0-DBF9B5F2EF2D")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    public unsafe partial interface IMsRdpClientAdvancedSettings8 : IDispatch // : IMsRdpClientAdvancedSettings7
+    public unsafe partial interface IMsTscAdvancedSettings : IDispatch
     {
         void SetCompress(int value);
 
@@ -369,8 +369,14 @@ namespace MSTSCLib
 
         void SetDisableRdpdr(int value);
 
-        int GTetDisableRdpdr();
+        int GetDisableRdpdr();
+    }
 
+    [GeneratedComInterface]
+    [Guid("3C65B4AB-12B3-465B-ACD4-B8DAD3BFF9E2")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public unsafe partial interface IMsRdpClientAdvancedSettings : IMsTscAdvancedSettings
+    {
         void SetSmoothScroll(int value);
 
         int GetSmoothScroll();
@@ -399,1147 +405,386 @@ namespace MSTSCLib
 
         int GetDedicatedTerminal();
 
-        void SetRDPPort();
-        void GetRDPPort();
-        //[DispId(108)]
-        //int RDPPort
-        //{
-
-        //    [DispId(108)]
-        //    get;
-
-        //    [DispId(108)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetEnableMouse();
-        void GetEnableMouse();
-        //[DispId(109)]
-        //int EnableMouse
-        //{
-
-        //    [DispId(109)]
-        //    get;
-
-        //    [DispId(109)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetDisableCtrlAltDel();
-        void GetDisableCtrlAltDel();
-        //[DispId(110)]
-        //int DisableCtrlAltDel
-        //{
-
-        //    [DispId(110)]
-        //    get;
-
-        //    [DispId(110)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetEnableWindowsKey();
-        void GetEnableWindowsKey();
-        //[DispId(111)]
-        //int EnableWindowsKey
-        //{
-
-        //    [DispId(111)]
-        //    get;
-
-        //    [DispId(111)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetDoubleClickDetect();
-        void GetDoubleClickDetect();
-        //[DispId(112)]
-        //int DoubleClickDetect
-        //{
-
-        //    [DispId(112)]
-        //    get;
-
-        //    [DispId(112)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetMaximizeShell();
-        void GetMaximizeShell();
-        //[DispId(113)]
-        //int MaximizeShell
-        //{
-
-        //    [DispId(113)]
-        //    get;
-
-        //    [DispId(113)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetHotKeyFullScreen();
-        void GetHotKeyFullScreen();
-        //[DispId(114)]
-        //int HotKeyFullScreen
-        //{
-
-        //    [DispId(114)]
-        //    get;
-
-        //    [DispId(114)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetHotKeyCtrlEsc();
-        void GetHotKeyCtrlEsc();
-        //[DispId(115)]
-        //int HotKeyCtrlEsc
-        //{
-
-        //    [DispId(115)]
-        //    get;
-
-        //    [DispId(115)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetHotKeyAltEsc();
-        void GetHotKeyAltEsc();
-        //[DispId(116)]
-        //int HotKeyAltEsc
-        //{
-
-        //    [DispId(116)]
-        //    get;
-
-        //    [DispId(116)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetHotKeyAltTab();
-        void GetHotKeyAltTab();
-        //[DispId(117)]
-        //int HotKeyAltTab
-        //{
-
-        //    [DispId(117)]
-        //    get;
-
-        //    [DispId(117)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetHotKeyAltShiftTab();
-        void GetHotKeyAltShiftTab();
-        //[DispId(118)]
-        //int HotKeyAltShiftTab
-        //{
-
-        //    [DispId(118)]
-        //    get;
-
-        //    [DispId(118)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetHotKeyAltSpace();
-        void GetHotKeyAltSpace();
-        //[DispId(119)]
-        //int HotKeyAltSpace
-        //{
-
-        //    [DispId(119)]
-        //    get;
-
-        //    [DispId(119)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetHotKeyCtrlAltDel();
-        void GetHotKeyCtrlAltDel();
-        //[DispId(120)]
-        //int HotKeyCtrlAltDel
-        //{
-
-        //    [DispId(120)]
-        //    get;
-
-        //    [DispId(120)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetorderDrawThreshold();
-        void GetorderDrawThreshold();
-        //[DispId(123)]
-        //int orderDrawThreshold
-        //{
-
-        //    [DispId(123)]
-        //    get;
-
-        //    [DispId(123)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetBitmapCacheSize();
-        void GetBitmapCacheSize();
-        //[DispId(124)]
-        //int BitmapCacheSize
-        //{
-
-        //    [DispId(124)]
-        //    get;
-
-        //    [DispId(124)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetBitmapVirtualCacheSize();
-        void GetBitmapVirtualCacheSize();
-        //[DispId(125)]
-        //int BitmapVirtualCacheSize
-        //{
-
-        //    [DispId(125)]
-        //    get;
-
-        //    [DispId(125)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetScaleBitmapCachesByBPP();
-        void GetScaleBitmapCachesByBPP();
-        //[DispId(175)]
-        //int ScaleBitmapCachesByBPP
-        //{
-
-        //    [DispId(175)]
-        //    get;
-
-        //    [DispId(175)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetNumBitmapCaches();
-        void GetNumBitmapCaches();
-        //[DispId(126)]
-        //int NumBitmapCaches
-        //{
-
-        //    [DispId(126)]
-        //    get;
-
-        //    [DispId(126)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetCachePersistenceActive();
-        void GetCachePersistenceActive();
-        //[DispId(127)]
-        //int CachePersistenceActive
-        //{
-
-        //    [DispId(127)]
-        //    get;
-
-        //    [DispId(127)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetPersistCacheDirectory();
-        //[DispId(138)]
-        //string PersistCacheDirectory
-        //{
-
-        //    [DispId(138)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
-
-        void SetBrushSupportLevel();
-        void GetBrushSupportLevel();
-        //[DispId(156)]
-        //int brushSupportLevel
-        //{
-
-        //    [DispId(156)]
-        //    get;
-
-        //    [DispId(156)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetMinInputSendInterval();
-        void GetMinInputSendInterval();
-        //[DispId(157)]
-        //int minInputSendInterval
-        //{
-
-        //    [DispId(157)]
-        //    get;
-
-        //    [DispId(157)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetInputEventsAtOnce();
-        void GetInputEventsAtOnce();
-        //[DispId(158)]
-        //int InputEventsAtOnce
-        //{
-
-        //    [DispId(158)]
-        //    get;
-
-        //    [DispId(158)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void GetMaxEventCount();
-        void SetMaxEventCount();
-        //[DispId(159)]
-        //int maxEventCount
-        //{
-
-        //    [DispId(159)]
-        //    get;
-
-        //    [DispId(159)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetKeepAliveInterval();
-        void GetKeepAliveInterval();
-        //[DispId(160)]
-        //int KeepAliveInterval
-        //{
-
-        //    [DispId(160)]
-        //    get;
-
-        //    [DispId(160)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetShutdownTimeout();
-        void GetShutdownTimeout();
-        //[DispId(163)]
-        //int ShutdownTimeout
-        //{
-
-        //    [DispId(163)]
-        //    get;
-
-        //    [DispId(163)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetOverallConnectionTimeout();
-        void GetOverallConnectionTimeout();
-        //[DispId(164)]
-        //int OverallConnectionTimeout
-        //{
-
-        //    [DispId(164)]
-        //    get;
-
-        //    [DispId(164)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetSingleConnectionTimeout();
-        void GetSingleConnectionTimeout();
-        //[DispId(165)]
-        //int SingleConnectionTimeout
-        //{
-
-        //    [DispId(165)]
-        //    get;
-
-        //    [DispId(165)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetKeyboardType();
-        void GetKeyboardType();
-        //[DispId(166)]
-        //int KeyboardType
-        //{
-
-        //    [DispId(166)]
-        //    get;
-
-        //    [DispId(166)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetKeyboardSubType();
-        void GetKeyboardSubType();
-        //[DispId(167)]
-        //int KeyboardSubType
-        //{
-
-        //    [DispId(167)]
-        //    get;
-
-        //    [DispId(167)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetKeyboardFunctionKey();
-        void GetKeyboardFunctionKey();
-        //[DispId(168)]
-        //int KeyboardFunctionKey
-        //{
-
-        //    [DispId(168)]
-        //    get;
-
-        //    [DispId(168)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetWinceFixedPalette();
-        void GetWinceFixedPalette();
-        //[DispId(169)]
-        //int WinceFixedPalette
-        //{
-
-        //    [DispId(169)]
-        //    get;
-
-        //    [DispId(169)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetConnectToServerConsole();
-        void GetConnectToServerConsole();
-        //[DispId(178)]
-        //bool ConnectToServerConsole
-        //{
-
-        //    [DispId(178)]
-        //    get;
-
-        //    [DispId(178)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetBitmapPersistence();
-        void GetBitmapPersistence();
-        //[DispId(182)]
-        //int BitmapPersistence
-        //{
-
-        //    [DispId(182)]
-        //    get;
-
-        //    [DispId(182)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetMinutesToIdleTimeout();
-        void GetMinutesToIdleTimeout();
-        //[DispId(183)]
-        //int MinutesToIdleTimeout
-        //{
-
-        //    [DispId(183)]
-        //    get;
-
-        //    [DispId(183)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetSmartSizing();
-        void GetSmartSizing();
-        //[DispId(184)]
-        //bool SmartSizing
-        //{
-
-        //    [DispId(184)]
-        //    get;
-
-        //    [DispId(184)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetRdpdrLocalPrintingDocName();
-        void GetRdpdrLocalPrintingDocName();
-        //[DispId(185)]
-        //string RdpdrLocalPrintingDocName
-        //{
-
-        //    [DispId(185)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
-
-        //    [DispId(185)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
-
-        void SetRdpdrClipCleanTempDirString();
-        void GetRdpdrClipCleanTempDirString();
-        //[DispId(201)]
-        //string RdpdrClipCleanTempDirString
-        //{
-
-        //    [DispId(201)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
-
-        //    [DispId(201)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
-
-        void SetRdpdrClipPasteInfoString();
-        void GetRdpdrClipPasteInfoString();
-        //[DispId(202)]
-        //string RdpdrClipPasteInfoString
-        //{
-
-        //    [DispId(202)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
-
-        //    [DispId(202)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
-
-        void SetClearTextPassword();
-        //[DispId(186)]
-        //string ClearTextPassword
-        //{
-
-        //    [DispId(186)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
-
-        void SetDisplayConnectionBar();
-        void GetDisplayConnectionBar();
-        //[DispId(187)]
-        //bool DisplayConnectionBar
-        //{
-
-        //    [DispId(187)]
-        //    get;
-
-        //    [DispId(187)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetPinConnectionBar();
-        void GetPinConnectionBar();
-        //[DispId(188)]
-        //bool PinConnectionBar
-        //{
-
-        //    [DispId(188)]
-        //    get;
-
-        //    [DispId(188)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetGrabFocusOnConnect();
-        void GetGrabFocusOnConnect();
-        //[DispId(189)]
-        //bool GrabFocusOnConnect
-        //{
-
-        //    [DispId(189)]
-        //    get;
-
-        //    [DispId(189)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetLoadBalanceInfo();
-        void GetLoadBalanceInfo();
-        //[DispId(190)]
-        //string LoadBalanceInfo
-        //{
-
-        //    [DispId(190)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
-
-        //    [DispId(190)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
-
-        void SetRedirectDrives();
-        void GetRedirectDrives();
-        //[DispId(191)]
-        //bool RedirectDrives
-        //{
-
-        //    [DispId(191)]
-        //    get;
-
-        //    [DispId(191)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetRedirectPrinters();
-        void GetRedirectPrinters();
-        //[DispId(192)]
-        //bool RedirectPrinters
-        //{
-
-        //    [DispId(192)]
-        //    get;
-
-        //    [DispId(192)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetRedirectPorts();
-        void GetRedirectPorts();
-        //[DispId(193)]
-        //bool RedirectPorts
-        //{
-
-        //    [DispId(193)]
-        //    get;
-
-        //    [DispId(193)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetRedirectSmartCards();
-        void GetRedirectSmartCards();
-        //[DispId(194)]
-        //bool RedirectSmartCards
-        //{
-
-        //    [DispId(194)]
-        //    get;
-
-        //    [DispId(194)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetBitmapVirtualCache16BppSize();
-        void GetBitmapVirtualCache16BppSize();
-        //[DispId(195)]
-        //int BitmapVirtualCache16BppSize
-        //{
-
-        //    [DispId(195)]
-        //    get;
-
-        //    [DispId(195)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetBitmapVirtualCache24BppSize();
-        void GetBitmapVirtualCache24BppSize();
-        //[DispId(196)]
-        //int BitmapVirtualCache24BppSize
-        //{
-
-        //    [DispId(196)]
-        //    get;
-
-        //    [DispId(196)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetPerformanceFlags();
-        void GetPerformanceFlags();
-        //[DispId(200)]
-        //int PerformanceFlags
-        //{
-
-        //    [DispId(200)]
-        //    get;
-
-        //    [DispId(200)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetConnectWithEndpoint();
-        //[DispId(203)]
-        //IntPtr ConnectWithEndpoint
-        //{
-
-        //    [DispId(203)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.Struct)]
-        //    set;
-        //}
-
-        void SetNotifyTSPublicKey();
-        void GetNotifyTSPublicKey();
-        //[DispId(204)]
-        //bool NotifyTSPublicKey
-        //{
-
-        //    [DispId(204)]
-        //    get;
-
-        //    [DispId(204)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void GetCanAutoReconnect();
-        //[DispId(205)]
-        //bool CanAutoReconnect
-        //{
-
-        //    [DispId(205)]
-        //    get;
-        //}
-
-        void SetEnableAutoReconnect();
-        void GetEnableAutoReconnect();
-        //[DispId(206)]
-        //bool EnableAutoReconnect
-        //{
-
-        //    [DispId(206)]
-        //    get;
-
-        //    [DispId(206)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetMaxReconnectAttempts();
-        void GetMaxReconnectAttempts();
-        //[DispId(207)]
-        //int MaxReconnectAttempts
-        //{
-
-        //    [DispId(207)]
-        //    get;
-
-        //    [DispId(207)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetConnectionBarShowMinimizeButton();
-        void GetConnectionBarShowMinimizeButton();
-        //[DispId(210)]
-        //bool ConnectionBarShowMinimizeButton
-        //{
-
-        //    [DispId(210)]
-        //    get;
-
-        //    [DispId(210)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetConnectionBarShowRestoreButton();
-        void GetConnectionBarShowRestoreButton();
-        //[DispId(211)]
-        //bool ConnectionBarShowRestoreButton
-        //{
-
-        //    [DispId(211)]
-        //    get;
-
-        //    [DispId(211)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetAuthenticationLevel();
-        void GetAuthenticationLevel();
-        //[DispId(212)]
-        //uint AuthenticationLevel
-        //{
-
-        //    [DispId(212)]
-        //    [param: In]
-        //    set;
-
-        //    [DispId(212)]
-        //    get;
-        //}
-
-        void SetRedirectClipboard();
-        void GetRedirectClipboard();
-        //[DispId(213)]
-        //bool RedirectClipboard
-        //{
-
-        //    [DispId(213)]
-        //    get;
-
-        //    [DispId(213)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetAudioRedirectionMode();
-        void GetAudioRedirectionMode();
-        //[DispId(215)]
-        //uint AudioRedirectionMode
-        //{
-
-        //    [DispId(215)]
-        //    [param: In]
-        //    set;
-
-        //    [DispId(215)]
-        //    get;
-        //}
-
-        void SetConnectionBarShowPinButton();
-        void GetConnectionBarShowPinButton();
-        //[DispId(216)]
-        //bool ConnectionBarShowPinButton
-        //{
-
-        //    [DispId(216)]
-        //    get;
-
-        //    [DispId(216)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetPublicMode();
-        void GetPublicMode();
-        //[DispId(217)]
-        //bool PublicMode
-        //{
-
-        //    [DispId(217)]
-        //    get;
-
-        //    [DispId(217)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetRedirectDevices();
-        void GetRedirectDevices();
-        //[DispId(218)]
-        //bool RedirectDevices
-        //{
-
-        //    [DispId(218)]
-        //    get;
-
-        //    [DispId(218)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetRedirectPOSDevices();
-        void GetRedirectPOSDevices();
-        //[DispId(219)]
-        //bool RedirectPOSDevices
-        //{
-
-        //    [DispId(219)]
-        //    get;
-
-        //    [DispId(219)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetBitmapVirtualCache32BppSize();
-        void GetBitmapVirtualCache32BppSize();
-        //[DispId(220)]
-        //int BitmapVirtualCache32BppSize
-        //{
-
-        //    [DispId(220)]
-        //    get;
-
-        //    [DispId(220)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetRelativeMouseMode();
-        void GetRelativeMouseMode();
-        //[DispId(221)]
-        //bool RelativeMouseMode
-        //{
-
-        //    [DispId(221)]
-        //    get;
-
-        //    [DispId(221)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetAuthenticationServiceClass();
-        void GetAuthenticationServiceClass();
-        //[DispId(222)]
-        //string AuthenticationServiceClass
-        //{
-
-        //    [DispId(222)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
-
-        //    [DispId(222)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
-
-        void SetPCB();
-        void GetPCB();
-        //[DispId(223)]
-        //string PCB
-        //{
-
-        //    [DispId(223)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
-
-        //    [DispId(223)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
-
-        void SetHotKeyFocusReleaseLeft();
-        void GetHotKeyFocusReleaseLeft();
-        //[DispId(224)]
-        //int HotKeyFocusReleaseLeft
-        //{
-
-        //    [DispId(224)]
-        //    get;
-
-        //    [DispId(224)]
-        //    [param: In]
-        //    set;
-        //}
-
-        void SetHotKeyFocusReleaseRight();
-        void GetHotKeyFocusReleaseRight();
-        //[DispId(225)]
-        //int HotKeyFocusReleaseRight
-        //{
-
-        //    [DispId(225)]
-        //    get;
-
-        //    [DispId(225)]
-        //    [param: In]
-        //    set;
-        //}
-
-        [DispId(17)]
+        void SetRDPPort(int value);
+
+        int GetRDPPort();
+
+        void SetEnableMouse(int value);
+
+        int GetEnableMouse();
+
+        void SetDisableCtrlAltDel(int value);
+
+        int GetDisableCtrlAltDel();
+
+        void SetEnableWindowsKey(int value);
+
+        int GetEnableWindowsKey();
+
+        void SetDoubleClickDetect(int value);
+
+        int GetDoubleClickDetect();
+
+        void SetMaximizeShell(int value);
+
+        int GetMaximizeShell();
+
+        void SetHotKeyFullScreen(int value);
+
+        int GetHotKeyFullScreen();
+
+        void SetHotKeyCtrlEsc(int value);
+
+        int GetHotKeyCtrlEsc();
+
+        void SetHotKeyAltEsc(int value);
+
+        int GetHotKeyAltEsc();
+
+        void SetHotKeyAltTab(int value);
+
+        int GetHotKeyAltTab();
+
+        void SetHotKeyAltShiftTab(int value);
+
+        int GetHotKeyAltShiftTab();
+
+        void SetHotKeyAltSpace(int value);
+
+        int GetHotKeyAltSpace();
+
+        void SetHotKeyCtrlAltDel(int value);
+
+        int GetHotKeyCtrlAltDel();
+
+        void SetOrderDrawThreshold(int value);
+
+        int GetOrderDrawThreshold();
+
+        void SetBitmapCacheSize(int value);
+
+        int GetBitmapCacheSize();
+
+        void SetBitmapVirtualCacheSize(int value);
+
+        int GetBitmapVirtualCacheSize();
+
+        void SetScaleBitmapCachesByBPP(int value);
+
+        int GetScaleBitmapCachesByBPP();
+
+        void SetNumBitmapCaches(int value);
+
+        int GetNumBitmapCaches();
+
+        void SetCachePersistenceActive(int value);
+
+        int GetCachePersistenceActive();
+
+        void SetPersistCacheDirectory([MarshalAs(UnmanagedType.BStr)] string value);
+
+        void SetBrushSupportLevel(int value);
+
+        int GetBrushSupportLevel();
+
+        void SetMinInputSendInterval(int value);
+
+        int GetMinInputSendInterval();
+
+        void SetInputEventsAtOnce(int value);
+
+        int GetInputEventsAtOnce();
+
+        void GetMaxEventCount(int value);
+
+        int SetMaxEventCount();
+
+        void SetKeepAliveInterval(int value);
+
+        int GetKeepAliveInterval();
+
+        void SetShutdownTimeout(int value);
+
+        int GetShutdownTimeout();
+
+        void SetOverallConnectionTimeout(int value);
+
+        int GetOverallConnectionTimeout();
+
+        void SetSingleConnectionTimeout(int value);
+
+        int GetSingleConnectionTimeout();
+
+        void SetKeyboardType(int value);
+
+        int GetKeyboardType();
+
+        void SetKeyboardSubType(int value);
+
+        int GetKeyboardSubType();
+
+        void SetKeyboardFunctionKey(int value);
+
+        int GetKeyboardFunctionKey();
+
+        void SetWinceFixedPalette(int value);
+
+        int GetWinceFixedPalette();
+
+        void SetConnectToServerConsole(VariantBool value);
+
+        VariantBool GetConnectToServerConsole();
+
+        void SetBitmapPersistence(int value);
+
+        int GetBitmapPersistence();
+
+        void SetMinutesToIdleTimeout(int value);
+
+        int GetMinutesToIdleTimeout();
+
+        void SetSmartSizing(VariantBool value);
+
+        VariantBool GetSmartSizing();
+
+        void SetRdpdrLocalPrintingDocName([MarshalAs(UnmanagedType.BStr)] string value);
+
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetRdpdrLocalPrintingDocName();
+
+        void SetRdpdrClipCleanTempDirString([MarshalAs(UnmanagedType.BStr)] string value);
+
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetRdpdrClipCleanTempDirString();
+
+        void SetRdpdrClipPasteInfoString([MarshalAs(UnmanagedType.BStr)] string value);
+
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetRdpdrClipPasteInfoString();
+
+        void SetClearTextPassword([MarshalAs(UnmanagedType.BStr)] string value);
+
+        void SetDisplayConnectionBar(VariantBool value);
+
+        VariantBool GetDisplayConnectionBar();
+
+        void SetPinConnectionBar(VariantBool value);
+
+        VariantBool GetPinConnectionBar();
+
+        void SetGrabFocusOnConnect(VariantBool value);
+
+        VariantBool GetGrabFocusOnConnect();
+
+        void SetLoadBalanceInfo([MarshalAs(UnmanagedType.BStr)] string value);
+
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetLoadBalanceInfo();
+
+        void SetRedirectDrives(VariantBool value);
+
+        VariantBool GetRedirectDrives();
+
+        void SetRedirectPrinters(VariantBool value);
+
+        VariantBool GetRedirectPrinters();
+
+        void SetRedirectPorts(VariantBool value);
+
+        VariantBool GetRedirectPorts();
+
+        void SetRedirectSmartCards(VariantBool value);
+
+        VariantBool GetRedirectSmartCards();
+
+        void SetBitmapVirtualCache16BppSize(int value);
+
+        int GetBitmapVirtualCache16BppSize();
+
+        void SetBitmapVirtualCache24BppSize(int value);
+
+        int GetBitmapVirtualCache24BppSize();
+
+        void SetPerformanceFlags(int value);
+
+        int GetPerformanceFlags();
+
+        void SetConnectWithEndpoint(nint value);
+
+        void SetNotifyTSPublicKey(VariantBool value);
+
+        VariantBool GetNotifyTSPublicKey();
+    }
+
+    [GeneratedComInterface]
+    [Guid("9AC42117-2B76-4320-AA44-0E616AB8437B")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public unsafe partial interface IMsRdpClientAdvancedSettings2 : IMsRdpClientAdvancedSettings
+    {
+        VariantBool GetCanAutoReconnect();
+
+        void SetEnableAutoReconnect(VariantBool value);
+
+        VariantBool GetEnableAutoReconnect();
+
+        void SetMaxReconnectAttempts(int value);
+
+        int GetMaxReconnectAttempts();
+    }
+
+    [GeneratedComInterface]
+    [Guid("19CD856B-C542-4C53-ACEE-F127E3BE1A59")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public unsafe partial interface IMsRdpClientAdvancedSettings3 : IMsRdpClientAdvancedSettings2
+    {
+        void SetConnectionBarShowMinimizeButton(VariantBool value);
+
+        VariantBool GetConnectionBarShowMinimizeButton();
+
+        void SetConnectionBarShowRestoreButton(VariantBool value);
+
+        VariantBool GetConnectionBarShowRestoreButton();
+    }
+
+    [GeneratedComInterface]
+    [Guid("FBA7F64E-7345-4405-AE50-FA4A763DC0DE")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public unsafe partial interface IMsRdpClientAdvancedSettings4 : IMsRdpClientAdvancedSettings3
+    {
+        void SetAuthenticationLevel(uint value);
+
+        uint GetAuthenticationLevel();
+    }
+
+    [GeneratedComInterface]
+    [Guid("FBA7F64E-6783-4405-DA45-FA4A763DABD0")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public unsafe partial interface IMsRdpClientAdvancedSettings5 : IMsRdpClientAdvancedSettings4
+    {
+        void SetRedirectClipboard(VariantBool value);
+
+        VariantBool GetRedirectClipboard();
+
+        void SetAudioRedirectionMode(uint value);
+
+        uint GetAudioRedirectionMode();
+
+        void SetConnectionBarShowPinButton(VariantBool value);
+
+        VariantBool GetConnectionBarShowPinButton();
+
+        void SetPublicMode(VariantBool value);
+
+        VariantBool GetPublicMode();
+
+        void SetRedirectDevices(VariantBool value);
+
+        VariantBool GetRedirectDevices();
+
+        void SetRedirectPOSDevices(VariantBool value);
+
+        VariantBool GetRedirectPOSDevices();
+
+        void SetBitmapVirtualCache32BppSize(int value);
+
+        int GetBitmapVirtualCache32BppSize();
+    }
+
+    [GeneratedComInterface]
+    [Guid("222C4B5D-45D9-4DF0-A7C6-60CF9089D285")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public unsafe partial interface IMsRdpClientAdvancedSettings6 : IMsRdpClientAdvancedSettings5
+    {
+        void SetRelativeMouseMode(VariantBool value);
+
+        VariantBool GetRelativeMouseMode();
+
+        void SetAuthenticationServiceClass([MarshalAs(UnmanagedType.BStr)] string value);
+
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetAuthenticationServiceClass();
+
+        void SetPCB([MarshalAs(UnmanagedType.BStr)] string value);
+
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetPCB();
+
+        void SetHotKeyFocusReleaseLeft(int value);
+
+        int GetHotKeyFocusReleaseLeft();
+
+        void SetHotKeyFocusReleaseRight(int value);
+
+        int GetHotKeyFocusReleaseRight();
+
         void SetEnableCredSspSupport(VariantBool value);
 
-        [DispId(17)]
         VariantBool EnableCredSspSupport();
 
-        //[DispId(226)]
-        //uint AuthenticationType
-        //{
+        uint GetAuthenticationType();
 
-        //    [DispId(226)]
-        //    get;
-        //}
+        void SetConnectToAdministerServer(VariantBool value);
 
-        //[DispId(227)]
-        //bool ConnectToAdministerServer
-        //{
+        VariantBool GetConnectToAdministerServer();
+    }
 
-        //    [DispId(227)]
-        //    get;
+    [GeneratedComInterface]
+    [Guid("26036036-4010-4578-8091-0DB9A1EDF9C3")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public unsafe partial interface IMsRdpClientAdvancedSettings7 : IMsRdpClientAdvancedSettings6
+    {
+        void SetAudioCaptureRedirectionMode(VariantBool value);
 
-        //    [DispId(227)]
-        //    [param: In]
-        //    set;
-        //}
+        VariantBool GetAudioCaptureRedirectionMode();
 
-        //[DispId(228)]
-        //bool AudioCaptureRedirectionMode
-        //{
+        void SetVideoPlaybackMode(uint value);
 
-        //    [DispId(228)]
-        //    get;
+        uint GetVideoPlaybackMode();
 
-        //    [DispId(228)]
-        //    [param: In]
-        //    set;
-        //}
+        void SetEnableSuperPan(VariantBool value);
 
-        //[DispId(229)]
-        //uint VideoPlaybackMode
-        //{
+        VariantBool GetEnableSuperPan();
 
-        //    [DispId(229)]
-        //    get;
+        void SetSuperPanAccelerationFactor(uint value);
 
-        //    [DispId(229)]
-        //    [param: In]
-        //    set;
-        //}
+        uint GetSuperPanAccelerationFactor();
 
-        //[DispId(230)]
-        //bool EnableSuperPan
-        //{
+        void SetNegotiateSecurityLayer(VariantBool value);
 
-        //    [DispId(230)]
-        //    get;
+        VariantBool GetNegotiateSecurityLayer();
 
-        //    [DispId(230)]
-        //    [param: In]
-        //    set;
-        //}
+        void SetAudioQualityMode(uint value);
 
-        //[DispId(231)]
-        //uint SuperPanAccelerationFactor
-        //{
+        uint GetAudioQualityMode();
 
-        //    [DispId(231)]
-        //    get;
+        void SetRedirectDirectX(VariantBool value);
 
-        //    [DispId(231)]
-        //    [param: In]
-        //    set;
-        //}
+        VariantBool GetRedirectDirectX();
 
-        //[DispId(232)]
-        //bool NegotiateSecurityLayer
-        //{
+        void SetNetworkConnectionType(uint value);
 
-        //    [DispId(232)]
-        //    get;
+        uint GetNetworkConnectionType();
+    }
 
-        //    [DispId(232)]
-        //    [param: In]
-        //    set;
-        //}
+    [GeneratedComInterface]
+    [Guid("89ACB528-2557-4D16-8625-226A30E97E9A")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public unsafe partial interface IMsRdpClientAdvancedSettings8 : IMsRdpClientAdvancedSettings7
+    {
+        void SetBandwidthDetection(VariantBool value);
 
-        //[DispId(233)]
-        //uint AudioQualityMode
-        //{
+        VariantBool GetBandwidthDetection();
 
-        //    [DispId(233)]
-        //    get;
+        void SetClientProtocolSpec(ClientSpec value);
 
-        //    [DispId(233)]
-        //    [param: In]
-        //    set;
-        //}
+        ClientSpec GetClientProtocolSpec();
+    }
 
-        //[DispId(234)]
-        //bool RedirectDirectX
-        //{
-
-        //    [DispId(234)]
-        //    get;
-
-        //    [DispId(234)]
-        //    [param: In]
-        //    set;
-        //}
-
-        //[DispId(235)]
-        //uint NetworkConnectionType
-        //{
-
-        //    [DispId(235)]
-        //    get;
-
-        //    [DispId(235)]
-        //    [param: In]
-        //    set;
-        //}
-
-        //[DispId(236)]
-        //bool BandwidthDetection
-        //{
-
-        //    [DispId(236)]
-        //    get;
-
-        //    [DispId(236)]
-        //    [param: In]
-        //    set;
-        //}
-
-        //void ClientProtocolSpec();
-        ////[DispId(237)]
-        ////[ComAliasName("MSTSCLib.ClientSpec")]
-        ////ClientSpec ClientProtocolSpec
-        ////{
-        ////    
-        ////    [DispId(237)]
-        ////    [return: ComAliasName("MSTSCLib.ClientSpec")]
-        ////    get;
-        ////    
-        ////    [DispId(237)]
-        ////    [param: In]
-        ////    [param: ComAliasName("MSTSCLib.ClientSpec")]
-        ////    set;
-        ////}
+    public enum ClientSpec
+    {
+        FullMode,
+        ThinClientMode,
+        SmallCacheMode,
     }
 
     #endregion
@@ -1958,7 +1203,7 @@ namespace MSTSCLib
     public partial interface IMsTscNonScriptable
     {
         void SetClearTextPassword([MarshalAs(UnmanagedType.BStr)] string value);
-        
+
         void SetPortablePassword([MarshalAs(UnmanagedType.BStr)] string value);
 
         [return: MarshalAs(UnmanagedType.BStr)]
