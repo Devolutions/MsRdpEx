@@ -25,32 +25,32 @@ namespace MsRdpEx
         void Load();
         void Unload();
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         IntPtr GetMsRdpExDllPath();
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetLogEnabled([MarshalAs(UnmanagedType.U1)] bool logEnabled);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetLogLevel(MsRdpEx_LogLevel logLevel);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetLogFilePath([MarshalAs(UnmanagedType.LPStr)] string logFilePath);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetPcapEnabled([MarshalAs(UnmanagedType.U1)] bool pcapEnabled);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetPcapFilePath([MarshalAs(UnmanagedType.LPStr)] string pcapFilePath);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetAxHookEnabled([MarshalAs(UnmanagedType.U1)] bool axHookEnabled);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         [return: MarshalAs(UnmanagedType.U1)]
         bool QueryInstanceByWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.Interface)] out object rdpInstance);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         [return: MarshalAs(UnmanagedType.U1)]
         bool OpenInstanceForWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.Interface)] out object rdpInstance);
     }
@@ -60,19 +60,19 @@ namespace MsRdpEx
     [Guid("338784B3-3363-45A2-8ECD-80A65DBAF636")]
     public partial interface IMsRdpExProcess
     {
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetFileName([MarshalAs(UnmanagedType.LPStr)] string filename);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetArguments([MarshalAs(UnmanagedType.LPStr)] string arguments);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetArgumentBlock([MarshalAs(UnmanagedType.LPStr)] string argumentBlock);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetEnvironmentBlock([MarshalAs(UnmanagedType.LPStr)] string environmentBlock);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetWorkingDirectory([MarshalAs(UnmanagedType.LPStr)] string workingDirectory);
 
         void StartWithInfo();
@@ -85,10 +85,10 @@ namespace MsRdpEx
 
         void Wait(UInt32 milliseconds);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         uint GetProcessId();
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         uint GetExitCode();
     }
 
@@ -127,29 +127,29 @@ namespace MsRdpEx
 
         void AttachExtendedSettings(IntPtr pExtendedSettings);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         [return: MarshalAs(UnmanagedType.U1)]
         bool GetExtendedSettings(out IntPtr ppExtendedSettings);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         [return: MarshalAs(UnmanagedType.U1)]
         bool GetShadowBitmap(ref IntPtr phDC, ref IntPtr phBitmap, ref IntPtr pBitmapData,
             ref UInt32 pBitmapWidth, ref UInt32 pBitmapHeight, ref UInt32 pBitmapStep);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void LockShadowBitmap();
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void UnlockShadowBitmap();
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void GetLastMousePosition(ref Int32 posX, ref Int32 posY);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetLastMousePosition(Int32 posX, Int32 posY);
     }
 
-    public static class Bindings
+    public static partial class Bindings
     {
         private static Guid IID_IMsRdpExCoreApi = new Guid(0x13F6E86F, 0xEE7D, 0x44D1,0xAA, 0x94, 0x11, 0x36, 0xB7, 0x84, 0x44, 0x1D);
         private static Guid IID_IMsRdpExProcess = new Guid(0x338784B3, 0x3363, 0x45A2, 0x8E, 0xCD, 0x80, 0xA6, 0x5D, 0xBA, 0xF6, 0x36);
@@ -203,9 +203,15 @@ namespace MsRdpEx
             public int Bottom;
         }
 
+#if NET8_0_OR_GREATER
+        [LibraryImport("MsRdpEx.dll")]
+        public static partial uint MsRdpEx_CreateInstance(ref Guid riid,
+            [MarshalAs(UnmanagedType.Interface)] out object ppvObject);
+#else
         [DllImport("MsRdpEx.dll")]
         public static extern uint MsRdpEx_CreateInstance(ref Guid riid,
-            [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
+            [MarshalAs(UnmanagedType.Interface)] out object ppvObject);
+#endif
 
         [DllImport("MsRdpEx.dll")]
         public static extern uint MsRdpEx_GetClaimsToken(
