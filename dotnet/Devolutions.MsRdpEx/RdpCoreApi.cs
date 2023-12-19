@@ -24,7 +24,7 @@ namespace MsRdpEx
 
         public string MsRdpExDllPath
         {
-            get { return Marshal.PtrToStringAnsi(iface.GetMsRdpExDllPath()); }
+            get { return MarshalHelpers.PtrToStringUTF8(iface.GetMsRdpExDllPath()); }
         }
 
         public bool LogEnabled
