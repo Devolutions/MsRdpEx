@@ -178,7 +178,7 @@ namespace MsRdpEx
 
             for (int i = 0; i < argc; i++)
             {
-                argv[i] = Marshal.StringToCoTaskMemAnsi(args[i]);
+                argv[i] = MarshalHelpers.StringToCoTaskMemUTF8(args[i]);
             }
 
             process.Start(argc, ref argv, appName, axName);
