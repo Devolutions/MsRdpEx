@@ -72,7 +72,7 @@ namespace MSTSCLib
 
     #endregion
 
-    #region IMsRdpClient
+    #region Client
 
     [GeneratedComInterface]
     [Guid("327BB5CD-834E-4400-AEF2-B30E15E5D682")]
@@ -325,6 +325,8 @@ namespace MSTSCLib
 
     #endregion
 
+    #region Remote Program
+
     [GeneratedComInterface]
     [Guid("FDD029F9-467A-4C49-8529-64B521DBD1B4")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -348,6 +350,8 @@ namespace MSTSCLib
 
         void SetRemoteApplicationArgs([MarshalAs(UnmanagedType.BStr)] string value);
     }
+
+    #endregion
 
     #region Advanced Settings
 
@@ -802,7 +806,7 @@ namespace MSTSCLib
 
     #endregion
 
-    #region IMsRdpClientTransportSettings
+    #region Transport Settings
 
     [GeneratedComInterface]
     [Guid("720298C0-A099-46F5-9F82-96921BAE4701")]
@@ -1209,6 +1213,7 @@ namespace MSTSCLib
         }
     }
 
+    #region Non Scriptable
 
     [GeneratedComInterface]
     [Guid("C1E6743A-41C1-4A74-832A-0DD06C1C7A0E")]
@@ -1239,6 +1244,8 @@ namespace MSTSCLib
 
         void ResetPassword();
     }
+
+    #endregion
 
     [GeneratedComInterface]
     [Guid("FDD029F9-9574-4DEF-8529-64B521CCCAA4")]
