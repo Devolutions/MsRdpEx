@@ -774,6 +774,12 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
                     pMsRdpExtendedSettings->put_BaseProperty(propName, &value);
                 }
             }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableRelativeMouse")) {
+                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                    pMsRdpExtendedSettings->put_BaseProperty(propName, &value);
+                }
+            }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableMouseJiggler")) {
                 if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
                     bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
