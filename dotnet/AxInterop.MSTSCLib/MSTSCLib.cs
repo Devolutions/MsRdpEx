@@ -351,6 +351,14 @@ namespace MSTSCLib
         void SetRemoteApplicationArgs([MarshalAs(UnmanagedType.BStr)] string value);
     }
 
+    [GeneratedComInterface]
+    [Guid("4B84EA77-ACEA-418C-881A-4A8C28AB1510")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public unsafe partial interface ITSRemoteProgram3 : ITSRemoteProgram2
+    {
+        void ServerStartApp([MarshalAs(UnmanagedType.BStr)] string bstrAppUserModelId, [MarshalAs(UnmanagedType.BStr)] string bstrArguments, VariantBool vbExpandEnvVarInArgumentsOnServer);
+    }
+
     #endregion
 
     #region Advanced Settings
@@ -844,121 +852,44 @@ namespace MSTSCLib
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public unsafe partial interface IMsRdpClientTransportSettings2 : IMsRdpClientTransportSettings
     {
-        //[DispId(222)]
-        //uint GatewayCredSharing
-        //{
+        void SetGatewayCredSharing(uint value);
 
-        //    [DispId(222)]
-        //    get;
+        uint GetGatewayCredSharing();
 
-        //    [DispId(222)]
-        //    [param: In]
-        //    set;
-        //}
+        void SetGatewayPreAuthRequirement(uint value);
 
-        //[DispId(217)]
-        //uint GatewayPreAuthRequirement
-        //{
+        uint GetGatewayPreAuthRequirement();
 
-        //    [DispId(217)]
-        //    get;
+        void SetGatewayPreAuthServerAddr([MarshalAs(UnmanagedType.BStr)] string value);
 
-        //    [DispId(217)]
-        //    [param: In]
-        //    set;
-        //}
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetGatewayPreAuthServerAddr();
 
-        //[DispId(218)]
-        //string GatewayPreAuthServerAddr
-        //{
+        void SetGatewaySupportUrl([MarshalAs(UnmanagedType.BStr)] string value);
 
-        //    [DispId(218)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetGatewaySupportUrl();
 
-        //    [DispId(218)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
+        void SetGatewayEncryptedOtpCookie([MarshalAs(UnmanagedType.BStr)] string value);
 
-        //[DispId(219)]
-        //string GatewaySupportUrl
-        //{
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetGatewayEncryptedOtpCookie();
 
-        //    [DispId(219)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
+        void SetGatewayEncryptedOtpCookieSize(uint value);
 
-        //    [DispId(219)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
+        uint GetGatewayEncryptedOtpCookieSize();
 
-        //[DispId(220)]
-        //string GatewayEncryptedOtpCookie
-        //{
+        void SetGatewayUsername([MarshalAs(UnmanagedType.BStr)] string value);
 
-        //    [DispId(220)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetGatewayUsername();
 
-        //    [DispId(220)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
+        void SetGatewayDomain([MarshalAs(UnmanagedType.BStr)] string value);
 
-        //[DispId(221)]
-        //uint GatewayEncryptedOtpCookieSize
-        //{
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetGatewayDomain();
 
-        //    [DispId(221)]
-        //    get;
-
-        //    [DispId(221)]
-        //    [param: In]
-        //    set;
-        //}
-
-        //[DispId(223)]
-        //string GatewayUsername
-        //{
-
-        //    [DispId(223)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
-
-        //    [DispId(223)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
-
-        //[DispId(224)]
-        //string GatewayDomain
-        //{
-
-        //    [DispId(224)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
-
-        //    [DispId(224)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
-
-        //[DispId(225)]
-        //string GatewayPassword
-        //{
-
-        //    [DispId(225)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
+        void SetGatewayPassword([MarshalAs(UnmanagedType.BStr)] string value);
     }
 
     [GeneratedComInterface]
@@ -966,71 +897,28 @@ namespace MSTSCLib
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     public unsafe partial interface IMsRdpClientTransportSettings3 : IMsRdpClientTransportSettings2
     {
-        //[DispId(226)]
-        //uint GatewayCredSourceCookie
-        //{
+        void SetGatewayCredSourceCookie(uint value);
 
-        //    [DispId(226)]
-        //    get;
+        uint GetGatewayCredSourceCookie();
 
-        //    [DispId(226)]
-        //    [param: In]
-        //    set;
-        //}
+        void SetGatewayAuthCookieServerAddr([MarshalAs(UnmanagedType.BStr)] string value);
 
-        //[DispId(227)]
-        //string GatewayAuthCookieServerAddr
-        //{
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetGatewayAuthCookieServerAddr();
 
-        //    [DispId(227)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
+        void SetGatewayEncryptedAuthCookie([MarshalAs(UnmanagedType.BStr)] string value);
 
-        //    [DispId(227)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetGatewayEncryptedAuthCookie();
 
-        //[DispId(228)]
-        //string GatewayEncryptedAuthCookie
-        //{
+        void SetGatewayEncryptedAuthCookieSize(uint value);
 
-        //    [DispId(228)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
+        uint GetGatewayEncryptedAuthCookieSize();
 
-        //    [DispId(228)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
+        void SetGatewayAuthLoginPage([MarshalAs(UnmanagedType.BStr)] string value);
 
-        //[DispId(229)]
-        //uint GatewayEncryptedAuthCookieSize
-        //{
-
-        //    [DispId(229)]
-        //    get;
-
-        //    [DispId(229)]
-        //    [param: In]
-        //    set;
-        //}
-
-        //[DispId(230)]
-        //string GatewayAuthLoginPage
-        //{
-
-        //    [DispId(230)]
-        //    [return: MarshalAs(UnmanagedType.BStr)]
-        //    get;
-
-        //    [DispId(230)]
-        //    [param: In]
-        //    [param: MarshalAs(UnmanagedType.BStr)]
-        //    set;
-        //}
+        [return: MarshalAs(UnmanagedType.BStr)]
+        string GetGatewayAuthLoginPage();
     }
 
     [GeneratedComInterface]
@@ -1243,6 +1131,164 @@ namespace MSTSCLib
         string GetBinarySalt();
 
         void ResetPassword();
+    }
+
+    [GeneratedComInterface]
+    [Guid("2F079C4C-87B2-4AFD-97AB-20CDB43038AE")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public partial interface IMsRdpClientNonScriptable : IMsTscNonScriptable
+    {
+        void NotifyRedirectDeviceChange([ComAliasName("MSTSCLib.UINT_PTR")] ulong wParam, [ComAliasName("MSTSCLib.LONG_PTR")] long lParam);
+
+        void SendKeys(int numKeys, ref VariantBool pbArrayKeyUp, ref int plKeyData);
+    }
+
+    [GeneratedComInterface]
+    [Guid("17A5E535-4072-4FA4-AF32-C8D0D47345E9")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public partial interface IMsRdpClientNonScriptable2 : IMsRdpClientNonScriptable
+    {
+        void SetUIParentWindowHandle(nint value);
+
+        nint GetUIParentWindowHandle();
+    }
+
+    [GeneratedComInterface]
+    [Guid("B3378D90-0728-45C7-8ED7-B6159FB92219")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public partial interface IMsRdpClientNonScriptable3 : IMsRdpClientNonScriptable2
+    {
+        void SetShowRedirectionWarningDialog(VariantBool value);
+
+        VariantBool GetShowRedirectionWarningDialog();
+
+        void SetPromptForCredentials(VariantBool value);
+
+        VariantBool GetPromptForCredentials();
+
+        void SetNegotiateSecurityLayer(VariantBool value);
+
+        VariantBool GetNegotiateSecurityLayer();
+
+        void SetEnableCredSspSupport(VariantBool value);
+
+        VariantBool GetEnableCredSspSupport();
+
+        void SetRedirectDynamicDrives(VariantBool value);
+
+        VariantBool GetRedirectDynamicDrives();
+
+        void SetRedirectDynamicDevices(VariantBool value);
+
+        VariantBool GetRedirectDynamicDevices();
+
+        [return: MarshalAs(UnmanagedType.Interface)] object /*IMsRdpDeviceCollection*/ GetDeviceCollection();
+
+        [return: MarshalAs(UnmanagedType.Interface)] object /*IMsRdpDriveCollection*/ GetDriveCollection();
+
+        void SetWarnAboutSendingCredentials(VariantBool value);
+
+        VariantBool GetWarnAboutSendingCredentials();
+
+        void SetWarnAboutClipboardRedirection(VariantBool value);
+
+        VariantBool GetWarnAboutClipboardRedirection();
+
+        void SetConnectionBarText([MarshalAs(UnmanagedType.BStr)] string value);
+
+        [return: MarshalAs(UnmanagedType.BStr)] string GetConnectionBarText();
+    }
+
+    [GeneratedComInterface]
+    [Guid("F50FA8AA-1C7D-4F59-B15C-A90CACAE1FCB")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public partial interface IMsRdpClientNonScriptable4 : IMsRdpClientNonScriptable3
+    {
+        void SetRedirectionWarningType(int /*RedirectionWarningType*/ value);
+
+        int /*RedirectionWarningType*/ GetRedirectionWarningType();
+
+        void SetMarkRdpSettingsSecure(VariantBool value);
+
+        VariantBool GetMarkRdpSettingsSecure();
+
+        void SetPublisherCertificateChain(nint value);
+
+        nint GetPublisherCertificateChain();
+
+        void SetWarnAboutPrinterRedirection(VariantBool value);
+
+        VariantBool GetWarnAboutPrinterRedirection();
+
+        void SetAllowCredentialSaving(VariantBool value);
+
+        VariantBool GetAllowCredentialSaving();
+
+        void SetPromptForCredsOnClient(VariantBool value);
+
+        VariantBool GetPromptForCredsOnClient();
+
+        void SetLaunchedViaClientShellInterface(VariantBool value);
+
+        VariantBool GetLaunchedViaClientShellInterface();
+
+        void SetTrustedZoneSite(VariantBool value);
+
+        VariantBool GetTrustedZoneSite();
+    }
+
+    [GeneratedComInterface]
+    [Guid("4F6996D5-D7B1-412C-B0FF-063718566907")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public partial interface IMsRdpClientNonScriptable5 : IMsRdpClientNonScriptable4
+    {
+        void SetUseMultimon(VariantBool value);
+
+        VariantBool GetUseMultimon();
+
+        uint GetRemoteMonitorCount();
+
+        void GetRemoteMonitorsBoundingBox(out int pLeft, out int pTop, out int pRight, out int pBottom);
+
+        VariantBool GetRemoteMonitorLayoutMatchesLocal();
+
+        void SetDisableConnectionBar(VariantBool value);
+
+        void SetDisableRemoteAppCapsCheck(VariantBool value);
+
+        VariantBool GetDisableRemoteAppCapsCheck();
+
+        void SetWarnAboutDirectXRedirection(VariantBool value);
+
+        VariantBool GetWarnAboutDirectXRedirection();
+
+        void SetAllowPromptingForCredentials(VariantBool value);
+
+        VariantBool GetAllowPromptingForCredentials();
+    }
+
+    [GeneratedComInterface]
+    [Guid("05293249-B28B-4BD8-BE64-1B2F496B910E")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public partial interface IMsRdpClientNonScriptable6 : IMsRdpClientNonScriptable5
+    {
+        void SendLocation2D(double latitude, double longitude);
+
+        void SendLocation3D(double latitude, double longitude, int altitude);
+    }
+
+    [GeneratedComInterface]
+    [Guid("71B4A60A-FE21-46D8-A39B-8E32BA0C5ECC")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public partial interface IMsRdpClientNonScriptable7 : IMsRdpClientNonScriptable6
+    {
+        [return: MarshalAs(UnmanagedType.Interface)]
+        object /*IMsRdpCameraRedirConfigCollection*/ GetCameraRedirConfigCollection();
+
+        void DisableDpiCursorScalingForProcess();
+
+        [return: MarshalAs(UnmanagedType.Interface)]
+        object /*IMsRdpClipboard*/ GetClipboard();
     }
 
     #endregion
