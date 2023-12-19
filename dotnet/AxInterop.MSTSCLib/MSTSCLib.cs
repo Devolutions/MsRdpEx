@@ -33,9 +33,9 @@ namespace MSTSCLib
             in Guid riid, // /* [annotation][in] */ _In_ REFIID riid
             int lcid, // /* [annotation][in] */ _In_ LCID lcid
             IDispatchFlags wFlags, // /* [annotation][in] */ _In_ WORD wFlags
-            nint pDispParams, // /* [annotation][out][in] */ _In_ DISPPARAMS *pDispParams
-            nint pVarResult, // /* [annotation][out] */ _Out_opt_ VARIANT *pVarResult
-            nint pExcepInfo, // /* [annotation][out] */ _Out_opt_ EXCEPINFO *pExcepInfo
+            DISPPARAMS* pDispParams, // /* [annotation][out][in] */ _In_ DISPPARAMS *pDispParams
+            VARIANT* pVarResult, // /* [annotation][out] */ _Out_opt_ VARIANT *pVarResult
+            EXCEPINFO* pExcepInfo, // /* [annotation][out] */ _Out_opt_ EXCEPINFO *pExcepInfo
             int* puArgErr); // /* [annotation][out] */ _Out_opt_ UINT *puArgErr
     }
 
@@ -47,6 +47,27 @@ namespace MSTSCLib
         PropertyGet = 0x2, // DISPATCH_PROPERTYGET = 0x2
         PropertyPut = 0x4, // DISPATCH_PROPERTYPUT = 0x4
         PropertyPutRef = 0x8, // DISPATCH_PROPERTYPUTREF = 0x8
+    }
+
+    public unsafe struct DISPPARAMS // struct DISPPARAMS
+    {
+        public VARIANT* Arguments; // /* [size_is] */ VARIANTARG *rgvarg;
+        public int* NamedArguments; // /* [size_is] */ DISPID *rgdispidNamedArgs;
+        public int ArgumentCount; // UINT cArgs;
+        public int NamedArgumentCount; // UINT cNamedArgs;
+    }
+
+    public unsafe struct EXCEPINFO // struct EXCEPINFO
+    {
+        public short Code; // WORD wCode;
+        public short Reserved1; // WORD wReserved;
+        public nint Source; // BSTR bstrSource;
+        public nint Description; // BSTR bstrDescription;
+        public nint HelpFile; // BSTR bstrHelpFile;
+        public int HelpContext; // DWORD dwHelpContext;
+        public nint Reserved2; // PVOID pvReserved;
+        public delegate* unmanaged[Stdcall]<EXCEPINFO*, int> DeferredFillIn; // HRESULT(__stdcall* pfnDeferredFillIn)(struct tagEXCEPINFO *);
+        public int SCode; // SCODE scode;
     }
 
     #endregion
