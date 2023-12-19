@@ -24,6 +24,7 @@ MsRdpEx processes additional .RDP file options that are not normally supported b
 | MouseJigglerInterval:i:value | RDP mouse jiggler interval in seconds | Interval in seconds | 60 |
 | MouseJigglerMethod:i:value | RDP mouse jiggler method | 0/1 | 0 |
 | AllowBackgroundInput:i:value | Allow background input events when window is not in focus | 0/1 | 0 |
+| EnableRelativeMouse:i:value | Enable relative mouse mode | 0/1 | 0 |
 | DisableCredentialsDelegation:i:value | Disable CredSSP credential delegation | 0/1 | 0 |
 | RedirectedAuthentication:i:value | Enable Remote Credential Guard | 0/1 | 0 |
 | RestrictedLogon:i:value | Enable Restricted Admin Mode | 0/1 | 0 |
