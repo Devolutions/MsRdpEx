@@ -17,7 +17,7 @@ namespace MSTSCLib
         [DispId(756)] void OnAutoReconnected();
         [DispId(757)] void OnDialogDisplaying();
         [DispId(758)] void OnDialogDismissed();
-        [DispId(759)] void OnNetworkStatusChanged(int qualityLevel, int bandwidth, int rtt);
+        [DispId(759)] void OnNetworkStatusChanged(uint qualityLevel, int bandwidth, int rtt);
         [DispId(760)] void OnAdminMessageReceived([MarshalAs(UnmanagedType.BStr)] string adminMessage);
         [DispId(761)] void OnKeyCombinationPressed(int keyCombination);
         [DispId(762)] void OnRemoteDesktopSizeChanged(int width, int height);
