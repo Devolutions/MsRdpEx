@@ -364,7 +364,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsTscAxNotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -378,6 +378,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsTscAx)(this.GetOcx()));
@@ -1445,7 +1457,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClientNotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -1459,6 +1471,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient)(this.GetOcx()));
@@ -2315,7 +2339,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient2NotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -2329,6 +2353,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient2)(this.GetOcx()));
@@ -3185,7 +3221,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient2EventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -3199,6 +3235,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient2)(this.GetOcx()));
@@ -4055,7 +4103,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient2aEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -4069,6 +4117,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient2)(this.GetOcx()));
@@ -4937,7 +4997,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient3NotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -4951,6 +5011,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient3)(this.GetOcx()));
@@ -5819,7 +5891,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient3EventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -5833,6 +5905,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient3)(this.GetOcx()));
@@ -6701,7 +6785,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient3aEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -6715,6 +6799,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient3)(this.GetOcx()));
@@ -7595,7 +7691,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient4NotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -7609,6 +7705,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient4)(this.GetOcx()));
@@ -8489,7 +8597,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient4EventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -8503,6 +8611,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient4)(this.GetOcx()));
@@ -9383,7 +9503,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient4aEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -9397,6 +9517,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient4)(this.GetOcx()));
@@ -10333,7 +10465,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient5NotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -10347,6 +10479,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient5)(this.GetOcx()));
@@ -11283,7 +11427,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient5EventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -11297,6 +11441,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient5)(this.GetOcx()));
@@ -12257,7 +12413,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient6NotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -12271,6 +12427,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient6)(this.GetOcx()));
@@ -13231,7 +13399,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient6EventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -13245,6 +13413,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient6)(this.GetOcx()));
@@ -14261,7 +14441,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient7NotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -14275,6 +14455,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient7)(this.GetOcx()));
@@ -15291,7 +15483,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient7EventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -15305,6 +15497,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient7)(this.GetOcx()));
@@ -16348,7 +16552,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient8NotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -16362,6 +16566,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient8)(this.GetOcx()));
@@ -17405,7 +17621,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient8EventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -17419,6 +17635,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient8)(this.GetOcx()));
@@ -18523,8 +18751,8 @@ namespace AxMSTSCLib {
             if (legacyObject is null || !Marshal.IsComObject(legacyObject))
                 throw new NotSupportedException();
             var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
-            try { return ComInterfaceMarshaller<MsRdpEx.Interop.IMsRdpClient9>.ConvertToManaged((void*)legacyPointer); }
-            finally { ComInterfaceMarshaller<MsRdpEx.Interop.IMsRdpClient9>.Free((void*)legacyPointer); }
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
         }
 #endif
 
@@ -19614,7 +19842,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient9EventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -19628,6 +19856,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient9)(this.GetOcx()));
@@ -20723,7 +20963,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient10NotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -20737,6 +20977,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient10)(this.GetOcx()));
@@ -21832,7 +22084,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient10EventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -21846,6 +22098,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient10)(this.GetOcx()));
@@ -22941,7 +23205,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient11NotSafeForScriptingEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -22955,6 +23219,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient10)(this.GetOcx()));
@@ -24050,7 +24326,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxMsRdpClient11EventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MSTSCLib.IMsTscAxEvents));
             }
             catch (System.Exception ) {
             }
@@ -24064,6 +24340,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IMsRdpClient10)(this.GetOcx()));
@@ -24569,7 +24857,7 @@ namespace AxMSTSCLib {
         protected override void CreateSink() {
             try {
                 this.eventMulticaster = new AxRemoteDesktopClientEventMulticaster(this);
-                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(this.ocx, this.eventMulticaster, typeof(MsRdpEx.Interop.IRemoteDesktopClientEvents));
+                this.cookie = new System.Windows.Forms.AxHost.ConnectionPointCookie(base.GetOcx(), this.eventMulticaster, typeof(MsRdpEx.Interop.IRemoteDesktopClientEvents));
             }
             catch (System.Exception ) {
             }
@@ -24583,6 +24871,18 @@ namespace AxMSTSCLib {
             }
         }
         
+#if NET8_0_OR_GREATER
+        public new unsafe object GetOcx()
+        {
+            var legacyObject = base.GetOcx();
+            if (legacyObject is null || !Marshal.IsComObject(legacyObject))
+                throw new NotSupportedException();
+            var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
+            try { return ComInterfaceMarshaller<object>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<object>.Free((void*)legacyPointer); }
+        }
+#endif
+
         protected override void AttachInterfaces() {
             try {
                 this.ocx = ((MsRdpEx.Interop.IRemoteDesktopClient)(this.GetOcx()));
