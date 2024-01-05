@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 
@@ -17799,7 +17800,7 @@ namespace AxMSTSCLib {
     [System.ComponentModel.DefaultEvent("OnConnecting")]
     public class AxMsRdpClient9NotSafeForScripting : AxHostEx {
         
-        private MSTSCLib.IMsRdpClient9 ocx;
+        private MsRdpEx.Interop.IMsRdpClient9 ocx;
         
         private AxMsRdpClient9NotSafeForScriptingEventMulticaster eventMulticaster;
         
@@ -18292,7 +18293,7 @@ namespace AxMSTSCLib {
         [System.ComponentModel.Browsable(false)]
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         [System.Runtime.InteropServices.DispIdAttribute(604)]
-        public virtual MSTSCLib.ITSRemoteProgram2 RemoteProgram2 {
+        public virtual MsRdpEx.Interop.ITSRemoteProgram2 RemoteProgram2 {
             get {
                 if ((this.ocx == null)) {
                     throw new System.Windows.Forms.AxHost.InvalidActiveXStateException("RemoteProgram2", System.Windows.Forms.AxHost.ActiveXInvokeKind.PropertyGet);
@@ -18304,7 +18305,7 @@ namespace AxMSTSCLib {
         [System.ComponentModel.Browsable(false)]
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         [System.Runtime.InteropServices.DispIdAttribute(701)]
-        public virtual MSTSCLib.IMsRdpClientAdvancedSettings8 AdvancedSettings9 {
+        public virtual MsRdpEx.Interop.IMsRdpClientAdvancedSettings8 AdvancedSettings9 {
             get {
                 if ((this.ocx == null)) {
                     throw new System.Windows.Forms.AxHost.InvalidActiveXStateException("AdvancedSettings9", System.Windows.Forms.AxHost.ActiveXInvokeKind.PropertyGet);
@@ -18316,7 +18317,7 @@ namespace AxMSTSCLib {
         [System.ComponentModel.Browsable(false)]
         [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
         [System.Runtime.InteropServices.DispIdAttribute(800)]
-        public virtual MSTSCLib.IMsRdpClientTransportSettings4 TransportSettings4 {
+        public virtual MsRdpEx.Interop.IMsRdpClientTransportSettings4 TransportSettings4 {
             get {
                 if ((this.ocx == null)) {
                     throw new System.Windows.Forms.AxHost.InvalidActiveXStateException("TransportSettings4", System.Windows.Forms.AxHost.ActiveXInvokeKind.PropertyGet);
@@ -18523,14 +18524,14 @@ namespace AxMSTSCLib {
             if (legacyObject is null || !Marshal.IsComObject(legacyObject))
                 throw new NotSupportedException();
             var legacyPointer = Marshal.GetIUnknownForObject(legacyObject);
-            try { return ComInterfaceMarshaller<MSTSCLib.IMsRdpClient9>.ConvertToManaged((void*)legacyPointer); }
-            finally { ComInterfaceMarshaller<MSTSCLib.IMsRdpClient9>.Free((void*)legacyPointer); }
+            try { return ComInterfaceMarshaller<MsRdpEx.Interop.IMsRdpClient9>.ConvertToManaged((void*)legacyPointer); }
+            finally { ComInterfaceMarshaller<MsRdpEx.Interop.IMsRdpClient9>.Free((void*)legacyPointer); }
         }
 #endif
 
         protected override void AttachInterfaces() {
             try {
-                this.ocx = ((MSTSCLib.IMsRdpClient9)(this.GetOcx()));
+                this.ocx = ((MsRdpEx.Interop.IMsRdpClient9)(this.GetOcx()));
             }
             catch (System.Exception ) {
             }
@@ -18816,19 +18817,21 @@ namespace AxMSTSCLib {
             //this.parent.RaiseOnOnRequestContainerMinimize(this.parent, onrequestcontainerminimizeEvent);
         }
         
-        public virtual void OnConfirmClose(out MSTSCLib.VariantBool pfAllowClose) {
+        public virtual void OnConfirmClose(out bool pfAllowClose) {
             IMsTscAxEvents_OnConfirmCloseEvent onconfirmcloseEvent = new IMsTscAxEvents_OnConfirmCloseEvent();
             this.parent.RaiseOnOnConfirmClose(this.parent, onconfirmcloseEvent);
             pfAllowClose = onconfirmcloseEvent.pfAllowClose;
         }
         
-        public virtual void OnReceivedTSPublicKey(string publicKey, ref MSTSCLib.VariantBool pfContinueLogon) {
+        public virtual void OnReceivedTSPublicKey(string publicKey, out bool pfContinueLogon) {
+            Unsafe.SkipInit(out pfContinueLogon);
             //IMsTscAxEvents_OnReceivedTSPublicKeyEvent onreceivedtspublickeyEvent = new IMsTscAxEvents_OnReceivedTSPublicKeyEvent(publicKey);
             //this.parent.RaiseOnOnReceivedTSPublicKey(this.parent, onreceivedtspublickeyEvent);
             //pfContinueLogon = onreceivedtspublickeyEvent.pfContinueLogon;
         }
         
-        public virtual void OnAutoReconnecting(int disconnectReason, int attemptCount, ref MSTSCLib.AutoReconnectContinueState pArcContinueStatus) {
+        public virtual void OnAutoReconnecting(int disconnectReason, int attemptCount, out MsRdpEx.Interop.AutoReconnectContinueState pArcContinueStatus) {
+            Unsafe.SkipInit(out pArcContinueStatus);
             //IMsTscAxEvents_OnAutoReconnectingEvent onautoreconnectingEvent = new IMsTscAxEvents_OnAutoReconnectingEvent(disconnectReason, attemptCount);
             //this.parent.RaiseOnOnAutoReconnecting(this.parent, onautoreconnectingEvent);
             //pArcContinueStatus = onautoreconnectingEvent.pArcContinueStatus;
@@ -18844,17 +18847,17 @@ namespace AxMSTSCLib {
             //this.parent.RaiseOnOnAuthenticationWarningDismissed(this.parent, onauthenticationwarningdismissedEvent);
         }
         
-        public virtual void OnRemoteProgramResult(string bstrRemoteProgram, MSTSCLib.RemoteProgramResult lError, MSTSCLib.VariantBool vbIsExecutable) {
+        public virtual void OnRemoteProgramResult(string bstrRemoteProgram, MsRdpEx.Interop.RemoteProgramResult lError, bool vbIsExecutable) {
             //IMsTscAxEvents_OnRemoteProgramResultEvent onremoteprogramresultEvent = new IMsTscAxEvents_OnRemoteProgramResultEvent(bstrRemoteProgram, lError, vbIsExecutable);
             //this.parent.RaiseOnOnRemoteProgramResult(this.parent, onremoteprogramresultEvent);
         }
         
-        public virtual void OnRemoteProgramDisplayed(MSTSCLib.VariantBool vbDisplayed, uint uDisplayInformation) {
+        public virtual void OnRemoteProgramDisplayed(bool vbDisplayed, uint uDisplayInformation) {
             //IMsTscAxEvents_OnRemoteProgramDisplayedEvent onremoteprogramdisplayedEvent = new IMsTscAxEvents_OnRemoteProgramDisplayedEvent(vbDisplayed, uDisplayInformation);
             //this.parent.RaiseOnOnRemoteProgramDisplayed(this.parent, onremoteprogramdisplayedEvent);
         }
         
-        public virtual void OnRemoteWindowDisplayed(MSTSCLib.VariantBool vbDisplayed, in MSTSCLib.RemotableHandle hwnd, MSTSCLib.RemoteWindowDisplayedAttribute windowAttribute) {
+        public virtual void OnRemoteWindowDisplayed(bool vbDisplayed, nint hwnd, MsRdpEx.Interop.RemoteWindowDisplayedAttribute windowAttribute) {
             //IMsTscAxEvents_OnRemoteWindowDisplayedEvent onremotewindowdisplayedEvent = new IMsTscAxEvents_OnRemoteWindowDisplayedEvent(vbDisplayed, hwnd, windowAttribute);
             //this.parent.RaiseOnOnRemoteWindowDisplayed(this.parent, onremotewindowdisplayedEvent);
             //hwnd = onremotewindowdisplayedEvent.hwnd;
@@ -18875,7 +18878,7 @@ namespace AxMSTSCLib {
             //this.parent.RaiseOnOnUserNameAcquired(this.parent, onusernameacquiredEvent);
         }
         
-        public virtual void OnMouseInputModeChanged(MSTSCLib.VariantBool fMouseModeRelative) {
+        public virtual void OnMouseInputModeChanged(bool fMouseModeRelative) {
             //IMsTscAxEvents_OnMouseInputModeChangedEvent onmouseinputmodechangedEvent = new IMsTscAxEvents_OnMouseInputModeChangedEvent(fMouseModeRelative);
             //this.parent.RaiseOnOnMouseInputModeChanged(this.parent, onmouseinputmodechangedEvent);
         }
@@ -18905,7 +18908,7 @@ namespace AxMSTSCLib {
             //this.parent.RaiseOnOnAutoReconnected(this.parent, onautoreconnectedEvent);
         }
         
-        public virtual void OnAutoReconnecting2(int disconnectReason, MSTSCLib.VariantBool networkAvailable, int attemptCount, int maxAttemptCount) {
+        public virtual void OnAutoReconnecting2(int disconnectReason, bool networkAvailable, int attemptCount, int maxAttemptCount) {
             //IMsTscAxEvents_OnAutoReconnecting2Event onautoreconnecting2Event = new IMsTscAxEvents_OnAutoReconnecting2Event(disconnectReason, networkAvailable, attemptCount, maxAttemptCount);
             //this.parent.RaiseOnOnAutoReconnecting2(this.parent, onautoreconnecting2Event);
         }
