@@ -263,8 +263,8 @@ namespace MsRdpEx.Interop
         IMsRdpClientTransportSettings4 GetTransportSettings4();
         void SyncSessionDisplaySettings();
         void UpdateSessionDisplaySettings(uint DesktopWidth, uint DesktopHeight, uint PhysicalWidth, uint PhysicalHeight, uint Orientation, uint DesktopScaleFactor, uint DeviceScaleFactor);
-        void AttachEvent(ReadOnlyBinaryStringRef eventName, IDispatch callback);
-        void DetachEvent(ReadOnlyBinaryStringRef eventName, IDispatch callback);
+        void attachEvent(ReadOnlyBinaryStringRef eventName, IDispatch callback);
+        void detachEvent(ReadOnlyBinaryStringRef eventName, IDispatch callback);
     }
 
     [GeneratedComInterface]

@@ -38,8 +38,8 @@ namespace MsRdpEx.Interop
         IRemoteDesktopClientTouchPointer GetTouchPointer();
         void DeleteSavedCredentials(ReadOnlyBinaryStringRef serverName);
         void UpdateSessionDisplaySettings(uint width, uint height);
-        void AttachEvent(ReadOnlyBinaryStringRef eventName, IDispatch callback);
-        void DetachEvent(ReadOnlyBinaryStringRef eventName, IDispatch callback);
+        void attachEvent(ReadOnlyBinaryStringRef eventName, IDispatch callback);
+        void detachEvent(ReadOnlyBinaryStringRef eventName, IDispatch callback);
     }
 
     [GeneratedComInterface]

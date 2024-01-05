@@ -71,8 +71,8 @@ namespace MsRdpEx.Tests
                 expectedName = "Set" + char.ToUpperInvariant(expectedName[4]) + expectedName.Substring(5);
             else if (expectedName.StartsWith("get_"))
                 expectedName = "Get" + char.ToUpperInvariant(expectedName[4]) + expectedName.Substring(5);
-            else
-                expectedName = char.ToUpper(expectedName[0]) + expectedName.Substring(1);
+            //else
+            //    expectedName = char.ToUpper(expectedName[0]) + expectedName.Substring(1);
 
             return expectedName;
         }
