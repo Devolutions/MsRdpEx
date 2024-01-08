@@ -113,7 +113,7 @@ namespace AxMSTSCLib {
     public class AxHostEx : System.Windows.Forms.AxHost
     {
         public string axName = "mstsc";
-        public string rdpExDll = null;
+        public string rdpExDll = string.Empty;
         private static object loadLock = new object();
 
         public static string RdpGetAxDllPath(string axName)
@@ -147,7 +147,7 @@ namespace AxMSTSCLib {
 
         public static object RdpGetClassObject(Guid clsid, string axName, string rdpExDll)
         {
-            object obj = null;
+            object? obj = null;
 
             lock (loadLock)
             {

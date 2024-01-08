@@ -1,27 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\common.build.pre.props" />
 
   <PropertyGroup>
     <AssemblyName>AxInterop.MSTSCLib</AssemblyName>
     <OutputType>Library</OutputType>
-    <Platforms>Win32;x64;ARM64</Platforms>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ProcessorArchitecture>MSIL</ProcessorArchitecture>
-    <TargetFramework>net48</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Nullable>disable</Nullable>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <Optimize>False</Optimize>
-    <DebugType>Full</DebugType>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <Optimize>True</Optimize>
-    <DebugType>None</DebugType>
   </PropertyGroup>
 
   <ItemGroup>

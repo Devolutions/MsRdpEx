@@ -1,4 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\common.build.pre.props" />
 
   <PropertyGroup>
     <AssemblyName>Devolutions.MsRdpEx</AssemblyName>
@@ -8,29 +9,11 @@
     <Company>Devolutions</Company>
     <Description>Microsoft RDP Extensions</Description>
     <OutputType>Library</OutputType>
-    <Platforms>Win32;x64;ARM64</Platforms>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <ProcessorArchitecture>MSIL</ProcessorArchitecture>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <UseWindowsForms>true</UseWindowsForms>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <LangVersion>8</LangVersion>
-    <Nullable>enable</Nullable>
-    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <UseWindowsForms>True</UseWindowsForms>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <Optimize>False</Optimize>
-    <DebugType>Full</DebugType>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)'=='Release'">
-    <Optimize>True</Optimize>
-    <DebugType>None</DebugType>
+    <Nullable>enable</Nullable>
+    <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
+    <SuppressDependenciesWhenPacking>False</SuppressDependenciesWhenPacking>
   </PropertyGroup>
 
   <ItemGroup>
@@ -46,9 +29,24 @@
     <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" />
   </ItemGroup>
 
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Copy SourceFiles="$(CMakeOutputPath)/MsRdpEx.dll" DestinationFolder="$(OutputPath)"
+      OverwriteReadOnlyFiles="true" Condition="Exists('$(CMakeOutputPath)/MsRdpEx.dll')" />
+    <Copy SourceFiles="$(CMakeOutputPath)/MsRdpEx.pdb" DestinationFolder="$(OutputPath)"
+      OverwriteReadOnlyFiles="true" Condition="Exists('$(CMakeOutputPath)/MsRdpEx.pdb')" />
+  </Target>
+
   <ItemGroup>
-    <Content Include="$(OutputPath)/Interop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/Interop.MSTSCLib.dll" Pack="true" />
-    <Content Include="$(OutputPath)/AxInterop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/AxInterop.MSTSCLib.dll" Pack="true" />
+    <Content Include="$(OutputPath)/net48/Interop.MSTSCLib.dll" PackagePath="lib/net48/Interop.MSTSCLib.dll" Pack="true" />
+    <Content Include="$(OutputPath)/net48/AxInterop.MSTSCLib.dll" PackagePath="lib/net48/AxInterop.MSTSCLib.dll" Pack="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="$(OutputPath)/net8.0-windows/Interop.MSTSCLib.dll" PackagePath="lib/net8.0-windows7.0/Interop.MSTSCLib.dll" Pack="true" />
+    <Content Include="$(OutputPath)/net8.0-windows/AxInterop.MSTSCLib.dll" PackagePath="lib/net8.0-windows7.0/AxInterop.MSTSCLib.dll" Pack="true" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="../../dependencies/MsRdpEx/x86/MsRdpEx.dll" PackagePath="runtimes/win-x86/native/MsRdpEx.dll" Pack="true" />
     <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll" PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" />
     <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll" PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" />
