@@ -153,14 +153,14 @@ namespace MsRdpEx
 
         public static IMsRdpExCoreApi GetCoreApi()
         {
-            object instance = null;
+            object? instance = null;
             MsRdpEx_CreateInstance(ref IID_IMsRdpExCoreApi, out instance);
             return (IMsRdpExCoreApi)instance;
         }
 
         public static IMsRdpExProcess CreateProcess()
         {
-            object instance = null;
+            object? instance = null;
             MsRdpEx_CreateInstance(ref IID_IMsRdpExProcess, out instance);
             IMsRdpExProcess process = (IMsRdpExProcess)instance;
             return process;
@@ -168,7 +168,7 @@ namespace MsRdpEx
 
         public static IMsRdpExProcess StartProcess(string[] args, string appName, string axName)
         {
-            object instance = null;
+            object? instance = null;
             MsRdpEx_CreateInstance(ref IID_IMsRdpExProcess, out instance);
 
             IMsRdpExProcess process = (IMsRdpExProcess) instance;

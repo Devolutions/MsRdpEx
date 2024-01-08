@@ -402,7 +402,7 @@ namespace MsRdpEx_App
                     args.Add(this.rdpFileName);
                 }
 
-                string arguments = string.Join(' ', args.ToArray());
+                string arguments = string.Join(" ", args.ToArray());
 
                 ProcessStartInfo startInfo = new ProcessStartInfo();
                 startInfo.FileName = executableFileName;
