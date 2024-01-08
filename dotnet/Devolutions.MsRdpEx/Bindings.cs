@@ -33,13 +33,13 @@ namespace MsRdpEx
         void SetLogLevel([MarshalAs(UnmanagedType.U4)] MsRdpEx_LogLevel logLevel);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        void SetLogFilePath([MarshalAs(UnmanagedType.LPStr)] string logFilePath);
+        void SetLogFilePath([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string logFilePath);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetPcapEnabled([MarshalAs(UnmanagedType.U1)] bool pcapEnabled);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        void SetPcapFilePath([MarshalAs(UnmanagedType.LPStr)] string pcapFilePath);
+        void SetPcapFilePath([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string pcapFilePath);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetAxHookEnabled([MarshalAs(UnmanagedType.U1)] bool axHookEnabled);
@@ -58,25 +58,25 @@ namespace MsRdpEx
     public interface IMsRdpExProcess
     {
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        void SetFileName([MarshalAs(UnmanagedType.LPStr)] string filename);
+        void SetFileName([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef=typeof(MarshalHelpers.LPUTF8Str))] string filename);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        void SetArguments([MarshalAs(UnmanagedType.LPStr)] string arguments);
+        void SetArguments([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string arguments);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        void SetArgumentBlock([MarshalAs(UnmanagedType.LPStr)] string argumentBlock);
+        void SetArgumentBlock([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string argumentBlock);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        void SetEnvironmentBlock([MarshalAs(UnmanagedType.LPStr)] string environmentBlock);
+        void SetEnvironmentBlock([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string environmentBlock);
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
-        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPStr)] string workingDirectory);
+        void SetWorkingDirectory([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string workingDirectory);
 
         void StartWithInfo();
 
         void Start(int argc, ref IntPtr[] argv,
-            [MarshalAs(UnmanagedType.LPStr)] string appName,
-            [MarshalAs(UnmanagedType.LPStr)] string axName);
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string appName,
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string axName);
 
         void Stop(UInt32 exitCode);
 
