@@ -147,7 +147,7 @@ namespace AxMSTSCLib {
 
         public static object RdpGetClassObject(Guid clsid, string axName, string rdpExDll)
         {
-            object? obj = null;
+            object obj = null;
 
             lock (loadLock)
             {
