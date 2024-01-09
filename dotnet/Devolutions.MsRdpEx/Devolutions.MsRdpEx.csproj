@@ -13,7 +13,7 @@
     <OutputPath>$(CMakeOutputPath)</OutputPath>
     <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
-    <SuppressDependenciesWhenPacking>False</SuppressDependenciesWhenPacking>
+    <SuppressDependenciesWhenPacking>True</SuppressDependenciesWhenPacking>
   </PropertyGroup>
 
   <ItemGroup>

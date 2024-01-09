@@ -3,12 +3,20 @@
 
   <PropertyGroup>
     <AssemblyName>AxInterop.MSTSCLib</AssemblyName>
+    <PackageId>AxInterop.MSTSCLib</PackageId>
+    <Version>1.0.0.0</Version>
     <OutputType>Library</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>disable</Nullable>
-    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Windows.Forms.AxHost.TypeLibraryTimeStampAttribute">
+        <_Parameter1>11/09/2021 16:17:20</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="Interop.MSTSCLib">
