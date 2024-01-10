@@ -39,6 +39,7 @@ MsRdpEx processes additional .RDP file options that are not normally supported b
 MsRdpEx also supports extended logging controlled by environment variables:
 
 ```powershell
+$Env:MSRDPEX_LOG_ENABLED="1"
 $Env:MSRDPEX_LOG_LEVEL="DEBUG"
 .\mstscex.exe <destination.rdp>
 ```
@@ -46,6 +47,7 @@ $Env:MSRDPEX_LOG_LEVEL="DEBUG"
 If you don't pass a .RDP file, the mstsc.exe GUI will launch normally, but you won't be able to leverage any of the extended MsRdpEx .RDP file options. The default log file path location is in "%LocalAppData%\MsRdpEx\MsRdpEx.log". You can override log settings using the MSRDPEX_LOG_LEVEL and MSRDPEX_LOG_FILE_PATH environment variables:
 
 ```powershell
+$Env:MSRDPEX_LOG_ENABLED="1"
 $Env:MSRDPEX_LOG_LEVEL="TRACE"
 $Env:MSRDPEX_LOG_FILE_PATH="C:\Windows\Temp\MsRdpEx.log"
 .\mstscex.exe

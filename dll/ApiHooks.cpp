@@ -156,7 +156,9 @@ HMODULE Hook_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
     if (!interceptedCall)
     {
         // reduce log verbosity for repeated LoadLibraryExW calls
-        if (lpLibFileName != LoadLibraryExW_LastFileName) {
+        // only log .dll calls, exclude .exe and .sys which is noise
+        if ((lpLibFileName != LoadLibraryExW_LastFileName) &&
+            MsRdpEx_IStringEndsWithW(lpLibFileName, L".dll")) {
             MsRdpEx_LogPrint(DEBUG, "LoadLibraryExW: %s", lpLibFileNameA);
         }
 
