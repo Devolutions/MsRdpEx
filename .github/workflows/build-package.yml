@@ -45,7 +45,12 @@ jobs:
         run: |
           $IsMasterBranch = ('${{ github.ref_name }}' -eq 'master')
           $IsScheduledJob = ('${{ github.event_name }}' -eq 'schedule')
-          $DryRun = [System.Boolean]::Parse('${{ inputs.dry-run }}')
+
+          if ('${{ github.event_name }}' -Eq 'schedule') {
+
+          }
+
+          try { $DryRun = [System.Boolean]::Parse('${{ inputs.dry-run }}') } catch { $DryRun = $true }
 
           $PackageEnv = if ($IsMasterBranch -And -Not $IsScheduledJob) {
             "publish-prod"
@@ -60,7 +65,7 @@ jobs:
             $DryRun = $true # force dry run for scheduled runs
           }
 
-          $PackageVersion = '${{ github.event.inputs.version }}'
+          $PackageVersion = '${{ inputs.version }}'
           if ([string]::IsNullOrEmpty($PackageVersion) -or $PackageVersion -eq 'latest') {
             $PackageVersion = (Get-Date -Format "yyyy.MM.dd") + ".0"
           }
