@@ -1,6 +1,17 @@
 
 #include <MsRdpEx/RdpFile.h>
 
+bool MsRdpEx_IsSensitivePropertyName(const char* name)
+{
+	if (!name)
+		return false;
+
+	if (MsRdpEx_IStringEndsWith(name, "Password"))
+		return true;
+
+	return false;
+}
+
 MsRdpEx_RdpFileEntry* MsRdpEx_RdpFileEntry_New(char type, const char* name, const char* value)
 {
 	MsRdpEx_RdpFileEntry* entry;
@@ -85,6 +96,10 @@ void MsRdpEx_RdpFileEntry_Free(MsRdpEx_RdpFileEntry* entry)
 {
 	if (!entry)
 		return;
+
+	if (MsRdpEx_IsSensitivePropertyName(entry->name) && entry->value) {
+		SecureZeroMemory(entry->value, strlen(entry->value));
+	}
 
 	if (entry->name) {
 		free(entry->name);
@@ -251,7 +266,9 @@ bool MsRdpEx_RdpFile_Load(MsRdpEx_RdpFile* ctx, const char* filename)
 			}
 			else if (*type == 's') /* string type */
 			{
-				MsRdpEx_LogPrint(DEBUG, "RDP(s): %s = %s", name, value);
+				MsRdpEx_LogPrint(DEBUG, "RDP(s): %s = %s", name,
+					MsRdpEx_IsSensitivePropertyName(name) ? "*omitted*" : value);
+
 				entry = MsRdpEx_RdpFileEntry_New(*type, name, value);
 
 				if (entry) {
@@ -269,6 +286,97 @@ bool MsRdpEx_RdpFile_Load(MsRdpEx_RdpFile* ctx, const char* filename)
 			index++;
 	}
 
+	free(buffer);
+	return true;
+}
+
+bool MsRdpEx_RdpFile_LoadText(MsRdpEx_RdpFile* ctx, const char* text)
+{
+	size_t index;
+	size_t size;
+	size_t length;
+	char* line;
+	char* type;
+	char* d1;
+	char* d2;
+	char* beg;
+	char* name;
+	char* value;
+	char* tokctx = NULL;
+	char* buffer = NULL;
+	MsRdpEx_RdpFileEntry* entry;
+
+	if (!text)
+		return false;
+
+	size = strlen(text);
+	buffer = _strdup(text);
+
+	if (!buffer)
+		return false;
+
+	index = 0;
+	line = strtok_s(buffer, "\r\n", &tokctx);
+
+	while (line)
+	{
+		length = strnlen(line, size);
+
+		if (length > 1)
+		{
+			beg = line;
+
+			d1 = strchr(line, ':');
+
+			if (!d1)
+				goto next_line; /* no first delimiter */
+
+			type = &d1[1];
+			d2 = strchr(type, ':');
+
+			if (!d2)
+				goto next_line; /* no second delimiter */
+
+			if ((d2 - d1) != 2)
+				goto next_line; /* improper type length */
+
+			*d1 = 0;
+			*d2 = 0;
+			name = beg;
+			value = &d2[1];
+
+			if (*type == 'i') /* integer type */
+			{
+				MsRdpEx_LogPrint(DEBUG, "RDP(i): %s = %s", name, value);
+				entry = MsRdpEx_RdpFileEntry_New(*type, name, value);
+
+				if (entry) {
+					MsRdpEx_ArrayList_Add(ctx->entries, entry);
+				}
+			}
+			else if (*type == 's') /* string type */
+			{
+				MsRdpEx_LogPrint(DEBUG, "RDP(s): %s = %s", name,
+					MsRdpEx_IsSensitivePropertyName(name) ? "*omitted*" : value);
+
+				entry = MsRdpEx_RdpFileEntry_New(*type, name, value);
+
+				if (entry) {
+					MsRdpEx_ArrayList_Add(ctx->entries, entry);
+				}
+			}
+			else if (*type == 'b') /* binary type */
+			{
+
+			}
+		}
+
+	next_line:
+		line = strtok_s(NULL, "\r\n", &tokctx);
+		index++;
+	}
+
+	SecureZeroMemory(buffer, size);
 	free(buffer);
 	return true;
 }

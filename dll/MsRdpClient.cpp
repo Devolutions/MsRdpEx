@@ -496,6 +496,7 @@ public:
 
         CMsRdpExtendedSettings* pMsRdpExtendedSettings = m_pMsRdpExtendedSettings;
         m_pMsRdpExtendedSettings->LoadRdpFile(NULL);
+        m_pMsRdpExtendedSettings->LoadRdpFileFromNamedPipe(NULL);
         m_pMsRdpExtendedSettings->PrepareSspiSessionIdHack();
         m_pMsRdpExtendedSettings->PrepareMouseJiggler();
 

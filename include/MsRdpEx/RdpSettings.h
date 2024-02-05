@@ -40,7 +40,9 @@ public:
     HRESULT __stdcall SetGatewayPassword(const char* password);
     HRESULT __stdcall SetKdcProxyUrl(const char* kdcProxyUrl);
     HRESULT __stdcall AttachRdpClient(IMsTscAx* pMsTscAx);
+    HRESULT __stdcall ApplyRdpFile(void* rdpFilePtr);
     HRESULT __stdcall LoadRdpFile(const char* rdpFileName);
+    HRESULT __stdcall LoadRdpFileFromNamedPipe(const char* pipeName);
     HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw);
     HRESULT __stdcall PrepareSspiSessionIdHack();
     HRESULT __stdcall PrepareMouseJiggler();

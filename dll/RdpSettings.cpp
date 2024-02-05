@@ -607,6 +607,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::SetTargetPassword(const char* password
 
     bstr_t propValue = _com_util::ConvertStringToBSTR(password);
     m_CoreProps->SetSecureStringProperty("Password", propValue);
+    SecureZeroMemory(propValue.GetBSTR(), wcslen(propValue.GetBSTR()) * sizeof(WCHAR));
 
     return S_OK;
 }
@@ -617,6 +618,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::SetGatewayPassword(const char* passwor
 
     bstr_t propValue = _com_util::ConvertStringToBSTR(password);
     m_TransportProps->SetSecureStringProperty("GatewayPassword", propValue);
+    SecureZeroMemory(propValue.GetBSTR(), wcslen(propValue.GetBSTR()) * sizeof(WCHAR));
 
     return S_OK;
 }
@@ -695,6 +697,125 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
     return S_OK;
 }
 
+HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
+{
+    MsRdpEx_ArrayListIt* it = NULL;
+    MsRdpEx_RdpFileEntry* entry = NULL;
+    CMsRdpExtendedSettings* pMsRdpExtendedSettings = this;
+    MsRdpEx_RdpFile* rdpFile = (MsRdpEx_RdpFile*) rdpFilePtr;
+
+    it = MsRdpEx_ArrayList_It(rdpFile->entries, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        VARIANT value;
+        VariantInit(&value);
+
+        entry = (MsRdpEx_RdpFileEntry*)MsRdpEx_ArrayListIt_Next(it);
+
+        if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableCredentialsDelegation")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->PutProperty(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RedirectedAuthentication")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->PutProperty(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RestrictedLogon")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->PutProperty(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "UserSpecifiedServerName")) {
+            bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+            bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+            value.bstrVal = propValue;
+            value.vt = VT_BSTR;
+            pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableUDPTransport")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "ConnectToChildSession")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableHardwareMode")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "AllowBackgroundInput")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_BaseProperty(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableRelativeMouse")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_BaseProperty(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableMouseJiggler")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "MouseJigglerInterval")) {
+            if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "MouseJigglerMethod")) {
+            if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {
+            pMsRdpExtendedSettings->SetTargetPassword(entry->value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "GatewayPassword")) {
+            pMsRdpExtendedSettings->SetGatewayPassword(entry->value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetUserName")) {
+            bstr_t propName = _com_util::ConvertStringToBSTR("UserName");
+            bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+            value.bstrVal = propValue;
+            value.vt = VT_BSTR;
+            pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetDomain")) {
+            bstr_t propName = _com_util::ConvertStringToBSTR("Domain");
+            bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+            value.bstrVal = propValue;
+            value.vt = VT_BSTR;
+            pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "KDCProxyURL")) {
+            pMsRdpExtendedSettings->SetKdcProxyUrl(entry->value);
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+
+    return S_OK;
+}
+
 HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
 {
     char* filename;
@@ -707,126 +828,47 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
     if (!filename)
         return E_UNEXPECTED;
 
-    CMsRdpExtendedSettings* pMsRdpExtendedSettings = this;
-
-    MsRdpEx_LogPrint(DEBUG, "Loading %s", filename);
+    MsRdpEx_LogPrint(DEBUG, "Loading RDP file: %s", filename);
     MsRdpEx_RdpFile* rdpFile = MsRdpEx_RdpFile_New();
 
-    if (MsRdpEx_RdpFile_Load(rdpFile, filename)) {
-        MsRdpEx_ArrayListIt* it = NULL;
-        MsRdpEx_RdpFileEntry* entry = NULL;
-
-        it = MsRdpEx_ArrayList_It(rdpFile->entries, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
-
-        while (!MsRdpEx_ArrayListIt_Done(it))
-        {
-            VARIANT value;
-            VariantInit(&value);
-
-            entry = (MsRdpEx_RdpFileEntry*) MsRdpEx_ArrayListIt_Next(it);
-
-            if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableCredentialsDelegation")) {
-                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->PutProperty(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RedirectedAuthentication")) {
-                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->PutProperty(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "RestrictedLogon")) {
-                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->PutProperty(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "UserSpecifiedServerName")) {
-                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
-                value.bstrVal = propValue;
-                value.vt = VT_BSTR;
-                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DisableUDPTransport")) {
-                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "ConnectToChildSession")) {
-                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableHardwareMode")) {
-                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->put_Property(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "AllowBackgroundInput")) {
-                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->put_BaseProperty(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableRelativeMouse")) {
-                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->put_BaseProperty(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableMouseJiggler")) {
-                if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->put_Property(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "MouseJigglerInterval")) {
-                if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->put_Property(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "MouseJigglerMethod")) {
-                if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
-                    bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                    pMsRdpExtendedSettings->put_Property(propName, &value);
-                }
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {
-                pMsRdpExtendedSettings->SetTargetPassword(entry->value);
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "GatewayPassword")) {
-                pMsRdpExtendedSettings->SetGatewayPassword(entry->value);
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetUserName")) {
-                bstr_t propName = _com_util::ConvertStringToBSTR("UserName");
-                bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
-                value.bstrVal = propValue;
-                value.vt = VT_BSTR;
-                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetDomain")) {
-                bstr_t propName = _com_util::ConvertStringToBSTR("Domain");
-                bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
-                value.bstrVal = propValue;
-                value.vt = VT_BSTR;
-                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
-            }
-            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "KDCProxyURL")) {
-                pMsRdpExtendedSettings->SetKdcProxyUrl(entry->value);
-            }
-        }
-
-        MsRdpEx_ArrayListIt_Finish(it);
+    if (MsRdpEx_RdpFile_Load(rdpFile, filename))
+    {
+        this->ApplyRdpFile(rdpFile);
     }
+
     MsRdpEx_RdpFile_Free(rdpFile);
     free(filename);
+    return S_OK;
+}
+
+HRESULT CMsRdpExtendedSettings::LoadRdpFileFromNamedPipe(const char* pipeName)
+{
+    char* pipeNameEnv = MsRdpEx_GetEnv("MSRDPEX_SECURE_PIPE_NAME");
+
+    if (pipeNameEnv)
+        pipeName = pipeNameEnv;
+
+    if (!pipeName)
+        return S_OK; // no named pipe to read from
+
+    MsRdpEx_LogPrint(DEBUG, "Loading RDP file from named pipe: %s", pipeName);
+    MsRdpEx_RdpFile* rdpFile = MsRdpEx_RdpFile_New();
+
+    char* pipeText = MsRdpEx_ReadTextFromNamedPipe(pipeName);
+
+    if (pipeText && MsRdpEx_RdpFile_LoadText(rdpFile, pipeText))
+    {
+        this->ApplyRdpFile(rdpFile);
+    }
+
+    MsRdpEx_RdpFile_Free(rdpFile);
+
+    free(pipeNameEnv);
+
+    if (pipeText) {
+        SecureZeroMemory(pipeText, strlen(pipeText));
+        free(pipeText);
+    }
 
     return S_OK;
 }
