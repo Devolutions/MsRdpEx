@@ -191,3 +191,62 @@ void MsRdpEx_FreeEnvironmentVariables(int envc, char** envs)
 
 	free(envs);
 }
+
+char* MsRdpEx_ReadTextFromNamedPipe(const char* pipeName)
+{
+	size_t size = 0;
+	size_t length = 0;
+	DWORD readBytes = 0;
+	char* text = NULL;
+	char* buffer = NULL;
+	char* tempBuffer = NULL;
+	HANDLE pipeHandle = NULL;
+	char filename[MSRDPEX_MAX_PATH];
+
+	if (!pipeName)
+		return NULL;
+
+	sprintf_s(filename, sizeof(filename) - 1, "\\\\.\\pipe\\%s", pipeName);
+
+	pipeHandle = CreateFileA(filename, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
+
+	if (pipeHandle == INVALID_HANDLE_VALUE) {
+		goto exit;
+	}
+
+	size = 1024;
+	buffer = (char*) malloc(size);
+
+	if (!buffer)
+		goto exit;
+
+	length = 0;
+	while (1) {
+		if (!ReadFile(pipeHandle, buffer + length, size - length, &readBytes, NULL) || (readBytes == 0)) {
+			// If no bytes were read or an error occurred, break out of the loop.
+			break;
+		}
+
+		length += readBytes;
+		if ((size - length) <= 1) {
+			tempBuffer = (char*) realloc(buffer, size * 2);
+			if (!tempBuffer) {
+				goto exit;
+			}
+			buffer = tempBuffer;
+			size = size * 2;
+		}
+	}
+	buffer[length] = '\0';
+	text = _strdup(buffer);
+
+exit:
+	if (buffer) {
+		SecureZeroMemory(buffer, size);
+		free(buffer);
+	}
+	if (pipeHandle && (pipeHandle != INVALID_HANDLE_VALUE)) {
+		CloseHandle(pipeHandle);
+	}
+	return text;
+}

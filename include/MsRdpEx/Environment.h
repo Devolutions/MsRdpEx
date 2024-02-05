@@ -18,6 +18,8 @@ int MsRdpEx_GetEnvInt(const char* name, int defaultValue);
 char** MsRdpEx_GetEnvironmentVariables(int* envc);
 void MsRdpEx_FreeEnvironmentVariables(int envc, char** envs);
 
+char* MsRdpEx_ReadTextFromNamedPipe(const char* pipeName);
+
 #ifdef __cplusplus
 }
 #endif
