@@ -555,6 +555,95 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	return result;
 }
 
+static WNDPROC Real_BBarWindowClassWndProc = NULL;
+static WNDPROC Real_TscShellContainerClassWndProc = NULL;
+
+static HWND GetParentWindowHandle()
+{
+    char buffer[32];
+    HWND hWndParent = 0;
+
+    if (GetEnvironmentVariableA("MSRDPEX_PARENT_WINDOW_HANDLE", buffer, sizeof(buffer)) > 0)
+    {
+        hWndParent = (HWND)_strtoui64(buffer, NULL, 0);
+    }
+
+    return hWndParent;
+}
+
+LRESULT CALLBACK Hook_BBarWindowClassWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    LRESULT result;
+    HWND hWndParent = 0;
+    char* lpWindowNameA = NULL;
+    CMsRdpExInstance* instance = NULL;
+
+    MsRdpEx_LogPrint(DEBUG, "BBarWindowClassWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
+
+    result = Real_BBarWindowClassWndProc(hWnd, uMsg, wParam, lParam);
+
+    if (uMsg == WM_NCCREATE)
+    {
+        hWndParent = GetParentWindowHandle();
+
+        if (hWndParent)
+        {
+            MsRdpEx_LogPrint(DEBUG, "BBarWindowClass: setting parent window handle: %p", hWndParent);
+            SetParent(hWnd, hWndParent);
+            DWORD style = (DWORD)GetWindowLongPtr(hWnd, GWL_STYLE);
+            DWORD exStyle = (DWORD)GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+            style = (style & ~WS_POPUP) | WS_CHILD;
+            exStyle &= ~(WS_EX_TOPMOST);
+            SetWindowLongPtr(hWnd, GWL_STYLE, (LONG_PTR)style);
+            SetWindowLongPtr(hWnd, GWL_EXSTYLE, (LONG_PTR)exStyle);
+        }
+    }
+
+    free(lpWindowNameA);
+
+    return result;
+}
+
+LRESULT CALLBACK Hook_TscShellContainerClassWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    LRESULT result;
+    HWND hWndParent = 0;
+    char* lpWindowNameA = NULL;
+    CMsRdpExInstance* instance = NULL;
+
+    MsRdpEx_LogPrint(DEBUG, "TscShellContainerClassWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
+
+    result = Real_TscShellContainerClassWndProc(hWnd, uMsg, wParam, lParam);
+
+    if (uMsg == WM_NCCREATE)
+    {
+        hWndParent = GetParentWindowHandle();
+
+        if (hWndParent)
+        {
+            CREATESTRUCTW* createStruct = (CREATESTRUCTW*)lParam;
+            MsRdpEx_LogPrint(DEBUG, "TscShellContainerClass: setting parent window handle: %p", hWndParent);
+            SetParent(hWnd, hWndParent);
+            DWORD style = (DWORD) GetWindowLongPtr(hWnd, GWL_STYLE);
+            DWORD exStyle = (DWORD) GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+            style = (style & ~WS_POPUP) | WS_CHILD;
+            exStyle &= ~(WS_EX_TOPMOST);
+            SetWindowLongPtr(hWnd, GWL_STYLE, (LONG_PTR) style);
+            SetWindowLongPtr(hWnd, GWL_EXSTYLE, (LONG_PTR) exStyle);
+
+            MsRdpEx_LogPrint(DEBUG, "TscShellContainerClass: menu handle: %p", createStruct->hMenu);
+        }
+    }
+    else if (uMsg == WM_SYSCOMMAND)
+    {
+        MsRdpEx_LogPrint(DEBUG, "WM_SYSCOMMAND: %p %p", wParam, lParam);
+    }
+
+    free(lpWindowNameA);
+
+    return result;
+}
+
 ATOM (WINAPI * Real_RegisterClassExW)(const WNDCLASSEXW* wndClassEx) = RegisterClassExW;
 
 ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
@@ -569,6 +658,12 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
     if (MsRdpEx_StringEquals(lpClassNameA, "OPWindowClass")) {
         Real_OPWndProc = wndClassEx->lpfnWndProc;
         wndClassEx->lpfnWndProc = Hook_OPWndProc;
+    } else if (MsRdpEx_StringEquals(lpClassNameA, "BBarWindowClass")) {
+        Real_BBarWindowClassWndProc = wndClassEx->lpfnWndProc;
+        wndClassEx->lpfnWndProc = Hook_BBarWindowClassWndProc;
+    } else if (MsRdpEx_StringEquals(lpClassNameA, "TscShellContainerClass")) {
+        Real_TscShellContainerClassWndProc = wndClassEx->lpfnWndProc;
+        wndClassEx->lpfnWndProc = Hook_TscShellContainerClassWndProc;
     }
 
     wndClassAtom = Real_RegisterClassExW(wndClassEx);
