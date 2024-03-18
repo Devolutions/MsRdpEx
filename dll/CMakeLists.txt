@@ -38,6 +38,8 @@ set(MSRDPEX_SOURCES
     HashTable.c
     Environment.c
     NameResolver.c
+    DpiHelper.cpp
+    DpiHelper.h
     Sspi.cpp
     Stream.cpp
     Detours.cpp
@@ -62,13 +64,28 @@ set(MSRDPEX_SOURCES
     TSObjects.cpp
     TSObjects.h
     MsRdpEx.cpp
-    MsRdpEx.h)
+    MsRdpEx.h
+    AxDll.cpp)
+
+set(MSRDPEX_AXHOST_SOURCE_DIR "${CMAKE_SOURCE_DIR}/dll/AxHost")
+include_directories(${AXHOST_SOURCE_DIR})
+
+set(MSRDPEX_AXHOST_SOURCES
+    "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpAxHostWnd.cpp"
+    "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpAxHostWnd.h"
+    "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpEventSink.cpp"
+    "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpEventSink.h"
+    "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpOleSite.cpp"
+    "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpOleSite.h"
+    "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpComBase.h"
+    "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpWinMain.cpp"
+    "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpWinMain.h")
 
 add_library(MsRdpEx_Dll SHARED
     ${MSRDPEX_SOURCES}
     ${MSRDPEX_HEADERS}
     ${MSRDPEX_RESOURCES}
-    AxDll.cpp
+    ${MSRDPEX_AXHOST_SOURCES}
     MsRdpEx.def)
 
 set(MSRDPEX_LIBS
@@ -80,7 +97,8 @@ set(MSRDPEX_LIBS
     ws2_32.lib
     secur32.lib
     credui.lib
-    advapi32.lib)
+    advapi32.lib
+    comctl32.lib)
 
 target_link_libraries(MsRdpEx_Dll ${MSRDPEX_LIBS})
 

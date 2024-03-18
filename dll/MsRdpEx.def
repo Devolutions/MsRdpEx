@@ -25,3 +25,4 @@ EXPORTS
     MsRdpExProcess_CreateInstance
     MsRdpEx_GetArgumentVector
     MsRdpEx_FreeArgumentVector
+    MsRdpEx_WinMain
