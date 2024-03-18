@@ -1,4 +1,5 @@
-#include <MsRdpEx/RdpProcess.h>
+
+#include "../dll/AxHost/RdpWinMain.h"
 
 int WINAPI wWinMain(
     _In_ HINSTANCE hInstance,
@@ -6,9 +7,5 @@ int WINAPI wWinMain(
     _In_ LPWSTR lpCmdLine,
     _In_ int nShowCmd)
 {
-    HRESULT hr;
-
-    hr = MsRdpEx_LaunchProcess(-1, NULL, NULL, "mstsc");
-
-    return 0;
+    return MsRdpEx_WinMain(hInstance, hPrevInstance, lpCmdLine, nShowCmd, "mstsc");
 }
