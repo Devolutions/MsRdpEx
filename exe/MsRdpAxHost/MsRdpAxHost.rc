@@ -1,4 +1,0 @@
-
-IDI_APP_ICON ICON "MsRdpAxHost.ico"
-
-#include "version.rc"

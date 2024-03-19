@@ -71,6 +71,10 @@ add_library(MsRdpEx_Dll SHARED
     AxDll.cpp
     MsRdpEx.def)
 
+add_library(MsRdpEx_Core STATIC
+    ${MSRDPEX_SOURCES}
+    ${MSRDPEX_HEADERS})
+
 set(MSRDPEX_LIBS
     detours
     version.lib
@@ -83,5 +87,6 @@ set(MSRDPEX_LIBS
     advapi32.lib)
 
 target_link_libraries(MsRdpEx_Dll ${MSRDPEX_LIBS})
+target_link_libraries(MsRdpEx_Core ${MSRDPEX_LIBS})
 
 set_target_properties(MsRdpEx_Dll PROPERTIES OUTPUT_NAME "MsRdpEx")

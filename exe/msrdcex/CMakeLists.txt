@@ -14,4 +14,4 @@ add_executable(msrdcex WIN32
 	msrdcex.cpp
 	msrdcex.rc)
 
-target_link_libraries(msrdcex MsRdpEx_Dll)
+target_link_libraries(msrdcex MsRdpEx_Dll MsRdpEx_AxHost)
