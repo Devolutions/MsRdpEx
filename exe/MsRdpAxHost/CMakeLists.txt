@@ -11,6 +11,8 @@ windows_rc_generate_version_info(
 source_group("Resources" FILES MsRdpAxHost.rc)
 
 add_executable(MsRdpAxHost WIN32
+    DpiHelper.cpp
+    DpiHelper.h
 	MsRdpAxHost.cpp
 	MsRdpAxHost.rc)
 

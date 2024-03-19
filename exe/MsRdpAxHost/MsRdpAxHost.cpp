@@ -4,6 +4,8 @@
 
 #include "../com/mstscax.tlh"
 
+#include "DpiHelper.h"
+
 #define RDP_HOSTNAME "IT-HELP-GW.ad.it-help.ninja"
 #define RDP_USERNAME "Administrator@ad.it-help.ninja"
 #define RDP_PASSWORD ""
@@ -30,22 +32,27 @@ public:
 
     LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
         HRESULT hr = S_OK;
-        CAxWindow2 axWindow;
+        CAxWindow axWindow;
         CComPtr<IUnknown> control;
         int desktopWidth = RDP_DESKTOP_WIDTH;
         int desktopHeight = RDP_DESKTOP_HEIGHT;
 
-        RECT rect = { 0, 0, desktopWidth, desktopHeight };
-        axWindow.Create(m_hWnd, rect, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN);
+        RECT windowRect = { 0, 0, desktopWidth, desktopHeight };
+        axWindow.Create(m_hWnd, windowRect, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN);
 
         if (axWindow.m_hWnd == nullptr) {
             return -1;
         }
 
-        hr = axWindow.CreateControlEx(
-            OLESTR("MsTscAx.MsTscAx"), nullptr, nullptr, &control,
-            __uuidof(MSTSCLib::IMsTscAxEvents),
-            reinterpret_cast<IUnknown*>(static_cast<RdpEventsSink*>(this)));
+        LPCOLESTR controlName = OLESTR("MsTscAx.MsTscAx");
+
+        CComPtr<IAxWinHostWindow> spWinHost;
+        hr = axWindow.QueryHost(&spWinHost);
+
+        if (SUCCEEDED(hr)) {
+            hr = spWinHost->CreateControlEx(controlName, axWindow.m_hWnd, nullptr, &control,
+                __uuidof(MSTSCLib::IMsTscAxEvents), reinterpret_cast<IUnknown*>(static_cast<RdpEventsSink*>(this)));
+        }
 
         hr = axWindow.QueryControl(__uuidof(MSTSCLib::IMsRdpClient9), reinterpret_cast<void**>(&m_rdpClient));
 
@@ -168,13 +175,36 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
     AtlAxWinInit();
 
-    CRdpWindow wnd;
-    RECT rect = { 0, 0, RDP_DESKTOP_WIDTH + 20, RDP_DESKTOP_HEIGHT + 48 };
-    wnd.Create(NULL, rect, _T(RDP_WINDOW_TITLE), WS_OVERLAPPEDWINDOW | WS_VISIBLE);
+    CRdpWindow rdpWindow;
+    int desktopWidth = RDP_DESKTOP_WIDTH;
+    int desktopHeight = RDP_DESKTOP_HEIGHT;
+    RECT windowRect = { 0, 0, desktopWidth, desktopHeight };
 
-    if (wnd.m_hWnd == NULL) {
+    rdpWindow.Create(NULL, windowRect, _T(RDP_WINDOW_TITLE), WS_OVERLAPPEDWINDOW | WS_VISIBLE);
+
+    HWND hWnd = rdpWindow.m_hWnd;
+
+    if (hWnd == NULL) {
         return -1;
     }
+
+    DWORD dwStyle = (DWORD) GetWindowLongPtr(hWnd, GWL_STYLE);
+    DWORD dwStyleEx = (DWORD) GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+
+    uint32_t dpiX = 0;
+    uint32_t dpiY = 0;
+    HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+    GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+
+    GetWindowRect(hWnd, &windowRect);
+    AdjustWindowRectExForDpi(&windowRect, dwStyle, FALSE, dwStyleEx, dpiX);
+
+    int windowPosX = 0;
+    int windowPosY = 0;
+    int windowWidth = windowRect.right - windowRect.left;
+    int windowHeight = windowRect.bottom - windowRect.top;
+
+    SetWindowPos(hWnd, NULL, windowPosX, windowPosY, windowWidth, windowHeight, SWP_FRAMECHANGED);
     
     while (GetMessage(&msg, NULL, 0, 0) > 0)
     {
