@@ -2,6 +2,9 @@
 #include <atlwin.h>
 #include <atlhost.h>
 
+#include <commctrl.h>
+#pragma comment(lib, "ComCtl32.lib")
+
 #include "../com/mstscax.tlh"
 
 #include "DpiHelper.h"
@@ -27,39 +30,62 @@ public:
         MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
     END_MSG_MAP()
 
+    CRdpWindow::CRdpWindow()
+    {
+        m_connected = false;
+        m_desktopWidth = 1024;
+        m_desktopHeight = 768;
+
+        ZeroMemory(m_hostname, sizeof(m_hostname));
+        ZeroMemory(m_username, sizeof(m_username));
+        ZeroMemory(m_domain, sizeof(m_domain));
+        ZeroMemory(m_password, sizeof(m_password));
+
+        m_stopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    }
+
+    CRdpWindow::~CRdpWindow()
+    {
+        if (m_stopEvent) {
+            CloseHandle(m_stopEvent);
+            m_stopEvent = NULL;
+        }
+    }
+
     LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
         HRESULT hr = S_OK;
-        CAxWindow axWindow;
-        CComPtr<IUnknown> control;
 
         RECT windowRect = { 0, 0, m_desktopWidth, m_desktopHeight };
-        axWindow.Create(m_hWnd, windowRect, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN);
+        m_axWindow.Create(m_hWnd, windowRect, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN);
 
-        if (axWindow.m_hWnd == nullptr) {
+        if (m_axWindow.m_hWnd == nullptr) {
             return -1;
         }
 
         LPCOLESTR controlName = OLESTR("MsTscAx.MsTscAx");
 
         CComPtr<IAxWinHostWindow> spWinHost;
-        hr = axWindow.QueryHost(&spWinHost);
+        hr = m_axWindow.QueryHost(&spWinHost);
 
         if (SUCCEEDED(hr)) {
-            hr = spWinHost->CreateControlEx(controlName, axWindow.m_hWnd, nullptr, &control,
+            hr = spWinHost->CreateControlEx(controlName, m_axWindow.m_hWnd, nullptr, &m_control,
                 __uuidof(MSTSCLib::IMsTscAxEvents), reinterpret_cast<IUnknown*>(static_cast<RdpEventsSink*>(this)));
         }
 
-        hr = axWindow.QueryControl(__uuidof(MSTSCLib::IMsRdpClient9), reinterpret_cast<void**>(&m_rdpClient));
+        m_control.Detach();
+
+        hr = m_axWindow.QueryControl(__uuidof(MSTSCLib::IMsRdpClient9), reinterpret_cast<void**>(&m_rdpClient));
 
         if (FAILED(hr))
             return -1;
 
-        hr = m_rdpClient->get_AdvancedSettings9(&m_advancedSettings);
+        CComPtr<MSTSCLib::IMsRdpClientAdvancedSettings8> advancedSettings;
+        hr = m_rdpClient->get_AdvancedSettings9(&advancedSettings);
 
         if (FAILED(hr))
             return -1;
 
-        m_advancedSettings->put_EnableCredSspSupport(VARIANT_TRUE);
+        advancedSettings->put_EnableCredSspSupport(VARIANT_TRUE);
 
         m_rdpClient->put_ColorDepth(32);
         m_rdpClient->put_DesktopWidth(m_desktopWidth);
@@ -86,12 +112,21 @@ public:
     }
 
     LRESULT OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+        MsRdpEx_LogPrint(DEBUG, "CRdpWindow::OnClose connected: %d", m_connected ? 1:0);
+        if (m_connected) {
+            m_rdpClient->RequestClose();
+            m_rdpClient->Disconnect();
+            m_rdpClient = nullptr;
+            m_connected = false;
+        }
         bHandled = FALSE;
         return 0;
     }
 
     LRESULT OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
-        PostQuitMessage(0);
+        MsRdpEx_LogPrint(DEBUG, "CRdpWindow::OnDestroy");
+        AtlAdviseSinkMap(this, false);
+        SetEvent(m_stopEvent);
         bHandled = FALSE;
         return 0;
     }
@@ -136,6 +171,7 @@ public:
     }
 
     STDMETHODIMP CRdpWindow::OnConnected() {
+        NotifyConnected();
         return S_OK;
     }
 
@@ -144,6 +180,7 @@ public:
     }
 
     STDMETHODIMP CRdpWindow::OnDisconnected(long reason) {
+        NotifyDisconnected();
         return S_OK;
     }
 
@@ -153,6 +190,16 @@ public:
 
     STDMETHODIMP CRdpWindow::OnConfirmClose(VARIANT_BOOL* allow_close) {
         *allow_close = VARIANT_TRUE;
+        return S_OK;
+    }
+
+    STDMETHODIMP CRdpWindow::NotifyConnected() {
+        m_connected = true;
+        return S_OK;
+    }
+
+    STDMETHODIMP CRdpWindow::NotifyDisconnected() {
+        m_connected = false;
         return S_OK;
     }
 
@@ -241,12 +288,14 @@ public:
         return S_OK;
     }
 
+    bool m_connected = false;
     char m_hostname[256];
     char m_username[256];
     char m_domain[256];
     char m_password[256];
     int m_desktopWidth = 1024;
     int m_desktopHeight = 768;
+    HANDLE m_stopEvent = NULL;
 
 private:
     typedef IDispEventImpl<1,
@@ -257,8 +306,10 @@ private:
         0>
         RdpEventsSink;
 
+    CAxWindow m_axWindow;
+    DWORD m_adviseCookie = 0;
+    CComPtr<IUnknown> m_control;
     CComPtr<MSTSCLib::IMsRdpClient9> m_rdpClient;
-    CComPtr<MSTSCLib::IMsRdpClientAdvancedSettings8> m_advancedSettings;
 };
 
 int MsRdpEx_AxHost_WinMain(
@@ -270,6 +321,8 @@ int MsRdpEx_AxHost_WinMain(
     MSG msg;
     HRESULT hr;
 
+    MsRdpEx_Load();
+
     hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
     if (FAILED(hr)) {
@@ -277,6 +330,11 @@ int MsRdpEx_AxHost_WinMain(
     }
 
     AtlAxWinInit();
+
+    INITCOMMONCONTROLSEX icex;
+    icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+    icex.dwICC = ICC_STANDARD_CLASSES;
+    InitCommonControlsEx(&icex);
 
     CRdpWindow rdpWindow;
 
@@ -294,12 +352,19 @@ int MsRdpEx_AxHost_WinMain(
     }
 
     rdpWindow.AdjustWindowSize(desktopWidth, desktopHeight);
-    
+
     while (GetMessage(&msg, NULL, 0, 0) > 0)
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
+
+        if (WaitForSingleObject(rdpWindow.m_stopEvent, 0) == WAIT_OBJECT_0)
+            break;
     }
+
+    _Module.Term();
+
+    MsRdpEx_Unload();
 
     CoUninitialize();
 

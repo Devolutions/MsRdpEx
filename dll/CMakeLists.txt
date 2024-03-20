@@ -62,13 +62,13 @@ set(MSRDPEX_SOURCES
     TSObjects.cpp
     TSObjects.h
     MsRdpEx.cpp
-    MsRdpEx.h)
+    MsRdpEx.h
+    AxDll.cpp)
 
 add_library(MsRdpEx_Dll SHARED
     ${MSRDPEX_SOURCES}
     ${MSRDPEX_HEADERS}
     ${MSRDPEX_RESOURCES}
-    AxDll.cpp
     MsRdpEx.def)
 
 add_library(MsRdpEx_Core STATIC
