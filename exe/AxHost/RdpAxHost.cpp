@@ -13,19 +13,29 @@
 
 CComModule _Module;
 
-class CRdpWindow : public CWindowImpl<CRdpWindow, CWindow, CWinTraits<WS_OVERLAPPEDWINDOW | WS_VISIBLE>>,
-    public IDispEventImpl<1,
-    CRdpWindow,
-    &__uuidof(MSTSCLib::IMsTscAxEvents),
-    &__uuidof(MSTSCLib::__MSTSCLib),
-    1,
-    0>
+static HWND GetParentWindowHandle()
+{
+    char buffer[32];
+    HWND hWndParent = 0;
+
+    if (GetEnvironmentVariableA("MSRDPEX_PARENT_WINDOW_HANDLE", buffer, sizeof(buffer)) > 0)
+    {
+        hWndParent = (HWND)_strtoui64(buffer, NULL, 0);
+    }
+
+    return hWndParent;
+}
+
+class CRdpWindow :
+    public CWindowImpl<CRdpWindow, CWindow, CWinTraits<WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 0>>,
+    public IDispEventImpl<1, CRdpWindow, &__uuidof(MSTSCLib::IMsTscAxEvents), &__uuidof(MSTSCLib::__MSTSCLib), 1, 0>
 {
 public:
     DECLARE_WND_CLASS_EX(L"CRdpWindow", 0, -1)
 
     BEGIN_MSG_MAP(CRdpWindow)
         MESSAGE_HANDLER(WM_CREATE, OnCreate)
+        MESSAGE_HANDLER(WM_SIZE, OnSize)
         MESSAGE_HANDLER(WM_CLOSE, OnClose)
         MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
     END_MSG_MAP()
@@ -55,11 +65,23 @@ public:
     LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
         HRESULT hr = S_OK;
 
+        HWND hParentWnd = GetParentWindowHandle();
+
         RECT windowRect = { 0, 0, m_desktopWidth, m_desktopHeight };
-        m_axWindow.Create(m_hWnd, windowRect, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN);
+        m_axWindow.Create(hParentWnd, windowRect, nullptr, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN);
 
         if (m_axWindow.m_hWnd == nullptr) {
             return -1;
+        }
+
+        if (hParentWnd && 0) {
+            HWND hWnd = this->m_hWnd;
+            DWORD dwStyle = (DWORD)::GetWindowLongPtr(hWnd, GWL_STYLE);
+            DWORD dwExStyle = (DWORD)::GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+            dwStyle = (dwStyle & ~WS_POPUP) | WS_CHILD;
+            dwExStyle &= ~(WS_EX_TOPMOST);
+            ::SetWindowLongPtr(hWnd, GWL_STYLE, (LONG_PTR)dwStyle);
+            ::SetWindowLongPtr(hWnd, GWL_EXSTYLE, (LONG_PTR)dwExStyle);
         }
 
         LPCOLESTR controlName = OLESTR("MsTscAx.MsTscAx");
@@ -109,6 +131,31 @@ public:
         m_rdpClient->Connect();
 
         return 0;
+    }
+
+    LRESULT OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
+        UINT width = LOWORD(lParam);
+        UINT height = HIWORD(lParam);
+        MsRdpEx_LogPrint(DEBUG, "CRdpWindow::OnSize(%dx%d)", width, height);
+
+#if 0
+        RECT rcPos;
+        rcPos.left = 0;
+        rcPos.top = 0;
+        rcPos.right = width;
+        rcPos.bottom = height;
+
+        if (m_rdpClient) {
+            CComPtr<IOleInPlaceObject> spInPlaceObject;
+            m_rdpClient->QueryInterface(&spInPlaceObject);
+            if (spInPlaceObject) {
+                spInPlaceObject->SetObjectRects(&rcPos, &rcPos);
+            }
+        }
+#endif
+
+        bHandled = FALSE;
+        return S_OK;
     }
 
     LRESULT OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled) {
@@ -312,7 +359,7 @@ private:
     CComPtr<MSTSCLib::IMsRdpClient9> m_rdpClient;
 };
 
-int MsRdpEx_AxHost_WinMain(
+int MsRdpEx_AxHost_WinMain2(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,
     LPWSTR lpCmdLine,
@@ -343,7 +390,17 @@ int MsRdpEx_AxHost_WinMain(
     int desktopHeight = rdpWindow.m_desktopHeight;
     RECT windowRect = { 0, 0, desktopWidth, desktopHeight };
 
-    rdpWindow.Create(NULL, windowRect, _T("Remote Desktop Client"), WS_OVERLAPPEDWINDOW | WS_VISIBLE);
+    HWND hWndParent = GetParentWindowHandle();
+    DWORD dwStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+    DWORD dwExStyle = 0;
+
+    if (hWndParent)
+    {
+        dwStyle = WS_CHILD | WS_BORDER;
+        dwExStyle &= ~(WS_EX_TOPMOST);
+    }
+
+    rdpWindow.Create(hWndParent, windowRect, _T("Remote Desktop Client"), dwStyle, dwExStyle);
 
     HWND hWnd = rdpWindow.m_hWnd;
 
@@ -351,7 +408,9 @@ int MsRdpEx_AxHost_WinMain(
         return -1;
     }
 
-    rdpWindow.AdjustWindowSize(desktopWidth, desktopHeight);
+    if (!hWndParent) {
+        rdpWindow.AdjustWindowSize(desktopWidth, desktopHeight);
+    }
 
     while (GetMessage(&msg, NULL, 0, 0) > 0)
     {

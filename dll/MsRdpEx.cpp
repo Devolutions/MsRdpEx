@@ -74,6 +74,11 @@ HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* p
     return hr;
 }
 
+HRESULT STDAPICALLTYPE MsRdpEx_DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
+{
+    return DllGetClassObject(rclsid, riid, ppv);
+}
+
 HRESULT DllRegisterServer()
 {
     MsRdpEx_LogPrint(DEBUG, "DllRegisterServer");

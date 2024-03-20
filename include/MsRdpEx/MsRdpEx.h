@@ -172,6 +172,8 @@ void MsRdpEx_SetPcapFilePath(const char* pcapFilePath);
 void MsRdpEx_Load();
 void MsRdpEx_Unload();
 
+HRESULT STDAPICALLTYPE MsRdpEx_DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID * ppv);
+
 #ifdef __cplusplus
 }
 #endif

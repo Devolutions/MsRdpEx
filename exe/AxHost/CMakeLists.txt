@@ -3,6 +3,8 @@
 add_library(MsRdpEx_AxHost STATIC
     DpiHelper.cpp
     DpiHelper.h
+    RdpAxHostWnd.cpp
+    RdpAxHostWnd.h
 	RdpAxHost.cpp
 	RdpAxHost.h)
 
