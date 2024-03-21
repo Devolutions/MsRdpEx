@@ -5,6 +5,8 @@
 #include <commctrl.h>
 #pragma comment(lib, "ComCtl32.lib")
 
+#include <oleidl.h>
+
 #include "../com/mstscax.tlh"
 using namespace MSTSCLib;
 
@@ -13,6 +15,10 @@ using namespace MSTSCLib;
 #include <MsRdpEx/RdpFile.h>
 
 #include <MsRdpEx/MsRdpEx.h>
+
+#ifndef SafeRelease
+#define SafeRelease(x) { if ((x) != nullptr) { (x)->Release(); (x) = nullptr; } }
+#endif
 
 CComModule _Module;
 
@@ -28,6 +34,269 @@ static HWND GetParentWindowHandle()
 
     return hWndParent;
 }
+
+class CRdpOleClientSite : public IOleClientSite
+{
+public:
+    CRdpOleClientSite(IUnknown* pUnkOuter)
+    {
+        m_refCount = 0;
+        m_pUnkOuter = pUnkOuter;
+        m_pUnkOuter->AddRef();
+    }
+    
+    virtual ~CRdpOleClientSite()
+    {
+        m_pUnkOuter->Release();
+    }
+
+    // IUnknown methods
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override
+    {
+        HRESULT hr = S_OK;
+
+        if (!ppv)
+            return E_INVALIDARG;
+        
+        *ppv = NULL;
+
+        if (riid == IID_IUnknown) {
+            *ppv = static_cast<IUnknown*>(this);
+        }
+        else if (riid == IID_IOleClientSite) {
+            *ppv = static_cast<IOleClientSite*>(this);
+        }
+        else if (m_pUnkOuter) {
+            return m_pUnkOuter->QueryInterface(riid, ppv);
+        }
+        else {
+            hr = E_NOINTERFACE;
+        }
+
+        if (*ppv) {
+            AddRef();
+        }
+
+        return hr;
+    }
+
+    STDMETHODIMP_(ULONG) AddRef() override
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+
+    STDMETHODIMP_(ULONG) Release() override
+    {
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+        if (refCount == 0) {
+            delete this;
+        }
+        return refCount;
+    }
+
+    // IOleClientSite methods
+    STDMETHODIMP SaveObject() override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP GetMoniker(DWORD dwAssign, DWORD dwWhichMoniker, IMoniker** ppmk) override
+    {
+        *ppmk = NULL;
+        return E_NOTIMPL;
+    }
+
+    STDMETHODIMP GetContainer(IOleContainer** ppContainer) override
+    {
+        *ppContainer = NULL;
+        return E_NOTIMPL;
+    }
+
+    STDMETHODIMP ShowObject() override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP OnShowWindow(BOOL fShow) override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP RequestNewObjectLayout() override
+    {
+        return E_NOTIMPL;
+    }
+
+private:
+    ULONG m_refCount;
+    IUnknown* m_pUnkOuter;
+};
+
+class CRdpOleInPlaceSiteEx : public IOleInPlaceSiteEx
+{
+public:
+    CRdpOleInPlaceSiteEx(IUnknown* pUnkOuter)
+        : m_refCount(0), m_hWnd(0)
+    {
+        m_pUnkOuter = pUnkOuter;
+        m_pUnkOuter->AddRef();
+    }
+
+    virtual ~CRdpOleInPlaceSiteEx()
+    {
+        m_pUnkOuter->Release();
+    }
+
+    // IUnknown methods
+    STDMETHODIMP QueryInterface(REFIID riid, void** ppv) override
+    {
+        HRESULT hr = S_OK;
+
+        if (!ppv) return E_INVALIDARG;
+        *ppv = NULL;
+
+        if (riid == IID_IUnknown) {
+            *ppv = static_cast<IUnknown*>(this);
+        }
+        else if (riid == IID_IOleWindow || riid == IID_IOleInPlaceSite || riid == IID_IOleInPlaceSiteEx) {
+            *ppv = static_cast<IOleInPlaceSiteEx*>(this);
+        }
+        else if (m_pUnkOuter) {
+            return m_pUnkOuter->QueryInterface(riid, ppv);
+        }
+        else {
+            hr = E_NOINTERFACE;
+        }
+
+        if (*ppv) {
+            AddRef();
+        }
+
+        return hr;
+    }
+
+    STDMETHODIMP_(ULONG) AddRef() override
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+
+    STDMETHODIMP_(ULONG) Release() override
+    {
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+        if (refCount == 0) {
+            delete this;
+        }
+        return refCount;
+    }
+
+    // IOleWindow methods
+    STDMETHODIMP GetWindow(HWND* phwnd) override
+    {
+        *phwnd = m_hWnd;
+        return S_OK;
+    }
+
+    STDMETHODIMP ContextSensitiveHelp(BOOL fEnterMode) override
+    {
+        return S_OK;
+    }
+
+    // IOleInPlaceSite methods
+    STDMETHODIMP CanInPlaceActivate() override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP OnInPlaceActivate() override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP OnUIActivate() override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP GetWindowContext(IOleInPlaceFrame** ppFrame, IOleInPlaceUIWindow** ppDoc,
+        LPRECT lprcPosRect, LPRECT lprcClipRect,
+        LPOLEINPLACEFRAMEINFO lpFrameInfo) override
+    {
+        RECT rect;
+
+        *ppFrame = NULL;
+        *ppDoc = NULL;
+        lpFrameInfo = NULL;
+
+        if (GetClientRect(m_hWnd, &rect))
+        {
+            int width = rect.right - rect.left;
+            int height = rect.bottom - rect.top;
+            SetRect(lprcClipRect, 0, 0, width, height);
+            SetRect(lprcPosRect, 0, 0, width, height);
+        }
+
+        return S_OK;
+    }
+
+    STDMETHODIMP Scroll(SIZE scrollExtant) override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP OnUIDeactivate(BOOL fUndoable) override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP OnInPlaceDeactivate() override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP DiscardUndoState() override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP DeactivateAndUndo() override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP OnPosRectChange(LPCRECT lprcPosRect) override
+    {
+        return S_OK;
+    }
+
+    // IOleInPlaceSiteEx methods
+    STDMETHODIMP OnInPlaceActivateEx(BOOL* pfNoRedraw, DWORD dwFlags) override
+    {
+        *pfNoRedraw = TRUE;
+        return S_OK;
+    }
+
+    STDMETHODIMP OnInPlaceDeactivateEx(BOOL fNoRedraw) override
+    {
+        return S_OK;
+    }
+
+    STDMETHODIMP RequestUIActivate() override
+    {
+        return S_OK;
+    }
+
+    // additional methods
+    STDMETHODIMP SetWindow(HWND hWnd)
+    {
+        m_hWnd = hWnd;
+        return S_OK;
+    }
+
+private:
+    ULONG m_refCount = 0;
+    HWND m_hWnd = 0;
+    IUnknown* m_pUnkOuter = NULL;
+};
 
 #define IMsTscAxEvents_OnConnectingId 0x00000001
 #define IMsTscAxEvents_OnConnectedId 0x00000002
@@ -225,10 +494,10 @@ public:
         return S_OK;
     }
 
-    CRdpEventSink(HWND hParentWnd)
+    CRdpEventSink(HWND hWndParent)
     {
         m_refCount = 0;
-        m_hParentWnd = hParentWnd;
+        m_hWndParent = hWndParent;
     }
 
     virtual ~CRdpEventSink()
@@ -238,7 +507,7 @@ public:
 
 private:
     ULONG m_refCount = 0;
-    HWND m_hParentWnd = NULL;
+    HWND m_hWndParent = NULL;
 };
 
 class CRdpAxHostWnd : public IUnknown
@@ -257,6 +526,12 @@ public:
         ZeroMemory(m_password, sizeof(m_password));
 
         m_stopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+        m_pOleClientSite = new CRdpOleClientSite((IUnknown*)this);
+        m_pOleClientSite->AddRef();
+
+        m_pOleInPlaceSiteEx = new CRdpOleInPlaceSiteEx((IUnknown*)this);
+        m_pOleInPlaceSiteEx->AddRef();
     }
 
     CRdpAxHostWnd::~CRdpAxHostWnd()
@@ -279,10 +554,17 @@ public:
         if (riid == IID_IUnknown) {
             *ppv = this;
         }
+        else if (riid == IID_IOleClientSite) {
+            *ppv = (void*)m_pOleClientSite;
+        }
+        else if (riid == IID_IOleInPlaceSiteEx) {
+            *ppv = (void*)m_pOleInPlaceSiteEx;
+        }
 
         if (nullptr != *ppv) {
             ((IUnknown*)*ppv)->AddRef();
-        } else {
+        }
+        else {
             hr = E_NOINTERFACE;
         }
 
@@ -306,14 +588,95 @@ public:
         return 0;
     }
 
-    STDMETHODIMP CRdpAxHostWnd::LoadControl()
+    static LRESULT CALLBACK CRdpAxHostWnd::StaticWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+    {
+        CRdpAxHostWnd* pRdpAxHostWnd = (CRdpAxHostWnd*) GetWindowLongPtr(hWnd, GWLP_USERDATA);
+
+        if (pRdpAxHostWnd) {
+            return pRdpAxHostWnd->WndProc(hWnd, uMsg, wParam, lParam);
+        }
+        else {
+            return DefWindowProc(hWnd, uMsg, wParam, lParam);
+        }
+    }
+
+    LRESULT CALLBACK CRdpAxHostWnd::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+    {
+        HWND hWndObject = NULL;
+
+        switch (uMsg)
+        {
+        case WM_ACTIVATEAPP:
+            if (m_pOleInPlaceActiveObject)
+            {
+                m_pOleInPlaceActiveObject->OnFrameWindowActivate((BOOL)wParam);
+            }
+            break;
+
+        case WM_SETFOCUS:
+            if (m_pOleInPlaceActiveObject)
+            {
+                m_pOleInPlaceActiveObject->GetWindow(&hWndObject);
+                SetFocus(hWndObject);
+            }
+            break;
+
+        case WM_PALETTECHANGED:
+        case WM_QUERYNEWPALETTE:
+        case WM_SYSCOLORCHANGE:
+            if (m_pOleInPlaceActiveObject)
+            {
+                m_pOleInPlaceActiveObject->GetWindow(&hWndObject);
+                SendMessage(hWndObject, uMsg, wParam, lParam);
+            }
+            return 1;
+            break;
+
+        case WM_SIZE:
+            {
+                RECT rect;
+                int width = LOWORD(lParam);
+                int height = HIWORD(lParam);
+
+                rect.left = 0;
+                rect.top = 0;
+                rect.right = width;
+                rect.bottom = height;
+
+                if (m_pOleInPlaceObject)
+                {
+                    m_pOleInPlaceObject->SetObjectRects(&rect, &rect);
+                }
+
+                if (m_pOleInPlaceActiveObject)
+                {
+                    m_pOleInPlaceActiveObject->GetWindow(&hWndObject);
+                    SendMessage(hWndObject, WM_SIZE, wParam, lParam);
+                }     
+                return 0;
+            }
+            break;
+
+        case 0x402: // Connect button
+            this->Connect();
+            break;
+
+        default:
+            return DefWindowProc(hWnd, uMsg, wParam, lParam);
+            break;
+        }
+
+        return 0;
+    }
+
+    STDMETHODIMP CRdpAxHostWnd::CreateAxControl()
     {
         HRESULT hr;
         IClassFactory* pClassFactory = NULL;
         IConnectionPoint* pConnectionPoint = NULL;
         IConnectionPointContainer* pConnectionPointContainer = NULL;
         
-        hr = MsRdpEx_DllGetClassObject(CLSID_MsRdpClient, IID_IClassFactory, (void**) &pClassFactory);
+        hr = MsRdpEx_DllGetClassObject(CLSID_MsRdpClientNotSafeForScripting, IID_IClassFactory, (void**) &pClassFactory);
 
         if (FAILED(hr)) {
             return hr;
@@ -343,7 +706,7 @@ public:
         pConnectionPointContainer->Release();
         pConnectionPointContainer = NULL;
 
-        m_eventSink = new CRdpEventSink(m_hParentWnd);
+        m_eventSink = new CRdpEventSink(m_hWndParent);
         m_eventSink->AddRef();
 
         hr = pConnectionPoint->Advise((IUnknown*)m_eventSink, &m_dwAdviseCookie);
@@ -355,9 +718,129 @@ public:
         pConnectionPoint->Release();
         pConnectionPoint = NULL;
 
+        hr = m_rdpClient->QueryInterface(IID_IOleObject, (void**)&m_pOleObject);
+
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        hr = m_rdpClient->QueryInterface(IID_IOleInPlaceActiveObject, (void**)&m_pOleInPlaceActiveObject);
+
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        hr = m_rdpClient->QueryInterface(IID_IOleInPlaceObject, (void**)&m_pOleInPlaceObject);
+
+        if (FAILED(hr)) {
+            return hr;
+        }
+
+        hr = m_pOleObject->SetClientSite(m_pOleClientSite);
+
+        if (FAILED(hr)) {
+            return hr;
+        }
+
         m_rdpClient->AddRef();
 
         return S_OK;
+    }
+
+    STDMETHODIMP CRdpAxHostWnd::CreateAxWindow(HWND hWndParent, HINSTANCE hInstance)
+    {
+        HRESULT hr = S_OK;
+        WNDCLASSEX wndClass;
+        LPWSTR lpClassName = L"CRdpAxHostWnd";
+        LPWSTR lpWindowName = L"Remote Desktop Client Active Host";
+
+        ZeroMemory(&wndClass, sizeof(WNDCLASSEX));
+        wndClass.cbSize = sizeof(WNDCLASSEX);
+        wndClass.style = 0;
+        wndClass.lpfnWndProc = CRdpAxHostWnd::StaticWndProc;
+        wndClass.cbClsExtra = 0;
+        wndClass.cbWndExtra = 0;
+        wndClass.hInstance = hInstance;
+        wndClass.hIcon = NULL;
+        wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+        wndClass.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
+        wndClass.lpszMenuName = NULL;
+        wndClass.lpszClassName = lpClassName;
+        wndClass.hIconSm = NULL;
+
+        if (!RegisterClassEx(&wndClass)) {
+            DWORD lastError = GetLastError();
+            if (lastError != ERROR_CLASS_ALREADY_EXISTS) {
+                return E_FAIL;
+            }
+        }
+
+        DWORD dwStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+        DWORD dwExStyle = 0;
+        HMENU hMenu = NULL;
+
+        int windowX = 0;
+        int windowY = 0;
+        int windowWidth = m_desktopWidth;
+        int windowHeight = m_desktopHeight;
+        RECT windowRect = { windowX, windowY, windowWidth, windowHeight };
+
+        m_hWnd = CreateWindowEx(dwExStyle, lpClassName, lpWindowName, dwStyle,
+            windowX, windowY, windowWidth, windowHeight, hWndParent, hMenu, hInstance, (void*)this);
+
+        if (!m_hWnd) {
+            return E_FAIL;
+        }
+
+        SetWindowLongPtr(m_hWnd, GWLP_USERDATA, (LONG_PTR)this);
+
+        m_pOleInPlaceSiteEx->SetWindow(m_hWnd);
+
+        hr = m_pOleObject->DoVerb(OLEIVERB_PRIMARY, NULL, m_pOleClientSite, 0, m_hWnd, &windowRect);
+
+        if (FAILED(hr)) {
+            return E_FAIL;
+        }
+
+        ShowWindow(m_hWnd, SW_SHOWNORMAL);
+
+        return hr;
+    }
+
+    STDMETHODIMP CRdpAxHostWnd::Connect()
+    {
+        HRESULT hr = S_OK;
+
+        CComPtr<MSTSCLib::IMsRdpClientAdvancedSettings8> advancedSettings;
+        hr = m_rdpClient->get_AdvancedSettings9(&advancedSettings);
+
+        if (FAILED(hr))
+            return E_FAIL;
+
+        advancedSettings->put_EnableCredSspSupport(VARIANT_TRUE);
+
+        m_rdpClient->put_ColorDepth(32);
+        m_rdpClient->put_DesktopWidth(m_desktopWidth);
+        m_rdpClient->put_DesktopHeight(m_desktopHeight);
+
+        m_rdpClient->put_Server(CComBSTR(m_hostname));
+        m_rdpClient->put_UserName(CComBSTR(m_username));
+        m_rdpClient->put_Domain(CComBSTR(m_domain));
+
+        CComPtr<MSTSCLib::IMsTscNonScriptable> nonScriptable;
+        hr = m_rdpClient->QueryInterface(__uuidof(MSTSCLib::IMsTscNonScriptable), (void**)&nonScriptable);
+
+        if (FAILED(hr))
+            return E_FAIL;
+
+        hr = nonScriptable->put_ClearTextPassword(CComBSTR(m_password));
+
+        if (FAILED(hr))
+            return E_FAIL;
+
+        hr = m_rdpClient->Connect();
+
+        return hr;
     }
 
     STDMETHODIMP CRdpAxHostWnd::LoadRdpFile()
@@ -420,6 +903,10 @@ public:
         return S_OK;
     }
 
+    HWND CRdpAxHostWnd::GetWindowHandle() {
+        return m_hWnd;
+    }
+
     bool m_connected = false;
     char m_hostname[256];
     char m_username[256];
@@ -432,10 +919,15 @@ public:
 private:
     LONG m_refCount = 0;
     HWND m_hWnd = NULL;
-    HWND m_hParentWnd = NULL;
+    HWND m_hWndParent = NULL;
     DWORD m_dwAdviseCookie = 0;
-    IMsRdpClient* m_rdpClient = NULL;
+    IMsRdpClient9* m_rdpClient = NULL;
     CRdpEventSink* m_eventSink = NULL;
+    CRdpOleClientSite* m_pOleClientSite = NULL;
+    CRdpOleInPlaceSiteEx* m_pOleInPlaceSiteEx = NULL;
+    IOleObject* m_pOleObject = NULL;
+    IOleInPlaceObject* m_pOleInPlaceObject = NULL;
+    IOleInPlaceActiveObject* m_pOleInPlaceActiveObject = NULL;
 };
 
 int MsRdpEx_AxHost_WinMain(
@@ -460,13 +952,16 @@ int MsRdpEx_AxHost_WinMain(
     icex.dwICC = ICC_STANDARD_CLASSES;
     InitCommonControlsEx(&icex);
 
+    HWND hParentWnd = GetParentWindowHandle();
+
     CRdpAxHostWnd rdpWindow;
 
     rdpWindow.LoadRdpFile();
-    rdpWindow.LoadControl();
-    int desktopWidth = rdpWindow.m_desktopWidth;
-    int desktopHeight = rdpWindow.m_desktopHeight;
-    RECT windowRect = { 0, 0, desktopWidth, desktopHeight };
+    rdpWindow.CreateAxControl();
+    rdpWindow.CreateAxWindow(hParentWnd, hInstance);
+
+    HWND hRdpWnd = rdpWindow.GetWindowHandle();
+    PostMessage(hRdpWnd, 0x402, 0, 0);
 
     while (GetMessage(&msg, NULL, 0, 0) > 0)
     {
