@@ -25,6 +25,19 @@ static HWND GetParentWindowHandle()
 
 #define RdpAxHostWnd_ConnectMsgId  (WM_APP+0x101)
 
+#define SYSCOMMAND_SMART_SIZING_ID          0xF001
+#define SYSCOMMAND_ZOOM_LEVEL_50_ID         0xF0A0
+#define SYSCOMMAND_ZOOM_LEVEL_75_ID         0xF0A1
+#define SYSCOMMAND_ZOOM_LEVEL_100_ID        0xF0A2
+#define SYSCOMMAND_ZOOM_LEVEL_125_ID        0xF0A3
+#define SYSCOMMAND_ZOOM_LEVEL_150_ID        0xF0A4
+#define SYSCOMMAND_ZOOM_LEVEL_175_ID        0xF0A5
+#define SYSCOMMAND_ZOOM_LEVEL_200_ID        0xF0A6
+#define SYSCOMMAND_ZOOM_LEVEL_250_ID        0xF0A7
+#define SYSCOMMAND_ZOOM_LEVEL_300_ID        0xF0A8
+
+#define ToMenuCheckFlag(_condition) ((_condition) ? MF_CHECKED : MF_UNCHECKED)
+
 class CRdpAxHostWnd : public IUnknown
 {
 public:
@@ -222,6 +235,92 @@ public:
             this->Connect();
             break;
 
+        case WM_SYSCOMMAND:
+            if (wParam == SYSCOMMAND_SMART_SIZING_ID)
+            {
+                m_smartSizing = !m_smartSizing;
+
+                if (m_smartSizing)
+                {
+                    m_zoomLevel = 100;
+                    VARIANT varZoomLevel;
+                    VariantInit(&varZoomLevel);
+                    varZoomLevel.vt = VT_UI4;
+                    varZoomLevel.ulVal = m_zoomLevel;
+                    IMsRdpExtendedSettings* pExtendedSettings = NULL;
+                    m_rdpClient->QueryInterface(IID_IMsRdpExtendedSettings, (void**)&pExtendedSettings);
+                    pExtendedSettings->put_Property(CComBSTR(L"ZoomLevel"), &varZoomLevel);
+                    VariantClear(&varZoomLevel);
+                    SafeRelease(pExtendedSettings);
+                }
+
+                IMsRdpClientAdvancedSettings8* pAdvancedSettings = NULL;
+                HRESULT hr = m_rdpClient->get_AdvancedSettings9(&pAdvancedSettings);
+                pAdvancedSettings->put_SmartSizing(ToVariantBool(m_smartSizing));
+                SafeRelease(pAdvancedSettings);
+
+                this->UpdateMenu();
+            }
+            else if ((wParam >= SYSCOMMAND_ZOOM_LEVEL_50_ID) && (wParam <= SYSCOMMAND_ZOOM_LEVEL_300_ID))
+            {
+                m_zoomLevel = 100;
+
+                switch (wParam)
+                {
+                    case SYSCOMMAND_ZOOM_LEVEL_50_ID:
+                        m_zoomLevel = 50;
+                        break;
+                    case SYSCOMMAND_ZOOM_LEVEL_75_ID:
+                        m_zoomLevel = 75;
+                        break;
+                    case SYSCOMMAND_ZOOM_LEVEL_100_ID:
+                        m_zoomLevel = 100;
+                        break;
+                    case SYSCOMMAND_ZOOM_LEVEL_125_ID:
+                        m_zoomLevel = 125;
+                        break;
+                    case SYSCOMMAND_ZOOM_LEVEL_150_ID:
+                        m_zoomLevel = 150;
+                        break;
+                    case SYSCOMMAND_ZOOM_LEVEL_175_ID:
+                        m_zoomLevel = 175;
+                        break;
+                    case SYSCOMMAND_ZOOM_LEVEL_200_ID:
+                        m_zoomLevel = 200;
+                        break;
+                    case SYSCOMMAND_ZOOM_LEVEL_250_ID:
+                        m_zoomLevel = 250;
+                        break;
+                    case SYSCOMMAND_ZOOM_LEVEL_300_ID:
+                        m_zoomLevel = 300;
+                        break;
+                }
+
+                m_smartSizing = false;
+
+                this->UpdateMenu();
+
+                IMsRdpClientAdvancedSettings8* pAdvancedSettings = NULL;
+                HRESULT hr = m_rdpClient->get_AdvancedSettings9(&pAdvancedSettings);
+                pAdvancedSettings->put_SmartSizing(ToVariantBool(m_smartSizing));
+                SafeRelease(pAdvancedSettings);
+
+                VARIANT varZoomLevel;
+                VariantInit(&varZoomLevel);
+                varZoomLevel.vt = VT_UI4;
+                varZoomLevel.ulVal = m_zoomLevel;
+                IMsRdpExtendedSettings* pExtendedSettings = NULL;
+                m_rdpClient->QueryInterface(IID_IMsRdpExtendedSettings, (void**)&pExtendedSettings);
+                pExtendedSettings->put_Property(CComBSTR(L"ZoomLevel"), &varZoomLevel);
+                VariantClear(&varZoomLevel);
+                SafeRelease(pExtendedSettings);
+            }
+            else
+            {
+                return DefWindowProc(hWnd, uMsg, wParam, lParam);
+            }
+            break;
+
         default:
             return DefWindowProc(hWnd, uMsg, wParam, lParam);
             break;
@@ -366,9 +465,67 @@ public:
             return E_FAIL;
         }
 
+        this->CreateMenu();
+
         ShowWindow(m_hWnd, SW_SHOWNORMAL);
 
         return hr;
+    }
+
+    STDMETHODIMP CRdpAxHostWnd::CreateMenu()
+    {
+        HMENU hSysMenu = ::GetSystemMenu(m_hWnd, FALSE);
+
+        ::AppendMenu(hSysMenu, MF_SEPARATOR, 0, NULL);
+
+        // Create Zoom submenu
+        HMENU hZoomMenu = CreatePopupMenu();
+        ::AppendMenu(hZoomMenu, MF_STRING | ToMenuCheckFlag(m_zoomLevel ==  50), SYSCOMMAND_ZOOM_LEVEL_50_ID, _T("50%"));
+        ::AppendMenu(hZoomMenu, MF_STRING | ToMenuCheckFlag(m_zoomLevel ==  75), SYSCOMMAND_ZOOM_LEVEL_75_ID, _T("75%"));
+        ::AppendMenu(hZoomMenu, MF_STRING | ToMenuCheckFlag(m_zoomLevel == 100), SYSCOMMAND_ZOOM_LEVEL_100_ID, _T("100%"));
+        ::AppendMenu(hZoomMenu, MF_STRING | ToMenuCheckFlag(m_zoomLevel == 125), SYSCOMMAND_ZOOM_LEVEL_125_ID, _T("125%"));
+        ::AppendMenu(hZoomMenu, MF_STRING | ToMenuCheckFlag(m_zoomLevel == 150), SYSCOMMAND_ZOOM_LEVEL_150_ID, _T("150%"));
+        ::AppendMenu(hZoomMenu, MF_STRING | ToMenuCheckFlag(m_zoomLevel == 175), SYSCOMMAND_ZOOM_LEVEL_175_ID, _T("175%"));
+        ::AppendMenu(hZoomMenu, MF_STRING | ToMenuCheckFlag(m_zoomLevel == 200), SYSCOMMAND_ZOOM_LEVEL_200_ID, _T("200%"));
+        ::AppendMenu(hZoomMenu, MF_STRING | ToMenuCheckFlag(m_zoomLevel == 250), SYSCOMMAND_ZOOM_LEVEL_250_ID, _T("250%"));
+        ::AppendMenu(hZoomMenu, MF_STRING | ToMenuCheckFlag(m_zoomLevel == 300), SYSCOMMAND_ZOOM_LEVEL_300_ID, _T("300%"));
+
+        // Add Zoom submenu to the system menu
+        ::AppendMenu(hSysMenu, MF_SEPARATOR, 0, NULL);
+        ::AppendMenu(hSysMenu, MF_POPUP, (UINT_PTR)hZoomMenu, _T("Zoom"));
+
+        ::AppendMenu(hSysMenu, MF_STRING | ToMenuCheckFlag(m_smartSizing), SYSCOMMAND_SMART_SIZING_ID, _T("Smart Sizing"));
+
+        return S_OK;
+    }
+
+    STDMETHODIMP CRdpAxHostWnd::UpdateMenu()
+    {
+        HMENU hSysMenu = ::GetSystemMenu(m_hWnd, FALSE);
+
+        ::CheckMenuItem(hSysMenu, SYSCOMMAND_SMART_SIZING_ID,
+            MF_BYCOMMAND | ToMenuCheckFlag(m_smartSizing));
+
+        ::CheckMenuItem(hSysMenu, SYSCOMMAND_ZOOM_LEVEL_50_ID,
+            MF_BYCOMMAND | ToMenuCheckFlag((m_zoomLevel == 50) && !m_smartSizing));
+        ::CheckMenuItem(hSysMenu, SYSCOMMAND_ZOOM_LEVEL_75_ID,
+            MF_BYCOMMAND | ToMenuCheckFlag((m_zoomLevel == 75) && !m_smartSizing));
+        ::CheckMenuItem(hSysMenu, SYSCOMMAND_ZOOM_LEVEL_100_ID,
+            MF_BYCOMMAND | ToMenuCheckFlag((m_zoomLevel == 100) && !m_smartSizing));
+        ::CheckMenuItem(hSysMenu, SYSCOMMAND_ZOOM_LEVEL_125_ID,
+            MF_BYCOMMAND | ToMenuCheckFlag((m_zoomLevel == 125) && !m_smartSizing));
+        ::CheckMenuItem(hSysMenu, SYSCOMMAND_ZOOM_LEVEL_150_ID,
+            MF_BYCOMMAND | ToMenuCheckFlag((m_zoomLevel == 150) && !m_smartSizing));
+        ::CheckMenuItem(hSysMenu, SYSCOMMAND_ZOOM_LEVEL_175_ID,
+            MF_BYCOMMAND | ToMenuCheckFlag((m_zoomLevel == 175) && !m_smartSizing));
+        ::CheckMenuItem(hSysMenu, SYSCOMMAND_ZOOM_LEVEL_200_ID,
+            MF_BYCOMMAND | ToMenuCheckFlag((m_zoomLevel == 200) && !m_smartSizing));
+        ::CheckMenuItem(hSysMenu, SYSCOMMAND_ZOOM_LEVEL_250_ID,
+            MF_BYCOMMAND | ToMenuCheckFlag((m_zoomLevel == 250) && !m_smartSizing));
+        ::CheckMenuItem(hSysMenu, SYSCOMMAND_ZOOM_LEVEL_300_ID,
+            MF_BYCOMMAND | ToMenuCheckFlag((m_zoomLevel == 300) && !m_smartSizing));
+
+        return S_OK;
     }
 
     STDMETHODIMP CRdpAxHostWnd::Connect()
@@ -381,7 +538,8 @@ public:
         if (FAILED(hr))
             return E_FAIL;
 
-        pAdvancedSettings->put_EnableCredSspSupport(VARIANT_TRUE);
+        pAdvancedSettings->put_EnableCredSspSupport(ToVariantBool(m_credsspSupport));
+        pAdvancedSettings->put_SmartSizing(ToVariantBool(m_smartSizing));
         SafeRelease(pAdvancedSettings);
 
         m_rdpClient->put_ColorDepth(32);
@@ -470,6 +628,12 @@ public:
                     m_desktopHeight = value.intVal;
                 }
             }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "smart sizing")) {
+                MsRdpEx_RdpFileEntry_GetBoolValue(entry, &m_smartSizing);
+            }
+            else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableCredSspSupport")) {
+                MsRdpEx_RdpFileEntry_GetBoolValue(entry, &m_credsspSupport);
+            }
             else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "username")) {
                 strcpy_s(m_username, sizeof(m_username) - 1, entry->value);
             }
@@ -508,8 +672,11 @@ public:
     char m_username[256];
     char m_domain[256];
     char m_password[256];
+    bool m_credsspSupport = true;
     int m_desktopWidth = 1024;
     int m_desktopHeight = 768;
+    int m_zoomLevel = 100;
+    bool m_smartSizing = false;
     HANDLE m_stopEvent = NULL;
 
 private:
