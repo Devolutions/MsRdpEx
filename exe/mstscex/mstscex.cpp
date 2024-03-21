@@ -1,6 +1,6 @@
 #include <MsRdpEx/RdpProcess.h>
 
-#include "../AxHost/RdpAxHost.h"
+#include "../AxHost/RdpAxHostWnd.h"
 
 LPWSTR ProcessAxHostCommandLine(LPWSTR lpCmdLine, bool* axHost)
 {

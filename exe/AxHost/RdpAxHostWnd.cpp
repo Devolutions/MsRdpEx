@@ -1,26 +1,21 @@
-#include <atlbase.h>
-#include <atlwin.h>
-#include <atlhost.h>
 
-#include <commctrl.h>
-#pragma comment(lib, "ComCtl32.lib")
+#include <MsRdpEx/RdpFile.h>
+#include <MsRdpEx/MsRdpEx.h>
 
-#include <oleidl.h>
+#include "../dll/MsRdpEx.h"
+#include "DpiHelper.h"
 
 #include "../com/mstscax.tlh"
 using namespace MSTSCLib;
 
-#include "DpiHelper.h"
-
-#include <MsRdpEx/RdpFile.h>
-
-#include <MsRdpEx/MsRdpEx.h>
+#include <atlbase.h>
+#include <oleidl.h>
+#include <commctrl.h>
+#pragma comment(lib, "ComCtl32.lib")
 
 #ifndef SafeRelease
-#define SafeRelease(x) { if ((x) != nullptr) { (x)->Release(); (x) = nullptr; } }
+#define SafeRelease(_x) { if ((_x) != nullptr) { (_x)->Release(); (_x) = nullptr; } }
 #endif
-
-CComModule _Module;
 
 static HWND GetParentWindowHandle()
 {
@@ -47,7 +42,7 @@ public:
     
     virtual ~CRdpOleClientSite()
     {
-        m_pUnkOuter->Release();
+        SafeRelease(m_pUnkOuter);
     }
 
     // IUnknown methods
@@ -128,8 +123,8 @@ public:
     }
 
 private:
-    ULONG m_refCount;
-    IUnknown* m_pUnkOuter;
+    ULONG m_refCount = 0;
+    IUnknown* m_pUnkOuter = NULL;
 };
 
 class CRdpOleInPlaceSiteEx : public IOleInPlaceSiteEx
@@ -144,7 +139,7 @@ public:
 
     virtual ~CRdpOleInPlaceSiteEx()
     {
-        m_pUnkOuter->Release();
+        SafeRelease(m_pUnkOuter);
     }
 
     // IUnknown methods
@@ -510,6 +505,8 @@ private:
     HWND m_hWndParent = NULL;
 };
 
+#define RdpAxHostWnd_ConnectMsgId  (WM_APP+0x101)
+
 class CRdpAxHostWnd : public IUnknown
 {
 public:
@@ -536,10 +533,50 @@ public:
 
     CRdpAxHostWnd::~CRdpAxHostWnd()
     {
+        Uninit();
+
         if (m_stopEvent) {
             CloseHandle(m_stopEvent);
             m_stopEvent = NULL;
         }
+    }
+
+    STDMETHODIMP CRdpAxHostWnd::Uninit()
+    {
+        HRESULT hr = S_OK;
+
+        if (m_eventSink)
+        {
+            IConnectionPoint* pConnectionPoint = NULL;
+            IConnectionPointContainer* pConnectionPointContainer = NULL;
+
+            if (m_rdpClient)
+            {
+                hr = m_rdpClient->QueryInterface(IID_IConnectionPointContainer, (void**)&pConnectionPointContainer);
+
+                if (SUCCEEDED(hr)) {
+                    hr = pConnectionPointContainer->FindConnectionPoint(DIID_IMsTscAxEvents, &pConnectionPoint);
+
+                    if (SUCCEEDED(hr)) {
+                        pConnectionPoint->Unadvise(m_dwAdviseCookie);
+                    }
+                }
+
+                SafeRelease(pConnectionPoint);
+                SafeRelease(pConnectionPointContainer);
+            }
+
+            SafeRelease(m_eventSink);
+        }
+
+        SafeRelease(m_pOleInPlaceActiveObject);
+        SafeRelease(m_pOleObject);
+        SafeRelease(m_rdpClient);
+        SafeRelease(m_pOleInPlaceSiteEx);
+        SafeRelease(m_pOleClientSite);
+        SafeRelease(m_pOleInPlaceObject);
+
+        return S_OK;
     }
 
     STDMETHODIMP CRdpAxHostWnd::QueryInterface(REFIID riid, void** ppv)
@@ -604,8 +641,14 @@ public:
     {
         HWND hWndObject = NULL;
 
+        MsRdpEx_LogPrint(DEBUG, "CRdpAxHostWnd::WndProc %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
+
         switch (uMsg)
         {
+        case WM_DESTROY:
+            SetEvent(m_stopEvent);
+            break;
+
         case WM_ACTIVATEAPP:
             if (m_pOleInPlaceActiveObject)
             {
@@ -657,7 +700,7 @@ public:
             }
             break;
 
-        case 0x402: // Connect button
+        case RdpAxHostWnd_ConnectMsgId:
             this->Connect();
             break;
 
@@ -684,8 +727,7 @@ public:
 
         hr = pClassFactory->CreateInstance(NULL, IID_IMsRdpClient, (void**) &m_rdpClient);
 
-        pClassFactory->Release();
-        pClassFactory = NULL;
+        SafeRelease(pClassFactory);
 
         if (FAILED(hr)) {
             return hr;
@@ -703,8 +745,7 @@ public:
             return hr;
         }
 
-        pConnectionPointContainer->Release();
-        pConnectionPointContainer = NULL;
+        SafeRelease(pConnectionPointContainer);
 
         m_eventSink = new CRdpEventSink(m_hWndParent);
         m_eventSink->AddRef();
@@ -715,8 +756,7 @@ public:
             return hr;
         }
 
-        pConnectionPoint->Release();
-        pConnectionPoint = NULL;
+        SafeRelease(pConnectionPoint);
 
         hr = m_rdpClient->QueryInterface(IID_IOleObject, (void**)&m_pOleObject);
 
@@ -751,7 +791,7 @@ public:
     {
         HRESULT hr = S_OK;
         WNDCLASSEX wndClass;
-        LPWSTR lpClassName = L"CRdpAxHostWnd";
+        LPWSTR lpClassName = L"MsRdpEx_AxHostWnd";
         LPWSTR lpWindowName = L"Remote Desktop Client Active Host";
 
         ZeroMemory(&wndClass, sizeof(WNDCLASSEX));
@@ -777,8 +817,14 @@ public:
 
         DWORD dwStyle = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
         DWORD dwExStyle = 0;
-        HMENU hMenu = NULL;
 
+        if (hWndParent)
+        {
+            dwStyle = WS_CHILD | WS_BORDER;
+            dwExStyle &= ~(WS_EX_TOPMOST);
+        }
+
+        HMENU hMenu = NULL;
         int windowX = 0;
         int windowY = 0;
         int windowWidth = m_desktopWidth;
@@ -811,13 +857,14 @@ public:
     {
         HRESULT hr = S_OK;
 
-        CComPtr<MSTSCLib::IMsRdpClientAdvancedSettings8> advancedSettings;
-        hr = m_rdpClient->get_AdvancedSettings9(&advancedSettings);
+        IMsRdpClientAdvancedSettings8* pAdvancedSettings = NULL;
+        hr = m_rdpClient->get_AdvancedSettings9(&pAdvancedSettings);
 
         if (FAILED(hr))
             return E_FAIL;
 
-        advancedSettings->put_EnableCredSspSupport(VARIANT_TRUE);
+        pAdvancedSettings->put_EnableCredSspSupport(VARIANT_TRUE);
+        SafeRelease(pAdvancedSettings);
 
         m_rdpClient->put_ColorDepth(32);
         m_rdpClient->put_DesktopWidth(m_desktopWidth);
@@ -827,13 +874,15 @@ public:
         m_rdpClient->put_UserName(CComBSTR(m_username));
         m_rdpClient->put_Domain(CComBSTR(m_domain));
 
-        CComPtr<MSTSCLib::IMsTscNonScriptable> nonScriptable;
-        hr = m_rdpClient->QueryInterface(__uuidof(MSTSCLib::IMsTscNonScriptable), (void**)&nonScriptable);
+        IMsTscNonScriptable* pMsTscNonScriptable = NULL;
+        hr = m_rdpClient->QueryInterface(IID_IMsTscNonScriptable, (void**)&pMsTscNonScriptable);
 
         if (FAILED(hr))
             return E_FAIL;
 
-        hr = nonScriptable->put_ClearTextPassword(CComBSTR(m_password));
+        hr = pMsTscNonScriptable->put_ClearTextPassword(CComBSTR(m_password));
+
+        SafeRelease(pMsTscNonScriptable);
 
         if (FAILED(hr))
             return E_FAIL;
@@ -841,6 +890,31 @@ public:
         hr = m_rdpClient->Connect();
 
         return hr;
+    }
+
+    STDMETHODIMP CRdpAxHostWnd::AdjustWindowSize()
+    {
+        HWND hWnd = m_hWnd;
+        RECT windowRect;
+        DWORD dwStyle = (DWORD)::GetWindowLongPtr(hWnd, GWL_STYLE);
+        DWORD dwStyleEx = (DWORD)::GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+
+        uint32_t dpiX = 0;
+        uint32_t dpiY = 0;
+        HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+        GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+
+        ::GetWindowRect(hWnd, &windowRect);
+        ::AdjustWindowRectExForDpi(&windowRect, dwStyle, FALSE, dwStyleEx, dpiX);
+
+        int windowPosX = 0;
+        int windowPosY = 0;
+        int windowWidth = windowRect.right - windowRect.left;
+        int windowHeight = windowRect.bottom - windowRect.top;
+
+        ::SetWindowPos(hWnd, NULL, windowPosX, windowPosY, windowWidth, windowHeight, SWP_FRAMECHANGED);
+
+        return S_OK;
     }
 
     STDMETHODIMP CRdpAxHostWnd::LoadRdpFile()
@@ -907,6 +981,10 @@ public:
         return m_hWnd;
     }
 
+    HANDLE CRdpAxHostWnd::GetStopEvent() {
+        return m_stopEvent;
+    }
+
     bool m_connected = false;
     char m_hostname[256];
     char m_username[256];
@@ -960,15 +1038,19 @@ int MsRdpEx_AxHost_WinMain(
     rdpWindow.CreateAxControl();
     rdpWindow.CreateAxWindow(hParentWnd, hInstance);
 
+    if (!hParentWnd) {
+        rdpWindow.AdjustWindowSize();
+    }
+
     HWND hRdpWnd = rdpWindow.GetWindowHandle();
-    PostMessage(hRdpWnd, 0x402, 0, 0);
+    PostMessage(hRdpWnd, RdpAxHostWnd_ConnectMsgId, 0, 0);
 
     while (GetMessage(&msg, NULL, 0, 0) > 0)
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
 
-        if (WaitForSingleObject(rdpWindow.m_stopEvent, 0) == WAIT_OBJECT_0)
+        if (WaitForSingleObject(rdpWindow.GetStopEvent(), 0) == WAIT_OBJECT_0)
             break;
     }
 
