@@ -488,7 +488,7 @@ public:
 
         // Add Zoom submenu to the system menu
         ::AppendMenu(hSysMenu, MF_SEPARATOR, 0, NULL);
-        ::AppendMenu(hSysMenu, MF_POPUP, (UINT_PTR)hZoomMenu, _T("Zoom"));
+        ::AppendMenu(hSysMenu, MF_POPUP, (::UINT_PTR)hZoomMenu, _T("Zoom"));
 
         ::AppendMenu(hSysMenu, MF_STRING | ToMenuCheckFlag(m_smartSizing), SYSCOMMAND_SMART_SIZING_ID, _T("Smart Sizing"));
 

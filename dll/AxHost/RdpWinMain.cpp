@@ -20,7 +20,7 @@ static LPWSTR ProcessAxHostCommandLine(LPWSTR lpCmdLine, bool* axHost)
     return cmdLine;
 }
 
-int WINAPI MsRdpEx_WinMain(
+int MsRdpEx_WinMain(
     _In_ HINSTANCE hInstance,
     _In_opt_ HINSTANCE hPrevInstance,
     _In_ LPWSTR lpCmdLine,
