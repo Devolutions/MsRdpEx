@@ -36,6 +36,9 @@ jobs:
     outputs:
       package-env: ${{ steps.info.outputs.package-env }}
       package-version: ${{ steps.info.outputs.package-version }}
+      detours-git-commit: ${{ steps.info.outputs.detours-git-commit }}
+      sign-nuget: ${{ steps.info.outputs.sign-nuget }}
+      skip-publish: ${{ steps.info.outputs.skip-publish }}
       dry-run: ${{ steps.info.outputs.dry-run }}
 
     steps:
@@ -50,6 +53,8 @@ jobs:
 
           }
 
+          try { $SignNuget = [System.Boolean]::Parse('${{ inputs.sign-nuget }}') } catch { $SignNuget = $false }
+          try { $SkipPublish = [System.Boolean]::Parse('${{ inputs.skip-publish }}') } catch { $SkipPublish = $false }
           try { $DryRun = [System.Boolean]::Parse('${{ inputs.dry-run }}') } catch { $DryRun = $true }
 
           $PackageEnv = if ($IsMasterBranch -And -Not $IsScheduledJob) {
@@ -74,8 +79,16 @@ jobs:
             throw "invalid version format: $PackageVersion, expected: 1.2.3.4"
           }
 
+          $DetoursGitCommit = '${{ inputs.detours-git-commit }}'
+          if ([string]::IsNullOrEmpty($DetoursGitCommit)) {
+            $DetoursGitCommit = '4b8c659'
+          }
+
           echo "package-env=$PackageEnv" >> $Env:GITHUB_OUTPUT
           echo "package-version=$PackageVersion" >> $Env:GITHUB_OUTPUT
+          echo "detours-git-commit=$DetoursGitCommit" >> $Env:GITHUB_OUTPUT
+          echo "sign-nuget=$($SignNuget.ToString().ToLower())" >> $Env:GITHUB_OUTPUT
+          echo "skip-publish=$($SkipPublish.ToString().ToLower())" >> $Env:GITHUB_OUTPUT
           echo "dry-run=$($DryRun.ToString().ToLower())" >> $Env:GITHUB_OUTPUT
 
           echo "::notice::Version: $PackageVersion"
@@ -92,7 +105,7 @@ jobs:
 
     steps:
       - name: Check out ${{ github.repository }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure runner
         shell: pwsh
@@ -112,25 +125,25 @@ jobs:
 
       - name: Restore Detours Cache (${{matrix.arch}})
         id: cache-detours
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           path: dependencies/detours
-          key: detours-${{ matrix.arch }}-${{ inputs.detours-git-commit }}
+          key: detours-${{ matrix.arch }}-${{ needs.preflight.outputs.detours-git-commit }}
 
       - name: Build Detours (${{matrix.arch}})
         if: steps.cache-detours.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           Enter-VsDevShell ${{matrix.arch}}
-          $GitCommit = '${{ inputs.detours-git-commit }}'
+          $GitCommit = '${{ needs.preflight.outputs.detours-git-commit }}'
           .\detours.ps1 -GitCommit $GitCommit
 
       - name: Save Detours Cache (${{matrix.arch}})
         if: steps.cache-detours.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         with:
           path: dependencies/detours
-          key: detours-${{ matrix.arch }}-${{ inputs.detours-git-commit }}
+          key: detours-${{ matrix.arch }}-${{ needs.preflight.outputs.detours-git-commit }}
 
       - name: Build MsRdpEx (${{matrix.arch}})
         shell: pwsh
@@ -150,15 +163,15 @@ jobs:
           Compress-Archive "dependencies\MsRdpEx\$Arch\*" ".\package\MsRdpEx-$PackageVersion-$Arch.zip" -CompressionLevel Optimal
 
       - name: Upload MsRdpEx (${{matrix.arch}})
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: MsRdpEx-zip
+          name: MsRdpEx-zip-${{matrix.arch}}
           path: package/*.zip
 
       - name: Upload MsRdpEx symbols (${{matrix.arch}})
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: MsRdpEx-symbols
+          name: MsRdpEx-symbols-${{matrix.arch}}
           path: symbols/*.zip
 
   build-managed:
@@ -169,12 +182,13 @@ jobs:
 
     steps:
       - name: Check out ${{ github.repository }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure runner
         shell: pwsh
         run: |
           New-Item .\package -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
+          New-Item .\symbols -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
           New-Item ".\dependencies\MsRdpEx" -ItemType Directory | Out-Null
 
       - name: Install code signing tools
@@ -199,10 +213,18 @@ jobs:
           Set-Content -Path $csprojPath -Value $csprojContent -Encoding UTF8
 
       - name: Download native dependencies
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: MsRdpEx-zip
+          pattern: MsRdpEx-zip-*
+          merge-multiple: true
           path: package
+
+      - name: Download native symbols
+        uses: actions/download-artifact@v4
+        with:
+          pattern: MsRdpEx-symbols-*
+          merge-multiple: true
+          path: symbols
 
       - name: Extract native dependencies
         shell: pwsh
@@ -238,10 +260,16 @@ jobs:
           }
 
       - name: Upload zip packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: MsRdpEx-zip
           path: package/*.zip
+
+      - name: Upload native symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: MsRdpEx-symbols
+          path: symbols/*.zip
 
       - name: Build nuget package
         shell: pwsh
@@ -276,7 +304,7 @@ jobs:
           Compress-Archive -Path "$UnpackedDir\*" -Destination $PackedFile -CompressionLevel Optimal
             
       - name: Code sign nuget package
-        if: ${{ fromJSON(inputs.sign-nuget) == true }}
+        if: ${{ fromJSON(needs.preflight.outputs.sign-nuget) == true }}
         shell: pwsh
         run: |
           $NugetPackage = (Get-Item ".\package\*.nupkg" | Select-Object -First 1) | Resolve-Path -Relative
@@ -291,7 +319,7 @@ jobs:
           & NuGetKeyVaultSignTool @Params
   
       - name: Upload nuget package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: MsRdpEx-nupkg
           path: package/*.nupkg
@@ -326,7 +354,7 @@ jobs:
           }
 
       - name: Upload MSI packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: MsRdpEx-msi
           path: package/*.msi
@@ -336,29 +364,29 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [preflight, build-native, build-managed]
     environment: ${{ needs.preflight.outputs.package-env }}
-    if: ${{ fromJSON(inputs.skip-publish) == false }}
+    if: ${{ fromJSON(needs.preflight.outputs.skip-publish) == false }}
 
     steps:
       - name: Download zip package
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: MsRdpEx-zip
           path: package
 
       - name: Download nuget package
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: MsRdpEx-nupkg
           path: package
 
       - name: Download MSI package
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: MsRdpEx-msi
           path: package
 
       - name: Download symbols package
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: MsRdpEx-symbols
           path: package
