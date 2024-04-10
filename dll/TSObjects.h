@@ -55,6 +55,9 @@ typedef HRESULT (__stdcall* ITSPropertySet_GetIntProperty)(ITSPropertySet* This,
 typedef HRESULT (__stdcall* ITSPropertySet_SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
 typedef HRESULT (__stdcall* ITSPropertySet_GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
 
+typedef HRESULT(__stdcall* ITSPropertySet_SetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
+typedef HRESULT(__stdcall* ITSPropertySet_GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue, uint32_t* propLength);
+
 typedef struct ITSPropertySetVtbl
 {
     HRESULT(__stdcall* QueryInterface)(ITSPropertySet* This, REFIID riid, void** ppvObject);
@@ -73,7 +76,7 @@ typedef struct ITSPropertySetVtbl
     HRESULT(__stdcall* GetIUnknownProperty)(ITSPropertySet* This, const char* propName, IUnknown** propValue);
     HRESULT(__stdcall* GetBoolProperty)(ITSPropertySet* This, const char* propName, int* propValue);
     HRESULT(__stdcall* GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
-    HRESULT(__stdcall* GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* a1, uint32_t* a2);
+    HRESULT(__stdcall* GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue, uint32_t* propLength);
     HRESULT(__stdcall* GetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR* propValue);
     HRESULT(__stdcall* EnterReadLock)(ITSPropertySet* This);
     HRESULT(__stdcall* LeaveReadLock)(ITSPropertySet* This);

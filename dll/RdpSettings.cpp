@@ -21,6 +21,8 @@ static ITSPropertySet_SetIntProperty Real_ITSPropertySet_SetIntProperty = NULL;
 static ITSPropertySet_GetIntProperty Real_ITSPropertySet_GetIntProperty = NULL;
 static ITSPropertySet_SetStringProperty Real_ITSPropertySet_SetStringProperty = NULL;
 static ITSPropertySet_GetStringProperty Real_ITSPropertySet_GetStringProperty = NULL;
+static ITSPropertySet_SetSecureStringProperty Real_ITSPropertySet_SetSecureStringProperty = NULL;
+static ITSPropertySet_GetSecureStringProperty Real_ITSPropertySet_GetSecureStringProperty = NULL;
 
 static HRESULT Hook_ITSPropertySet_SetBoolProperty(ITSPropertySet* This, const char* propName, int propValue)
 {
@@ -146,6 +148,30 @@ static HRESULT Hook_ITSPropertySet_GetStringProperty(ITSPropertySet* This, const
     return hr;
 }
 
+static HRESULT Hook_ITSPropertySet_SetSecureStringProperty(ITSPropertySet* This, const char* propName, WCHAR* propValue)
+{
+    HRESULT hr;
+
+    char* propValueA = _com_util::ConvertBSTRToString((BSTR)propValue);
+
+    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetSecureStringProperty(%s, \"%s\")", propName, propValueA);
+
+    hr = Real_ITSPropertySet_SetSecureStringProperty(This, propName, propValue);
+
+    return hr;
+}
+
+static HRESULT Hook_ITSPropertySet_GetSecureStringProperty(ITSPropertySet* This, const char* propName, WCHAR** propValue, uint32_t* propLength)
+{
+    HRESULT hr;
+
+    hr = Real_ITSPropertySet_GetSecureStringProperty(This, propName, propValue, propLength);
+
+    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetSecureStringProperty(%s)", propName);
+
+    return hr;
+}
+
 static bool TSPropertySet_Hook(ITSPropertySet* pTSPropertySet)
 {
     LONG error;
@@ -160,6 +186,8 @@ static bool TSPropertySet_Hook(ITSPropertySet* pTSPropertySet)
     Real_ITSPropertySet_GetIntProperty = pTSPropertySet->vtbl->GetIntProperty;
     Real_ITSPropertySet_SetStringProperty = pTSPropertySet->vtbl->SetStringProperty;
     Real_ITSPropertySet_GetStringProperty = pTSPropertySet->vtbl->GetStringProperty;
+    Real_ITSPropertySet_SetSecureStringProperty = pTSPropertySet->vtbl->SetSecureStringProperty;
+    Real_ITSPropertySet_GetSecureStringProperty = pTSPropertySet->vtbl->GetSecureStringProperty;
 
     DetourAttach((PVOID*)(&Real_ITSPropertySet_SetBoolProperty), Hook_ITSPropertySet_SetBoolProperty);
     DetourAttach((PVOID*)(&Real_ITSPropertySet_GetBoolProperty), Hook_ITSPropertySet_GetBoolProperty);
@@ -167,6 +195,8 @@ static bool TSPropertySet_Hook(ITSPropertySet* pTSPropertySet)
     DetourAttach((PVOID*)(&Real_ITSPropertySet_GetIntProperty), Hook_ITSPropertySet_GetIntProperty);
     DetourAttach((PVOID*)(&Real_ITSPropertySet_SetStringProperty), Hook_ITSPropertySet_SetStringProperty);
     DetourAttach((PVOID*)(&Real_ITSPropertySet_GetStringProperty), Hook_ITSPropertySet_GetStringProperty);
+    DetourAttach((PVOID*)(&Real_ITSPropertySet_SetSecureStringProperty), Hook_ITSPropertySet_SetSecureStringProperty);
+    DetourAttach((PVOID*)(&Real_ITSPropertySet_GetSecureStringProperty), Hook_ITSPropertySet_GetSecureStringProperty);
 
     error = DetourTransactionCommit();
     return true;
@@ -791,6 +821,12 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
         }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "GatewayPassword")) {
             pMsRdpExtendedSettings->SetGatewayPassword(entry->value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "PasswordContainsSCardPin")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+            }
         }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetUserName")) {
             bstr_t propName = _com_util::ConvertStringToBSTR("UserName");
