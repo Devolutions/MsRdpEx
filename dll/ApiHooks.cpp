@@ -14,6 +14,7 @@
 
 #include <wincred.h>
 #include <psapi.h>
+#include <intrin.h>
 #include <windowsx.h>
 
 HMODULE (WINAPI* Real_LoadLibraryA)(LPCSTR lpLibFileName) = LoadLibraryA;
@@ -502,11 +503,12 @@ end:
     return status;
 }
 
-static WNDPROC Real_OPWndProc = NULL;
+static WNDPROC Real_OPWndProc_mstscax = NULL;
+static WNDPROC Real_OPWndProc_rdclientax = NULL;
 
 extern void MsRdpEx_OutputWindow_OnCreate(HWND hWnd, void* pUserData);
 
-LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL isOOBClient)
 {
 	LRESULT result;
 	char* lpWindowNameA = NULL;
@@ -521,7 +523,11 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         MsRdpEx_LogPrint(DEBUG, "Window Create: %s", lpWindowNameA);
 	}
 
-	result = Real_OPWndProc(hWnd, uMsg, wParam, lParam);
+    if (isOOBClient) {
+        result = Real_OPWndProc_rdclientax(hWnd, uMsg, wParam, lParam);
+    } else {
+        result = Real_OPWndProc_mstscax(hWnd, uMsg, wParam, lParam);
+    }
 
 	if (uMsg == WM_NCCREATE)
 	{
@@ -555,35 +561,53 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 	return result;
 }
 
+LRESULT CALLBACK Hook_OPWndProc_mstscax(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    return Hook_OPWndProc(hWnd, uMsg, wParam, lParam, FALSE);
+}
+
+LRESULT CALLBACK Hook_OPWndProc_rdclientax(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    return Hook_OPWndProc(hWnd, uMsg, wParam, lParam, TRUE);
+}
+
 ATOM (WINAPI * Real_RegisterClassExW)(const WNDCLASSEXW* wndClassEx) = RegisterClassExW;
 
-ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClassEx)
+ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClass)
 {
     ATOM wndClassAtom;
     char* lpClassNameA = NULL;
 
-    MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, wndClassEx->lpszClassName, -1, &lpClassNameA, 0, NULL, NULL);
+    MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, wndClass->lpszClassName, -1, &lpClassNameA, 0, NULL, NULL);
 
     MsRdpEx_LogPrint(DEBUG, "RegisterClassExW: %s", lpClassNameA);
 
     if (MsRdpEx_StringEquals(lpClassNameA, "OPWindowClass")) {
-        Real_OPWndProc = wndClassEx->lpfnWndProc;
-        wndClassEx->lpfnWndProc = Hook_OPWndProc;
+        if (MsRdpEx_IsAddressInRdclientAxModule(_ReturnAddress())) {
+            Real_OPWndProc_rdclientax = wndClass->lpfnWndProc;
+            wndClass->lpszClassName = L"OPWindowClass_rdclientax";
+            wndClass->lpfnWndProc = Hook_OPWndProc_rdclientax;
+        } else {
+            Real_OPWndProc_mstscax = wndClass->lpfnWndProc;
+            wndClass->lpszClassName = L"OPWindowClass_mstscax";
+            wndClass->lpfnWndProc = Hook_OPWndProc_mstscax;
+        }
     }
 
-    wndClassAtom = Real_RegisterClassExW(wndClassEx);
+    wndClassAtom = Real_RegisterClassExW(wndClass);
 
     free(lpClassNameA);
 
     return wndClassAtom;
 }
 
-static WNDPROC Real_IHWndProc = NULL;
+static WNDPROC Real_IHWndProc_mstscax = NULL;
+static WNDPROC Real_IHWndProc_rdclientax = NULL;
 
 #define MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID        4301
 #define MOUSE_JIGGLER_SPECIAL_KEY_TIMER_ID       4302
 
-LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL isOOBClient)
 {
     LRESULT result;
     char* lpWindowNameA = NULL;
@@ -606,7 +630,11 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             instance->GetExtendedSettings(&pExtendedSettings);
     }
 
-    result = Real_IHWndProc(hWnd, uMsg, wParam, lParam);
+    if (isOOBClient) {
+        result = Real_IHWndProc_rdclientax(hWnd, uMsg, wParam, lParam);
+    } else {
+        result = Real_IHWndProc_mstscax(hWnd, uMsg, wParam, lParam);
+    }
 
     if (uMsg == WM_NCCREATE)
     {
@@ -696,6 +724,16 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     return result;
 }
 
+LRESULT CALLBACK Hook_IHWndProc_rdclientax(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    return Hook_IHWndProc(hWnd, uMsg, wParam, lParam, TRUE);
+}
+
+LRESULT CALLBACK Hook_IHWndProc_mstscax(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    return Hook_IHWndProc(hWnd, uMsg, wParam, lParam, FALSE);
+}
+
 ATOM(WINAPI* Real_RegisterClassW)(const WNDCLASSW* wndClass) = RegisterClassW;
 
 ATOM Hook_RegisterClassW(WNDCLASSW* wndClass)
@@ -708,8 +746,15 @@ ATOM Hook_RegisterClassW(WNDCLASSW* wndClass)
     MsRdpEx_LogPrint(DEBUG, "RegisterClassW: %s", lpClassNameA);
 
     if (MsRdpEx_StringEquals(lpClassNameA, "IHWindowClass")) {
-        Real_IHWndProc = wndClass->lpfnWndProc;
-        wndClass->lpfnWndProc = Hook_IHWndProc;
+        if (MsRdpEx_IsAddressInRdclientAxModule(_ReturnAddress())) {
+            Real_IHWndProc_rdclientax = wndClass->lpfnWndProc;
+            wndClass->lpszClassName = L"IHWindowClass_rdclientax";
+            wndClass->lpfnWndProc = Hook_IHWndProc_rdclientax;
+        } else {
+            Real_IHWndProc_mstscax = wndClass->lpfnWndProc;
+            wndClass->lpszClassName = L"IHWindowClass_mstscax";
+            wndClass->lpfnWndProc = Hook_IHWndProc_mstscax;
+        }
     }
 
     wndClassAtom = Real_RegisterClassW(wndClass);
@@ -717,6 +762,99 @@ ATOM Hook_RegisterClassW(WNDCLASSW* wndClass)
     free(lpClassNameA);
 
     return wndClassAtom;
+}
+
+BOOL(WINAPI* Real_GetClassInfoW)(HINSTANCE hInstance, LPCWSTR lpClassName, LPWNDCLASSW lpWndClass) = GetClassInfoW;
+
+BOOL Hook_GetClassInfoW(HINSTANCE hInstance, LPCWSTR lpClassName, LPWNDCLASSW lpWndClass)
+{
+    BOOL result;
+
+    if (lpClassName && (((ULONG_PTR)lpClassName) > 0xFFFF))
+    {
+        if (MsRdpEx_StringEqualsW(lpClassName, L"IHWindowClass")) {
+            if (MsRdpEx_IsAddressInRdclientAxModule(_ReturnAddress())) {
+                lpClassName = L"IHWindowClass_rdclientax";
+            } else {
+                lpClassName = L"IHWindowClass_mstscax";
+            }
+        } else if (MsRdpEx_StringEqualsW(lpClassName, L"OPWindowClass")) {
+            if (MsRdpEx_IsAddressInRdclientAxModule(_ReturnAddress())) {
+                lpClassName = L"OPWindowClass_rdclientax";
+            } else {
+                lpClassName = L"OPWindowClass_mstscax";
+            }
+        }
+    }
+
+    result = Real_GetClassInfoW(hInstance, lpClassName, lpWndClass);
+
+    return result;
+}
+
+BOOL(WINAPI* Real_UnregisterClassW)(LPCWSTR lpClassName, HINSTANCE hInstance) = UnregisterClassW;
+
+BOOL Hook_UnregisterClassW(LPCWSTR lpClassName, HINSTANCE hInstance)
+{
+    BOOL result;
+
+    if (lpClassName && (((ULONG_PTR)lpClassName) > 0xFFFF))
+    {
+        if (MsRdpEx_StringEqualsW(lpClassName, L"IHWindowClass")) {
+            if (MsRdpEx_IsAddressInRdclientAxModule(_ReturnAddress())) {
+                lpClassName = L"IHWindowClass_rdclientax";
+            } else {
+                lpClassName = L"IHWindowClass_mstscax";
+            }
+        } else if (MsRdpEx_StringEqualsW(lpClassName, L"OPWindowClass")) {
+            if (MsRdpEx_IsAddressInRdclientAxModule(_ReturnAddress())) {
+                lpClassName = L"OPWindowClass_rdclientax";
+            } else {
+                lpClassName = L"OPWindowClass_mstscax";
+            }
+        }
+    }
+
+    result = Real_UnregisterClassW(lpClassName, hInstance);
+
+    return result;
+}
+
+HWND(WINAPI* Real_CreateWindowExW)(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle,
+    int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) = CreateWindowExW;
+
+HWND Hook_CreateWindowExW(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle,
+    int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
+{
+    HWND hWnd;
+    char* lpClassNameA = NULL;
+
+    if (lpClassName && (((ULONG_PTR)lpClassName) > 0xFFFF))
+    {
+        MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, lpClassName, -1, &lpClassNameA, 0, NULL, NULL);
+
+        MsRdpEx_LogPrint(TRACE, "CreateWindowExW: %s", lpClassNameA);
+
+        if (MsRdpEx_StringEqualsW(lpClassName, L"OPWindowClass")) {
+            if (MsRdpEx_IsAddressInRdclientAxModule(_ReturnAddress())) {
+                lpClassName = L"OPWindowClass_rdclientax";
+            } else {
+                lpClassName = L"OPWindowClass_mstscax";
+            }
+        } else if (MsRdpEx_StringEqualsW(lpClassName, L"IHWindowClass")) {
+            if (MsRdpEx_IsAddressInRdclientAxModule(_ReturnAddress())) {
+                lpClassName = L"IHWindowClass_rdclientax";
+            } else {
+                lpClassName = L"IHWindowClass_mstscax";
+            }
+        }
+    }
+
+    hWnd = Real_CreateWindowExW(dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam);
+
+    free(lpClassNameA);
+
+    return hWnd;
 }
 
 #define ID_MAINDLG_COMPUTER_TEXTBOX     5012
@@ -1064,6 +1202,16 @@ bool MsRdpEx_IsAddressInRdpAxModule(PVOID pAddress)
         MsRdpEx_IsAddressInModule(pAddress, L"rdclientax.dll");
 }
 
+bool MsRdpEx_IsAddressInMstscAxModule(PVOID pAddress)
+{
+    return MsRdpEx_IsAddressInModule(pAddress, L"mstscax.dll");
+}
+
+bool MsRdpEx_IsAddressInRdclientAxModule(PVOID pAddress)
+{
+    return MsRdpEx_IsAddressInModule(pAddress, L"rdclientax.dll");
+}
+
 void MsRdpEx_GlobalInit()
 {
     MsRdpEx_NameResolver_Get();
@@ -1122,6 +1270,9 @@ LONG MsRdpEx_AttachHooks()
     MSRDPEX_DETOUR_ATTACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassW, Hook_RegisterClassW);
+    MSRDPEX_DETOUR_ATTACH(Real_GetClassInfoW, Hook_GetClassInfoW);
+    MSRDPEX_DETOUR_ATTACH(Real_UnregisterClassW, Hook_UnregisterClassW);
+    MSRDPEX_DETOUR_ATTACH(Real_CreateWindowExW, Hook_CreateWindowExW);
     MSRDPEX_DETOUR_ATTACH(Real_CreateDialogParamW, Hook_CreateDialogParamW);
     
     MSRDPEX_DETOUR_ATTACH(Real_CredReadW, Hook_CredReadW);
@@ -1176,6 +1327,9 @@ LONG MsRdpEx_DetachHooks()
     MSRDPEX_DETOUR_DETACH(Real_StretchBlt, Hook_StretchBlt);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassW, Hook_RegisterClassW);
+    MSRDPEX_DETOUR_DETACH(Real_GetClassInfoW, Hook_GetClassInfoW);
+    MSRDPEX_DETOUR_DETACH(Real_UnregisterClassW, Hook_UnregisterClassW);
+    MSRDPEX_DETOUR_DETACH(Real_CreateWindowExW, Hook_CreateWindowExW);
     MSRDPEX_DETOUR_DETACH(Real_CreateDialogParamW, Hook_CreateDialogParamW);
 
     MSRDPEX_DETOUR_DETACH(Real_CredReadW, Hook_CredReadW);

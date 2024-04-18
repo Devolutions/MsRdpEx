@@ -164,6 +164,12 @@ namespace MsRdpEx_App
             IntPtr hOPContainerClassWnd = FindWindowEx(hUIContainerClassWnd, IntPtr.Zero, "OPContainerClass", IntPtr.Zero);
             IntPtr hOPWindowClassWnd = FindWindowEx(hOPContainerClassWnd, IntPtr.Zero, "OPWindowClass", IntPtr.Zero);
 
+            if (hOPWindowClassWnd == IntPtr.Zero)
+                hOPWindowClassWnd = FindWindowEx(hOPContainerClassWnd, IntPtr.Zero, "OPWindowClass_mstscax", IntPtr.Zero);
+
+            if (hOPWindowClassWnd == IntPtr.Zero)
+                hOPWindowClassWnd = FindWindowEx(hOPContainerClassWnd, IntPtr.Zero, "OPWindowClass_rdclientax", IntPtr.Zero);
+
             //Debug.WriteLine("UIMainClass: {0}", hUIMainClassWnd);
             //Debug.WriteLine("OPContainerClass: {0}", hOPContainerClassWnd);
             //Debug.WriteLine("UIContainerClass: {0}", hUIContainerClassWnd);
