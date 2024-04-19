@@ -385,15 +385,30 @@ private:
 
 CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown, GUID* pSessionId)
 {
+    HRESULT hr;
+
     m_refCount = 0;
     m_pUnknown = pUnknown;
 
     MsRdpEx_GuidCopy(&m_sessionId, pSessionId);
 
-    pUnknown->QueryInterface(IID_IMsRdpExtendedSettings, (LPVOID*)&m_pMsRdpExtendedSettings);
+    hr = pUnknown->QueryInterface(IID_IMsRdpClient7, (LPVOID*)&m_pMsRdpClient7);
 
-    if (m_pMsRdpExtendedSettings)
+    if (SUCCEEDED(hr) && m_pMsRdpClient7)
+        m_pMsRdpClient7->AddRef();
+
+    hr = pUnknown->QueryInterface(IID_IMsRdpExtendedSettings, (LPVOID*)&m_pMsRdpExtendedSettings);
+
+    if (SUCCEEDED(hr) && m_pMsRdpExtendedSettings)
         m_pMsRdpExtendedSettings->AddRef();
+
+    if (m_pMsRdpClient7)
+    {
+        m_pMsRdpClient7->get_TransportSettings2(&m_pMsRdpClientTransportSettings2);
+
+        if (m_pMsRdpClientTransportSettings2)
+            m_pMsRdpClientTransportSettings2->AddRef();
+    }
 }
 
 CMsRdpExtendedSettings::~CMsRdpExtendedSettings()
@@ -402,6 +417,12 @@ CMsRdpExtendedSettings::~CMsRdpExtendedSettings()
 
     if (m_pMsRdpExtendedSettings)
         m_pMsRdpExtendedSettings->Release();
+
+    if (m_pMsRdpClientTransportSettings2)
+        m_pMsRdpClientTransportSettings2->Release();
+
+    if (m_pMsRdpClient7)
+        m_pMsRdpClient7->Release();
 }
 
 HRESULT STDMETHODCALLTYPE CMsRdpExtendedSettings::QueryInterface(
@@ -643,11 +664,11 @@ HRESULT __stdcall CMsRdpExtendedSettings::SetTargetPassword(const char* password
 }
 
 HRESULT __stdcall CMsRdpExtendedSettings::SetGatewayPassword(const char* password) {
-    if (!m_TransportProps)
+    if (!m_pMsRdpClientTransportSettings2)
         return E_INVALIDARG;
 
     bstr_t propValue = _com_util::ConvertStringToBSTR(password);
-    m_TransportProps->SetSecureStringProperty("GatewayPassword", propValue);
+    m_pMsRdpClientTransportSettings2->put_GatewayPassword(propValue);
     SecureZeroMemory(propValue.GetBSTR(), wcslen(propValue.GetBSTR()) * sizeof(WCHAR));
 
     return S_OK;
@@ -816,18 +837,6 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
                 pMsRdpExtendedSettings->put_Property(propName, &value);
             }
         }
-        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {
-            pMsRdpExtendedSettings->SetTargetPassword(entry->value);
-        }
-        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "GatewayPassword")) {
-            pMsRdpExtendedSettings->SetGatewayPassword(entry->value);
-        }
-        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "PasswordContainsSCardPin")) {
-            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
-            }
-        }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetUserName")) {
             bstr_t propName = _com_util::ConvertStringToBSTR("UserName");
             bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
@@ -841,6 +850,30 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
             value.bstrVal = propValue;
             value.vt = VT_BSTR;
             pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {
+            pMsRdpExtendedSettings->SetTargetPassword(entry->value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "PasswordContainsSCardPin")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "GatewayUserName")) {
+            if (m_pMsRdpClientTransportSettings2) {
+                bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+                m_pMsRdpClientTransportSettings2->put_GatewayUsername(propValue);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "GatewayDomain")) {
+            if (m_pMsRdpClientTransportSettings2) {
+                bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+                m_pMsRdpClientTransportSettings2->put_GatewayDomain(propValue);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "GatewayPassword")) {
+            pMsRdpExtendedSettings->SetGatewayPassword(entry->value);
         }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "KDCProxyURL")) {
             pMsRdpExtendedSettings->SetKdcProxyUrl(entry->value);
