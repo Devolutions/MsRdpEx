@@ -57,7 +57,9 @@ private:
     ULONG m_refCount = 0;
     IUnknown* m_pUnknown = NULL;
     IMsTscAx* m_pMsTscAx = NULL;
+    IMsRdpClient7* m_pMsRdpClient7 = NULL;
     IMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
+    IMsRdpClientTransportSettings2* m_pMsRdpClientTransportSettings2 = NULL;
     ITSPropertySet* m_pCorePropsRaw = NULL;
     CMsRdpPropertySet* m_CoreProps = NULL;
     CMsRdpPropertySet* m_BaseProps = NULL;
