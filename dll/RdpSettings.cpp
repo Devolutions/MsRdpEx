@@ -878,6 +878,27 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "KDCProxyURL")) {
             pMsRdpExtendedSettings->SetKdcProxyUrl(entry->value);
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "WinSCardCertificateFilePath")) {
+            MsRdpEx_SetEnv("WINSCARD_CERTIFICATE_FILE_PATH", entry->value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "WinSCardCertificateFileData")) {
+            MsRdpEx_SetEnv("WINSCARD_CERTIFICATE_FILE_DATA", entry->value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "WinSCardPrivateKeyFilePath")) {
+            MsRdpEx_SetEnv("WINSCARD_PRIVATE_KEY_FILE_PATH", entry->value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "WinSCardPrivateKeyFileData")) {
+            MsRdpEx_SetEnv("WINSCARD_PRIVATE_KEY_FILE_DATA", entry->value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "WinSCardSmartcardContainerName")) {
+            MsRdpEx_SetEnv("WINSCARD_SMARTCARD_CONTAINER_NAME", entry->value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "WinSCardSmartcardReaderName")) {
+            MsRdpEx_SetEnv("WINSCARD_SMARTCARD_READER_NAME", entry->value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "WinSCardSmartcardPin")) {
+            MsRdpEx_SetEnv("WINSCARD_SMARTCARD_PIN", entry->value);
+        }
     }
 
     MsRdpEx_ArrayListIt_Finish(it);
