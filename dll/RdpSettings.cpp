@@ -152,9 +152,10 @@ static HRESULT Hook_ITSPropertySet_SetSecureStringProperty(ITSPropertySet* This,
 {
     HRESULT hr;
 
-    char* propValueA = _com_util::ConvertBSTRToString((BSTR)propValue);
+    //char* propValueA = _com_util::ConvertBSTRToString((BSTR)propValue);
+    //MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetSecureStringProperty(%s, \"%s\")", propName, propValueA);
 
-    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetSecureStringProperty(%s, \"%s\")", propName, propValueA);
+    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetSecureStringProperty(%s, \"%s\")", propName, "*omitted*");
 
     hr = Real_ITSPropertySet_SetSecureStringProperty(This, propName, propValue);
 
