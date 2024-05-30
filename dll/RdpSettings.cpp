@@ -604,6 +604,13 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         pValue->intVal = (INT) m_MouseJigglerMethod;
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "MsRdpEx_SessionId")) {
+        pValue->vt = VT_BSTR;
+        char sessionId[MSRDPEX_GUID_STRING_SIZE];
+        MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, sessionId, 0);
+        pValue->bstrVal = _com_util::ConvertStringToBSTR(sessionId);
+        hr = S_OK;
+    }
     else {
         hr = m_pMsRdpExtendedSettings->get_Property(bstrPropertyName, pValue);
     }

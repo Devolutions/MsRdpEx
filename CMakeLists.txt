@@ -104,6 +104,7 @@ include_directories("${CMAKE_SOURCE_DIR}/com")
 if(WITH_NATIVE)
     add_subdirectory(dll)
     add_subdirectory(exe)
+    add_subdirectory(channels)
 endif()
 
 if(WITH_DOTNET)

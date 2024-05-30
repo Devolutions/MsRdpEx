@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 
 namespace MsRdpEx
 {
@@ -37,6 +38,11 @@ namespace MsRdpEx
         {
             return iface.GetShadowBitmap(ref phDC, ref phBitmap, ref pBitmapData,
                 ref pBitmapWidth, ref pBitmapHeight, ref pBitmapStep);
+        }
+
+        public object WTSPlugin
+        {
+            set { iface.SetWTSPluginObject(Marshal.GetIUnknownForObject(value)); }
         }
     }
 }
