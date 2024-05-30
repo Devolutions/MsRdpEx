@@ -61,6 +61,8 @@ set(MSRDPEX_SOURCES
     RdpProcess.cpp
     RdpInstance.cpp
     RdpSettings.cpp
+    RdpDvcClient.cpp
+    RdpDvcClient.h
     TSObjects.cpp
     TSObjects.h
     MsRdpEx.cpp

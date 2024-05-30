@@ -68,6 +68,7 @@ private:
     bool m_MouseJigglerEnabled = false;
     uint32_t m_MouseJigglerInterval = 60;
     uint32_t m_MouseJigglerMethod = 0;
+    IUnknown* m_pWTSPlugin = NULL;
 };
 
 #ifdef __cplusplus

@@ -439,13 +439,17 @@ namespace MsRdpEx_App
 
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
 
+            Guid sessionId = Guid.Empty;
+            RdpDvcPlugin wtsPlugin = new RdpDvcPlugin();
+
             if (axHookEnabled)
             {
                 RdpInstance rdpInstance = new RdpInstance((IMsRdpExInstance)rdp.GetOcx());
                 rdpInstance.OutputMirrorEnabled = false;
                 rdpInstance.VideoRecordingEnabled = false;
+                rdpInstance.WTSPlugin = wtsPlugin;
 
-                Guid sessionId = rdpInstance.SessionId;
+                sessionId = rdpInstance.SessionId;
                 Debug.WriteLine("SessionId: {0}", sessionId);
             }
 
@@ -462,6 +466,12 @@ namespace MsRdpEx_App
             rdp.DesktopHeight = DesktopSize.Height;
             rdpView.ClientSize = DesktopSize;
             rdpView.Text = String.Format("{0} ({1})", rdp.Server, axName);
+
+            // https://learn.microsoft.com/en-us/windows/win32/termserv/dvc-plug-in-registration
+            string pluginCLSID = "7009F103-4B7E-48E2-81BC-46AB3FC1B64C";
+            pluginCLSID = sessionId.ToString("D");
+            string pluginDlls = String.Format("{0}:{{{1}}}", rdpExDll, pluginCLSID);
+            rdp.AdvancedSettings.PluginDlls = pluginDlls;
 
             try {
                 object RequestUseNewOutputPresenter = true;

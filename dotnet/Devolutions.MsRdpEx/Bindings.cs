@@ -143,6 +143,10 @@ namespace MsRdpEx
 
         [MethodImpl(MethodImplOptions.PreserveSig)]
         void SetLastMousePosition(Int32 posX, Int32 posY);
+
+        void GetWTSPluginObject(out IntPtr plugin);
+
+        void SetWTSPluginObject(IntPtr plugin);
     }
 
     public static class Bindings

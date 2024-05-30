@@ -33,6 +33,8 @@ public:
     virtual void __stdcall UnlockShadowBitmap() = 0;
     virtual void __stdcall GetLastMousePosition(int32_t* posX, int32_t* posY) = 0;
     virtual void __stdcall SetLastMousePosition(int32_t posX, int32_t posY) = 0;
+    virtual HRESULT __stdcall GetWTSPluginObject(LPVOID* ppvObject) = 0;
+    virtual HRESULT __stdcall SetWTSPluginObject(LPVOID pvObject) = 0;
 };
 
 class CMsRdpExInstance;

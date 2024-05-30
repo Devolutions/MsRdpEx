@@ -5,10 +5,14 @@
 
 #include <MsRdpEx/Environment.h>
 
+#include <MsRdpEx/RdpInstance.h>
+
 #include <MsRdpEx/Detours.h>
 
 #include <stdarg.h>
 #include <comutil.h>
+
+#include "RdpDvcClient.h"
 
 static HMODULE g_hModule = NULL;
 
@@ -30,9 +34,19 @@ HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* p
     HRESULT hr = E_UNEXPECTED;
     char clsid[MSRDPEX_GUID_STRING_SIZE];
     char iid[MSRDPEX_GUID_STRING_SIZE];
+    const GUID* pclsid = reinterpret_cast<const GUID*>(&rclsid);
+    const GUID* piid = reinterpret_cast<const GUID*>(&riid);
 
-    MsRdpEx_GuidBinToStr((GUID*)&rclsid, clsid, 0);
-    MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
+    MsRdpEx_GuidBinToStr(pclsid, clsid, 0);
+    MsRdpEx_GuidBinToStr(piid, iid, 0);
+
+    CMsRdpExInstance* instance = MsRdpEx_InstanceManager_FindBySessionId((GUID*) pclsid);
+
+    if (instance) {
+        hr = DllGetClassObject_DvcPlugin(rclsid, riid, ppv, (void*) instance);
+        MsRdpEx_LogPrint(DEBUG, "DllGetClassObject_DvcPlugin(%s, %s) with instance %p, hr = 0x%08X", clsid, iid, hr, instance);
+        return hr;
+    }
 
     if (g_IsClientProcess) {
         if (g_IsOOBClient) {

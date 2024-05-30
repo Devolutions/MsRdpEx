@@ -243,6 +243,18 @@ public:
         m_LastMousePosY = posY;
     }
 
+    HRESULT STDMETHODCALLTYPE GetWTSPluginObject(LPVOID* ppvObject)
+    {
+        *ppvObject = m_WTSPlugin;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE SetWTSPluginObject(LPVOID pvObject)
+    {
+        m_WTSPlugin = (IUnknown*)pvObject;
+        return S_OK;
+    }
+
 public:
     GUID m_sessionId;
     ULONG m_refCount = NULL;
@@ -257,6 +269,7 @@ public:
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
     int32_t m_LastMousePosX = 0;
     int32_t m_LastMousePosY = 0;
+    IUnknown* m_WTSPlugin = NULL;
 };
 
 CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient)
