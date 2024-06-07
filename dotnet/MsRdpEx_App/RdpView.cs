@@ -33,6 +33,8 @@ namespace MsRdpEx_App
 
         private int disconnectReason = 0;
 
+        public RdpDvcPlugin wtsPlugin = new RdpDvcPlugin();
+
         public int DisconnectReason { get => disconnectReason; }
 
         public RdpView(string axName, string rdpExDll)
@@ -83,6 +85,7 @@ namespace MsRdpEx_App
         private const int SYSMENU_RDP_CONNECT_ID = 0x1;
         private const int SYSMENU_RDP_DISCONNECT_ID = 0x2;
         private const int SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID = 0x3;
+        private const int SYSMENU_RDP_LOGOFF_ID = 0x4;
 
         private IntPtr hSysMenu = IntPtr.Zero;
 
@@ -95,6 +98,7 @@ namespace MsRdpEx_App
             AppendMenu(this.hSysMenu, MF_STRING, SYSMENU_RDP_CONNECT_ID, "Connect");
             AppendMenu(this.hSysMenu, MF_STRING, SYSMENU_RDP_DISCONNECT_ID, "Disconnect");
             AppendMenu(this.hSysMenu, MF_STRING | MF_CHECKED, SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID, "Close on Disconnect");
+            AppendMenu(this.hSysMenu, MF_STRING, SYSMENU_RDP_LOGOFF_ID, "Logoff");
         }
 
         protected override void WndProc(ref Message m)
@@ -120,6 +124,14 @@ namespace MsRdpEx_App
                     case SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID:
                         this.closeOnDisconnect = this.closeOnDisconnect ? false : true;
                         CheckMenuItem(this.hSysMenu, SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID, this.closeOnDisconnect ? MF_CHECKED : MF_UNCHECKED);
+                        break;
+
+                    case SYSMENU_RDP_LOGOFF_ID:
+                        {
+                            RdpDvcListener listener = wtsPlugin.GetListener("DvcSample");
+                            RdpDvcClient client = listener.GetClient();
+                            client.SendLogoffMessage();
+                        }
                         break;
                 }
             }

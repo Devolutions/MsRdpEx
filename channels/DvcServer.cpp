@@ -4,6 +4,8 @@
 #include <crtdbg.h>
 #include <stdio.h>
 
+#include <stdint.h>
+
 DWORD OpenVirtualChannel(const char* channelName, HANDLE* phFile)
 {
     HANDLE hWTSHandle = NULL;
@@ -91,6 +93,31 @@ DWORD WriteVirtualChannelMessage(HANDLE hFile, ULONG cbSize, BYTE* pBuffer)
     return 0;
 }
 
+int HandleLogoffMessage()
+{
+    HANDLE hToken;
+    TOKEN_PRIVILEGES tkp;
+
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+        return 1;
+
+    LookupPrivilegeValue(NULL, SE_SHUTDOWN_NAME, &tkp.Privileges[0].Luid);
+
+    tkp.PrivilegeCount = 1;
+    tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+    AdjustTokenPrivileges(hToken, FALSE, &tkp, 0, (PTOKEN_PRIVILEGES)NULL, 0);
+
+    if (GetLastError() != ERROR_SUCCESS)
+        return 1;
+
+    if (!ExitWindowsEx(EWX_LOGOFF, 0)) {
+        return 1;
+    }
+
+    return 0;
+}
+
 DWORD HandleVirtualChannel(HANDLE hFile)
 {
     BYTE ReadBuffer[CHANNEL_PDU_LENGTH];
@@ -99,11 +126,6 @@ DWORD HandleVirtualChannel(HANDLE hFile)
     CHANNEL_PDU_HEADER* pHdr = (CHANNEL_PDU_HEADER*)ReadBuffer;
     BOOL bSuccess;
     HANDLE hEvent;
-
-    const char* cmd = "whoami";
-    ULONG cbSize = strlen(cmd) + 1;
-    BYTE* pBuffer = (BYTE*)cmd;
-    WriteVirtualChannelMessage(hFile, cbSize, pBuffer);
 
     hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 
@@ -131,13 +153,22 @@ DWORD HandleVirtualChannel(HANDLE hFile)
                 return error;
             }
 
-            printf("read %d bytes\n", dwRead);
-
-            ULONG packetSize = dwRead - sizeof(*pHdr);
+            ULONG packetSize = dwRead - sizeof(CHANNEL_PDU_HEADER);
             TotalRead += packetSize;
-            PBYTE pData = (PBYTE)(pHdr + 1);
+            BYTE* pData = (BYTE*)(pHdr + 1);
 
-            printf(">> %s\n", (const char*)pData);
+            printf("read %d packet bytes\n", packetSize);
+            
+            uint8_t msgFlags = pData[0];
+            uint8_t msgType = pData[1];
+            uint16_t msgSize = (pData[2] << 8) | pData[3];
+
+            printf("msgType: %d, msgFlags: %d, msgSize: %d\n", msgType, msgFlags, msgSize);
+
+            if (msgType == 13)
+            {
+                HandleLogoffMessage();
+            }
 
         } while (0 == (pHdr->flags & CHANNEL_FLAG_LAST));
 

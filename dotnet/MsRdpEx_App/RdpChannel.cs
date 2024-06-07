@@ -94,6 +94,27 @@ namespace MsRdpEx_App
         {
             OnChannelClose?.Invoke(this, EventArgs.Empty);
         }
+
+        public void SendLogoffMessage()
+        {
+            uint msgFlags = 0;
+            uint msgType = 13;
+            uint msgSize = 0;
+            byte[] buffer = new byte[4];
+            buffer[0] = (byte) msgFlags;
+            buffer[1] = (byte) msgType;
+            buffer[2] = (byte)(msgSize & 0xFF);
+            buffer[3] = (byte)((msgSize >> 8) & 0xFF);
+
+            unsafe
+            {
+                fixed (byte* pBuffer = buffer)
+                {
+                    IntPtr bufferIntPtr = (IntPtr)pBuffer;
+                    SendRawBuffer((uint)buffer.Length, bufferIntPtr);
+                }
+            }
+        }
     }
 
     public class RdpDvcListener : IWTSListenerCallback
@@ -109,6 +130,16 @@ namespace MsRdpEx_App
         {
             this.channelName = name;
             this.maxCount = maxCount;
+        }
+
+        public RdpDvcClient GetClient()
+        {
+            if (clients.Count >= 1)
+            {
+                return clients[0];
+            }
+
+            return null;
         }
 
         void IWTSListenerCallback.OnNewChannelConnection(IWTSVirtualChannel pChannel,
@@ -160,6 +191,15 @@ namespace MsRdpEx_App
         public event EventHandler OnTerminated;
 
         private Dictionary<string, RdpDvcListener> listeners = new Dictionary<string, RdpDvcListener>();
+
+        public RdpDvcListener GetListener(string channelName)
+        {
+            if (listeners.ContainsKey(channelName))
+            {
+                return listeners[channelName];
+            }
+            return null;
+        }
 
         void IWTSPlugin.Initialize(IWTSVirtualChannelManager pChannelMgr)
         {

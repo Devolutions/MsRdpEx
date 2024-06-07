@@ -440,14 +440,13 @@ namespace MsRdpEx_App
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
 
             Guid sessionId = Guid.Empty;
-            RdpDvcPlugin wtsPlugin = new RdpDvcPlugin();
 
             if (axHookEnabled)
             {
                 RdpInstance rdpInstance = new RdpInstance((IMsRdpExInstance)rdp.GetOcx());
                 rdpInstance.OutputMirrorEnabled = false;
                 rdpInstance.VideoRecordingEnabled = false;
-                rdpInstance.WTSPlugin = wtsPlugin;
+                rdpInstance.WTSPlugin = rdpView.wtsPlugin;
 
                 sessionId = rdpInstance.SessionId;
                 Debug.WriteLine("SessionId: {0}", sessionId);
