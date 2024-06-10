@@ -9,10 +9,10 @@
 
 #include <MsRdpEx/Detours.h>
 
+#include "RdpDvcClient.h"
+
 #include <stdarg.h>
 #include <comutil.h>
-
-#include "RdpDvcClient.h"
 
 static HMODULE g_hModule = NULL;
 
@@ -93,13 +93,13 @@ HRESULT STDAPICALLTYPE MsRdpEx_DllGetClassObject(REFCLSID rclsid, REFIID riid, L
     return DllGetClassObject(rclsid, riid, ppv);
 }
 
-HRESULT DllRegisterServer()
+HRESULT STDAPICALLTYPE DllRegisterServer()
 {
     MsRdpEx_LogPrint(DEBUG, "DllRegisterServer");
     return S_OK;
 }
 
-HRESULT DllUnregisterServer()
+HRESULT STDAPICALLTYPE DllUnregisterServer()
 {
     MsRdpEx_LogPrint(DEBUG, "DllUnregisterServer");
     return S_OK;

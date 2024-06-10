@@ -3,11 +3,6 @@
 
 #include "MsRdpEx.h"
 
-#include <comdef.h>
-#include <atlbase.h>
-#include <oleidl.h>
-#include <commctrl.h>
-
 #include <tsvirtualchannels.h>
 
 class CRdpDvcClient :
@@ -79,8 +74,6 @@ private:
     ULONG m_refCount = 0;
     IWTSVirtualChannel* m_pChannel = NULL;
 };
-
-extern "C" const GUID CLSID_IMsRdpExDVCPlugin;
 
 HRESULT STDAPICALLTYPE DllGetClassObject_DvcPlugin(REFCLSID rclsid, REFIID riid, LPVOID* ppv, void* instance);
 
