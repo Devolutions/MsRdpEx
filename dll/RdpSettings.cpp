@@ -803,6 +803,18 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
                 pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
             }
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "AutoReconnectEnabled")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "MaxReconnectAttempts")) {
+            if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR("MaxAutoReconnectAttempts");
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "ConnectToChildSession")) {
             if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
                 bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
