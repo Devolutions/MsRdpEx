@@ -461,6 +461,7 @@ namespace MsRdpEx_App
             IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)rdp.GetOcx();
             object boolValue = false;
             extendedSettings.set_Property("EnableHardwareMode", ref boolValue);
+            rdp.AdvancedSettings.allowBackgroundInput = 1;
             Size DesktopSize = new Size(1920, 1080);
             rdp.DesktopWidth = DesktopSize.Width;
             rdp.DesktopHeight = DesktopSize.Height;

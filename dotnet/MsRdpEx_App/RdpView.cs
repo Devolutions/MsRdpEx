@@ -83,6 +83,8 @@ namespace MsRdpEx_App
         private const int SYSMENU_RDP_CONNECT_ID = 0x1;
         private const int SYSMENU_RDP_DISCONNECT_ID = 0x2;
         private const int SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID = 0x3;
+        private const int SYSMENU_RDP_SEND_CTRL_ALT_DEL_ID = 0x4;
+        private const int SYSMENU_RDP_SEND_CTRL_ALT_END_ID = 0x5;
 
         private IntPtr hSysMenu = IntPtr.Zero;
 
@@ -95,6 +97,9 @@ namespace MsRdpEx_App
             AppendMenu(this.hSysMenu, MF_STRING, SYSMENU_RDP_CONNECT_ID, "Connect");
             AppendMenu(this.hSysMenu, MF_STRING, SYSMENU_RDP_DISCONNECT_ID, "Disconnect");
             AppendMenu(this.hSysMenu, MF_STRING | MF_CHECKED, SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID, "Close on Disconnect");
+            AppendMenu(this.hSysMenu, MF_SEPARATOR, 0, string.Empty);
+            AppendMenu(this.hSysMenu, MF_STRING, SYSMENU_RDP_SEND_CTRL_ALT_DEL_ID, "Send Ctrl+Alt+Del");
+            AppendMenu(this.hSysMenu, MF_STRING, SYSMENU_RDP_SEND_CTRL_ALT_END_ID, "Send Ctrl+Alt+End");
         }
 
         protected override void WndProc(ref Message m)
@@ -120,6 +125,20 @@ namespace MsRdpEx_App
                     case SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID:
                         this.closeOnDisconnect = this.closeOnDisconnect ? false : true;
                         CheckMenuItem(this.hSysMenu, SYSMENU_RDP_CLOSE_ON_DISCONNECT_ID, this.closeOnDisconnect ? MF_CHECKED : MF_UNCHECKED);
+                        break;
+
+                    case SYSMENU_RDP_SEND_CTRL_ALT_DEL_ID:
+                        {
+                            IntPtr hIHWindowClassWnd = GetInputHandlerHwnd();
+                            SendCtrlAltDel(hIHWindowClassWnd);
+                        }
+                        break;
+
+                    case SYSMENU_RDP_SEND_CTRL_ALT_END_ID:
+                        {
+                            IntPtr hIHWindowClassWnd = GetInputHandlerHwnd();
+                            SendCtrlAltEnd(hIHWindowClassWnd);
+                        }
                         break;
                 }
             }
@@ -150,6 +169,12 @@ namespace MsRdpEx_App
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr FindWindowEx(IntPtr hwndParent, IntPtr hwndChildAfter, string lpszClass, IntPtr lpszWindow);
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
         public IntPtr GetOutputPresenterHwnd()
         {
             IntPtr clientHandle = this.rdpClient.Handle;
@@ -176,6 +201,59 @@ namespace MsRdpEx_App
             //Debug.WriteLine("OPWindowClass: {0}", hOPWindowClassWnd);
 
             return hOPWindowClassWnd;
+        }
+
+        public IntPtr GetInputHandlerHwnd()
+        {
+            IntPtr clientHandle = this.rdpClient.Handle;
+
+            // UIMainClass ""
+            // UIContainerClass ""
+            // IHWindowClass "Input Capture Window"
+
+            IntPtr hUIMainClassWnd = FindWindowEx(clientHandle, IntPtr.Zero, "UIMainClass", IntPtr.Zero);
+            IntPtr hUIContainerClassWnd = FindWindowEx(hUIMainClassWnd, IntPtr.Zero, "UIContainerClass", IntPtr.Zero);
+            IntPtr hIHWindowClassWnd = FindWindowEx(hUIContainerClassWnd, IntPtr.Zero, "IHWindowClass", IntPtr.Zero);
+
+            if (hIHWindowClassWnd == IntPtr.Zero)
+                hIHWindowClassWnd = FindWindowEx(hUIContainerClassWnd, IntPtr.Zero, "IHWindowClass_mstscax", IntPtr.Zero);
+
+            if (hIHWindowClassWnd == IntPtr.Zero)
+                hIHWindowClassWnd = FindWindowEx(hUIContainerClassWnd, IntPtr.Zero, "IHWindowClass_rdclientax", IntPtr.Zero);
+
+            Debug.WriteLine("UIMainClass: {0}", hUIMainClassWnd);
+            Debug.WriteLine("UIContainerClass: {0}", hUIContainerClassWnd);
+            Debug.WriteLine("IHWindowClass: {0}", hIHWindowClassWnd);
+
+            return hIHWindowClassWnd;
+        }
+
+        const int WM_KEYDOWN = 0x0100;
+        const int WM_KEYUP = 0x0101;
+        const uint VK_CONTROL = 0x11;
+        const uint VK_MENU = 0x12;
+        const uint VK_DELETE = 0x2E;
+        const uint VK_END = 0x23;
+        const uint EXTENDED_KEY_FLAG = 0x01000000;
+
+        public static void SendCtrlAltDel(IntPtr hWnd)
+        {
+            SendMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_CONTROL, IntPtr.Zero);
+            SendMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_MENU, IntPtr.Zero);
+            SendMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_DELETE, IntPtr.Zero);
+            SendMessage(hWnd, WM_KEYUP, (IntPtr)VK_DELETE, IntPtr.Zero);
+            SendMessage(hWnd, WM_KEYUP, (IntPtr)VK_MENU, IntPtr.Zero);
+            SendMessage(hWnd, WM_KEYUP, (IntPtr)VK_CONTROL, IntPtr.Zero);
+        }
+
+        public static void SendCtrlAltEnd(IntPtr hWnd)
+        {
+            SendMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_CONTROL, IntPtr.Zero);
+            SendMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_MENU, IntPtr.Zero);
+            SendMessage(hWnd, WM_KEYDOWN, (IntPtr)VK_END, (IntPtr)EXTENDED_KEY_FLAG);
+            SendMessage(hWnd, WM_KEYUP, (IntPtr)VK_END, (IntPtr)EXTENDED_KEY_FLAG);
+            SendMessage(hWnd, WM_KEYUP, (IntPtr)VK_MENU, IntPtr.Zero);
+            SendMessage(hWnd, WM_KEYUP, (IntPtr)VK_CONTROL, IntPtr.Zero);
         }
 
         private Bitmap ShadowToBitmap(IntPtr hWnd, IntPtr hShadowDC, IntPtr hShadowBitmap, int shadowWidth, int shadowHeight, int captureWidth, int captureHeight)
