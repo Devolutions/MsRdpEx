@@ -499,6 +499,7 @@ public:
         m_pMsRdpExtendedSettings->LoadRdpFileFromNamedPipe(NULL);
         m_pMsRdpExtendedSettings->PrepareSspiSessionIdHack();
         m_pMsRdpExtendedSettings->PrepareMouseJiggler();
+        m_pMsRdpExtendedSettings->PrepareExtraSystemMenu();
 
         hr = m_pMsTscAx->raw_Connect();
 

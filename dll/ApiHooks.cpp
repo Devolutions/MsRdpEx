@@ -503,6 +503,38 @@ end:
     return status;
 }
 
+#define SYSMENU_RDP_RANGE_FIRST_ID               7100
+#define SYSMENU_RDP_SEND_CTRL_ALT_DEL_ID         7101
+#define SYSMENU_RDP_SEND_CTRL_ALT_END_ID         7102
+#define SYSMENU_RDP_RANGE_LAST_ID                7103
+
+static WNDPROC Real_TscShellContainerWndProc = NULL;
+
+LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    LRESULT result;
+
+    CMsRdpExInstance* instance = MsRdpEx_InstanceManager_FindByTscShellContainerWnd(hWnd);
+
+    result = Real_TscShellContainerWndProc(hWnd, uMsg, wParam, lParam);
+
+    if (instance)
+    {
+        HWND hInputCaptureWnd = 0;
+
+        ((IMsRdpExInstance*)instance)->GetInputWindow(&hInputCaptureWnd);
+
+        if ((uMsg == WM_SYSCOMMAND) && hInputCaptureWnd)
+        {
+            if ((wParam >= SYSMENU_RDP_RANGE_FIRST_ID) && (wParam <= SYSMENU_RDP_RANGE_LAST_ID)) {
+                SendMessage(hInputCaptureWnd, uMsg, wParam, lParam);
+            }
+        }
+    }
+
+    return result;
+}
+
 static WNDPROC Real_OPWndProc_mstscax = NULL;
 static WNDPROC Real_OPWndProc_rdclientax = NULL;
 
@@ -582,7 +614,12 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClass)
 
     MsRdpEx_LogPrint(DEBUG, "RegisterClassExW: %s", lpClassNameA);
 
-    if (MsRdpEx_StringEquals(lpClassNameA, "OPWindowClass")) {
+    if (MsRdpEx_StringEquals(lpClassNameA, "TscShellContainerClass")) {
+        Real_TscShellContainerWndProc = wndClass->lpfnWndProc;
+        wndClass->lpszClassName = L"TscShellContainerClass";
+        wndClass->lpfnWndProc = Hook_TscShellContainerWndProc;
+    }
+    else if (MsRdpEx_StringEquals(lpClassNameA, "OPWindowClass")) {
         if (MsRdpEx_IsAddressInRdclientAxModule(_ReturnAddress())) {
             Real_OPWndProc_rdclientax = wndClass->lpfnWndProc;
             wndClass->lpszClassName = L"OPWindowClass_rdclientax";
@@ -614,7 +651,7 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     IMsRdpExInstance* instance = NULL;
     CMsRdpExtendedSettings* pExtendedSettings = NULL;
 
-    //MsRdpEx_LogPrint(DEBUG, "IHWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
+    MsRdpEx_LogPrint(DEBUG, "IHWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
 
     if (uMsg == WM_NCCREATE)
     {
@@ -670,11 +707,58 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                 }
 
                 SetTimer(hWnd, timerEventId, mouseJigglerInterval * 1000, NULL);
+
+                if (pExtendedSettings->GetExtraSystemMenuEnabled())
+                {
+                    char className[256];
+                    HWND hParentWnd = GetAncestor(hWnd, GA_ROOT);
+                    GetClassNameA(hParentWnd, className, sizeof(className) - 1);
+
+                    if (MsRdpEx_StringEquals(className, "TscShellContainerClass"))
+                    {
+                        MsRdpEx_LogPrint(DEBUG, "Ancestor: %s hWnd: %p", className, hParentWnd);
+
+                        HMENU hSystemMenu = GetSystemMenu(hParentWnd, FALSE);
+                        HMENU hExtraMenu = CreateMenu();
+                        AppendMenu(hExtraMenu, MF_STRING, SYSMENU_RDP_SEND_CTRL_ALT_DEL_ID, L"Send Ctrl+Alt+Del");
+                        AppendMenu(hExtraMenu, MF_STRING, SYSMENU_RDP_SEND_CTRL_ALT_END_ID, L"Send Ctrl+Alt+End");
+
+                        AppendMenu(hSystemMenu, MF_SEPARATOR, 0, NULL);
+                        AppendMenu(hSystemMenu, MF_POPUP, (UINT_PTR)hExtraMenu, L"Extra");
+
+                        instance->AttachTscShellContainerWindow(hParentWnd);
+                    }
+                }
             }
         }
         else
         {
             MsRdpEx_LogPrint(DEBUG, "Failed to attach input window! hWnd: %p pUserData: %p", hWnd, pUserData);
+        }
+    }
+    else if (uMsg == WM_SYSCOMMAND)
+    {
+        switch (wParam)
+        {
+            case SYSMENU_RDP_SEND_CTRL_ALT_DEL_ID:
+                MsRdpEx_LogPrint(DEBUG, "Send Ctrl+Alt+Del");
+                SendMessage(hWnd, WM_KEYDOWN, (WPARAM)VK_CONTROL, (LPARAM)0x0);
+                SendMessage(hWnd, WM_KEYDOWN, (WPARAM)VK_MENU, (LPARAM)0x0);
+                SendMessage(hWnd, WM_KEYDOWN, (WPARAM)VK_DELETE, (LPARAM)0x0);
+                SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_DELETE, (LPARAM)0x0);
+                SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_MENU, (LPARAM)0x0);
+                SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_CONTROL, (LPARAM)0x0);
+                break;
+
+            case SYSMENU_RDP_SEND_CTRL_ALT_END_ID:
+                MsRdpEx_LogPrint(DEBUG, "Send Ctrl+Alt+End");
+                SendMessage(hWnd, WM_KEYDOWN, (WPARAM)VK_CONTROL, (LPARAM)0x0);
+                SendMessage(hWnd, WM_KEYDOWN, (WPARAM)VK_MENU, (LPARAM)0x0);
+                SendMessage(hWnd, WM_KEYDOWN, (WPARAM)VK_END, (LPARAM)0x01000000);
+                SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_END, (LPARAM)0x01000000);
+                SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_MENU, (LPARAM)0x0);
+                SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_CONTROL, (LPARAM)0x0);
+                break;
         }
     }
     else if (uMsg == WM_TIMER)

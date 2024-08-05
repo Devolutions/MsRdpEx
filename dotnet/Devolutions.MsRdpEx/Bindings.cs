@@ -119,7 +119,15 @@ namespace MsRdpEx
 
         void AttachInputWindow(IntPtr hInputWnd, IntPtr pUserData);
 
+        void GetInputWindow(out IntPtr phInputWnd);
+
         void AttachOutputWindow(IntPtr hOutputWnd, IntPtr pUserData);
+
+        void GetOutputWindow(out IntPtr phOutputWnd);
+
+        void AttachTscShellContainerWindow(IntPtr hTscShellContainerWnd);
+
+        void GetTscShellContainerWindow(out IntPtr phTscShellContainerWnd);
 
         void AttachExtendedSettings(IntPtr pExtendedSettings);
 

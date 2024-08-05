@@ -1036,6 +1036,28 @@ HRESULT CMsRdpExtendedSettings::PrepareMouseJiggler()
     return hr;
 }
 
+HRESULT CMsRdpExtendedSettings::PrepareExtraSystemMenu()
+{
+    HRESULT hr = S_OK;
+    VARIANT allowBackgroundInput;
+    bstr_t allowBackgroundInputName = _com_util::ConvertStringToBSTR("AllowBackgroundInput");
+
+    if (!m_BaseProps) {
+        MsRdpEx_LogPrint(ERROR, "PrepareExtraSystemMenu - m_BaseProps is NULL!");
+        return E_UNEXPECTED;
+    }
+
+    VariantInit(&allowBackgroundInput);
+    hr = this->get_BaseProperty(allowBackgroundInputName, &allowBackgroundInput);
+
+    if (m_ExtraSystemMenuEnabled) {
+        allowBackgroundInput.boolVal = VARIANT_TRUE;
+        m_BaseProps->put_Property(allowBackgroundInputName, &allowBackgroundInput);
+    }
+
+    return hr;
+}
+
 char* CMsRdpExtendedSettings::GetKdcProxyUrl()
 {
     if (m_KdcProxyUrl)
@@ -1062,6 +1084,11 @@ uint32_t CMsRdpExtendedSettings::GetMouseJigglerInterval()
 uint32_t CMsRdpExtendedSettings::GetMouseJigglerMethod()
 {
     return m_MouseJigglerMethod;
+}
+
+bool CMsRdpExtendedSettings::GetExtraSystemMenuEnabled()
+{
+    return m_ExtraSystemMenuEnabled;
 }
 
 CMsRdpExtendedSettings* CMsRdpExtendedSettings_New(IUnknown* pUnknown, IUnknown* pMsTscAx, GUID* pSessionId)

@@ -180,9 +180,33 @@ public:
         return S_OK;
     }
 
+    HRESULT STDMETHODCALLTYPE GetInputWindow(HWND* phInputCaptureWnd)
+    {
+        *phInputCaptureWnd = m_hInputCaptureWnd;
+        return S_OK;
+    }
+
     HRESULT STDMETHODCALLTYPE AttachOutputWindow(HWND hOutputWnd, void* pUserData)
     {
         m_hOutputPresenterWnd = hOutputWnd;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetOutputWindow(HWND* phOutputPresenterWnd)
+    {
+        *phOutputPresenterWnd = m_hOutputPresenterWnd;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE AttachTscShellContainerWindow(HWND hTscShellContainerWnd)
+    {
+        m_hTscShellContainerWnd = hTscShellContainerWnd;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetTscShellContainerWindow(HWND* phTscShellContainerWnd)
+    {
+        *phTscShellContainerWnd = m_hTscShellContainerWnd;
         return S_OK;
     }
 
@@ -264,6 +288,7 @@ public:
     CMsRdpClient* m_pMsRdpClient = NULL;
     HWND m_hInputCaptureWnd = NULL;
     HWND m_hOutputPresenterWnd = NULL;
+    HWND m_hTscShellContainerWnd = NULL;
     MsRdpEx_OutputMirror* m_OutputMirror = NULL;
     ITSPropertySet* m_pCorePropsRaw = NULL;
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
@@ -505,6 +530,34 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachInputWindow(HWND hInputWnd, void
     if (found) {
         obj->AttachInputWindow(hInputWnd, pUserData);
     }
+
+    return found ? obj : NULL;
+}
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_FindByTscShellContainerWnd(HWND hWnd)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx)
+        return NULL;
+
+    bool found = false;
+    CMsRdpExInstance* obj = NULL;
+    MsRdpEx_ArrayListIt* it = NULL;
+
+    it = MsRdpEx_ArrayList_It(ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        obj = (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+
+        found = (obj->m_hTscShellContainerWnd == hWnd) ? true : false;
+
+        if (found)
+            break;
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
 
     return found ? obj : NULL;
 }
