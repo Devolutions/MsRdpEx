@@ -46,11 +46,13 @@ public:
     HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw);
     HRESULT __stdcall PrepareSspiSessionIdHack();
     HRESULT __stdcall PrepareMouseJiggler();
+    HRESULT __stdcall PrepareExtraSystemMenu();
     char* __stdcall GetKdcProxyUrl();
     char* __stdcall GetKdcProxyName();
     bool GetMouseJigglerEnabled();
     uint32_t GetMouseJigglerInterval();
     uint32_t GetMouseJigglerMethod();
+    bool GetExtraSystemMenuEnabled();
 
 private:
     GUID m_sessionId;
@@ -68,6 +70,7 @@ private:
     bool m_MouseJigglerEnabled = false;
     uint32_t m_MouseJigglerInterval = 60;
     uint32_t m_MouseJigglerMethod = 0;
+    bool m_ExtraSystemMenuEnabled = true;
     IUnknown* m_pWTSPlugin = NULL;
 };
 

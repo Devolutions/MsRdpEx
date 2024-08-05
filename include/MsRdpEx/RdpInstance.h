@@ -24,7 +24,11 @@ public:
     virtual HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw) = 0;
     virtual HRESULT __stdcall SetCorePropsRawPtr(LPVOID pCorePropsRaw) = 0;
     virtual HRESULT __stdcall AttachInputWindow(HWND hOutputWnd, void* pUserData) = 0;
+    virtual HRESULT __stdcall GetInputWindow(HWND* phInputCaptureWnd) = 0;
     virtual HRESULT __stdcall AttachOutputWindow(HWND hOutputWnd, void* pUserData) = 0;
+    virtual HRESULT __stdcall GetOutputWindow(HWND* phOutputPresenterWnd) = 0;
+    virtual HRESULT __stdcall AttachTscShellContainerWindow(HWND hTscShellContainerWnd) = 0;
+    virtual HRESULT __stdcall GetTscShellContainerWindow(HWND* phTscShellContainerWnd) = 0;
     virtual HRESULT __stdcall AttachExtendedSettings(CMsRdpExtendedSettings* pExtendedSettings) = 0;
     virtual bool __stdcall GetExtendedSettings(CMsRdpExtendedSettings** ppExtendedSettings) = 0;
     virtual bool __stdcall GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint8_t** pBitmapData,
@@ -56,6 +60,8 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, vo
 CMsRdpExInstance* MsRdpEx_InstanceManager_FindByInputCaptureHwnd(HWND hWnd);
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_AttachInputWindow(HWND hInputWnd, void* pUserData);
+
+CMsRdpExInstance* MsRdpEx_InstanceManager_FindByTscShellContainerWnd(HWND hWnd);
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_FindBySessionId(GUID* sessionId);
 
