@@ -506,7 +506,8 @@ end:
 #define SYSMENU_RDP_RANGE_FIRST_ID               7100
 #define SYSMENU_RDP_SEND_CTRL_ALT_DEL_ID         7101
 #define SYSMENU_RDP_SEND_CTRL_ALT_END_ID         7102
-#define SYSMENU_RDP_RANGE_LAST_ID                7103
+#define SYSMENU_RDP_SYNC_DISPLAY_SETTINGS_ID     7103
+#define SYSMENU_RDP_RANGE_LAST_ID                7104
 
 static WNDPROC Real_TscShellContainerWndProc = NULL;
 
@@ -519,6 +520,14 @@ LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wPar
     //MsRdpEx_LogPrint(DEBUG, "TscShellContainerWnd: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
 
     result = Real_TscShellContainerWndProc(hWnd, uMsg, wParam, lParam);
+
+    if (uMsg == WM_GETMINMAXINFO)
+    {
+        MINMAXINFO* pMinMaxInfo = (MINMAXINFO*)lParam;
+        MsRdpEx_LogPrint(DEBUG, "MinMaxInfo: MaxPos: %dx%d, MaxSize: %dx%d",
+            pMinMaxInfo->ptMaxPosition.x, pMinMaxInfo->ptMaxPosition.y,
+            pMinMaxInfo->ptMaxSize.x, pMinMaxInfo->ptMaxSize.y);
+    }
 
     if (instance)
     {
@@ -724,6 +733,7 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                         HMENU hExtraMenu = CreateMenu();
                         AppendMenu(hExtraMenu, MF_STRING, SYSMENU_RDP_SEND_CTRL_ALT_DEL_ID, L"Send Ctrl+Alt+Del");
                         AppendMenu(hExtraMenu, MF_STRING, SYSMENU_RDP_SEND_CTRL_ALT_END_ID, L"Send Ctrl+Alt+End");
+                        AppendMenu(hExtraMenu, MF_STRING, SYSMENU_RDP_SYNC_DISPLAY_SETTINGS_ID, L"Sync Display Settings");
 
                         AppendMenu(hSystemMenu, MF_SEPARATOR, 0, NULL);
                         AppendMenu(hSystemMenu, MF_POPUP, (UINT_PTR)hExtraMenu, L"Extra");
@@ -760,6 +770,35 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                 SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_END, (LPARAM)0x01000000);
                 SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_MENU, (LPARAM)0x0);
                 SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_CONTROL, (LPARAM)0x0);
+                break;
+
+            case SYSMENU_RDP_SYNC_DISPLAY_SETTINGS_ID:
+                IUnknown* pUnknown = NULL;
+                IMsRdpClient9* pMsRdpClient9 = NULL;
+                instance->GetRdpClient((LPVOID*)&pUnknown);
+                pUnknown->QueryInterface(IID_IMsRdpClient9, (LPVOID*)&pMsRdpClient9);
+
+                RECT clientRect;
+                HWND hContainerWnd = NULL;
+                instance->GetTscShellContainerWindow(&hContainerWnd);
+                GetClientRect(hContainerWnd, &clientRect);
+
+                ULONG ulDesktopWidth = clientRect.right - clientRect.left;
+                ULONG ulDesktopHeight = clientRect.bottom - clientRect.top;
+                ULONG ulPhysicalWidth = ulDesktopWidth;
+                ULONG ulPhysicalHeight = ulDesktopHeight;
+                ULONG ulOrientation = 0;
+                ULONG ulDesktopScaleFactor = 100;
+                ULONG ulDeviceScaleFactor = 100;
+
+                pMsRdpClient9->UpdateSessionDisplaySettings(
+                    ulDesktopWidth,
+                    ulDesktopHeight,
+                    ulPhysicalWidth,
+                    ulPhysicalHeight,
+                    ulOrientation,
+                    ulDesktopScaleFactor,
+                    ulDeviceScaleFactor);
                 break;
         }
     }
