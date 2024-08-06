@@ -516,6 +516,8 @@ LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
     CMsRdpExInstance* instance = MsRdpEx_InstanceManager_FindByTscShellContainerWnd(hWnd);
 
+    //MsRdpEx_LogPrint(DEBUG, "TscShellContainerWnd: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
+
     result = Real_TscShellContainerWndProc(hWnd, uMsg, wParam, lParam);
 
     if (instance)
@@ -724,7 +726,7 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                         AppendMenu(hExtraMenu, MF_STRING, SYSMENU_RDP_SEND_CTRL_ALT_END_ID, L"Send Ctrl+Alt+End");
 
                         AppendMenu(hSystemMenu, MF_SEPARATOR, 0, NULL);
-                        AppendMenu(hSystemMenu, MF_POPUP, (UINT_PTR)hExtraMenu, L"Extra");
+                        AppendMenu(hSystemMenu, MF_POPUP, (::UINT_PTR)hExtraMenu, L"Extra");
 
                         instance->AttachTscShellContainerWindow(hParentWnd);
                     }
@@ -1245,6 +1247,41 @@ LSTATUS Hook_RegCloseKey(HKEY hKey)
     return lstatus;
 }
 
+typedef BOOL(WINAPI* Func_DeleteMenu)(HMENU hMenu, UINT uPosition, UINT uFlags);
+
+static Func_DeleteMenu Real_DeleteMenu = DeleteMenu;
+
+BOOL Hook_DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags)
+{
+    BOOL success = TRUE;
+    BOOL skipDelete = FALSE;
+
+    if (!(uFlags & MF_BYPOSITION) && MsRdpEx_IsAddressInRdpExeModule(_ReturnAddress()))
+    {
+        MENUITEMINFOA mii = { 0 };
+        mii.cbSize = sizeof(MENUITEMINFOA);
+        mii.fMask = MIIM_ID | MIIM_STRING;
+        char itemName[256] = { 0 };
+        mii.dwTypeData = itemName;
+        mii.cch = sizeof(itemName);
+
+        if (GetMenuItemInfoA(hMenu, uPosition, FALSE, &mii))
+        {
+            if ((mii.wID == 0) && (mii.cch == 0)) {
+                MsRdpEx_LogPrint(DEBUG, "DeleteMenu hMenu: %p uPosition: 0x%04X uFlags 0x%04X", hMenu, uPosition, uFlags);
+                MsRdpEx_LogPrint(DEBUG, "Skipping deletion of menu item ID: 0x%04X, name: %s, cch: %d", mii.wID, itemName, mii.cch);
+                skipDelete = TRUE; // work around bug where separator menu items are deleted by CContainerWnd::SyncClipboardMenu()
+            }
+        }
+    }
+
+    if (!skipDelete) {
+        success = Real_DeleteMenu(hMenu, uPosition, uFlags);
+    }
+
+    return success;
+}
+
 bool MsRdpEx_IsAddressInModule(PVOID pAddress, LPCTSTR pszModule)
 {
     bool result;
@@ -1294,6 +1331,12 @@ bool MsRdpEx_IsAddressInMstscAxModule(PVOID pAddress)
 bool MsRdpEx_IsAddressInRdclientAxModule(PVOID pAddress)
 {
     return MsRdpEx_IsAddressInModule(pAddress, L"rdclientax.dll");
+}
+
+bool MsRdpEx_IsAddressInRdpExeModule(PVOID pAddress)
+{
+    return MsRdpEx_IsAddressInModule(pAddress, L"mstsc.exe") ||
+        MsRdpEx_IsAddressInModule(pAddress, L"msrdc.exe");
 }
 
 void MsRdpEx_GlobalInit()
@@ -1368,6 +1411,8 @@ LONG MsRdpEx_AttachHooks()
     //MSRDPEX_DETOUR_ATTACH(Real_RegOpenKeyExW, Hook_RegOpenKeyExW);
     //MSRDPEX_DETOUR_ATTACH(Real_RegQueryValueExW, Hook_RegQueryValueExW);
     //MSRDPEX_DETOUR_ATTACH(Real_RegCloseKey, Hook_RegCloseKey);
+
+    MSRDPEX_DETOUR_ATTACH(Real_DeleteMenu, Hook_DeleteMenu);
     
     MsRdpEx_AttachSspiHooks();
     error = DetourTransactionCommit();
@@ -1425,6 +1470,8 @@ LONG MsRdpEx_DetachHooks()
     //MSRDPEX_DETOUR_DETACH(Real_RegOpenKeyExW, Hook_RegOpenKeyExW);
     //MSRDPEX_DETOUR_DETACH(Real_RegQueryValueExW, Hook_RegQueryValueExW);
     //MSRDPEX_DETOUR_DETACH(Real_RegCloseKey, Hook_RegCloseKey);
+
+    MSRDPEX_DETOUR_DETACH(Real_DeleteMenu, Hook_DeleteMenu);
     
     MsRdpEx_DetachSspiHooks();
     error = DetourTransactionCommit();
