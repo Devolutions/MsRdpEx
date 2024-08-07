@@ -506,7 +506,9 @@ end:
 #define SYSMENU_RDP_RANGE_FIRST_ID               7100
 #define SYSMENU_RDP_SEND_CTRL_ALT_DEL_ID         7101
 #define SYSMENU_RDP_SEND_CTRL_ALT_END_ID         7102
-#define SYSMENU_RDP_RANGE_LAST_ID                7103
+#define SYSMENU_RDP_RESIZE_TO_FIT_WINDOW_ID      7103
+#define SYSMENU_RDP_MAXIMIZE_AND_RESIZE_ID       7104
+#define SYSMENU_RDP_RANGE_LAST_ID                7105
 
 static WNDPROC Real_TscShellContainerWndProc = NULL;
 
@@ -514,7 +516,7 @@ static HWND g_hTscShellContainerWnd = NULL;
 
 LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    LRESULT result;
+    LRESULT result = 0;
 
     CMsRdpExInstance* instance = MsRdpEx_InstanceManager_FindByTscShellContainerWnd(hWnd);
 
@@ -523,7 +525,55 @@ LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wPar
     if (uMsg == WM_COMMAND)
         uMsg = WM_SYSCOMMAND; // TrackPopupMenu sends WM_COMMAND instead of WM_SYSCOMMAND
 
-    result = Real_TscShellContainerWndProc(hWnd, uMsg, wParam, lParam);
+    int windowPosX = 0;
+    int windowPosY = 0;
+    int windowPosCx = 0;
+    int windowPosCy = 0;
+
+    if (uMsg == WM_GETMINMAXINFO)
+    {
+        MINMAXINFO* pMinMaxInfo = (MINMAXINFO*) lParam;
+
+        MsRdpEx_LogPrint(DEBUG, "MinMaxInfo1: MinTrackSize: %dx%d, MaxPosition: %dx%d, MaxTrackSize: %dx%d",
+            pMinMaxInfo->ptMinTrackSize.x, pMinMaxInfo->ptMinTrackSize.y,
+            pMinMaxInfo->ptMaxPosition.x, pMinMaxInfo->ptMaxPosition.y,
+            pMinMaxInfo->ptMaxTrackSize.x, pMinMaxInfo->ptMaxTrackSize.y);
+    }
+    else if (uMsg == WM_WINDOWPOSCHANGING)
+    {
+        WINDOWPOS* pWindowPos = (WINDOWPOS*)lParam;
+        MsRdpEx_LogPrint(DEBUG, "WindowPosChanging1: x: %d y: %d cx: %d cy: %d flags: 0x%04X",
+            pWindowPos->x, pWindowPos->y, pWindowPos->cx, pWindowPos->cy, pWindowPos->flags);
+
+        windowPosX = pWindowPos->x;
+        windowPosY = pWindowPos->y;
+        windowPosCx = pWindowPos->cx;
+        windowPosCy = pWindowPos->cy;
+    }
+
+    if ((uMsg != WM_GETMINMAXINFO))
+        result = Real_TscShellContainerWndProc(hWnd, uMsg, wParam, lParam);
+
+    if (uMsg == WM_GETMINMAXINFO)
+    {
+        MINMAXINFO* pMinMaxInfo = (MINMAXINFO*)lParam;
+
+        MsRdpEx_LogPrint(DEBUG, "MinMaxInfo2: MinTrackSize: %dx%d, MaxPosition: %dx%d, MaxTrackSize: %dx%d",
+            pMinMaxInfo->ptMinTrackSize.x, pMinMaxInfo->ptMinTrackSize.y,
+            pMinMaxInfo->ptMaxPosition.x, pMinMaxInfo->ptMaxPosition.y,
+            pMinMaxInfo->ptMaxTrackSize.x, pMinMaxInfo->ptMaxTrackSize.y);
+    }
+    else if (uMsg == WM_WINDOWPOSCHANGING)
+    {
+        WINDOWPOS* pWindowPos = (WINDOWPOS*)lParam;
+        MsRdpEx_LogPrint(DEBUG, "WindowPosChanging2: x: %d y: %d cx: %d cy: %d flags: 0x%04X",
+            pWindowPos->x, pWindowPos->y, pWindowPos->cx, pWindowPos->cy, pWindowPos->flags);
+
+        pWindowPos->x = windowPosX;
+        pWindowPos->y = windowPosY;
+        pWindowPos->cx = windowPosCx;
+        pWindowPos->cy = windowPosCy;
+    }
 
     if (uMsg == WM_NCCREATE)
     {
@@ -766,6 +816,8 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                         HMENU hExtraMenu = CreateMenu();
                         AppendMenu(hExtraMenu, MF_STRING, SYSMENU_RDP_SEND_CTRL_ALT_DEL_ID, L"Send Ctrl+Alt+Del");
                         AppendMenu(hExtraMenu, MF_STRING, SYSMENU_RDP_SEND_CTRL_ALT_END_ID, L"Send Ctrl+Alt+End");
+                        AppendMenu(hExtraMenu, MF_STRING, SYSMENU_RDP_RESIZE_TO_FIT_WINDOW_ID, L"Resize to fit window");
+                        AppendMenu(hExtraMenu, MF_STRING, SYSMENU_RDP_MAXIMIZE_AND_RESIZE_ID, L"Maximize and resize");
 
                         AppendMenu(hSystemMenu, MF_SEPARATOR, 0, NULL);
                         AppendMenu(hSystemMenu, MF_POPUP, (::UINT_PTR)hExtraMenu, L"Extra");
@@ -804,6 +856,107 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                 SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_END, (LPARAM)0x01000000);
                 SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_MENU, (LPARAM)0x0);
                 SendMessage(hWnd, WM_KEYUP, (WPARAM)VK_CONTROL, (LPARAM)0x0);
+                break;
+
+            case SYSMENU_RDP_RESIZE_TO_FIT_WINDOW_ID:
+                MsRdpEx_LogPrint(DEBUG, "Resize to fit window");
+                {
+                    IUnknown* pUnknown = NULL;
+                    IMsRdpClient9* pMsRdpClient9 = NULL;
+                    instance->GetRdpClient((LPVOID*)&pUnknown);
+                    pUnknown->QueryInterface(IID_IMsRdpClient9, (LPVOID*)&pMsRdpClient9);
+
+                    RECT clientRect;
+                    RECT windowRect;
+                    HWND hContainerWnd = NULL;
+                    instance->GetTscShellContainerWindow(&hContainerWnd);
+
+                    //ShowScrollBar(hContainerWnd, SB_BOTH, FALSE);
+                    GetWindowRect(hContainerWnd, &windowRect);
+                    GetClientRect(hContainerWnd, &clientRect);
+
+                    int windowWidth = windowRect.right - windowRect.left;
+                    int windowHeight = windowRect.bottom - windowRect.top;
+                    int clientWidth = clientRect.right - clientRect.left;
+                    int clientHeight = clientRect.bottom - clientRect.top;
+                    int borderWidth = windowWidth - clientWidth;
+                    int borderHeight = windowHeight - clientHeight;
+
+                    MsRdpEx_LogPrint(DEBUG, "borderWidth: %d borderHeight: %d", borderWidth, borderHeight);
+
+                    ULONG ulDesktopWidth = clientWidth;
+                    ULONG ulDesktopHeight = clientHeight - borderHeight;
+                    ULONG ulPhysicalWidth = ulDesktopWidth;
+                    ULONG ulPhysicalHeight = ulDesktopHeight;
+                    ULONG ulOrientation = 0;
+                    ULONG ulDesktopScaleFactor = 100;
+                    ULONG ulDeviceScaleFactor = 100;
+
+                    MsRdpEx_LogPrint(DEBUG, "ulDesktopWidth: %d ulDesktopHeight: %d", ulDesktopWidth, ulDesktopHeight);
+
+                    pMsRdpClient9->UpdateSessionDisplaySettings(
+                        ulDesktopWidth,
+                        ulDesktopHeight,
+                        ulPhysicalWidth,
+                        ulPhysicalHeight,
+                        ulOrientation,
+                        ulDesktopScaleFactor,
+                        ulDeviceScaleFactor);
+                }
+                break;
+
+            case SYSMENU_RDP_MAXIMIZE_AND_RESIZE_ID:
+                MsRdpEx_LogPrint(DEBUG, "Resize to fit window");
+                {
+                    IUnknown* pUnknown = NULL;
+                    IMsRdpClient9* pMsRdpClient9 = NULL;
+                    instance->GetRdpClient((LPVOID*)&pUnknown);
+                    pUnknown->QueryInterface(IID_IMsRdpClient9, (LPVOID*)&pMsRdpClient9);
+
+                    RECT clientRect;
+                    HWND hContainerWnd = NULL;
+                    instance->GetTscShellContainerWindow(&hContainerWnd);
+
+                    HMONITOR hMonitor = MonitorFromWindow(hContainerWnd, MONITOR_DEFAULTTONEAREST);
+
+                    RECT workArea;
+                    MONITORINFO monitorInfo;
+                    monitorInfo.cbSize = sizeof(MONITORINFO);
+
+                    // Get monitor information
+                    if (GetMonitorInfo(hMonitor, &monitorInfo))
+                    {
+                        workArea = monitorInfo.rcWork; // Work area excluding taskbar
+                    }
+                    else
+                    {
+                        // Fallback to the primary monitor work area
+                        SystemParametersInfo(SPI_GETWORKAREA, 0, &workArea, 0);
+                    }
+                    ShowScrollBar(hContainerWnd, SB_BOTH, FALSE);
+                    ShowWindow(hContainerWnd, SW_MAXIMIZE);
+                    SetWindowPos(hContainerWnd, NULL, workArea.left, workArea.top, workArea.right - workArea.left, workArea.bottom - workArea.top, SWP_FRAMECHANGED);
+
+                    clientRect = workArea;
+                    GetClientRect(hContainerWnd, &clientRect);
+
+                    ULONG ulDesktopWidth = (clientRect.right - clientRect.left);
+                    ULONG ulDesktopHeight = (clientRect.bottom - clientRect.top);
+                    ULONG ulPhysicalWidth = ulDesktopWidth;
+                    ULONG ulPhysicalHeight = ulDesktopHeight;
+                    ULONG ulOrientation = 0;
+                    ULONG ulDesktopScaleFactor = 100;
+                    ULONG ulDeviceScaleFactor = 100;
+
+                    pMsRdpClient9->UpdateSessionDisplaySettings(
+                        ulDesktopWidth,
+                        ulDesktopHeight,
+                        ulPhysicalWidth,
+                        ulPhysicalHeight,
+                        ulOrientation,
+                        ulDesktopScaleFactor,
+                        ulDeviceScaleFactor);
+                }
                 break;
         }
     }
