@@ -510,6 +510,8 @@ end:
 
 static WNDPROC Real_TscShellContainerWndProc = NULL;
 
+static HWND g_hTscShellContainerWnd = NULL;
+
 LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT result;
@@ -518,7 +520,15 @@ LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
     //MsRdpEx_LogPrint(DEBUG, "TscShellContainerWnd: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
 
+    if (uMsg == WM_COMMAND)
+        uMsg = WM_SYSCOMMAND; // TrackPopupMenu sends WM_COMMAND instead of WM_SYSCOMMAND
+
     result = Real_TscShellContainerWndProc(hWnd, uMsg, wParam, lParam);
+
+    if (uMsg == WM_NCCREATE)
+    {
+        g_hTscShellContainerWnd = hWnd;
+    }
 
     if (instance)
     {
@@ -526,11 +536,40 @@ LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wPar
 
         ((IMsRdpExInstance*)instance)->GetInputWindow(&hInputCaptureWnd);
 
-        if ((uMsg == WM_SYSCOMMAND) && hInputCaptureWnd)
+        if (hInputCaptureWnd)
         {
-            if ((wParam >= SYSMENU_RDP_RANGE_FIRST_ID) && (wParam <= SYSMENU_RDP_RANGE_LAST_ID)) {
-                SendMessage(hInputCaptureWnd, uMsg, wParam, lParam);
+            if (uMsg == WM_SYSCOMMAND)
+            {
+                if ((wParam >= SYSMENU_RDP_RANGE_FIRST_ID) && (wParam <= SYSMENU_RDP_RANGE_LAST_ID)) {
+                    SendMessage(hInputCaptureWnd, WM_SYSCOMMAND, wParam, lParam);
+                }
             }
+        }
+    }
+
+    return result;
+}
+
+static WNDPROC Real_BBarWndProc = NULL;
+
+static HMENU g_hExtraMenu = NULL;
+
+LRESULT CALLBACK Hook_BBarWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    LRESULT result;
+
+    //MsRdpEx_LogPrint(DEBUG, "BBarWnd: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
+
+    result = Real_BBarWndProc(hWnd, uMsg, wParam, lParam);
+
+    if (uMsg == WM_CONTEXTMENU)
+    {
+        if (g_hExtraMenu && g_hTscShellContainerWnd)
+        {
+            int xPos = GET_X_LPARAM(lParam);
+            int yPos = GET_Y_LPARAM(lParam);
+            HMENU hSystemMenu = GetSystemMenu(g_hTscShellContainerWnd, FALSE);
+            TrackPopupMenu(hSystemMenu, TPM_RIGHTBUTTON, xPos, yPos, 0, g_hTscShellContainerWnd, NULL);
         }
     }
 
@@ -618,8 +657,11 @@ ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClass)
 
     if (MsRdpEx_StringEquals(lpClassNameA, "TscShellContainerClass")) {
         Real_TscShellContainerWndProc = wndClass->lpfnWndProc;
-        wndClass->lpszClassName = L"TscShellContainerClass";
         wndClass->lpfnWndProc = Hook_TscShellContainerWndProc;
+    }
+    else if (MsRdpEx_StringEquals(lpClassNameA, "BBarWindowClass")) {
+        Real_BBarWndProc = wndClass->lpfnWndProc;
+        wndClass->lpfnWndProc = Hook_BBarWndProc;
     }
     else if (MsRdpEx_StringEquals(lpClassNameA, "OPWindowClass")) {
         if (MsRdpEx_IsAddressInRdclientAxModule(_ReturnAddress())) {
@@ -727,6 +769,8 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
                         AppendMenu(hSystemMenu, MF_SEPARATOR, 0, NULL);
                         AppendMenu(hSystemMenu, MF_POPUP, (::UINT_PTR)hExtraMenu, L"Extra");
+
+                        g_hExtraMenu = hExtraMenu;
 
                         instance->AttachTscShellContainerWindow(hParentWnd);
                     }
