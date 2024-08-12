@@ -515,6 +515,10 @@ static WNDPROC Real_TscShellContainerWndProc = NULL;
 
 static HWND g_hTscShellContainerWnd = NULL;
 
+static bool g_NewDesktopSize = false;
+static int g_NewDesktopWidth = 0;
+static int g_NewDesktopHeight = 0;
+
 LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT result = 0;
@@ -566,6 +570,15 @@ LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wPar
             pMinMaxInfo->ptMaxTrackSize.x, pMinMaxInfo->ptMaxTrackSize.y);
 
         //CopyMemory(pMinMaxInfo, &minMaxInfo, sizeof(MINMAXINFO));
+
+        if (g_NewDesktopSize)
+        {
+            if (pMinMaxInfo->ptMaxTrackSize.x < g_NewDesktopWidth)
+                pMinMaxInfo->ptMinTrackSize.x = g_NewDesktopWidth;
+
+            if (pMinMaxInfo->ptMaxTrackSize.y < g_NewDesktopHeight)
+                pMinMaxInfo->ptMinTrackSize.y = g_NewDesktopHeight;
+        }
     }
     else if (uMsg == WM_WINDOWPOSCHANGING)
     {
@@ -577,6 +590,15 @@ LRESULT CALLBACK Hook_TscShellContainerWndProc(HWND hWnd, UINT uMsg, WPARAM wPar
         //pWindowPos->y = windowPosY;
         //pWindowPos->cx = windowPosCx;
         //pWindowPos->cy = windowPosCy;
+
+        if (g_NewDesktopSize)
+        {
+            if (pWindowPos->cx < g_NewDesktopWidth)
+                pWindowPos->cx = g_NewDesktopWidth;
+
+            if (pWindowPos->cy < g_NewDesktopHeight)
+                pWindowPos->cy = g_NewDesktopHeight;
+        }
     }
 
     if (uMsg == WM_NCCREATE)
@@ -972,10 +994,6 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     {
                         SystemParametersInfo(SPI_GETWORKAREA, 0, &workArea, 0);
                     }
-                    ShowScrollBar(hContainerWnd, SB_BOTH, FALSE);
-                    ShowWindow(hContainerWnd, SW_MAXIMIZE);
-                    SetWindowPos(hContainerWnd, NULL, workArea.left, workArea.top,
-                        workArea.right - workArea.left, workArea.bottom - workArea.top, SWP_FRAMECHANGED);
 
                     clientRect = workArea;
                     GetClientRect(hContainerWnd, &clientRect);
@@ -988,6 +1006,22 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     ULONG ulDesktopScaleFactor = 100;
                     ULONG ulDeviceScaleFactor = 100;
 
+                    g_NewDesktopSize = true;
+                    g_NewDesktopWidth = workArea.right - workArea.left;
+                    g_NewDesktopHeight = workArea.bottom - workArea.top;
+
+                    ShowScrollBar(hContainerWnd, SB_BOTH, FALSE);
+                    ShowWindow(hContainerWnd, SW_MAXIMIZE);
+                    SetWindowPos(hContainerWnd, NULL,
+                        workArea.left, workArea.top,
+                        workArea.right - workArea.left,
+                        workArea.bottom - workArea.top, SWP_FRAMECHANGED);
+
+                    MsRdpEx_LogPrint(DEBUG, "ulDesktopWidth: %d ulDesktopHeight: %d", ulDesktopWidth, ulDesktopHeight);
+
+                    PostMessage(hWnd, WM_SYSCOMMAND, SYSMENU_RDP_RESIZE_TO_FIT_WINDOW_ID, 0);
+
+#if 0
                     pMsRdpClient9->UpdateSessionDisplaySettings(
                         ulDesktopWidth,
                         ulDesktopHeight,
@@ -996,6 +1030,9 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                         ulOrientation,
                         ulDesktopScaleFactor,
                         ulDeviceScaleFactor);
+#endif
+
+                    g_NewDesktopSize = false;
                 }
                 break;
         }
