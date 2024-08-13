@@ -109,7 +109,7 @@ typedef HMODULE(WINAPI* Func_LoadLibraryExW)(LPCWSTR lpLibFileName, HANDLE hFile
 Func_LoadLibraryExA Real_LoadLibraryExA = NULL;
 Func_LoadLibraryExW Real_LoadLibraryExW = NULL;
 
-HMODULE Hook_LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+HMODULE WINAPI Hook_LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 {
     HMODULE hModule = NULL;
     const char* filename = MsRdpEx_FileBase(lpLibFileName);
@@ -123,7 +123,7 @@ HMODULE Hook_LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 
 static LPCWSTR LoadLibraryExW_LastFileName = NULL;
 
-HMODULE Hook_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+HMODULE WINAPI Hook_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 {
     HMODULE hModule;
     const char* filename;
@@ -256,7 +256,7 @@ typedef NTSTATUS (NTAPI * Func_NtCreateFile)(
 
 Func_NtCreateFile Real_NtCreateFile = NULL;
 
-NTSTATUS Hook_NtCreateFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
+NTSTATUS NTAPI Hook_NtCreateFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
     POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock, PLARGE_INTEGER AllocationSize,
     ULONG FileAttributes, ULONG ShareAccess, ULONG CreateDisposition, ULONG CreateOptions,
     PVOID EaBuffer, ULONG EaLength)
@@ -285,7 +285,7 @@ typedef NTSTATUS(NTAPI* Func_NtOpenFile)(PHANDLE FileHandle, ACCESS_MASK Desired
 
 Func_NtOpenFile Real_NtOpenFile = NULL;
 
-NTSTATUS Hook_NtOpenFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
+NTSTATUS NTAPI Hook_NtOpenFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
     POBJECT_ATTRIBUTES ObjectAttributes, PIO_STATUS_BLOCK IoStatusBlock,
     ULONG ShareAccess, ULONG OpenOptions)
 {
@@ -337,7 +337,7 @@ NTSTATUS Hook_NtOpenFile(PHANDLE FileHandle, ACCESS_MASK DesiredAccess,
 
 FARPROC(WINAPI* Real_GetProcAddress)(HMODULE hModule, LPCSTR lpProcName) = GetProcAddress;
 
-FARPROC Hook_GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
+FARPROC WINAPI Hook_GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
 {
 	FARPROC procAddr;
 
@@ -393,7 +393,7 @@ BOOL (WINAPI * Real_BitBlt)(
     HDC hdcSrc, int x1, int y1, DWORD rop
     ) = BitBlt;
 
-bool MsRdpEx_CaptureBlt(
+bool WINAPI MsRdpEx_CaptureBlt(
     HDC hdcDst, int dstX, int dstY, int width, int height,
     HDC hdcSrc, int srcX, int srcY)
 {
@@ -463,7 +463,7 @@ end:
     return captured;
 }
 
-BOOL Hook_BitBlt(
+BOOL WINAPI Hook_BitBlt(
     HDC hdcDst, int dstX, int dstY, int width, int height,
     HDC hdcSrc, int srcX, int srcY, DWORD rop)
 {
@@ -485,7 +485,7 @@ BOOL (WINAPI * Real_StretchBlt)(
     HDC hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, DWORD rop
     ) = StretchBlt;
 
-BOOL Hook_StretchBlt(
+BOOL WINAPI Hook_StretchBlt(
     HDC hdcDst, int dstX, int dstY, int dstW, int dstH,
     HDC hdcSrc, int srcX, int srcY, int srcW, int srcH, DWORD rop)
 {
@@ -647,7 +647,7 @@ LRESULT CALLBACK Hook_OPWndProc_rdclientax(HWND hWnd, UINT uMsg, WPARAM wParam, 
 
 ATOM (WINAPI * Real_RegisterClassExW)(const WNDCLASSEXW* wndClassEx) = RegisterClassExW;
 
-ATOM Hook_RegisterClassExW(WNDCLASSEXW* wndClass)
+ATOM WINAPI Hook_RegisterClassExW(WNDCLASSEXW* wndClass)
 {
     ATOM wndClassAtom;
     char* lpClassNameA = NULL;
@@ -915,7 +915,7 @@ LRESULT CALLBACK Hook_IHWndProc_mstscax(HWND hWnd, UINT uMsg, WPARAM wParam, LPA
 
 ATOM(WINAPI* Real_RegisterClassW)(const WNDCLASSW* wndClass) = RegisterClassW;
 
-ATOM Hook_RegisterClassW(WNDCLASSW* wndClass)
+ATOM WINAPI Hook_RegisterClassW(WNDCLASSW* wndClass)
 {
     ATOM wndClassAtom;
     char* lpClassNameA = NULL;
@@ -945,7 +945,7 @@ ATOM Hook_RegisterClassW(WNDCLASSW* wndClass)
 
 BOOL(WINAPI* Real_GetClassInfoW)(HINSTANCE hInstance, LPCWSTR lpClassName, LPWNDCLASSW lpWndClass) = GetClassInfoW;
 
-BOOL Hook_GetClassInfoW(HINSTANCE hInstance, LPCWSTR lpClassName, LPWNDCLASSW lpWndClass)
+BOOL WINAPI Hook_GetClassInfoW(HINSTANCE hInstance, LPCWSTR lpClassName, LPWNDCLASSW lpWndClass)
 {
     BOOL result;
 
@@ -973,7 +973,7 @@ BOOL Hook_GetClassInfoW(HINSTANCE hInstance, LPCWSTR lpClassName, LPWNDCLASSW lp
 
 BOOL(WINAPI* Real_UnregisterClassW)(LPCWSTR lpClassName, HINSTANCE hInstance) = UnregisterClassW;
 
-BOOL Hook_UnregisterClassW(LPCWSTR lpClassName, HINSTANCE hInstance)
+BOOL WINAPI Hook_UnregisterClassW(LPCWSTR lpClassName, HINSTANCE hInstance)
 {
     BOOL result;
 
@@ -1002,7 +1002,7 @@ BOOL Hook_UnregisterClassW(LPCWSTR lpClassName, HINSTANCE hInstance)
 HWND(WINAPI* Real_CreateWindowExW)(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle,
     int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam) = CreateWindowExW;
 
-HWND Hook_CreateWindowExW(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle,
+HWND WINAPI Hook_CreateWindowExW(DWORD dwExStyle, LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle,
     int X, int Y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam)
 {
     HWND hWnd;
@@ -1095,7 +1095,7 @@ HWND (WINAPI* Real_CreateDialogParamW)(HINSTANCE hInstance,
     LPCWSTR lpTemplateName, HWND hWndParent,
     DLGPROC lpDialogFunc, LPARAM dwInitParam) = CreateDialogParamW;
 
-HWND Hook_CreateDialogParamW(HINSTANCE hInstance,
+HWND WINAPI Hook_CreateDialogParamW(HINSTANCE hInstance,
     LPCWSTR lpTemplateName, HWND hWndParent,
     DLGPROC lpDialogFunc, LPARAM dwInitParam)
 {
@@ -1118,7 +1118,7 @@ HWND Hook_CreateDialogParamW(HINSTANCE hInstance,
 
 BOOL (WINAPI * Real_CredReadW)(LPCWSTR TargetName, DWORD Type, DWORD Flags, PCREDENTIALW* Credential) = CredReadW;
 
-BOOL Hook_CredReadW(LPCWSTR TargetName, DWORD Type, DWORD Flags, PCREDENTIALW* Credential)
+BOOL WINAPI Hook_CredReadW(LPCWSTR TargetName, DWORD Type, DWORD Flags, PCREDENTIALW* Credential)
 {
     BOOL success = FALSE;
     char* TargetNameA = NULL;
@@ -1158,7 +1158,7 @@ BOOL Hook_CredReadW(LPCWSTR TargetName, DWORD Type, DWORD Flags, PCREDENTIALW* C
 BOOL(WINAPI* Real_CryptProtectMemory)(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags) = CryptProtectMemory;
 BOOL(WINAPI* Real_CryptUnprotectMemory)(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags) = CryptUnprotectMemory;
 
-BOOL Hook_CryptProtectMemory(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags)
+BOOL WINAPI Hook_CryptProtectMemory(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags)
 {
     BOOL success;
 
@@ -1169,7 +1169,7 @@ BOOL Hook_CryptProtectMemory(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags)
     return success;
 }
 
-BOOL Hook_CryptUnprotectMemory(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags)
+BOOL WINAPI Hook_CryptUnprotectMemory(LPVOID pDataIn, DWORD cbDataIn, DWORD dwFlags)
 {
     BOOL success;
 
@@ -1186,7 +1186,7 @@ BOOL(WINAPI* Real_CryptProtectData)(DATA_BLOB* pDataIn, LPCWSTR szDataDescr, DAT
 BOOL(WINAPI* Real_CryptUnprotectData)(DATA_BLOB* pDataIn, LPWSTR* ppszDataDescr, DATA_BLOB* pOptionalEntropy,
     PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT* pPromptStruct, DWORD dwFlags, DATA_BLOB* pDataOut) = CryptUnprotectData;
 
-BOOL Hook_CryptProtectData(DATA_BLOB* pDataIn, LPCWSTR szDataDescr, DATA_BLOB* pOptionalEntropy,
+BOOL WINAPI Hook_CryptProtectData(DATA_BLOB* pDataIn, LPCWSTR szDataDescr, DATA_BLOB* pOptionalEntropy,
     PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT* pPromptStruct, DWORD dwFlags, DATA_BLOB* pDataOut)
 {
     BOOL success;
@@ -1202,7 +1202,7 @@ BOOL Hook_CryptProtectData(DATA_BLOB* pDataIn, LPCWSTR szDataDescr, DATA_BLOB* p
     return success;
 }
 
-BOOL Hook_CryptUnprotectData(DATA_BLOB* pDataIn, LPWSTR* ppszDataDescr, DATA_BLOB* pOptionalEntropy,
+BOOL WINAPI Hook_CryptUnprotectData(DATA_BLOB* pDataIn, LPWSTR* ppszDataDescr, DATA_BLOB* pOptionalEntropy,
     PVOID pvReserved, CRYPTPROTECT_PROMPTSTRUCT* pPromptStruct, DWORD dwFlags, DATA_BLOB* pDataOut)
 {
     BOOL success;
@@ -1228,7 +1228,7 @@ Func_RegCloseKey Real_RegCloseKey = NULL;
 
 static HKEY g_hKeySecurityProviders = NULL;
 
-LSTATUS Hook_RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult)
+LSTATUS WINAPI Hook_RegOpenKeyExW(HKEY hKey, LPCWSTR lpSubKey, DWORD ulOptions, REGSAM samDesired, PHKEY phkResult)
 {
     LSTATUS lstatus;
     char* lpSubKeyA = NULL;
@@ -1326,7 +1326,7 @@ LSTATUS WINAPI Hook_RegQueryValueExW(HKEY hKey, LPCWSTR lpValueName, LPDWORD lpR
     return lstatus;
 }
 
-LSTATUS Hook_RegCloseKey(HKEY hKey)
+LSTATUS WINAPI Hook_RegCloseKey(HKEY hKey)
 {
     LSTATUS lstatus;
 
@@ -1344,7 +1344,7 @@ typedef BOOL(WINAPI* Func_DeleteMenu)(HMENU hMenu, UINT uPosition, UINT uFlags);
 
 static Func_DeleteMenu Real_DeleteMenu = DeleteMenu;
 
-BOOL Hook_DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags)
+BOOL WINAPI Hook_DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags)
 {
     BOOL success = TRUE;
     BOOL skipDelete = FALSE;
