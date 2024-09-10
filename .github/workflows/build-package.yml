@@ -163,13 +163,13 @@ jobs:
           Compress-Archive "dependencies\MsRdpEx\$Arch\*" ".\package\MsRdpEx-$PackageVersion-$Arch.zip" -CompressionLevel Optimal
 
       - name: Upload MsRdpEx (${{matrix.arch}})
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4
         with:
           name: MsRdpEx-zip-${{matrix.arch}}
           path: package/*.zip
 
       - name: Upload MsRdpEx symbols (${{matrix.arch}})
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4
         with:
           name: MsRdpEx-symbols-${{matrix.arch}}
           path: symbols/*.zip
@@ -260,13 +260,13 @@ jobs:
           }
 
       - name: Upload zip packages
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4
         with:
           name: MsRdpEx-zip
           path: package/*.zip
 
       - name: Upload native symbols
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4
         with:
           name: MsRdpEx-symbols
           path: symbols/*.zip
@@ -319,7 +319,7 @@ jobs:
           & NuGetKeyVaultSignTool @Params
   
       - name: Upload nuget package
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4
         with:
           name: MsRdpEx-nupkg
           path: package/*.nupkg
@@ -354,7 +354,7 @@ jobs:
           }
 
       - name: Upload MSI packages
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v4
         with:
           name: MsRdpEx-msi
           path: package/*.msi
