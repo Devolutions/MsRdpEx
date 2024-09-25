@@ -790,6 +790,13 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
                 pMsRdpExtendedSettings->PutProperty(propName, &value);
             }
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "AuthenticationServiceClass")) {
+            bstr_t propName = _com_util::ConvertStringToBSTR("AuthServiceClass");
+            bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+            value.bstrVal = propValue;
+            value.vt = VT_BSTR;
+            pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+        }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "UserSpecifiedServerName")) {
             bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
             bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
@@ -826,6 +833,12 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
             if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
                 bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                 pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableFrameBufferRedirection")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
             }
         }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "EnableHardwareMode")) {
