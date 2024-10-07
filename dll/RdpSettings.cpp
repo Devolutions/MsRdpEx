@@ -804,6 +804,13 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
             value.vt = VT_BSTR;
             pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClientDeviceName")) {
+            bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+            bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+            value.bstrVal = propValue;
+            value.vt = VT_BSTR;
+            pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+        }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ConnectionBarText")) {
             bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
             bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
