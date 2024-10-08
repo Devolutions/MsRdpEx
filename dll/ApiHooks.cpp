@@ -738,10 +738,12 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                 MsRdpEx_LogPrint(DEBUG, "Mouse Jiggler: Enabled=%d, Interval=%d, Method=%d",
                     mouseJigglerEnabled ? 1 : 0, mouseJigglerInterval, mouseJigglerMethod);
 
-                uint32_t timerEventId = MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID;
-
-                switch (mouseJigglerMethod)
+                if (mouseJigglerEnabled)
                 {
+                    uint32_t timerEventId = MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID;
+
+                    switch (mouseJigglerMethod)
+                    {
                     case 0:
                         timerEventId = MOUSE_JIGGLER_MOVE_MOUSE_TIMER_ID;
                         break;
@@ -749,9 +751,10 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                     case 1:
                         timerEventId = MOUSE_JIGGLER_SPECIAL_KEY_TIMER_ID;
                         break;
-                }
+                    }
 
-                SetTimer(hWnd, timerEventId, mouseJigglerInterval * 1000, NULL);
+                    SetTimer(hWnd, timerEventId, mouseJigglerInterval * 1000, NULL);
+                }
 
                 if (pExtendedSettings->GetExtraSystemMenuEnabled())
                 {
