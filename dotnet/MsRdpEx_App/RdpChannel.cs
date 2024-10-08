@@ -1,6 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace MsRdpEx_App
 {
@@ -69,24 +73,107 @@ namespace MsRdpEx_App
 
     public class RdpDvcClient : IWTSVirtualChannelCallback
     {
+        private DvcDialog dialog = null;
+
         public string channelName;
         private IWTSVirtualChannel wtsChannel;
 
         public event EventHandler OnChannelClose;
 
-        public RdpDvcClient(string name, IWTSVirtualChannel wtsChannel)
+        private DvcClientCtx dvcClientCtx = null;
+        private RdpView rdpView = null;
+
+        public RdpDvcClient(string name, IWTSVirtualChannel wtsChannel, RdpView rdpView)
         {
             this.channelName = name;
             this.wtsChannel = wtsChannel;
+
+            // Initialize rust-side code
+            dvcClientCtx = new DvcClientCtx();
+
+            // Start DVC dialog form
+            if (rdpView.InvokeRequired)
+            {
+                rdpView.Invoke(() => {
+                    dialog = rdpView.StartDvcDialog();
+                });
+            }
+            else
+            {
+                dialog = rdpView.StartDvcDialog();
+            }
+
+
+            // Register callback for UI interaction events
+            if (dialog.InvokeRequired)
+            {
+                dialog.Invoke(() => dialog.SendUiInteraction += OnUiInteraction);
+            }
+            else
+            {
+                dialog.SendUiInteraction += OnUiInteraction;
+            }
+        }
+
+        public void OnUiInteraction(JObject interaction)
+        {
+            var interaction_str = interaction.ToString();
+
+            var response = dvcClientCtx.HandleUi(interaction_str);
+            process_response(response);
         }
 
         public void SendRawBuffer(uint cbSize, IntPtr pBuffer)
         {
+            Debug.WriteLine($"SEND raw buffer: {cbSize}");
             wtsChannel?.Write(cbSize, pBuffer, null);
+        }
+
+        void process_response(DvcClientResponse response)
+        {
+            switch (response.Kind)
+            {
+                case DvcClientResponseKind.UpdateUi:
+                    var update_str = response.AsUiUpdate();
+
+                    Debug.WriteLine("Pending UI update: " + update_str);
+
+                    var parsed = JObject.Parse(update_str);
+
+                    if (dialog.InvokeRequired)
+                    {
+                        dialog.Invoke(() => dialog.ProcessUpdate(parsed));
+                    }
+                    else
+                    {
+                        dialog.ProcessUpdate(parsed);
+                    }
+
+                    break;
+                case DvcClientResponseKind.SendMessage:
+                    var ptr = response.GetDataPtr();
+                    var len = response.GetDataLen();
+
+                    Debug.WriteLine($"Pending write message ({len} bytes)");
+
+                    // Direct send of native buffer without marshalling
+                    SendRawBuffer(response.GetDataLen(), response.GetDataPtr());
+                    break;
+                default:
+                    Debug.WriteLine("Unexpected response kind");
+                    break;
+            }
         }
 
         void IWTSVirtualChannelCallback.OnDataReceived(uint cbSize, IntPtr pBuffer)
         {
+            Debug.WriteLine($"DATA received: {cbSize}");
+
+            byte[] buffer = new byte[cbSize];
+            Marshal.Copy(pBuffer, buffer, 0, (int)cbSize);
+            var response =  dvcClientCtx.HandleData(buffer);
+
+            process_response(response);
 
         }
 
@@ -105,10 +192,14 @@ namespace MsRdpEx_App
         private List<RdpDvcClient> clients = new List<RdpDvcClient>();
         public List<RdpDvcClient> Clients => clients;
 
-        public RdpDvcListener(string name, int maxCount)
+        private RdpView rdpView;
+
+        public RdpDvcListener(string name, int maxCount, RdpView rdpView)
         {
-            this.channelName = name;
+            channelName = name;
             this.maxCount = maxCount;
+
+            this.rdpView = rdpView;
         }
 
         void IWTSListenerCallback.OnNewChannelConnection(IWTSVirtualChannel pChannel,
@@ -123,7 +214,7 @@ namespace MsRdpEx_App
                 return;
             }
 
-            RdpDvcClient client = new RdpDvcClient(channelName, pChannel);
+            RdpDvcClient client = new RdpDvcClient(channelName, pChannel, rdpView);
             pAccept = true;
             pCallback = client;
 
@@ -159,12 +250,19 @@ namespace MsRdpEx_App
         public event EventHandler OnDisconnected;
         public event EventHandler OnTerminated;
 
+        private RdpView rdpView = null;
+
         private Dictionary<string, RdpDvcListener> listeners = new Dictionary<string, RdpDvcListener>();
+
+        public RdpDvcPlugin(RdpView rdpView)
+        {
+            this.rdpView = rdpView;
+        }
 
         void IWTSPlugin.Initialize(IWTSVirtualChannelManager pChannelMgr)
         {
-            string channelName = "DvcSample";
-            RdpDvcListener listener = new RdpDvcListener(channelName, -1);
+            string channelName = "Devolutions::Now::Agent";
+            RdpDvcListener listener = new RdpDvcListener(channelName, -1, rdpView);
 
             pChannelMgr.CreateListener(listener.channelName,
                 0, listener, out listener.wtsListener);
@@ -173,6 +271,9 @@ namespace MsRdpEx_App
             this.OnConnected += listener.OnConnected;
             this.OnDisconnected += listener.OnDisconnected;
             this.OnTerminated += listener.OnTerminated;
+
+            // After initialization, we don't need the reference to the RdpView anymore
+            rdpView = null;
         }
 
         void IWTSPlugin.Connected()
