@@ -29,171 +29,185 @@ namespace MsRdpEx_App
         /// </summary>
         private void InitializeComponent()
         {
-            this.btnConnect = new System.Windows.Forms.Button();
-            this.lblComputer = new System.Windows.Forms.Label();
-            this.lblUserName = new System.Windows.Forms.Label();
-            this.lblPassword = new System.Windows.Forms.Label();
-            this.grpLogonSettings = new System.Windows.Forms.GroupBox();
-            this.txtPassword = new System.Windows.Forms.TextBox();
-            this.txtUserName = new System.Windows.Forms.TextBox();
-            this.txtComputer = new System.Windows.Forms.TextBox();
-            this.grpClientSettings = new System.Windows.Forms.GroupBox();
-            this.cboRdpClient = new System.Windows.Forms.ComboBox();
-            this.lblRdpClient = new System.Windows.Forms.Label();
-            this.lblLaunchMode = new System.Windows.Forms.Label();
-            this.cboLaunchMode = new System.Windows.Forms.ComboBox();
-            this.grpLogonSettings.SuspendLayout();
-            this.grpClientSettings.SuspendLayout();
-            this.SuspendLayout();
+            btnConnect = new System.Windows.Forms.Button();
+            lblComputer = new System.Windows.Forms.Label();
+            lblUserName = new System.Windows.Forms.Label();
+            lblPassword = new System.Windows.Forms.Label();
+            grpLogonSettings = new System.Windows.Forms.GroupBox();
+            txtPassword = new System.Windows.Forms.TextBox();
+            txtUserName = new System.Windows.Forms.TextBox();
+            txtComputer = new System.Windows.Forms.TextBox();
+            grpClientSettings = new System.Windows.Forms.GroupBox();
+            cboLaunchMode = new System.Windows.Forms.ComboBox();
+            lblLaunchMode = new System.Windows.Forms.Label();
+            cboRdpClient = new System.Windows.Forms.ComboBox();
+            lblRdpClient = new System.Windows.Forms.Label();
+            grpLogonSettings.SuspendLayout();
+            grpClientSettings.SuspendLayout();
+            SuspendLayout();
             // 
             // btnConnect
             // 
-            this.btnConnect.Location = new System.Drawing.Point(277, 260);
-            this.btnConnect.Name = "btnConnect";
-            this.btnConnect.Size = new System.Drawing.Size(75, 23);
-            this.btnConnect.TabIndex = 1;
-            this.btnConnect.Text = "Connect";
-            this.btnConnect.UseVisualStyleBackColor = true;
-            this.btnConnect.Click += new System.EventHandler(this.btnConnect_Click);
+            btnConnect.Location = new System.Drawing.Point(462, 500);
+            btnConnect.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            btnConnect.Name = "btnConnect";
+            btnConnect.Size = new System.Drawing.Size(125, 44);
+            btnConnect.TabIndex = 1;
+            btnConnect.Text = "Connect";
+            btnConnect.UseVisualStyleBackColor = true;
+            btnConnect.Click += btnConnect_Click;
             // 
             // lblComputer
             // 
-            this.lblComputer.AutoSize = true;
-            this.lblComputer.Location = new System.Drawing.Point(16, 22);
-            this.lblComputer.Name = "lblComputer";
-            this.lblComputer.Size = new System.Drawing.Size(55, 13);
-            this.lblComputer.TabIndex = 3;
-            this.lblComputer.Text = "Computer:";
+            lblComputer.AutoSize = true;
+            lblComputer.Location = new System.Drawing.Point(27, 42);
+            lblComputer.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            lblComputer.Name = "lblComputer";
+            lblComputer.Size = new System.Drawing.Size(96, 25);
+            lblComputer.TabIndex = 3;
+            lblComputer.Text = "Computer:";
             // 
             // lblUserName
             // 
-            this.lblUserName.AutoSize = true;
-            this.lblUserName.Location = new System.Drawing.Point(16, 49);
-            this.lblUserName.Name = "lblUserName";
-            this.lblUserName.Size = new System.Drawing.Size(61, 13);
-            this.lblUserName.TabIndex = 4;
-            this.lblUserName.Text = "User name:";
+            lblUserName.AutoSize = true;
+            lblUserName.Location = new System.Drawing.Point(27, 94);
+            lblUserName.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            lblUserName.Name = "lblUserName";
+            lblUserName.Size = new System.Drawing.Size(100, 25);
+            lblUserName.TabIndex = 4;
+            lblUserName.Text = "User name:";
             // 
             // lblPassword
             // 
-            this.lblPassword.AutoSize = true;
-            this.lblPassword.Location = new System.Drawing.Point(16, 76);
-            this.lblPassword.Name = "lblPassword";
-            this.lblPassword.Size = new System.Drawing.Size(56, 13);
-            this.lblPassword.TabIndex = 5;
-            this.lblPassword.Text = "Password:";
+            lblPassword.AutoSize = true;
+            lblPassword.Location = new System.Drawing.Point(27, 146);
+            lblPassword.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            lblPassword.Name = "lblPassword";
+            lblPassword.Size = new System.Drawing.Size(91, 25);
+            lblPassword.TabIndex = 5;
+            lblPassword.Text = "Password:";
             // 
             // grpLogonSettings
             // 
-            this.grpLogonSettings.Controls.Add(this.txtPassword);
-            this.grpLogonSettings.Controls.Add(this.txtUserName);
-            this.grpLogonSettings.Controls.Add(this.txtComputer);
-            this.grpLogonSettings.Controls.Add(this.lblComputer);
-            this.grpLogonSettings.Controls.Add(this.lblPassword);
-            this.grpLogonSettings.Controls.Add(this.lblUserName);
-            this.grpLogonSettings.Location = new System.Drawing.Point(12, 12);
-            this.grpLogonSettings.Name = "grpLogonSettings";
-            this.grpLogonSettings.Size = new System.Drawing.Size(340, 114);
-            this.grpLogonSettings.TabIndex = 6;
-            this.grpLogonSettings.TabStop = false;
-            this.grpLogonSettings.Text = "Logon settings";
+            grpLogonSettings.Controls.Add(txtPassword);
+            grpLogonSettings.Controls.Add(txtUserName);
+            grpLogonSettings.Controls.Add(txtComputer);
+            grpLogonSettings.Controls.Add(lblComputer);
+            grpLogonSettings.Controls.Add(lblPassword);
+            grpLogonSettings.Controls.Add(lblUserName);
+            grpLogonSettings.Location = new System.Drawing.Point(20, 23);
+            grpLogonSettings.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            grpLogonSettings.Name = "grpLogonSettings";
+            grpLogonSettings.Padding = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            grpLogonSettings.Size = new System.Drawing.Size(567, 219);
+            grpLogonSettings.TabIndex = 6;
+            grpLogonSettings.TabStop = false;
+            grpLogonSettings.Text = "Logon settings";
             // 
             // txtPassword
             // 
-            this.txtPassword.Location = new System.Drawing.Point(127, 73);
-            this.txtPassword.MaxLength = 128;
-            this.txtPassword.Name = "txtPassword";
-            this.txtPassword.Size = new System.Drawing.Size(182, 20);
-            this.txtPassword.TabIndex = 8;
-            this.txtPassword.UseSystemPasswordChar = true;
+            txtPassword.Location = new System.Drawing.Point(212, 140);
+            txtPassword.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            txtPassword.MaxLength = 128;
+            txtPassword.Name = "txtPassword";
+            txtPassword.Size = new System.Drawing.Size(301, 31);
+            txtPassword.TabIndex = 8;
+            txtPassword.Text = "vmbox";
+            txtPassword.UseSystemPasswordChar = true;
             // 
             // txtUserName
             // 
-            this.txtUserName.Location = new System.Drawing.Point(127, 46);
-            this.txtUserName.MaxLength = 128;
-            this.txtUserName.Name = "txtUserName";
-            this.txtUserName.Size = new System.Drawing.Size(182, 20);
-            this.txtUserName.TabIndex = 7;
+            txtUserName.Location = new System.Drawing.Point(212, 88);
+            txtUserName.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            txtUserName.MaxLength = 128;
+            txtUserName.Name = "txtUserName";
+            txtUserName.Size = new System.Drawing.Size(301, 31);
+            txtUserName.TabIndex = 7;
+            txtUserName.Text = "vmbox";
             // 
             // txtComputer
             // 
-            this.txtComputer.Location = new System.Drawing.Point(127, 19);
-            this.txtComputer.MaxLength = 128;
-            this.txtComputer.Name = "txtComputer";
-            this.txtComputer.Size = new System.Drawing.Size(182, 20);
-            this.txtComputer.TabIndex = 6;
+            txtComputer.Location = new System.Drawing.Point(212, 37);
+            txtComputer.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            txtComputer.MaxLength = 128;
+            txtComputer.Name = "txtComputer";
+            txtComputer.Size = new System.Drawing.Size(301, 31);
+            txtComputer.TabIndex = 6;
+            txtComputer.Text = "192.168.1.103";
             // 
             // grpClientSettings
             // 
-            this.grpClientSettings.Controls.Add(this.cboLaunchMode);
-            this.grpClientSettings.Controls.Add(this.lblLaunchMode);
-            this.grpClientSettings.Controls.Add(this.cboRdpClient);
-            this.grpClientSettings.Controls.Add(this.lblRdpClient);
-            this.grpClientSettings.Location = new System.Drawing.Point(13, 133);
-            this.grpClientSettings.Name = "grpClientSettings";
-            this.grpClientSettings.Size = new System.Drawing.Size(339, 121);
-            this.grpClientSettings.TabIndex = 7;
-            this.grpClientSettings.TabStop = false;
-            this.grpClientSettings.Text = "RDP Client Settings";
-            // 
-            // cboRdpClient
-            // 
-            this.cboRdpClient.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboRdpClient.FormattingEnabled = true;
-            this.cboRdpClient.Items.AddRange(new object[] {
-            "mstsc",
-            "msrdc"});
-            this.cboRdpClient.Location = new System.Drawing.Point(126, 31);
-            this.cboRdpClient.Name = "cboRdpClient";
-            this.cboRdpClient.Size = new System.Drawing.Size(182, 21);
-            this.cboRdpClient.TabIndex = 1;
-            // 
-            // lblRdpClient
-            // 
-            this.lblRdpClient.AutoSize = true;
-            this.lblRdpClient.Location = new System.Drawing.Point(15, 34);
-            this.lblRdpClient.Name = "lblRdpClient";
-            this.lblRdpClient.Size = new System.Drawing.Size(72, 13);
-            this.lblRdpClient.TabIndex = 0;
-            this.lblRdpClient.Text = "Client Engine:";
-            // 
-            // lblLaunchMode
-            // 
-            this.lblLaunchMode.AutoSize = true;
-            this.lblLaunchMode.Location = new System.Drawing.Point(15, 68);
-            this.lblLaunchMode.Name = "lblLaunchMode";
-            this.lblLaunchMode.Size = new System.Drawing.Size(75, 13);
-            this.lblLaunchMode.TabIndex = 2;
-            this.lblLaunchMode.Text = "Launch mode:";
+            grpClientSettings.Controls.Add(cboLaunchMode);
+            grpClientSettings.Controls.Add(lblLaunchMode);
+            grpClientSettings.Controls.Add(cboRdpClient);
+            grpClientSettings.Controls.Add(lblRdpClient);
+            grpClientSettings.Location = new System.Drawing.Point(22, 256);
+            grpClientSettings.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            grpClientSettings.Name = "grpClientSettings";
+            grpClientSettings.Padding = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            grpClientSettings.Size = new System.Drawing.Size(565, 233);
+            grpClientSettings.TabIndex = 7;
+            grpClientSettings.TabStop = false;
+            grpClientSettings.Text = "RDP Client Settings";
             // 
             // cboLaunchMode
             // 
-            this.cboLaunchMode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboLaunchMode.FormattingEnabled = true;
-            this.cboLaunchMode.Items.AddRange(new object[] {
-            "embedded view",
-            "external program"});
-            this.cboLaunchMode.Location = new System.Drawing.Point(126, 65);
-            this.cboLaunchMode.Name = "cboLaunchMode";
-            this.cboLaunchMode.Size = new System.Drawing.Size(182, 21);
-            this.cboLaunchMode.TabIndex = 3;
+            cboLaunchMode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cboLaunchMode.FormattingEnabled = true;
+            cboLaunchMode.Items.AddRange(new object[] { "embedded view", "external program" });
+            cboLaunchMode.Location = new System.Drawing.Point(210, 125);
+            cboLaunchMode.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            cboLaunchMode.Name = "cboLaunchMode";
+            cboLaunchMode.Size = new System.Drawing.Size(301, 33);
+            cboLaunchMode.TabIndex = 3;
+            // 
+            // lblLaunchMode
+            // 
+            lblLaunchMode.AutoSize = true;
+            lblLaunchMode.Location = new System.Drawing.Point(25, 131);
+            lblLaunchMode.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            lblLaunchMode.Name = "lblLaunchMode";
+            lblLaunchMode.Size = new System.Drawing.Size(123, 25);
+            lblLaunchMode.TabIndex = 2;
+            lblLaunchMode.Text = "Launch mode:";
+            // 
+            // cboRdpClient
+            // 
+            cboRdpClient.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            cboRdpClient.FormattingEnabled = true;
+            cboRdpClient.Items.AddRange(new object[] { "mstsc", "msrdc" });
+            cboRdpClient.Location = new System.Drawing.Point(210, 60);
+            cboRdpClient.Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            cboRdpClient.Name = "cboRdpClient";
+            cboRdpClient.Size = new System.Drawing.Size(301, 33);
+            cboRdpClient.TabIndex = 1;
+            // 
+            // lblRdpClient
+            // 
+            lblRdpClient.AutoSize = true;
+            lblRdpClient.Location = new System.Drawing.Point(25, 65);
+            lblRdpClient.Margin = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            lblRdpClient.Name = "lblRdpClient";
+            lblRdpClient.Size = new System.Drawing.Size(118, 25);
+            lblRdpClient.TabIndex = 0;
+            lblRdpClient.Text = "Client Engine:";
             // 
             // MainDlg
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(364, 295);
-            this.Controls.Add(this.grpClientSettings);
-            this.Controls.Add(this.grpLogonSettings);
-            this.Controls.Add(this.btnConnect);
-            this.Name = "MainDlg";
-            this.Text = "Remote Desktop Client";
-            this.grpLogonSettings.ResumeLayout(false);
-            this.grpLogonSettings.PerformLayout();
-            this.grpClientSettings.ResumeLayout(false);
-            this.grpClientSettings.PerformLayout();
-            this.ResumeLayout(false);
-
+            AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
+            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            ClientSize = new System.Drawing.Size(607, 567);
+            Controls.Add(grpClientSettings);
+            Controls.Add(grpLogonSettings);
+            Controls.Add(btnConnect);
+            Margin = new System.Windows.Forms.Padding(5, 6, 5, 6);
+            Name = "MainDlg";
+            Text = "Remote Desktop Client";
+            grpLogonSettings.ResumeLayout(false);
+            grpLogonSettings.PerformLayout();
+            grpClientSettings.ResumeLayout(false);
+            grpClientSettings.PerformLayout();
+            ResumeLayout(false);
         }
 
         #endregion
