@@ -206,7 +206,7 @@ namespace MsRdpEx_App
 
             IMsRdpClientAdvancedSettingsLB lbSettings = (IMsRdpClientAdvancedSettingsLB)advancedSettings;
             lbSettings.LoadBalanceInfo = bstrPtr;
-            
+
             Marshal.ZeroFreeBSTR(bstrPtr);
         }
 
@@ -440,7 +440,7 @@ namespace MsRdpEx_App
             AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp = rdpView.rdpClient;
 
             Guid sessionId = Guid.Empty;
-            RdpDvcPlugin wtsPlugin = new RdpDvcPlugin();
+            RdpDvcPlugin wtsPlugin = new RdpDvcPlugin(rdpView);
 
             if (axHookEnabled)
             {
