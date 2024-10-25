@@ -80,7 +80,7 @@ bool TsPropertyMap_IsCoreProps(ITSPropertySet* pTSPropertySet)
     propCount = pTSPropertySet->propCount;
     propMap = pTSPropertySet->propMap;
 
-    if ((propCount < 175) || (propCount > 500))
+    if ((propCount < 100) || (propCount > 500))
         return false;
 
     if (!MsRdpEx_CanReadUnsafePtr((void*)propMap, propCount * sizeof(PROPERTY_ENTRY_EX)))
