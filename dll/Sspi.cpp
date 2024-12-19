@@ -364,12 +364,37 @@ static SECURITY_STATUS SEC_ENTRY sspi_InitializeSecurityContextW(
 		}
 	}
 
+	if (MsRdpEx_IsAddressInModule(_ReturnAddress(), L"credssp.dll")) {
+		// Workaround for credssp.dll passing a non-null ptsExpiry argument to InitializeSecurityContext
+		// resulting in undesirable per-process caching behavior that prevents the RDP ActiveX from
+		// refreshing or seeing changes in Active Directory group membership for the target user.
+		// This happens for many RDM users when using PAM JIT with temporary AD group membership
+		// https://bsky.app/profile/awakecoding.com/post/3ldoqrscw7s2v
+		// https://learn.microsoft.com/en-us/windows/win32/secauthn/initializesecuritycontext--credssp
+		MsRdpEx_LogPrint(DEBUG, "Force CredSSP InitializeSecurityContext ptsExpiry argument to NULL");
+		ptsExpiry = NULL; // force passing null expiration
+	}
+
 	status = Real_InitializeSecurityContextW(
 		phCredential, phContext, pszTargetName, fContextReq, Reserved1, TargetDataRep, pInput,
 		Reserved2, phNewContext, pOutput, pfContextAttr, ptsExpiry);
 
-	MsRdpEx_LogPrint(DEBUG, "sspi_InitializeSecurityContextW(pszTargetName: %s fContextReq: 0x%08X phCredential=%p,%p), status: 0x%08X",
-		pszTargetNameA ? pszTargetNameA : "", fContextReq, (void*)phCredential->dwLower, (void*)phCredential->dwUpper, status);
+	MsRdpEx_LogPrint(DEBUG, "sspi_InitializeSecurityContextW(pszTargetName: %s fContextReq: 0x%08X phCredential=%p,%p ptsExpiry=%p), status: 0x%08X",
+		pszTargetNameA ? pszTargetNameA : "", fContextReq, (void*)phCredential->dwLower, (void*)phCredential->dwUpper, ptsExpiry, status);
+
+	if (ptsExpiry) {
+		FILETIME fileTime;
+		SYSTEMTIME systemTime;
+		fileTime.dwLowDateTime = ptsExpiry->LowPart;
+		fileTime.dwHighDateTime = ptsExpiry->HighPart;
+
+		if (FileTimeToSystemTime(&fileTime, &systemTime)) {
+			MsRdpEx_LogPrint(DEBUG, "ptsExpiry: %04d-%02d-%02d %02d:%02d:%02d (lo: 0x%08X hi: 0x%08X)",
+				systemTime.wYear, systemTime.wMonth, systemTime.wDay,
+				systemTime.wHour, systemTime.wMinute, systemTime.wSecond,
+				ptsExpiry->LowPart, ptsExpiry->HighPart);
+		}
+	}
 
 	if (pOutput) {
 		for (iBuffer = 0; iBuffer < pOutput->cBuffers; iBuffer++) {
