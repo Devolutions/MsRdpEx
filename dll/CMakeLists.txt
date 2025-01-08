@@ -22,6 +22,7 @@ set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/Pcap.h"
     "${MSRDPEX_INCLUDE_DIR}/ArrayList.h"
     "${MSRDPEX_INCLUDE_DIR}/HashTable.h"
+    "${MSRDPEX_INCLUDE_DIR}/KeyMaps.h"
     "${MSRDPEX_INCLUDE_DIR}/Environment.h"
     "${MSRDPEX_INCLUDE_DIR}/NameResolver.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpFile.h"
@@ -36,6 +37,7 @@ set(MSRDPEX_HEADERS
 set(MSRDPEX_SOURCES
     ArrayList.c
     HashTable.c
+    KeyMaps.cpp
     Environment.c
     NameResolver.c
     DpiHelper.cpp

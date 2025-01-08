@@ -393,6 +393,8 @@ CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown, GUID* pSessio
 
     MsRdpEx_GuidCopy(&m_sessionId, pSessionId);
 
+    strncpy_s(m_KeyboardHookToggleShortcutKey, "Space", sizeof(m_KeyboardHookToggleShortcutKey) - 1);
+
     hr = pUnknown->QueryInterface(IID_IMsRdpClient7, (LPVOID*)&m_pMsRdpClient7);
 
     if (SUCCEEDED(hr) && m_pMsRdpClient7)
@@ -523,6 +525,24 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         m_MouseJigglerMethod = (uint32_t) pValue->uintVal;
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "KeyboardHookToggleShortcutEnabled"))
+    {
+        if (pValue->vt != VT_BOOL)
+            goto end;
+
+        m_KeyboardHookToggleShortcutEnabled = pValue->boolVal ? true : false;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "KeyboardHookToggleShortcutKey"))
+    {
+        if (pValue->vt != VT_BSTR)
+            goto end;
+
+        char* propValueA = _com_util::ConvertBSTRToString((BSTR)pValue->bstrVal);
+        strncpy_s(m_KeyboardHookToggleShortcutKey, propValueA, sizeof(m_KeyboardHookToggleShortcutKey) - 1);
+
+        hr = S_OK;
+    }
     else
     {
         if (pValue->vt == VT_BSTR) {
@@ -602,6 +622,16 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
     else if (MsRdpEx_StringEquals(propName, "MouseJigglerMethod")) {
         pValue->vt = VT_I4;
         pValue->intVal = (INT) m_MouseJigglerMethod;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "KeyboardHookToggleShortcutEnabled")) {
+        pValue->vt = VT_BOOL;
+        pValue->boolVal = m_KeyboardHookToggleShortcutEnabled ? VARIANT_TRUE : VARIANT_FALSE;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "KeyboardHookToggleShortcutKey")) {
+        pValue->vt = VT_BSTR;
+        pValue->bstrVal = _com_util::ConvertStringToBSTR(m_KeyboardHookToggleShortcutKey);
         hr = S_OK;
     }
     else if (MsRdpEx_StringEquals(propName, "MsRdpEx_SessionId")) {
@@ -884,6 +914,19 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
                 pMsRdpExtendedSettings->put_Property(propName, &value);
             }
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "KeyboardHookToggleShortcutEnabled")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "KeyboardHookToggleShortcutKey")) {
+            bstr_t propName = _com_util::ConvertStringToBSTR("KeyboardHookToggleShortcutKey");
+            bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+            value.bstrVal = propValue;
+            value.vt = VT_BSTR;
+            pMsRdpExtendedSettings->put_Property(propName, &value);
+        }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "TargetUserName")) {
             bstr_t propName = _com_util::ConvertStringToBSTR("UserName");
             bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
@@ -1111,6 +1154,16 @@ uint32_t CMsRdpExtendedSettings::GetMouseJigglerInterval()
 uint32_t CMsRdpExtendedSettings::GetMouseJigglerMethod()
 {
     return m_MouseJigglerMethod;
+}
+
+bool CMsRdpExtendedSettings::GetKeyboardHookToggleShortcutEnabled()
+{
+    return m_KeyboardHookToggleShortcutEnabled;
+}
+
+const char* CMsRdpExtendedSettings::GetKeyboardHookToggleShortcutKey()
+{
+    return (const char*) m_KeyboardHookToggleShortcutKey;
 }
 
 bool CMsRdpExtendedSettings::GetExtraSystemMenuEnabled()
