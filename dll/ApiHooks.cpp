@@ -4,6 +4,7 @@
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/Sspi.h>
+#include <MsRdpEx/KeyMaps.h>
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/RdpInstance.h>
 #include <MsRdpEx/Environment.h>
@@ -894,6 +895,62 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         {
             instance->SetLastMousePosition(mousePosX, mousePosY);
         }
+    }
+    else if (uMsg == WM_KEYDOWN)
+    {
+        // https://learn.microsoft.com/en-us/windows/win32/termserv/imsrdpclientsecuredsettings-keyboardhookmode
+
+        bool ctrlAltDown = ((GetKeyState(VK_CONTROL) & 0x8000) && (GetKeyState(VK_MENU) & 0x8000));
+        bool KeyboardHookToggleShortcutEnabled = pExtendedSettings ? pExtendedSettings->GetKeyboardHookToggleShortcutEnabled() : false;
+        const char* KeyboardHookToggleShortcutKey = pExtendedSettings ? pExtendedSettings->GetKeyboardHookToggleShortcutKey() : "";
+
+        if (KeyboardHookToggleShortcutEnabled && ctrlAltDown &&
+            (wParam == MsRdpEx_KeyNameToVKCode(KeyboardHookToggleShortcutKey)))
+        {
+            IUnknown* pUnknown = NULL;
+            IMsRdpClient9* pMsRdpClient9 = NULL;
+            IMsRdpClientSecuredSettings* pMsRdpClientSecuredSettings = NULL;
+
+            if (instance)
+                instance->GetRdpClient((LPVOID*)&pUnknown);
+
+            if (pUnknown)
+                pUnknown->QueryInterface(IID_IMsRdpClient9, (LPVOID*)&pMsRdpClient9);
+
+            if (pMsRdpClient9)
+                pMsRdpClient9->get_SecuredSettings2(&pMsRdpClientSecuredSettings);
+
+            LONG keyboardHookMode = 0;
+            pMsRdpClientSecuredSettings->get_KeyboardHookMode(&keyboardHookMode);
+
+            // toggle keyboard hook mode between local and remote
+
+            switch (keyboardHookMode)
+            {
+                case 0: // Apply key combinations only locally at the client computer.
+                    keyboardHookMode = 1;
+                    break;
+
+                case 1: // Apply key combinations at the remote server.
+                case 2: // Apply key combinations to the remote server only when the client is running in full-screen mode
+                default:
+                    keyboardHookMode = 0;
+                    break;
+            }
+
+            MsRdpEx_LogPrint(DEBUG, "New KeyboardHookMode: %d", keyboardHookMode);
+            pMsRdpClientSecuredSettings->put_KeyboardHookMode(keyboardHookMode);
+
+            if (pMsRdpClient9)
+                pMsRdpClient9->Release();
+
+            if (pMsRdpClientSecuredSettings)
+                pMsRdpClientSecuredSettings->Release();
+        }
+    }
+    else if (uMsg == WM_KEYUP)
+    {
+
     }
     else if (uMsg == WM_NCDESTROY)
     {
