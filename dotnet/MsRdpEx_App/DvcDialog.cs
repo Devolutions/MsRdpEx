@@ -4,54 +4,47 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
 using System.Drawing;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Devolutions.NowClient;
+using Devolutions.NowProto.Messages;
+using Devolutions.NowProto.Capabilities;
 
 namespace MsRdpEx_App
 {
     public partial class DvcDialog : Form
     {
-        public event SendUiInteractionHandler SendUiInteraction;
+        public NowClient nowClient = null;
+        public ExecSession currentExecSession = null;
 
         class CapabilitiesView
         {
-            public static CapabilitiesView FromUpdate(JObject update)
+            public static CapabilitiesView FromUpdate(NowMsgChannelCapset capabilities)
             {
                 return new CapabilitiesView
                 {
-                    run = (bool)update["run"],
-                    cmd = (bool)update["cmd"],
-                    process = (bool)update["process"],
-                    shell = (bool)update["shell"],
-                    batch = (bool)update["batch"],
-                    winps = (bool)update["winps"],
-                    pwsh = (bool)update["pwsh"],
-                    applescript = (bool)update["applescript"],
+                    Run = capabilities.ExecCapset.HasFlag(NowCapabilityExec.Run),
+                    Batch = capabilities.ExecCapset.HasFlag(NowCapabilityExec.Batch),
+                    Process = capabilities.ExecCapset.HasFlag(NowCapabilityExec.Process),
+                    Shell = capabilities.ExecCapset.HasFlag(NowCapabilityExec.Shell),
+                    WinPs = capabilities.ExecCapset.HasFlag(NowCapabilityExec.WinPs),
+                    Pwsh = capabilities.ExecCapset.HasFlag(NowCapabilityExec.Pwsh),
                 };
             }
 
-            public bool Run { get => run; }
-            public bool Cmd { get => cmd; }
-            public bool Process { get => process; }
-            public bool Shell { get => shell; }
-            public bool Batch { get => batch; }
-            public bool WinPS { get => winps; }
-            public bool Pwsh { get => pwsh; }
-            public bool AppleScript { get => applescript; }
-
-
-            bool run;
-            bool cmd;
-            bool process;
-            bool shell;
-            bool batch;
-            bool winps;
-            bool pwsh;
-            bool applescript;
+            public bool Run { get; private init; }
+            public bool Batch { get; private init; }
+            public bool Process { get; private init; }
+            public bool Shell { get; private init; }
+            public bool WinPs { get; private init; }
+            public bool Pwsh { get; private init; }
+            public bool AppleScript { get; private init; }
         }
 
         public DvcDialog()
@@ -59,66 +52,126 @@ namespace MsRdpEx_App
             InitializeComponent();
         }
 
-        public void ProcessUpdate(JObject update)
+        public void OnDvcConnected(INowTransport transport)
         {
-            switch ((string)update["kind"])
+            Debug.WriteLine("OnDvcConnected triggered.");
+            Task.Run(async () =>
             {
-                case "ShowCapabilities": {
-                    var capabilities_view = CapabilitiesView.FromUpdate(update);
+                // Connect and negotiate capabilities.
+                var client = await NowClient.Connect(transport);
+                Debug.WriteLine("NOW channel has been connected!");
+                OnNowClientConnected(client);
 
-                    capabilitiesGrid.SelectedObject = capabilities_view;
+            });
+        }
 
-                    break;
-                }
-                case "MessageBoxResult": {
-                    var kind = (string)update["message_box_kind"];
-                    MessageBox.Show(kind, "Remote message box result", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    break;
-                }
-                case "ExecLog": {
-                    var session_id = (int)update["session_id"];
-                    var info = (string)update["info"];
-                    execLogTextBox.AppendText($"[{session_id}] {info}");
-                    break;
-                }
-                case "ExecDataOut": {
-                    var session_id = (int)update["session_id"];
-                    var stderr = (bool)update["stderr"];
-                    var data = (string)update["data"];
+        public void OnNowClientConnected(NowClient client)
+        {
+            nowClient = client;
+            var capabilitiesView = CapabilitiesView.FromUpdate(nowClient.Capabilities);
 
-                    if (stderr)
-                    {
-                        stderrTextBox.AppendText(data);
-                    }
-                    else
-                    {
-                        stdoutTextBox.AppendText(data);
-                    }
-
-                    break;
-                }
-                default:
+            // Set capabilities grid when connected
+            if (InvokeRequired)
+            {
+                capabilitiesGrid.Invoke(() =>
                 {
-                    Debug.WriteLine("Unknown UI update");
-                    break;
-                }
+                    capabilitiesGrid.SelectedObject = capabilitiesView;
+                });
             }
-
+            else
+            {
+                capabilitiesGrid.SelectedObject = capabilitiesView;
+            }
         }
 
         static int current_session_id = -1;
 
-        private void execRunButton_Click(object sender, EventArgs e)
+        private void OnSessionStarted(uint sessionId)
         {
-            SendUiInteractionHandler handler = SendUiInteraction;
-            if (handler == null)
+            Debug.WriteLine("Session has started!");
+        }
+
+        private void OnSessionStdout(uint sessionId, ArraySegment<byte> outData, bool last)
+        {
+            string textToAppend = string.Empty;
+
+            try
             {
-                return;
+                if (outData.Count != 0)
+                {
+                    textToAppend = Encoding.UTF8.GetString(outData.ToArray());
+                }
+
+            }
+            catch (Exception)
+            {
+                textToAppend = $"<RAW BYTES ({outData.Count})>";
             }
 
+            if (last)
+            {
+                textToAppend += "<EOF>";
+            }
+
+            if (InvokeRequired)
+            {
+                stdoutTextBox.Invoke(() =>
+                {
+                    stdoutTextBox.AppendText(textToAppend);
+                });
+            }
+            else
+            {
+                stdoutTextBox.AppendText(textToAppend);
+            }
+        }
+
+        private void OnSessionStderr(uint sessionId, ArraySegment<byte> outData, bool last)
+        {
+            string textToAppend = string.Empty;
+
+            try
+            {
+                if (outData.Count != 0)
+                {
+                    textToAppend = Encoding.UTF8.GetString(outData.ToArray());
+                }
+
+            }
+            catch (Exception)
+            {
+                textToAppend = $"<RAW BYTES ({outData.Count})>";
+            }
+
+            if (last)
+            {
+                textToAppend += "<EOF>";
+            }
+
+            if (InvokeRequired)
+            {
+                stderrTextBox.Invoke(() =>
+                {
+                    stderrTextBox.AppendText(textToAppend);
+                });
+            }
+            else
+            {
+                stderrTextBox.AppendText(textToAppend);
+            }
+        }
+
+        private async void execRunButton_Click(object sender, EventArgs e)
+        {
             if (execKindComboBox.SelectedIndex == -1)
             {
                 MessageBox.Show("Please select an execution kind", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (nowClient == null)
+            {
+                MessageBox.Show("Now client is not connected", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -130,85 +183,96 @@ namespace MsRdpEx_App
             // ShellExecute
             if (execKindComboBox.SelectedIndex == 0)
             {
-                var interaction = new JObject
+                var execParams = new ExecRunParams(execRunCommandTextBox.Text)
                 {
-                    ["kind"] = "ExecRun",
-                    ["exec_kind"] = "run",
-                    ["file"] = execRunCommandTextBox.Text,
-                    ["args"] = "",
-                    ["directory"] = "",
-                    ["session_id"] = ++current_session_id,
+                    OnStarted = OnSessionStarted,
+                    OnStdout = OnSessionStdout,
+                    OnStderr = OnSessionStderr
                 };
 
-                handler(interaction);
+                currentExecSession = await nowClient.ExecRun(execParams);
                 return;
             }
 
             // Process
             if (execKindComboBox.SelectedIndex == 1)
             {
-                var interaction = new JObject
+                var execParams = new ExecProcessParams(execRunCommandTextBox.Text)
                 {
-                    ["kind"] = "ExecRun",
-                    ["exec_kind"] = "process",
-                    ["file"] = execRunCommandTextBox.Text,
-                    ["args"] = execArgsTextBox.Text,
-                    ["directory"] = execDirectoryTextBox.Text,
-                    ["session_id"] = ++current_session_id,
+                    OnStarted = OnSessionStarted,
+                    OnStdout = OnSessionStdout,
+                    OnStderr = OnSessionStderr
                 };
 
-                handler(interaction);
+                if (execDirectoryTextBox.Text.Length != 0)
+                {
+                    execParams.Directory(execDirectoryTextBox.Text);
+                }
+
+                if (execArgsTextBox.Text.Length != 0)
+                {
+                    execParams.Parameters(execArgsTextBox.Text);
+                }
+
+                currentExecSession = await nowClient.ExecProcess(execParams);
                 return;
             }
 
             // Batch
             if (execKindComboBox.SelectedIndex == 2)
             {
-                var interaction = new JObject
+                var execParams = new ExecBatchParams(execRunCommandTextBox.Text)
                 {
-                    ["kind"] = "ExecRun",
-                    ["exec_kind"] = "cmd",
-                    ["file"] = execRunCommandTextBox.Text,
-                    ["args"] = "",
-                    ["directory"] = "",
-                    ["session_id"] = ++current_session_id,
+                    OnStarted = OnSessionStarted,
+                    OnStdout = OnSessionStdout,
+                    OnStderr = OnSessionStderr
                 };
 
-                handler(interaction);
+                if (execDirectoryTextBox.Text.Length != 0)
+                {
+                    execParams.Directory(execDirectoryTextBox.Text);
+                }
+
+
+                currentExecSession = await nowClient.ExecBatch(execParams);
                 return;
             }
 
             // Powershell
             if (execKindComboBox.SelectedIndex == 3)
             {
-                var interaction = new JObject
+                var execParams = new ExecWinPsParams(execRunCommandTextBox.Text)
                 {
-                    ["kind"] = "ExecRun",
-                    ["exec_kind"] = "powershell",
-                    ["file"] = execRunCommandTextBox.Text,
-                    ["args"] = "",
-                    ["directory"] = "",
-                    ["session_id"] = ++current_session_id,
+                    OnStarted = OnSessionStarted,
+                    OnStdout = OnSessionStdout,
+                    OnStderr = OnSessionStderr
                 };
 
-                handler(interaction);
+                if (execDirectoryTextBox.Text.Length != 0)
+                {
+                    execParams.Directory(execDirectoryTextBox.Text);
+                }
+
+                currentExecSession = await nowClient.ExecWinPs(execParams);
                 return;
             }
 
             // Powershell
             if (execKindComboBox.SelectedIndex == 4)
             {
-                var interaction = new JObject
+                var execParams = new ExecPwshParams(execRunCommandTextBox.Text)
                 {
-                    ["kind"] = "ExecRun",
-                    ["exec_kind"] = "pwsh",
-                    ["file"] = execRunCommandTextBox.Text,
-                    ["args"] = "",
-                    ["directory"] = "",
-                    ["session_id"] = ++current_session_id,
+                    OnStarted = OnSessionStarted,
+                    OnStdout = OnSessionStdout,
+                    OnStderr = OnSessionStderr
                 };
 
-                handler(interaction);
+                if (execDirectoryTextBox.Text.Length != 0)
+                {
+                    execParams.Directory(execDirectoryTextBox.Text);
+                }
+
+                currentExecSession = await nowClient.ExecPwsh(execParams);
                 return;
             }
 
@@ -220,17 +284,11 @@ namespace MsRdpEx_App
 
         }
 
-        private void sendStdinButton_Click(object sender, EventArgs e)
+        private async void sendStdinButton_Click(object sender, EventArgs e)
         {
-            if (current_session_id == -1)
+            if (currentExecSession == null)
             {
                 MessageBox.Show("No session is active", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            SendUiInteractionHandler handler = SendUiInteraction;
-            if (handler == null)
-            {
                 return;
             }
 
@@ -241,67 +299,46 @@ namespace MsRdpEx_App
                 data += "\r\n";
             }
 
-            var interaction = new JObject
-            {
-                ["kind"] = "ExecStdin",
-                ["session_id"] = current_session_id,
-                ["data"] = data,
-                ["eof"] = sendEofCheckbox.Checked,
-            };
-
-            handler(interaction);
-            return;
+            await currentExecSession.SendStdin(Encoding.UTF8.GetBytes(data), sendEofCheckbox.Checked);
         }
 
-        private void abortButton_Click(object sender, EventArgs e)
+        private async void abortButton_Click(object sender, EventArgs e)
         {
-            if (current_session_id == -1)
+            if (currentExecSession == null)
             {
                 MessageBox.Show("No session is active", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            SendUiInteractionHandler handler = SendUiInteraction;
-            if (handler == null)
+            try
             {
-                return;
+                await currentExecSession.Abort(1);
+            }
+            finally
+            {
+                currentExecSession = null;
             }
 
-            var interaction = new JObject
-            {
-                ["kind"] = "ExecAbort",
-                ["session_id"] = current_session_id,
-                ["status"] = 1,
-            };
-
-            handler(interaction);
-            return;
         }
 
-        private void cancelButton_Click(object sender, EventArgs e)
+        private async void cancelButton_Click(object sender, EventArgs e)
         {
-            if (current_session_id == -1)
+            if (currentExecSession == null)
             {
                 MessageBox.Show("No session is active", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            SendUiInteractionHandler handler = SendUiInteraction;
-            if (handler == null)
+            try
             {
-                return;
+                await currentExecSession.Cancel();
+                Debug.WriteLine("Task cancelled!");
+                currentExecSession = null;
             }
-
-            var interaction = new JObject
+            catch (Exception exception)
             {
-                ["kind"] = "ExecCancel",
-                ["session_id"] = current_session_id,
-            };
-
-            handler(interaction);
-            return;
+                Debug.WriteLine(exception);
+            }
         }
     }
-
-    public delegate void SendUiInteractionHandler(JObject interaction);
 }

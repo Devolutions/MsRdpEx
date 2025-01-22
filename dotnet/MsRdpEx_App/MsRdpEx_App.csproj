@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <Platforms>Win32;x64;ARM64</Platforms>
-    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
     <UseWindowsForms>True</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
     <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
@@ -22,12 +22,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="../../dvc-client-rs/target/release/dvc_client.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="../../dvc-client-rs/target/release/dvc_client.pdb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <Compile Remove="DvcClientLib.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="DvcClientLib.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,6 +35,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../Devolutions.MsRdpEx/Devolutions.MsRdpEx.csproj" IncludeAssets="all" />
+    <ProjectReference Include="..\now-proto\nugets\Devolutions.NowClient\Devolutions.NowClient.csproj" />
+    <ProjectReference Include="..\now-proto\nugets\Devolutions.NowProto\Devolutions.NowProto.csproj" />
   </ItemGroup>
 
   <ItemGroup>

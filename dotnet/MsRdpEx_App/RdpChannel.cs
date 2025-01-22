@@ -1,10 +1,17 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading.Channels;
 using System.Windows.Forms;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Bson;
 using Newtonsoft.Json.Linq;
+
+using System.Threading.Tasks;
+using MSTSCLib;
+using Devolutions.NowClient;
 
 namespace MsRdpEx_App
 {
@@ -71,8 +78,10 @@ namespace MsRdpEx_App
         void Terminated();
     }
 
-    public class RdpDvcClient : IWTSVirtualChannelCallback
+    public class RdpDvcClient : IWTSVirtualChannelCallback, INowTransport
     {
+        private const int RxChannelCapacity = 1024;
+
         private DvcDialog dialog = null;
 
         public string channelName;
@@ -80,16 +89,36 @@ namespace MsRdpEx_App
 
         public event EventHandler OnChannelClose;
 
-        private DvcClientCtx dvcClientCtx = null;
         private RdpView rdpView = null;
+
+        private Channel<byte[]> rxChannel = Channel.CreateBounded<byte[]>(RxChannelCapacity);
+
+        Task INowTransport.Write(byte[] data)
+        {
+            GCHandle? pinnedArray = null;
+            try
+            {
+                // Marshall without additional allocations, only pin before call.
+                pinnedArray = GCHandle.Alloc(data, GCHandleType.Pinned);
+                SendRawBuffer((uint)data.Length, pinnedArray.Value.AddrOfPinnedObject());
+            }
+            finally
+            {
+                pinnedArray?.Free();
+            }
+
+            return Task.CompletedTask;
+        }
+
+        Task<byte[]> INowTransport.Read()
+        {
+            return rxChannel.Reader.ReadAsync().AsTask();
+        }
 
         public RdpDvcClient(string name, IWTSVirtualChannel wtsChannel, RdpView rdpView)
         {
             this.channelName = name;
             this.wtsChannel = wtsChannel;
-
-            // Initialize rust-side code
-            dvcClientCtx = new DvcClientCtx();
 
             // Start DVC dialog form
             if (rdpView.InvokeRequired)
@@ -102,25 +131,6 @@ namespace MsRdpEx_App
             {
                 dialog = rdpView.StartDvcDialog();
             }
-
-
-            // Register callback for UI interaction events
-            if (dialog.InvokeRequired)
-            {
-                dialog.Invoke(() => dialog.SendUiInteraction += OnUiInteraction);
-            }
-            else
-            {
-                dialog.SendUiInteraction += OnUiInteraction;
-            }
-        }
-
-        public void OnUiInteraction(JObject interaction)
-        {
-            var interaction_str = interaction.ToString();
-
-            var response = dvcClientCtx.HandleUi(interaction_str);
-            process_response(response);
         }
 
         public void SendRawBuffer(uint cbSize, IntPtr pBuffer)
@@ -129,52 +139,22 @@ namespace MsRdpEx_App
             wtsChannel?.Write(cbSize, pBuffer, null);
         }
 
-        void process_response(DvcClientResponse response)
-        {
-            switch (response.Kind)
-            {
-                case DvcClientResponseKind.UpdateUi:
-                    var update_str = response.AsUiUpdate();
-
-                    Debug.WriteLine("Pending UI update: " + update_str);
-
-                    var parsed = JObject.Parse(update_str);
-
-                    if (dialog.InvokeRequired)
-                    {
-                        dialog.Invoke(() => dialog.ProcessUpdate(parsed));
-                    }
-                    else
-                    {
-                        dialog.ProcessUpdate(parsed);
-                    }
-
-                    break;
-                case DvcClientResponseKind.SendMessage:
-                    var ptr = response.GetDataPtr();
-                    var len = response.GetDataLen();
-
-                    Debug.WriteLine($"Pending write message ({len} bytes)");
-
-                    // Direct send of native buffer without marshalling
-                    SendRawBuffer(response.GetDataLen(), response.GetDataPtr());
-                    break;
-                default:
-                    Debug.WriteLine("Unexpected response kind");
-                    break;
-            }
-        }
-
         void IWTSVirtualChannelCallback.OnDataReceived(uint cbSize, IntPtr pBuffer)
         {
             Debug.WriteLine($"DATA received: {cbSize}");
 
-            byte[] buffer = new byte[cbSize];
+            var buffer = new byte[cbSize];
             Marshal.Copy(pBuffer, buffer, 0, (int)cbSize);
-            var response =  dvcClientCtx.HandleData(buffer);
 
-            process_response(response);
+            if (!rxChannel.Writer.TryWrite(buffer))
+            {
+                throw new InvalidOperationException("Failed to write to channel");
+            }
+        }
 
+        public void OnConnected()
+        {
+            dialog.OnDvcConnected(this);
         }
 
         void IWTSVirtualChannelCallback.OnClose()
@@ -185,12 +165,17 @@ namespace MsRdpEx_App
 
     public class RdpDvcListener : IWTSListenerCallback
     {
+        // Define On connected delegate
+        public delegate void OnConnectedDelegate(INowTransport transport);
+
         public int maxCount;
         public string channelName;
         public IWTSListener wtsListener;
 
         private List<RdpDvcClient> clients = new List<RdpDvcClient>();
         public List<RdpDvcClient> Clients => clients;
+
+        private OnConnectedDelegate onConnected;
 
         private RdpView rdpView;
 
@@ -217,6 +202,8 @@ namespace MsRdpEx_App
             RdpDvcClient client = new RdpDvcClient(channelName, pChannel, rdpView);
             pAccept = true;
             pCallback = client;
+
+            client.OnConnected();
 
             client.OnChannelClose += OnChannelClose;
             clients.Add(client);

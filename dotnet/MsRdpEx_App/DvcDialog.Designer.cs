@@ -135,7 +135,7 @@
             this.execRunButton.TabIndex = 2;
             this.execRunButton.Text = "RUN";
             this.execRunButton.UseVisualStyleBackColor = true;
-            this.execRunButton.Click += new System.EventHandler(this.execRunButton_Click);
+             this.execRunButton.Click += new System.EventHandler(this.execRunButton_Click);
             // 
             // execRunCommandTextBox
             // 
@@ -231,7 +231,7 @@
             this.sendStdinButton.TabIndex = 9;
             this.sendStdinButton.Text = "Send";
             this.sendStdinButton.UseVisualStyleBackColor = true;
-            this.sendStdinButton.Click += new System.EventHandler(this.sendStdinButton_Click);
+             this.sendStdinButton.Click += new System.EventHandler(this.sendStdinButton_Click);
             // 
             // execKindComboBox
             // 
