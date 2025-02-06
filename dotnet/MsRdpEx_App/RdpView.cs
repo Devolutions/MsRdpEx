@@ -15,6 +15,7 @@ using MSTSCLib;
 using AxMSTSCLib;
 
 using MsRdpEx;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
 namespace MsRdpEx_App
 {
@@ -34,6 +35,8 @@ namespace MsRdpEx_App
         private int disconnectReason = 0;
 
         public int DisconnectReason { get => disconnectReason; }
+
+        private DvcDialog dvcDialog = null;
 
         public RdpView(string axName, string rdpExDll)
         {
@@ -452,6 +455,14 @@ namespace MsRdpEx_App
                 components.Dispose();
             }
             base.Dispose(disposing);
+        }
+
+        public DvcDialog StartDvcDialog()
+        {
+            dvcDialog = new DvcDialog();
+            dvcDialog.Show(this);
+
+            return dvcDialog;
         }
     }
 }

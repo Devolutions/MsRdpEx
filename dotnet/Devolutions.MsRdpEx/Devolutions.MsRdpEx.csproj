@@ -14,6 +14,7 @@
     <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
     <SuppressDependenciesWhenPacking>True</SuppressDependenciesWhenPacking>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,10 +31,8 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Copy SourceFiles="$(CMakeOutputPath)/MsRdpEx.dll" DestinationFolder="$(OutputPath)"
-      OverwriteReadOnlyFiles="true" Condition="Exists('$(CMakeOutputPath)/MsRdpEx.dll')" />
-    <Copy SourceFiles="$(CMakeOutputPath)/MsRdpEx.pdb" DestinationFolder="$(OutputPath)"
-      OverwriteReadOnlyFiles="true" Condition="Exists('$(CMakeOutputPath)/MsRdpEx.pdb')" />
+    <Copy SourceFiles="$(CMakeOutputPath)/MsRdpEx.dll" DestinationFolder="$(OutputPath)" OverwriteReadOnlyFiles="true" Condition="Exists('$(CMakeOutputPath)/MsRdpEx.dll')" />
+    <Copy SourceFiles="$(CMakeOutputPath)/MsRdpEx.pdb" DestinationFolder="$(OutputPath)" OverwriteReadOnlyFiles="true" Condition="Exists('$(CMakeOutputPath)/MsRdpEx.pdb')" />
   </Target>
 
   <ItemGroup>
