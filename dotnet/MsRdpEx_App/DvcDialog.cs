@@ -15,13 +15,13 @@ using System.Windows.Forms;
 using Devolutions.NowClient;
 using Devolutions.NowProto.Messages;
 using Devolutions.NowProto.Capabilities;
+using Devolutions.NowProto.Exceptions;
 
 namespace MsRdpEx_App
 {
     public partial class DvcDialog : Form
     {
         public NowClient nowClient = null;
-        public ExecSession currentExecSession = null;
 
         class CapabilitiesView
         {
@@ -50,6 +50,7 @@ namespace MsRdpEx_App
         public DvcDialog()
         {
             InitializeComponent();
+            msgBoxKindSelect.SelectedIndex = 0;
         }
 
         public void OnDvcConnected(INowTransport transport)
@@ -73,10 +74,7 @@ namespace MsRdpEx_App
             // Set capabilities grid when connected
             if (InvokeRequired)
             {
-                capabilitiesGrid.Invoke(() =>
-                {
-                    capabilitiesGrid.SelectedObject = capabilitiesView;
-                });
+                capabilitiesGrid.Invoke(() => { capabilitiesGrid.SelectedObject = capabilitiesView; });
             }
             else
             {
@@ -84,261 +82,298 @@ namespace MsRdpEx_App
             }
         }
 
-        static int current_session_id = -1;
-
-        private void OnSessionStarted(uint sessionId)
-        {
-            Debug.WriteLine("Session has started!");
-        }
-
-        private void OnSessionStdout(uint sessionId, ArraySegment<byte> outData, bool last)
-        {
-            string textToAppend = string.Empty;
-
-            try
-            {
-                if (outData.Count != 0)
-                {
-                    textToAppend = Encoding.UTF8.GetString(outData.ToArray());
-                }
-
-            }
-            catch (Exception)
-            {
-                textToAppend = $"<RAW BYTES ({outData.Count})>";
-            }
-
-            if (last)
-            {
-                textToAppend += "<EOF>";
-            }
-
-            if (InvokeRequired)
-            {
-                stdoutTextBox.Invoke(() =>
-                {
-                    stdoutTextBox.AppendText(textToAppend);
-                });
-            }
-            else
-            {
-                stdoutTextBox.AppendText(textToAppend);
-            }
-        }
-
-        private void OnSessionStderr(uint sessionId, ArraySegment<byte> outData, bool last)
-        {
-            string textToAppend = string.Empty;
-
-            try
-            {
-                if (outData.Count != 0)
-                {
-                    textToAppend = Encoding.UTF8.GetString(outData.ToArray());
-                }
-
-            }
-            catch (Exception)
-            {
-                textToAppend = $"<RAW BYTES ({outData.Count})>";
-            }
-
-            if (last)
-            {
-                textToAppend += "<EOF>";
-            }
-
-            if (InvokeRequired)
-            {
-                stderrTextBox.Invoke(() =>
-                {
-                    stderrTextBox.AppendText(textToAppend);
-                });
-            }
-            else
-            {
-                stderrTextBox.AppendText(textToAppend);
-            }
-        }
 
         private async void execRunButton_Click(object sender, EventArgs e)
         {
-            if (execKindComboBox.SelectedIndex == -1)
+            try
             {
-                MessageBox.Show("Please select an execution kind", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                await RunSession();
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
 
+        private async Task RunSession()
+        {
             if (nowClient == null)
             {
                 MessageBox.Show("Now client is not connected", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            stdinTextBox.Clear();
-            stdoutTextBox.Clear();
-            stderrTextBox.Clear();
-            execLogTextBox.Clear();
-
             // ShellExecute
-            if (execKindComboBox.SelectedIndex == 0)
+            if (runRadioButton.Checked)
             {
-                var execParams = new ExecRunParams(execRunCommandTextBox.Text)
+                // TODO: no callbacks for RUN kind
+                var execParams = new ExecRunParams(fileInput.Text)
                 {
-                    OnStarted = OnSessionStarted,
-                    OnStdout = OnSessionStdout,
-                    OnStderr = OnSessionStderr
+                    OnStarted = (_) => { },
+                    OnStdout = (_, data, last) => { },
+                    OnStderr = (_, data, last) => { }
                 };
 
-                currentExecSession = await nowClient.ExecRun(execParams);
+                await nowClient.ExecRun(execParams);
                 return;
             }
 
             // Process
-            if (execKindComboBox.SelectedIndex == 1)
+            if (processRadioButton.Checked)
             {
-                var execParams = new ExecProcessParams(execRunCommandTextBox.Text)
+                var sessionDlg = new ExecSessionDlg();
+
+                var execParams = new ExecProcessParams(fileInput.Text)
                 {
-                    OnStarted = OnSessionStarted,
-                    OnStdout = OnSessionStdout,
-                    OnStderr = OnSessionStderr
+                    OnStarted = (_) => sessionDlg.OnSessionStarted(),
+                    OnStdout = (_, data, last) => sessionDlg.OnSessionStdout(data, last),
+                    OnStderr = (_, data, last) => sessionDlg.OnSessionStderr(data, last)
                 };
 
-                if (execDirectoryTextBox.Text.Length != 0)
+                if (directoryInput.Text.Length != 0)
                 {
-                    execParams.Directory(execDirectoryTextBox.Text);
+                    execParams.Directory(directoryInput.Text);
                 }
 
-                if (execArgsTextBox.Text.Length != 0)
+                if (cmdInput.Text.Length != 0)
                 {
-                    execParams.Parameters(execArgsTextBox.Text);
+                    execParams.Parameters(cmdInput.Text);
                 }
 
-                currentExecSession = await nowClient.ExecProcess(execParams);
+                var session = await nowClient.ExecProcess(execParams);
+                sessionDlg.Show();
+                await sessionDlg.ProcessExecSession(session, "process");
+
                 return;
             }
 
             // Batch
-            if (execKindComboBox.SelectedIndex == 2)
+            if (batchRadioButton.Checked)
             {
-                var execParams = new ExecBatchParams(execRunCommandTextBox.Text)
+                var sessionDlg = new ExecSessionDlg();
+
+                var execParams = new ExecBatchParams(cmdInput.Text)
                 {
-                    OnStarted = OnSessionStarted,
-                    OnStdout = OnSessionStdout,
-                    OnStderr = OnSessionStderr
+                    OnStarted = (_) => sessionDlg.OnSessionStarted(),
+                    OnStdout = (_, data, last) => sessionDlg.OnSessionStdout(data, last),
+                    OnStderr = (_, data, last) => sessionDlg.OnSessionStderr(data, last)
                 };
 
-                if (execDirectoryTextBox.Text.Length != 0)
+                if (directoryInput.Text.Length != 0)
                 {
-                    execParams.Directory(execDirectoryTextBox.Text);
+                    execParams.Directory(directoryInput.Text);
                 }
 
-
-                currentExecSession = await nowClient.ExecBatch(execParams);
+                var session = await nowClient.ExecBatch(execParams);
+                sessionDlg.Show(this);
+                await sessionDlg.ProcessExecSession(session, "batch");
                 return;
             }
 
             // Powershell
-            if (execKindComboBox.SelectedIndex == 3)
+            if (powershellRadioButton.Checked)
             {
-                var execParams = new ExecWinPsParams(execRunCommandTextBox.Text)
+                var sessionDlg = new ExecSessionDlg();
+
+                var execParams = new ExecWinPsParams(cmdInput.Text)
                 {
-                    OnStarted = OnSessionStarted,
-                    OnStdout = OnSessionStdout,
-                    OnStderr = OnSessionStderr
+                    OnStarted = (_) => sessionDlg.OnSessionStarted(),
+                    OnStdout = (_, data, last) => sessionDlg.OnSessionStdout(data, last),
+                    OnStderr = (_, data, last) => sessionDlg.OnSessionStderr(data, last)
                 };
 
-                if (execDirectoryTextBox.Text.Length != 0)
+                if (directoryInput.Text.Length != 0)
                 {
-                    execParams.Directory(execDirectoryTextBox.Text);
+                    execParams.Directory(directoryInput.Text);
                 }
 
-                currentExecSession = await nowClient.ExecWinPs(execParams);
+                var session = await nowClient.ExecWinPs(execParams);
+                sessionDlg.Show(this);
+                await sessionDlg.ProcessExecSession(session, "powershell");
                 return;
+
             }
 
             // Powershell
-            if (execKindComboBox.SelectedIndex == 4)
+            if (pwshRadioButton.Checked)
             {
-                var execParams = new ExecPwshParams(execRunCommandTextBox.Text)
+                var sessionDlg = new ExecSessionDlg();
+
+                var execParams = new ExecPwshParams(cmdInput.Text)
                 {
-                    OnStarted = OnSessionStarted,
-                    OnStdout = OnSessionStdout,
-                    OnStderr = OnSessionStderr
+                    OnStarted = (_) => sessionDlg.OnSessionStarted(),
+                    OnStdout = (_, data, last) => sessionDlg.OnSessionStdout(data, last),
+                    OnStderr = (_, data, last) => sessionDlg.OnSessionStderr(data, last)
                 };
 
-                if (execDirectoryTextBox.Text.Length != 0)
+                if (directoryInput.Text.Length != 0)
                 {
-                    execParams.Directory(execDirectoryTextBox.Text);
+                    execParams.Directory(directoryInput.Text);
                 }
 
-                currentExecSession = await nowClient.ExecPwsh(execParams);
+                var session = await nowClient.ExecPwsh(execParams);
+                sessionDlg.Show(this);
+                await sessionDlg.ProcessExecSession(session, "pwsh");
                 return;
             }
-
-            MessageBox.Show("Unknown execution kind", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        private void execRunPage_Click(object sender, EventArgs e)
+        private void runRadioButton_CheckedChanged(object sender, EventArgs e)
         {
+            var fileTextStr = "";
+            var cmdTextStr = "";
+            var directoryTextStr = "";
+
+            if (runRadioButton.Checked)
+            {
+                fileTextStr = "Command:";
+            }
+
+            if (processRadioButton.Checked)
+            {
+                fileTextStr = "File:";
+                cmdTextStr = "Parameters:";
+                directoryTextStr = "Directory:";
+            }
+
+            if (batchRadioButton.Checked | powershellRadioButton.Checked | pwshRadioButton.Checked)
+            {
+                cmdTextStr = "Script:";
+                directoryTextStr = "Directory:";
+            }
+
+            fileInput.Text = "";
+            cmdInput.Text = "";
+            directoryInput.Text = "";
+
+            if (fileTextStr.Length != 0)
+            {
+                fileLabel.Text = fileTextStr;
+                fileInput.Enabled = true;
+                fileInput.ReadOnly = false;
+            }
+            else
+            {
+                fileLabel.Text = "---";
+                fileInput.Enabled = false;
+                fileInput.ReadOnly = true;
+            }
+
+            if (cmdTextStr.Length != 0)
+            {
+                cmdLabel.Text = cmdTextStr;
+                cmdInput.Enabled = true;
+                cmdInput.ReadOnly = false;
+            }
+            else
+            {
+                cmdLabel.Text = "---";
+                cmdInput.Enabled = false;
+                cmdInput.ReadOnly = true;
+            }
+
+            if (directoryTextStr.Length != 0)
+            {
+                directoryLabel.Text = directoryTextStr;
+                directoryInput.Enabled = true;
+                directoryInput.ReadOnly = false;
+            }
+            else
+            {
+                directoryLabel.Text = "---";
+                directoryInput.Enabled = false;
+                directoryInput.ReadOnly = true;
+            }
+        }
+
+        private async void msgBoxShowButton_Click(object sender, EventArgs e)
+        {
+            var msgBoxParams = new MessageBoxParams(msgBoxMessageInput.Text);
+
+            if (msgBoxTitleInput.Text.Length > 0)
+            {
+                msgBoxParams.Title(msgBoxTitleInput.Text);
+            }
+
+            if (msgBoxKindSelect.SelectedIndex > 0)
+            {
+                var kind = msgBoxKindSelect.SelectedIndex switch
+                {
+                    1 => NowMsgSessionMessageBoxReq.MessageBoxStyle.Ok,
+                    2 => NowMsgSessionMessageBoxReq.MessageBoxStyle.OkCancel,
+                    3 => NowMsgSessionMessageBoxReq.MessageBoxStyle.AbortRetryIgnore,
+                    4 => NowMsgSessionMessageBoxReq.MessageBoxStyle.YesNoCancel,
+                    5 => NowMsgSessionMessageBoxReq.MessageBoxStyle.YesNo,
+                    6 => NowMsgSessionMessageBoxReq.MessageBoxStyle.RetryCancel,
+                    7 => NowMsgSessionMessageBoxReq.MessageBoxStyle.CancelTryContinue,
+                    8 => NowMsgSessionMessageBoxReq.MessageBoxStyle.Help,
+                    _ => throw new InvalidOperationException("invalid combo box contents")
+                };
+
+                msgBoxParams.Style(kind);
+            }
+
+            if (msgBoxTimeoutFlag.Checked)
+            {
+                msgBoxParams.Timeout(
+                    TimeSpan.FromSeconds(uint.Parse(msgBoxTimeoutInput.Text))
+                );
+            }
+
+            if (msgBoxResponseFlag.Checked)
+            {
+                msgBoxResponseText.Text = "<waiting...>";
+
+                var responseHandler = await nowClient.SessionMessageBox(msgBoxParams);
+                var response = await responseHandler.GetResponse();
+                msgBoxResponseText.Text = response.ToString();
+            }
+            else
+            {
+                msgBoxResponseText.Text = "---";
+                await nowClient.SessionMessageBoxNoResponse(msgBoxParams);
+            }
 
         }
 
-        private async void sendStdinButton_Click(object sender, EventArgs e)
+        private async void lockButton_Click(object sender, EventArgs e)
         {
-            if (currentExecSession == null)
-            {
-                MessageBox.Show("No session is active", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            var data = stdinTextBox.Text;
-
-            if (execSendCrlfCheckBox.Checked)
-            {
-                data += "\r\n";
-            }
-
-            await currentExecSession.SendStdin(Encoding.UTF8.GetBytes(data), sendEofCheckbox.Checked);
+            await nowClient.SessionLock();
         }
 
-        private async void abortButton_Click(object sender, EventArgs e)
+        private async void logoffButton_Click(object sender, EventArgs e)
         {
-            if (currentExecSession == null)
-            {
-                MessageBox.Show("No session is active", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            try
-            {
-                await currentExecSession.Abort(1);
-            }
-            finally
-            {
-                currentExecSession = null;
-            }
-
+            await nowClient.SessionLogoff();
         }
 
-        private async void cancelButton_Click(object sender, EventArgs e)
+        private async void shutdownButton_Click(object sender, EventArgs e)
         {
-            if (currentExecSession == null)
+            var shutdownParams = new SystemShutdownParams();
+
+            if (shutdownForceFlag.Checked)
             {
-                MessageBox.Show("No session is active", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                shutdownParams.Force();
             }
 
-            try
+            if (shutdownRebootFlag.Checked)
             {
-                await currentExecSession.Cancel();
-                Debug.WriteLine("Task cancelled!");
-                currentExecSession = null;
+                shutdownParams.Reboot();
             }
-            catch (Exception exception)
+
+            if (shutdownTimeoutFlag.Checked)
             {
-                Debug.WriteLine(exception);
+                shutdownParams.Timeout(
+                    TimeSpan.FromSeconds(uint.Parse(shutdownTimeoutInput.Text))
+                );
             }
+
+            if (shutdownMessageInput.Text.Length > 0)
+            {
+                shutdownParams.Message(shutdownMessageInput.Text);
+            }
+
+
+            await nowClient.SystemShutdown(shutdownParams);
         }
     }
 }

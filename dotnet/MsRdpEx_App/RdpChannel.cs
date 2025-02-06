@@ -110,9 +110,11 @@ namespace MsRdpEx_App
             return Task.CompletedTask;
         }
 
-        Task<byte[]> INowTransport.Read()
+        async Task<byte[]> INowTransport.Read()
         {
-            return rxChannel.Reader.ReadAsync().AsTask();
+            var data = await rxChannel.Reader.ReadAsync().AsTask();
+
+            return data;
         }
 
         public RdpDvcClient(string name, IWTSVirtualChannel wtsChannel, RdpView rdpView)
@@ -146,10 +148,7 @@ namespace MsRdpEx_App
             var buffer = new byte[cbSize];
             Marshal.Copy(pBuffer, buffer, 0, (int)cbSize);
 
-            if (!rxChannel.Writer.TryWrite(buffer))
-            {
-                throw new InvalidOperationException("Failed to write to channel");
-            }
+            _ = Task.Run(() => rxChannel.Writer.WriteAsync(buffer).AsTask());
         }
 
         public void OnConnected()
