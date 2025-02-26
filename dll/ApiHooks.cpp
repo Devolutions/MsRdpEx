@@ -909,7 +909,7 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         {
             IUnknown* pUnknown = NULL;
             IMsRdpClient9* pMsRdpClient9 = NULL;
-            IMsRdpClientSecuredSettings* pMsRdpClientSecuredSettings = NULL;
+            IMsRdpClientSecuredSettings2* pMsRdpClientSecuredSettings = NULL;
 
             if (instance)
                 instance->GetRdpClient((LPVOID*)&pUnknown);
@@ -918,7 +918,7 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
                 pUnknown->QueryInterface(IID_IMsRdpClient9, (LPVOID*)&pMsRdpClient9);
 
             if (pMsRdpClient9)
-                pMsRdpClient9->get_SecuredSettings2(&pMsRdpClientSecuredSettings);
+                pMsRdpClient9->get_SecuredSettings3(&pMsRdpClientSecuredSettings);
 
             LONG keyboardHookMode = 0;
             pMsRdpClientSecuredSettings->get_KeyboardHookMode(&keyboardHookMode);
@@ -940,6 +940,13 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
             MsRdpEx_LogPrint(DEBUG, "New KeyboardHookMode: %d", keyboardHookMode);
             pMsRdpClientSecuredSettings->put_KeyboardHookMode(keyboardHookMode);
+
+            VARIANT propValue;
+            VariantInit(&propValue);
+            propValue.vt = VT_I4;
+            propValue.intVal = keyboardHookMode;
+            bstr_t propName = _com_util::ConvertStringToBSTR("KeyboardHookMode");
+            pExtendedSettings->put_BaseProperty(propName, &propValue);
 
             if (pMsRdpClient9)
                 pMsRdpClient9->Release();
