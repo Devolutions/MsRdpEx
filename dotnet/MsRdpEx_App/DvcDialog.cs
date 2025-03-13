@@ -375,5 +375,21 @@ namespace MsRdpEx_App
 
             await nowClient.SystemShutdown(shutdownParams);
         }
+
+        private async void prevKbdLayoutButton_Click(object sender, EventArgs e)
+        {
+            await nowClient.SessionSetKbdLayoutPrev();
+        }
+
+        private async void nextKbdLayoutButton_Click(object sender, EventArgs e)
+        {
+            await nowClient.SessionSetKbdLayoutNext();
+        }
+
+        private async void setKbdLayoutButton_Click(object sender, EventArgs e)
+        {
+            var layout = kbdLayoutInput.Text;
+            await nowClient.SessionSetKbdLayoutSpecific(layout);
+        }
     }
 }

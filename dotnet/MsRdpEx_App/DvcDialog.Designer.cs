@@ -47,6 +47,16 @@
             fileInput = new System.Windows.Forms.TextBox();
             fileLabel = new System.Windows.Forms.Label();
             sessionTab = new System.Windows.Forms.TabPage();
+            kbdLayoutGroupBox = new System.Windows.Forms.GroupBox();
+            setKbdLayoutButton = new System.Windows.Forms.Button();
+            kbdLayoutInput = new System.Windows.Forms.TextBox();
+            prevKbdLayoutButton = new System.Windows.Forms.Button();
+            nextKbdLayoutButton = new System.Windows.Forms.Button();
+            shutdownTimeoutFlag = new System.Windows.Forms.CheckBox();
+            shutdownTimeoutInput = new System.Windows.Forms.TextBox();
+            label6 = new System.Windows.Forms.Label();
+            shutdownMessageInput = new System.Windows.Forms.TextBox();
+            label8 = new System.Windows.Forms.Label();
             shutdownForceFlag = new System.Windows.Forms.CheckBox();
             shutdownRebootFlag = new System.Windows.Forms.CheckBox();
             lockButton = new System.Windows.Forms.Button();
@@ -65,16 +75,12 @@
             msgBoxTitleInput = new System.Windows.Forms.TextBox();
             label2 = new System.Windows.Forms.Label();
             label1 = new System.Windows.Forms.Label();
-            shutdownTimeoutFlag = new System.Windows.Forms.CheckBox();
-            shutdownTimeoutInput = new System.Windows.Forms.TextBox();
-            label6 = new System.Windows.Forms.Label();
-            shutdownMessageInput = new System.Windows.Forms.TextBox();
-            label8 = new System.Windows.Forms.Label();
             dvcTabs.SuspendLayout();
             infoPage.SuspendLayout();
             execRunPage.SuspendLayout();
             panel1.SuspendLayout();
             sessionTab.SuspendLayout();
+            kbdLayoutGroupBox.SuspendLayout();
             SuspendLayout();
             // 
             // dvcTabs
@@ -276,6 +282,7 @@
             // 
             // sessionTab
             // 
+            sessionTab.Controls.Add(kbdLayoutGroupBox);
             sessionTab.Controls.Add(shutdownTimeoutFlag);
             sessionTab.Controls.Add(shutdownTimeoutInput);
             sessionTab.Controls.Add(label6);
@@ -308,6 +315,103 @@
             sessionTab.Text = "MsgBox/Session";
             sessionTab.UseVisualStyleBackColor = true;
             // 
+            // kbdLayoutGroupBox
+            // 
+            kbdLayoutGroupBox.Controls.Add(setKbdLayoutButton);
+            kbdLayoutGroupBox.Controls.Add(kbdLayoutInput);
+            kbdLayoutGroupBox.Controls.Add(prevKbdLayoutButton);
+            kbdLayoutGroupBox.Controls.Add(nextKbdLayoutButton);
+            kbdLayoutGroupBox.Location = new System.Drawing.Point(17, 267);
+            kbdLayoutGroupBox.Name = "kbdLayoutGroupBox";
+            kbdLayoutGroupBox.Size = new System.Drawing.Size(549, 131);
+            kbdLayoutGroupBox.TabIndex = 24;
+            kbdLayoutGroupBox.TabStop = false;
+            kbdLayoutGroupBox.Text = "Keyboard Layout";
+            // 
+            // setKbdLayoutButton
+            // 
+            setKbdLayoutButton.Location = new System.Drawing.Point(284, 44);
+            setKbdLayoutButton.Name = "setKbdLayoutButton";
+            setKbdLayoutButton.Size = new System.Drawing.Size(102, 62);
+            setKbdLayoutButton.TabIndex = 20;
+            setKbdLayoutButton.Text = "Set";
+            setKbdLayoutButton.UseVisualStyleBackColor = true;
+            setKbdLayoutButton.Click += setKbdLayoutButton_Click;
+            // 
+            // kbdLayoutInput
+            // 
+            kbdLayoutInput.Location = new System.Drawing.Point(162, 60);
+            kbdLayoutInput.Name = "kbdLayoutInput";
+            kbdLayoutInput.Size = new System.Drawing.Size(116, 31);
+            kbdLayoutInput.TabIndex = 19;
+            kbdLayoutInput.Text = "00000409";
+            kbdLayoutInput.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+            // 
+            // prevKbdLayoutButton
+            // 
+            prevKbdLayoutButton.Location = new System.Drawing.Point(6, 44);
+            prevKbdLayoutButton.Name = "prevKbdLayoutButton";
+            prevKbdLayoutButton.Size = new System.Drawing.Size(102, 62);
+            prevKbdLayoutButton.TabIndex = 18;
+            prevKbdLayoutButton.Text = "Prev";
+            prevKbdLayoutButton.UseVisualStyleBackColor = true;
+            prevKbdLayoutButton.Click += prevKbdLayoutButton_Click;
+            // 
+            // nextKbdLayoutButton
+            // 
+            nextKbdLayoutButton.Location = new System.Drawing.Point(431, 44);
+            nextKbdLayoutButton.Name = "nextKbdLayoutButton";
+            nextKbdLayoutButton.Size = new System.Drawing.Size(102, 62);
+            nextKbdLayoutButton.TabIndex = 17;
+            nextKbdLayoutButton.Text = "Next";
+            nextKbdLayoutButton.UseVisualStyleBackColor = true;
+            nextKbdLayoutButton.Click += nextKbdLayoutButton_Click;
+            // 
+            // shutdownTimeoutFlag
+            // 
+            shutdownTimeoutFlag.AutoSize = true;
+            shutdownTimeoutFlag.Location = new System.Drawing.Point(214, 520);
+            shutdownTimeoutFlag.Name = "shutdownTimeoutFlag";
+            shutdownTimeoutFlag.Size = new System.Drawing.Size(103, 29);
+            shutdownTimeoutFlag.TabIndex = 23;
+            shutdownTimeoutFlag.Text = "Timeout";
+            shutdownTimeoutFlag.UseVisualStyleBackColor = true;
+            // 
+            // shutdownTimeoutInput
+            // 
+            shutdownTimeoutInput.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            shutdownTimeoutInput.Location = new System.Drawing.Point(323, 518);
+            shutdownTimeoutInput.Name = "shutdownTimeoutInput";
+            shutdownTimeoutInput.Size = new System.Drawing.Size(160, 31);
+            shutdownTimeoutInput.TabIndex = 22;
+            shutdownTimeoutInput.Text = "5";
+            // 
+            // label6
+            // 
+            label6.AutoSize = true;
+            label6.Location = new System.Drawing.Point(489, 524);
+            label6.Name = "label6";
+            label6.Size = new System.Drawing.Size(77, 25);
+            label6.TabIndex = 21;
+            label6.Text = "seconds";
+            // 
+            // shutdownMessageInput
+            // 
+            shutdownMessageInput.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            shutdownMessageInput.Location = new System.Drawing.Point(306, 562);
+            shutdownMessageInput.Name = "shutdownMessageInput";
+            shutdownMessageInput.Size = new System.Drawing.Size(260, 31);
+            shutdownMessageInput.TabIndex = 20;
+            // 
+            // label8
+            // 
+            label8.AutoSize = true;
+            label8.Location = new System.Drawing.Point(214, 562);
+            label8.Name = "label8";
+            label8.Size = new System.Drawing.Size(86, 25);
+            label8.TabIndex = 19;
+            label8.Text = "Message:";
+            // 
             // shutdownForceFlag
             // 
             shutdownForceFlag.AutoSize = true;
@@ -330,7 +434,7 @@
             // 
             // lockButton
             // 
-            lockButton.Location = new System.Drawing.Point(17, 328);
+            lockButton.Location = new System.Drawing.Point(17, 404);
             lockButton.Name = "lockButton";
             lockButton.Size = new System.Drawing.Size(191, 62);
             lockButton.TabIndex = 16;
@@ -350,7 +454,7 @@
             // 
             // logoffButton
             // 
-            logoffButton.Location = new System.Drawing.Point(214, 328);
+            logoffButton.Location = new System.Drawing.Point(214, 404);
             logoffButton.Name = "logoffButton";
             logoffButton.Size = new System.Drawing.Size(191, 62);
             logoffButton.TabIndex = 14;
@@ -476,51 +580,6 @@
             label1.TabIndex = 0;
             label1.Text = "Title:";
             // 
-            // shutdownTimeoutFlag
-            // 
-            shutdownTimeoutFlag.AutoSize = true;
-            shutdownTimeoutFlag.Location = new System.Drawing.Point(214, 520);
-            shutdownTimeoutFlag.Name = "shutdownTimeoutFlag";
-            shutdownTimeoutFlag.Size = new System.Drawing.Size(103, 29);
-            shutdownTimeoutFlag.TabIndex = 23;
-            shutdownTimeoutFlag.Text = "Timeout";
-            shutdownTimeoutFlag.UseVisualStyleBackColor = true;
-            // 
-            // shutdownTimeoutInput
-            // 
-            shutdownTimeoutInput.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
-            shutdownTimeoutInput.Location = new System.Drawing.Point(323, 518);
-            shutdownTimeoutInput.Name = "shutdownTimeoutInput";
-            shutdownTimeoutInput.Size = new System.Drawing.Size(160, 31);
-            shutdownTimeoutInput.TabIndex = 22;
-            shutdownTimeoutInput.Text = "5";
-            // 
-            // label6
-            // 
-            label6.AutoSize = true;
-            label6.Location = new System.Drawing.Point(489, 524);
-            label6.Name = "label6";
-            label6.Size = new System.Drawing.Size(77, 25);
-            label6.TabIndex = 21;
-            label6.Text = "seconds";
-            // 
-            // shutdownMessageInput
-            // 
-            shutdownMessageInput.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
-            shutdownMessageInput.Location = new System.Drawing.Point(306, 562);
-            shutdownMessageInput.Name = "shutdownMessageInput";
-            shutdownMessageInput.Size = new System.Drawing.Size(260, 31);
-            shutdownMessageInput.TabIndex = 20;
-            // 
-            // label8
-            // 
-            label8.AutoSize = true;
-            label8.Location = new System.Drawing.Point(214, 562);
-            label8.Name = "label8";
-            label8.Size = new System.Drawing.Size(86, 25);
-            label8.TabIndex = 19;
-            label8.Text = "Message:";
-            // 
             // DvcDialog
             // 
             AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
@@ -538,6 +597,8 @@
             panel1.PerformLayout();
             sessionTab.ResumeLayout(false);
             sessionTab.PerformLayout();
+            kbdLayoutGroupBox.ResumeLayout(false);
+            kbdLayoutGroupBox.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -585,5 +646,10 @@
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox shutdownMessageInput;
         private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.GroupBox kbdLayoutGroupBox;
+        private System.Windows.Forms.Button setKbdLayoutButton;
+        private System.Windows.Forms.TextBox kbdLayoutInput;
+        private System.Windows.Forms.Button prevKbdLayoutButton;
+        private System.Windows.Forms.Button nextKbdLayoutButton;
     }
 }
