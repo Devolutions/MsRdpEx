@@ -20,8 +20,8 @@ static bool g_AxHookEnabled = true;
 static bool g_IsOOBClient = false;
 static bool g_IsClientProcess = false;
 
-static MsRdpEx_mstscax g_mstscax = { 0 };
-static MsRdpEx_rdclientax g_rdclientax = { 0 };
+MsRdpEx_mstscax g_mstscax = { 0 };
+MsRdpEx_rdclientax g_rdclientax = { 0 };
 
 HRESULT STDAPICALLTYPE DllCanUnloadNow()
 {
