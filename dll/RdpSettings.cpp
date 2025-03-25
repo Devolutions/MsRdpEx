@@ -9,9 +9,13 @@
 
 #include <intrin.h>
 
+#include "MsRdpEx.h"
 #include "TSObjects.h"
 
 extern "C" const GUID IID_ITSPropertySet;
+
+extern MsRdpEx_mstscax g_mstscax;
+extern MsRdpEx_rdclientax g_rdclientax;
 
 static bool g_TSPropertySet_Hooked = false;
 
@@ -129,8 +133,8 @@ static HRESULT Hook_ITSPropertySet_SetStringProperty(ITSPropertySet* This, const
     HRESULT hr;
 
     char* propValueA = _com_util::ConvertBSTRToString((BSTR) propValue);
-
     MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetStringProperty(%s, \"%s\")", propName, propValueA);
+    delete[] propValueA;
 
     hr = Real_ITSPropertySet_SetStringProperty(This, propName, propValue);
 
@@ -143,7 +147,14 @@ static HRESULT Hook_ITSPropertySet_GetStringProperty(ITSPropertySet* This, const
 
     hr = Real_ITSPropertySet_GetStringProperty(This, propName, propValue);
 
-    MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetStringProperty(%s)", propName);
+    if (SUCCEEDED(hr)) {
+        char* propValueA = _com_util::ConvertBSTRToString((BSTR)*propValue);
+        MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetStringProperty(%s, \"%s\")", propName, propValueA);
+        delete[] propValueA;
+    }
+    else {
+        MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetStringProperty(%s), hr = 0x%08X", propName, hr);
+    }
 
     return hr;
 }
@@ -173,22 +184,39 @@ static HRESULT Hook_ITSPropertySet_GetSecureStringProperty(ITSPropertySet* This,
     return hr;
 }
 
-static bool TSPropertySet_Hook(ITSPropertySet* pTSPropertySet)
+static bool TSPropertySet_Hook(ITSPropertySet* pTSPropertySet, ITSPropertySetVtbl30* vtbl30, ITSPropertySetVtbl32* vtbl32)
 {
     LONG error;
+
+    if (!pTSPropertySet || (!vtbl30 && !vtbl32))
+        return false;
 
     DetourRestoreAfterWith();
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
 
-    Real_ITSPropertySet_SetBoolProperty = pTSPropertySet->vtbl->SetBoolProperty;
-    Real_ITSPropertySet_GetBoolProperty = pTSPropertySet->vtbl->GetBoolProperty;
-    Real_ITSPropertySet_SetIntProperty = pTSPropertySet->vtbl->SetIntProperty;
-    Real_ITSPropertySet_GetIntProperty = pTSPropertySet->vtbl->GetIntProperty;
-    Real_ITSPropertySet_SetStringProperty = pTSPropertySet->vtbl->SetStringProperty;
-    Real_ITSPropertySet_GetStringProperty = pTSPropertySet->vtbl->GetStringProperty;
-    Real_ITSPropertySet_SetSecureStringProperty = pTSPropertySet->vtbl->SetSecureStringProperty;
-    Real_ITSPropertySet_GetSecureStringProperty = pTSPropertySet->vtbl->GetSecureStringProperty;
+    if (vtbl32)
+    {
+        Real_ITSPropertySet_SetBoolProperty = vtbl32->SetBoolProperty;
+        Real_ITSPropertySet_GetBoolProperty = vtbl32->GetBoolProperty;
+        Real_ITSPropertySet_SetIntProperty = vtbl32->SetIntProperty;
+        Real_ITSPropertySet_GetIntProperty = vtbl32->GetIntProperty;
+        Real_ITSPropertySet_SetStringProperty = vtbl32->SetStringProperty;
+        Real_ITSPropertySet_GetStringProperty = vtbl32->GetStringProperty;
+        Real_ITSPropertySet_SetSecureStringProperty = vtbl32->SetSecureStringProperty;
+        Real_ITSPropertySet_GetSecureStringProperty = vtbl32->GetSecureStringProperty;
+    }
+    else if (vtbl30)
+    {
+        Real_ITSPropertySet_SetBoolProperty = vtbl30->SetBoolProperty;
+        Real_ITSPropertySet_GetBoolProperty = vtbl30->GetBoolProperty;
+        Real_ITSPropertySet_SetIntProperty = vtbl30->SetIntProperty;
+        Real_ITSPropertySet_GetIntProperty = vtbl30->GetIntProperty;
+        Real_ITSPropertySet_SetStringProperty = vtbl30->SetStringProperty;
+        Real_ITSPropertySet_GetStringProperty = vtbl30->GetStringProperty;
+        Real_ITSPropertySet_SetSecureStringProperty = vtbl30->SetSecureStringProperty;
+        Real_ITSPropertySet_GetSecureStringProperty = vtbl30->GetSecureStringProperty;
+    }
 
     DetourAttach((PVOID*)(&Real_ITSPropertySet_SetBoolProperty), Hook_ITSPropertySet_SetBoolProperty);
     DetourAttach((PVOID*)(&Real_ITSPropertySet_GetBoolProperty), Hook_ITSPropertySet_GetBoolProperty);
@@ -212,9 +240,27 @@ public:
         m_pUnknown = pUnknown;
         pUnknown->QueryInterface(IID_ITSPropertySet, (LPVOID*)&m_pTSPropertySet);
 
-        if (!g_TSPropertySet_Hooked) {
-            TSPropertySet_Hook(m_pTSPropertySet);
-            g_TSPropertySet_Hooked = true;
+        if (m_pTSPropertySet)
+        {
+            if (MsRdpEx_IsAddressInRdclientAxModule(m_pTSPropertySet->vtbl))
+            {
+                DWORD version = g_rdclientax.tscCtlVer;
+
+                if (version >= 5326) {
+                    m_vtbl32 = (ITSPropertySetVtbl32*)m_pTSPropertySet->vtbl;
+                } else {
+                    m_vtbl30 = (ITSPropertySetVtbl30*)m_pTSPropertySet->vtbl;
+                }
+            }
+            else
+            {
+                m_vtbl30 = (ITSPropertySetVtbl30*)m_pTSPropertySet->vtbl;
+            }
+
+            if (!g_TSPropertySet_Hooked) {
+                TSPropertySet_Hook(m_pTSPropertySet, m_vtbl30, m_vtbl32);
+                g_TSPropertySet_Hooked = true;
+            }
         }
     }
 
@@ -308,6 +354,8 @@ public:
             return SetBStrProperty(propName, pValue->bstrVal);
         }
 
+        delete[] propName;
+
         return E_INVALIDARG;
     }
 
@@ -336,6 +384,8 @@ public:
             }
         }
 
+        delete[] propName;
+
         return hr;
     }
 
@@ -356,19 +406,29 @@ public:
     }
 
     HRESULT __stdcall GetVBoolProperty(const char* propName, VARIANT_BOOL* propValue) {
-        HRESULT hr;
+        HRESULT hr = E_FAIL;
         int iVal = 0;
-        hr = m_pTSPropertySet->vtbl->GetBoolProperty(m_pTSPropertySet, propName, &iVal);
+
+        if (m_vtbl32) {
+            hr = m_vtbl32->GetBoolProperty(m_pTSPropertySet, propName, &iVal);
+        } else if (m_vtbl30) {
+            hr = m_vtbl30->GetBoolProperty(m_pTSPropertySet, propName, &iVal);
+        }
+
         *propValue = iVal ? VARIANT_TRUE : VARIANT_FALSE;
         return hr;
     }
 
     HRESULT __stdcall GetBStrProperty(const char* propName, BSTR* propValue) {
-        HRESULT hr;
+        HRESULT hr = E_FAIL;
         BSTR bstrVal = NULL;
         WCHAR* wstrVal = NULL;
 
-        hr = m_pTSPropertySet->vtbl->GetStringProperty(m_pTSPropertySet, propName, &wstrVal);
+        if (m_vtbl32) {
+            hr = m_vtbl32->GetStringProperty(m_pTSPropertySet, propName, &wstrVal);
+        } else if (m_vtbl30) {
+            hr = m_vtbl30->GetStringProperty(m_pTSPropertySet, propName, &wstrVal);
+        }
 
         if (hr != S_OK)
             return hr;
@@ -382,6 +442,8 @@ private:
     ULONG m_refCount;
     IUnknown* m_pUnknown;
     ITSPropertySet* m_pTSPropertySet;
+    ITSPropertySetVtbl30* m_vtbl30 = NULL;
+    ITSPropertySetVtbl32* m_vtbl32 = NULL;
 };
 
 CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown, GUID* pSessionId)
@@ -498,7 +560,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
             hr = this->SetKdcProxyUrl(propValue);
         }
 
-        free(propValue);
+        delete[] propValue;
         hr = S_OK;
     }
     else if (MsRdpEx_StringEquals(propName, "EnableMouseJiggler"))
@@ -540,6 +602,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
 
         char* propValueA = _com_util::ConvertBSTRToString((BSTR)pValue->bstrVal);
         strncpy_s(m_KeyboardHookToggleShortcutKey, propValueA, sizeof(m_KeyboardHookToggleShortcutKey) - 1);
+        delete[] propValueA;
 
         hr = S_OK;
     }
@@ -548,12 +611,14 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         if (pValue->vt == VT_BSTR) {
             char* propValueA = _com_util::ConvertBSTRToString((BSTR)pValue->bstrVal);
             MsRdpEx_LogPrint(TRACE, "CMsRdpExtendedSettings::put_Property(%s, \"%s\")", propName, propValueA);
+            delete[] propValueA;
         }
 
         hr = m_pMsRdpExtendedSettings->put_Property(bstrPropertyName, pValue);
     }
 
 end:
+    delete[] propName;
     return hr;
 }
 
@@ -645,6 +710,8 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         hr = m_pMsRdpExtendedSettings->get_Property(bstrPropertyName, pValue);
     }
 
+    delete[] propName;
+
     return hr;
 }
 
@@ -653,6 +720,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
 HRESULT __stdcall CMsRdpExtendedSettings::put_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue) {
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
     MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::put_CoreProperty(%s)", propName);
+    delete[] propName;
 
     if (!m_CoreProps)
         return E_INVALIDARG;
@@ -663,6 +731,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_CoreProperty(BSTR bstrPropertyName
 HRESULT __stdcall CMsRdpExtendedSettings::get_CoreProperty(BSTR bstrPropertyName, VARIANT* pValue) {
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
     MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::get_CoreProperty(%s)", propName);
+    delete[] propName;
 
     if (!m_CoreProps)
         return E_INVALIDARG;
@@ -673,6 +742,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_CoreProperty(BSTR bstrPropertyName
 HRESULT __stdcall CMsRdpExtendedSettings::put_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue) {
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
     MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::put_BaseProperty(%s)", propName);
+    delete[] propName;
 
     if (!m_BaseProps)
         return E_INVALIDARG;
@@ -683,6 +753,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_BaseProperty(BSTR bstrPropertyName
 HRESULT __stdcall CMsRdpExtendedSettings::get_BaseProperty(BSTR bstrPropertyName, VARIANT* pValue) {
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
     MsRdpEx_LogPrint(DEBUG, "CMsRdpExtendedSettings::get_BaseProperty(%s)", propName);
+    delete[] propName;
 
     if (!m_BaseProps)
         return E_INVALIDARG;

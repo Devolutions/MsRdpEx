@@ -70,6 +70,21 @@ typedef struct ITSPropertySetVtbl
     HRESULT(__stdcall* SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
     HRESULT(__stdcall* SetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
     HRESULT(__stdcall* SetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR propValue);
+    // everything after this can change depending on the vtable
+} ITSPropertySetVtbl;
+
+typedef struct ITSPropertySetVtbl30
+{
+    HRESULT(__stdcall* QueryInterface)(ITSPropertySet* This, REFIID riid, void** ppvObject);
+    ULONG(__stdcall* AddRef)(ITSPropertySet* This);
+    ULONG(__stdcall* Release)(ITSPropertySet* This);
+    HRESULT(__stdcall* SetProperty)(ITSPropertySet* This, const char* propName, void* propValue);
+    HRESULT(__stdcall* SetBoolProperty)(ITSPropertySet* This, const char* propName, int propValue);
+    HRESULT(__stdcall* SetIntProperty)(ITSPropertySet* This, const char* propName, int propValue);
+    HRESULT(__stdcall* SetIUnknownProperty)(ITSPropertySet* This, const char* propName, void* propValue);
+    HRESULT(__stdcall* SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
+    HRESULT(__stdcall* SetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
+    HRESULT(__stdcall* SetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR propValue);
     HRESULT(__stdcall* GetProperty1)(ITSPropertySet* This, const char* propName, WCHAR* a1, int a2);
     HRESULT(__stdcall* GetProperty2)(ITSPropertySet* This, const char* propName, uint32_t* a1);
     HRESULT(__stdcall* GetIntProperty)(ITSPropertySet* This, const char* propName, int* propValue);
@@ -78,12 +93,57 @@ typedef struct ITSPropertySetVtbl
     HRESULT(__stdcall* GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
     HRESULT(__stdcall* GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue, uint32_t* propLength);
     HRESULT(__stdcall* GetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR* propValue);
-    HRESULT(__stdcall* EnterReadLock)(ITSPropertySet* This);
-    HRESULT(__stdcall* LeaveReadLock)(ITSPropertySet* This);
-    HRESULT(__stdcall* EnterWriteLock)(ITSPropertySet* This);
-    HRESULT(__stdcall* LeaveWriteLock)(ITSPropertySet* This);
-    HRESULT(__stdcall* RevertToDefaults)(ITSPropertySet* This);
-} ITSPropertySetVtbl;
+    // EnterReadLock
+    // LeaveReadLock
+    // EnterWriteLock
+    // LeaveWriteLock
+    // RevertToDefaults
+    // IsAutoLocking
+    // IsPropSetWritable
+    // LockPropSetForWrite
+    // InternalPreSetProperty
+    // InternalPostSetProperty
+    // InternalPreGetProperty
+    // InternalPostGetProperty
+} ITSPropertySetVtbl30;
+
+// rdclientax.dll 1.2.5326.0+
+
+typedef struct ITSPropertySetVtbl32
+{
+    HRESULT(__stdcall* QueryInterface)(ITSPropertySet* This, REFIID riid, void** ppvObject);
+    ULONG(__stdcall* AddRef)(ITSPropertySet* This);
+    ULONG(__stdcall* Release)(ITSPropertySet* This);
+    HRESULT(__stdcall* SetProperty)(ITSPropertySet* This, const char* propName, void* propValue);
+    HRESULT(__stdcall* SetBoolProperty)(ITSPropertySet* This, const char* propName, int propValue);
+    HRESULT(__stdcall* SetIntProperty)(ITSPropertySet* This, const char* propName, int propValue);
+    HRESULT(__stdcall* SetIUnknownProperty)(ITSPropertySet* This, const char* propName, void* propValue);
+    HRESULT(__stdcall* SetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
+    HRESULT(__stdcall* SetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR* propValue);
+    HRESULT(__stdcall* SetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR propValue);
+    HRESULT(__stdcall* GetProperty0)(ITSPropertySet* This, const char* propName, void* a1); // new function
+    HRESULT(__stdcall* GetProperty1)(ITSPropertySet* This, const char* propName, WCHAR* a1, int a2);
+    HRESULT(__stdcall* GetProperty2)(ITSPropertySet* This, const char* propName, uint32_t* a1);
+    HRESULT(__stdcall* GetIntProperty)(ITSPropertySet* This, const char* propName, int* propValue);
+    HRESULT(__stdcall* GetIUnknownProperty)(ITSPropertySet* This, const char* propName, IUnknown** propValue);
+    HRESULT(__stdcall* GetBoolProperty)(ITSPropertySet* This, const char* propName, int* propValue);
+    HRESULT(__stdcall* GetStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue);
+    HRESULT(__stdcall* GetSecureStringProperty)(ITSPropertySet* This, const char* propName, WCHAR** propValue, uint32_t* propLength);
+    HRESULT(__stdcall* GetUlongPtrProperty)(ITSPropertySet* This, const char* propName, ULONG_PTR* propValue);
+    // EnterReadLock
+    // LeaveReadLock
+    // EnterWriteLock
+    // LeaveWriteLock
+    // RevertToDefaults
+    // IsAutoLocking
+    // IsPropSetWritable
+    // LockPropSetForWrite
+    // InternalPreSetProperty
+    // InternalPostSetProperty
+    // InternalPreGetProperty
+    // InternalPostGetProperty
+    // UnknownLastOrPadding
+} ITSPropertySetVtbl32;
 
 struct _ITSPropertySet
 {
