@@ -34,10 +34,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Devolutions.NowClient" Version="2025.2.17" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="../Devolutions.MsRdpEx/Devolutions.MsRdpEx.csproj" IncludeAssets="all" />
   </ItemGroup>
 

@@ -2,7 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Channels;
 using System.Windows.Forms;
 using Newtonsoft.Json;
@@ -11,7 +14,6 @@ using Newtonsoft.Json.Linq;
 
 using System.Threading.Tasks;
 using MSTSCLib;
-using Devolutions.NowClient;
 
 namespace MsRdpEx_App
 {
@@ -78,11 +80,9 @@ namespace MsRdpEx_App
         void Terminated();
     }
 
-    public class RdpDvcClient : IWTSVirtualChannelCallback, INowTransport
+    public class RdpDvcClient : IWTSVirtualChannelCallback
     {
-        private const int RxChannelCapacity = 1024;
-
-        private DvcDialog dialog = null;
+        private NowProtoPipeTransport transport = null;
 
         public string channelName;
         private IWTSVirtualChannel wtsChannel;
@@ -91,9 +91,21 @@ namespace MsRdpEx_App
 
         private RdpView rdpView = null;
 
-        private Channel<byte[]> rxChannel = Channel.CreateBounded<byte[]>(RxChannelCapacity);
 
-        Task INowTransport.Write(byte[] data)
+        public RdpDvcClient(string name, IWTSVirtualChannel wtsChannel, RdpView rdpView)
+        {
+            this.channelName = name;
+            this.wtsChannel = wtsChannel;
+        }
+
+        public void SendRawBuffer(uint cbSize, IntPtr pBuffer)
+        {
+            Debug.WriteLine($"DVC DATA sent: {cbSize}");
+
+            wtsChannel?.Write(cbSize, pBuffer, null);
+        }
+
+        void WriteDvc(byte[] data)
         {
             GCHandle? pinnedArray = null;
             try
@@ -107,53 +119,156 @@ namespace MsRdpEx_App
                 pinnedArray?.Free();
             }
 
-            return Task.CompletedTask;
-        }
-
-        async Task<byte[]> INowTransport.Read()
-        {
-            var data = await rxChannel.Reader.ReadAsync().AsTask();
-
-            return data;
-        }
-
-        public RdpDvcClient(string name, IWTSVirtualChannel wtsChannel, RdpView rdpView)
-        {
-            this.channelName = name;
-            this.wtsChannel = wtsChannel;
-
-            // Start DVC dialog form
-            if (rdpView.InvokeRequired)
-            {
-                rdpView.Invoke(() => {
-                    dialog = rdpView.StartDvcDialog();
-                });
-            }
-            else
-            {
-                dialog = rdpView.StartDvcDialog();
-            }
-        }
-
-        public void SendRawBuffer(uint cbSize, IntPtr pBuffer)
-        {
-            Debug.WriteLine($"SEND raw buffer: {cbSize}");
-            wtsChannel?.Write(cbSize, pBuffer, null);
         }
 
         void IWTSVirtualChannelCallback.OnDataReceived(uint cbSize, IntPtr pBuffer)
         {
-            Debug.WriteLine($"DATA received: {cbSize}");
+            Debug.WriteLine($"DVC DATA received: {cbSize}");
 
             var buffer = new byte[cbSize];
             Marshal.Copy(pBuffer, buffer, 0, (int)cbSize);
 
-            _ = Task.Run(() => rxChannel.Writer.WriteAsync(buffer).AsTask());
+            Task.Run(async () =>
+            {
+                await transport.Write(buffer);
+            });
         }
 
         public void OnConnected()
         {
-            dialog.OnDvcConnected(this);
+            var pipe = StartPipeServer();
+            Task.Run(async () =>
+            {
+                await pipe.WaitForConnectionAsync();
+                Debug.WriteLine("DVC pipe connected");
+                transport = new NowProtoPipeTransport(pipe);
+
+                // DVC -> pipe IO loop
+                while (true)
+                {
+                    // Transport manually closed
+                    if (transport is null)
+                    {
+                        break;
+                    }
+
+                    // loop could stop on EOF from the pipe
+                    var data = await transport.Read();
+                    WriteDvc(data);
+                }
+            });
+        }
+
+        public void OnClose()
+        {
+            Debug.WriteLine("DVC pipe disconnected");
+
+            transport.Dispose();
+            transport = null;
+        }
+
+        private void StartDvcAppIfPresent(string uniqueId)
+        {
+            // find exe besides app
+            var defaultDvcAppPath = Path.Combine(
+                Directory.GetParent(System.Environment.ProcessPath).FullName ?? "",
+                "Devolutions.NowDvcApp.exe"
+            );
+            var dvcAppVar = Environment.GetEnvironmentVariable("MSRDPEX_DVC_APP");
+
+            if (string.IsNullOrEmpty(dvcAppVar))
+            {
+                Trace.WriteLine(
+                    $"`DEVOLUTIONS_DVC_APP` env var is not set, using default dvc app path `{defaultDvcAppPath}`"
+                );
+            }
+
+            var dvcApp = dvcAppVar ?? defaultDvcAppPath;
+
+            if (!File.Exists(dvcApp))
+            {
+                // Silently disable DVC functionality if the app is not found
+                if (dvcApp == defaultDvcAppPath)
+                {
+                    Trace.WriteLine($"Default DVC app not found at `{dvcApp}`. DVC functionality is disabled.");
+                    return;
+                }
+
+                // Show explicit message box in async manner if environment was configured wrong.
+                Task.Run(() =>
+                {
+                    MessageBox.Show(
+                        $"DVC app not found at `{dvcApp}`. Remove or adjust your `DEVOLUTIONS_DVC_APP` env var.",
+                        "Warning",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                });
+            }
+
+            try
+            {
+                Process.Start(dvcApp, new string[] { uniqueId });
+            } catch (Exception ex)
+            {
+                Trace.WriteLine($"Failed to start DVC app: {ex}");
+                MessageBox.Show(
+                    $"Failed to start DVC app: {ex.Message}",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+            }
+        }
+
+        private NamedPipeServerStream StartPipeServer()
+        {
+            // GUID in 00000000-0000-0000-0000-000000000000 format
+            var uniqueId = Guid.NewGuid().ToString("D");
+            var startApp = true;
+
+            // If there is debug-mode client running on the machine, use it instead of
+            // launching a new one. Useful for debugging purposes (Launch app under debugger
+            // manually and then connect to it).
+            {
+                const string globalInstanceLockName = $"Global\\now-proto-client-GLOBAL";
+
+                using var mutex = new Mutex(
+                    false,
+                    globalInstanceLockName,
+                    out var createdNew
+                );
+
+                // Mutex already exist, therefore debug version of DVC client is already running
+                if (!createdNew)
+                {
+                    // override uniqueId with the global instance name
+                    uniqueId = "GLOBAL";
+                    startApp = false;
+                }
+            }
+
+            var pipeName = $"now-proto-{uniqueId}";
+
+            if (startApp)
+            {
+                // Start the DVC app if it is not already running
+                StartDvcAppIfPresent(uniqueId);
+            }
+
+            Trace.WriteLine($"Starting DVC pipe server at `\\\\.\\pipe\\{pipeName}`");
+
+            // DVC transport is message based, therefore pipe is set to
+            // PipeTransmissionMode.Message mode to avoid fragmentation.
+            var server = new NamedPipeServerStream(
+                pipeName,
+                PipeDirection.InOut, 
+                1,
+                PipeTransmissionMode.Message,
+                PipeOptions.Asynchronous
+            );
+
+            return server;
         }
 
         void IWTSVirtualChannelCallback.OnClose()
@@ -164,17 +279,12 @@ namespace MsRdpEx_App
 
     public class RdpDvcListener : IWTSListenerCallback
     {
-        // Define On connected delegate
-        public delegate void OnConnectedDelegate(INowTransport transport);
-
         public int maxCount;
         public string channelName;
         public IWTSListener wtsListener;
 
         private List<RdpDvcClient> clients = new List<RdpDvcClient>();
         public List<RdpDvcClient> Clients => clients;
-
-        private OnConnectedDelegate onConnected;
 
         private RdpView rdpView;
 
@@ -211,6 +321,7 @@ namespace MsRdpEx_App
         private void OnChannelClose(object sender, EventArgs e)
         {
             RdpDvcClient client = sender as RdpDvcClient;
+            client?.OnClose();
             clients.Remove(client);
         }
 
@@ -247,7 +358,12 @@ namespace MsRdpEx_App
 
         void IWTSPlugin.Initialize(IWTSVirtualChannelManager pChannelMgr)
         {
-            string channelName = "Devolutions::Now::Agent";
+            // Allow setting custom `MSRDPEX_DVC_CHANNEL_NAME` for testing purposes
+            // (Implementing arbitrary DVC channel via pipe server)
+            string channelName =
+                Environment.GetEnvironmentVariable("MSRDPEX_DVC_CHANNEL_NAME")
+                ?? "Devolutions::Now::Agent";
+
             RdpDvcListener listener = new RdpDvcListener(channelName, -1, rdpView);
 
             pChannelMgr.CreateListener(listener.channelName,
