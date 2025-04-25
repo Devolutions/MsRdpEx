@@ -154,7 +154,7 @@ char* MsRdpEx_GetRdpFilenameFromCommandLine()
 		goto exit;
 	}
 
-	if (!MsRdpEx_IStringEndsWith(filename, ".rdp")) {
+	if (!MsRdpEx_IStringEndsWith(filename, ".rdp") && !MsRdpEx_IStringEndsWith(filename, ".rdpw")) {
 		free(filename);
 		filename = NULL;
 		goto exit;
