@@ -163,6 +163,10 @@ namespace MsRdpEx_App
         {
             Debug.WriteLine("DVC pipe disconnected");
 
+            if (transport is null)
+            {
+                return;
+            }
             transport.Dispose();
             transport = null;
         }
