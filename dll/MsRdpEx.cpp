@@ -2,11 +2,9 @@
 #include "MsRdpEx.h"
 
 #include <MsRdpEx/MsRdpEx.h>
-
 #include <MsRdpEx/Environment.h>
-
+#include <MsRdpEx/Stopwatch.h>
 #include <MsRdpEx/RdpInstance.h>
-
 #include <MsRdpEx/Detours.h>
 
 #include "RdpDvcClient.h"
@@ -798,6 +796,7 @@ void MsRdpEx_Load()
     MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
 
     MsRdpEx_LogOpen();
+    MsRdpEx_ProfilingInit();
 
     if (g_IsClientProcess) {
         if (g_IsOOBClient) {

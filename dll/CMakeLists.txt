@@ -16,6 +16,7 @@ source_group("Resources" FILES ${MSRDPEX_RESOURCES})
 
 set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/Sspi.h"
+    "${MSRDPEX_INCLUDE_DIR}/Stopwatch.h"
     "${MSRDPEX_INCLUDE_DIR}/Stream.h"
     "${MSRDPEX_INCLUDE_DIR}/Detours.h"
     "${MSRDPEX_INCLUDE_DIR}/Memory.h"
@@ -40,6 +41,7 @@ set(MSRDPEX_SOURCES
     KeyMaps.cpp
     Environment.c
     NameResolver.c
+    Stopwatch.c
     DpiHelper.cpp
     DpiHelper.h
     Sspi.cpp
@@ -103,6 +105,8 @@ set(MSRDPEX_LIBS
     credui.lib
     advapi32.lib
     comctl32.lib)
+
+target_compile_options(MsRdpEx_Dll PRIVATE /W4)
 
 target_link_libraries(MsRdpEx_Dll ${MSRDPEX_LIBS})
 

@@ -2,6 +2,7 @@
 #include "MsRdpEx.h"
 
 #include <MsRdpEx/Environment.h>
+#include <MsRdpEx/Stopwatch.h>
 #include <MsRdpEx/VideoRecorder.h>
 #include <MsRdpEx/OutputMirror.h>
 
@@ -31,7 +32,12 @@ struct _MsRdpEx_OutputMirror
 
 void MsRdpEx_OutputMirror_Lock(MsRdpEx_OutputMirror* ctx)
 {
+	MsRdpEx_Stopwatch stopwatch;
+	MsRdpEx_Stopwatch_Init(&stopwatch, MSRDPEX_PROF_TRACE, true);
+
 	EnterCriticalSection(&ctx->lock);
+
+	MsRdpEx_Stopwatch_Print(&stopwatch, MSRDPEX_LOG_TRACE, "MsRdpEx_OutputMirror_Lock");
 }
 
 void MsRdpEx_OutputMirror_Unlock(MsRdpEx_OutputMirror* ctx)
