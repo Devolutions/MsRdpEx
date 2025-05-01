@@ -140,7 +140,7 @@ bool MsRdpEx_IsLogLevelActive(uint32_t logLevel);
 	{                                                                                  \
 		if (MsRdpEx_IsLogLevelActive(MSRDPEX_LOG_ ## _log_level))                      \
 		{                                                                              \
-			MsRdpEx_Log(__VA_ARGS__);                                                  \
+			MsRdpEx_Log(MSRDPEX_LOG_ ## _log_level, __VA_ARGS__);                                                  \
 		}                                                                              \
 	} while (0)
 
@@ -153,7 +153,7 @@ bool MsRdpEx_IsLogLevelActive(uint32_t logLevel);
 		}                                                                              \
 	} while (0)
 
-bool MsRdpEx_Log(const char* format, ...);
+bool MsRdpEx_Log(uint32_t level, const char* format, ...);
 void MsRdpEx_LogHexDump(const uint8_t* data, size_t size);
 
 void MsRdpEx_LogOpen();
@@ -161,6 +161,13 @@ void MsRdpEx_LogClose();
 void MsRdpEx_SetLogEnabled(bool logEnabled);
 void MsRdpEx_SetLogLevel(uint32_t logLevel);
 void MsRdpEx_SetLogFilePath(const char* logFilePath);
+
+// Profiling Utils
+
+#define MSRDPEX_PROF_OFF     0
+#define MSRDPEX_PROF_TRACE   1
+#define MSRDPEX_PROF_DEBUG   2
+#define MSRDPEX_PROF_INFO    3
 
 // PCAP
 

@@ -8,6 +8,7 @@
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/RdpInstance.h>
 #include <MsRdpEx/Environment.h>
+#include <MsRdpEx/Stopwatch.h>
 
 #include <MsRdpEx/OutputMirror.h>
 
@@ -113,7 +114,6 @@ Func_LoadLibraryExW Real_LoadLibraryExW = NULL;
 HMODULE WINAPI Hook_LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 {
     HMODULE hModule = NULL;
-    const char* filename = MsRdpEx_FileBase(lpLibFileName);
 
     // LoadLibraryExA calls LoadLibraryExW under the hood, don't log here
     //MsRdpEx_LogPrint(DEBUG, "LoadLibraryExA: %s", lpLibFileName);
@@ -435,7 +435,8 @@ bool WINAPI MsRdpEx_CaptureBlt(
 
     instance->GetOutputMirrorObject((LPVOID*) &outputMirror);
 
-    if (!outputMirror) {
+    if (!outputMirror) 
+    {
         outputMirror = MsRdpEx_OutputMirror_New();
         MsRdpEx_OutputMirror_SetDumpBitmapUpdates(outputMirror, dumpBitmapUpdates);
         MsRdpEx_OutputMirror_SetVideoRecordingEnabled(outputMirror, videoRecordingEnabled);
@@ -456,7 +457,6 @@ bool WINAPI MsRdpEx_CaptureBlt(
     HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
     MsRdpEx_OutputMirror_Unlock(outputMirror);
-
     MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 
     captured = true;
@@ -469,13 +469,16 @@ BOOL WINAPI Hook_BitBlt(
     HDC hdcSrc, int srcX, int srcY, DWORD rop)
 {
     BOOL status;
+    MsRdpEx_Stopwatch stopwatch;
 
     status = Real_BitBlt(hdcDst, dstX, dstY, width, height, hdcSrc, srcX, srcY, rop);
 
+    MsRdpEx_Stopwatch_Init(&stopwatch, MSRDPEX_PROF_TRACE, true);
     bool captured = MsRdpEx_CaptureBlt(hdcDst, dstX, dstY, width, height, hdcSrc, srcX, srcY);
-    
-    if (captured) {
-        MsRdpEx_LogPrint(TRACE, "BitBlt: %d,%d %dx%d %d,%d", dstX, dstY, width, height, srcX, srcY);
+
+    if (captured) 
+    {
+        MsRdpEx_LogPrint(TRACE, "BitBlt: %d,%d %dx%d %d,%d [%.3fms]", dstX, dstY, width, height, srcX, srcY, MsRdpEx_Stopwatch_GetTime(&stopwatch));
     }
 
     return status;
@@ -491,13 +494,16 @@ BOOL WINAPI Hook_StretchBlt(
     HDC hdcSrc, int srcX, int srcY, int srcW, int srcH, DWORD rop)
 {
     BOOL status;
+    MsRdpEx_Stopwatch stopwatch;
 
     status = Real_StretchBlt(hdcDst, dstX, dstY, dstW, dstH, hdcSrc, srcX, srcY, srcW, srcH, rop);
 
+    MsRdpEx_Stopwatch_Init(&stopwatch, MSRDPEX_PROF_TRACE, true);
     bool captured = MsRdpEx_CaptureBlt(hdcDst, srcX, srcY, srcW, srcH, hdcSrc, srcX, srcY);
 
-    if (captured) {
-        MsRdpEx_LogPrint(TRACE, "StretchBlt: %d,%d %dx%d %d,%d %dx%d", dstX, dstY, dstW, dstH, srcX, srcY, srcW, srcH);
+    if (captured) 
+    {
+        MsRdpEx_LogPrint(TRACE, "StretchBlt: %d,%d %dx%d %d,%d %dx%d [%.3fms])", dstX, dstY, dstW, dstH, srcX, srcY, srcW, srcH, MsRdpEx_Stopwatch_GetTime(&stopwatch));
     }
 
 end:
@@ -697,7 +703,7 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     IMsRdpExInstance* instance = NULL;
     CMsRdpExtendedSettings* pExtendedSettings = NULL;
 
-    MsRdpEx_LogPrint(DEBUG, "IHWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
+    //MsRdpEx_LogPrint(DEBUG, "IHWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
 
     if (uMsg == WM_NCCREATE)
     {
