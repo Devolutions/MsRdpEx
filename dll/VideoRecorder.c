@@ -50,7 +50,7 @@ MsRdpEx_VideoRecorder* MsRdpEx_VideoRecorder_New()
     MsRdpEx_LoadFunc(hModule, "XmfRecorder_SetFileName", (void**)&ctx->Recorder_SetFileName);
     MsRdpEx_LoadFunc(hModule, "XmfRecorder_UpdateFrame", (void**)&ctx->Recorder_UpdateFrame);
     MsRdpEx_LoadFunc(hModule, "XmfRecorder_Timeout", (void**)&ctx->Recorder_Timeout);
-    MsRdpEx_LoadFunc(hModule, "XmfRecorder_GetTimeoust", (void**)&ctx->Recorder_GetTimeout);
+    MsRdpEx_LoadFunc(hModule, "XmfRecorder_GetTimeout", (void**)&ctx->Recorder_GetTimeout);
     MsRdpEx_LoadFunc(hModule, "XmfRecorder_Free", (void**)&ctx->Recorder_Free);
 
     ctx->recorder = ctx->Recorder_New();
