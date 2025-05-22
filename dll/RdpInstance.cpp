@@ -25,6 +25,9 @@ public:
         m_outputMirrorEnabled = MsRdpEx_GetEnvBool("MSRDPEX_OUTPUT_MIRROR_ENABLED", false);
         m_videoRecordingEnabled = MsRdpEx_GetEnvBool("MSRDPEX_VIDEO_RECORDING_ENABLED", false);
         m_dumpBitmapUpdates = MsRdpEx_GetEnvBool("MSRDPEX_DUMP_BITMAP_UPDATES", false);
+
+        if (m_videoRecordingEnabled)
+            m_outputMirrorEnabled = true;
     }
 
     ~CMsRdpExInstance()

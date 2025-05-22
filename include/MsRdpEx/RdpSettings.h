@@ -46,6 +46,7 @@ public:
     HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw);
     HRESULT __stdcall PrepareSspiSessionIdHack();
     HRESULT __stdcall PrepareMouseJiggler();
+    HRESULT __stdcall PrepareVideoRecorder();
     HRESULT __stdcall PrepareExtraSystemMenu();
     char* __stdcall GetKdcProxyUrl();
     char* __stdcall GetKdcProxyName();

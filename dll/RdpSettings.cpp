@@ -3,6 +3,7 @@
 
 #include <MsRdpEx/Memory.h>
 #include <MsRdpEx/RdpFile.h>
+#include <MsRdpEx/RdpInstance.h>
 #include <MsRdpEx/Environment.h>
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/Detours.h>
@@ -1031,6 +1032,36 @@ HRESULT CMsRdpExtendedSettings::PrepareMouseJiggler()
     if (enableMouseJiggler.boolVal == VARIANT_TRUE) {
         allowBackgroundInput.boolVal = VARIANT_TRUE;
         m_BaseProps->put_Property(allowBackgroundInputName, &allowBackgroundInput);
+    }
+
+    return hr;
+}
+
+HRESULT CMsRdpExtendedSettings::PrepareVideoRecorder()
+{
+    HRESULT hr = S_OK;
+    IMsRdpExInstance* instance;
+    bool outputMirrorEnabled = false;
+    bool videoRecordingEnabled = false;
+
+    instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindBySessionId(&m_sessionId);
+
+    if (!instance)
+    {
+        MsRdpEx_LogPrint(ERROR, "PrepareVideoRecorder - cannot find instance!");
+        return E_UNEXPECTED;
+    }
+
+    instance->GetOutputMirrorEnabled(&outputMirrorEnabled);
+    instance->GetVideoRecordingEnabled(&videoRecordingEnabled);
+
+    if (outputMirrorEnabled) {
+        VARIANT enableHardwareMode;
+        bstr_t enableHardwareModeName = _com_util::ConvertStringToBSTR("EnableHardwareMode");
+        VariantInit(&enableHardwareMode);
+        enableHardwareMode.vt = VT_BOOL;
+        enableHardwareMode.boolVal = VARIANT_FALSE;
+        this->put_Property(enableHardwareModeName, &enableHardwareMode);
     }
 
     return hr;
