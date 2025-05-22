@@ -524,6 +524,14 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         m_MouseJigglerMethod = (uint32_t) pValue->uintVal;
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "VideoRecordingEnabled"))
+    {
+        if (pValue->vt != VT_BOOL)
+            goto end;
+
+        m_VideoRecordingEnabled = pValue->boolVal ? true : false;
+        hr = S_OK;
+    }
     else
     {
         if (pValue->vt == VT_BSTR) {
@@ -603,6 +611,11 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
     else if (MsRdpEx_StringEquals(propName, "MouseJigglerMethod")) {
         pValue->vt = VT_I4;
         pValue->intVal = (INT) m_MouseJigglerMethod;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "VideoRecordingEnabled")) {
+        pValue->vt = VT_BOOL;
+        pValue->boolVal = m_VideoRecordingEnabled ? VARIANT_TRUE : VARIANT_FALSE;
         hr = S_OK;
     }
     else if (MsRdpEx_StringEquals(propName, "MsRdpEx_SessionId")) {
@@ -920,6 +933,12 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "WinSCardSmartcardPin")) {
             MsRdpEx_SetEnv("WINSCARD_SMARTCARD_PIN", entry->value);
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "VideoRecordingEnabled")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
     }
 
     MsRdpEx_ArrayListIt_Finish(it);
@@ -1042,7 +1061,6 @@ HRESULT CMsRdpExtendedSettings::PrepareVideoRecorder()
     HRESULT hr = S_OK;
     IMsRdpExInstance* instance;
     bool outputMirrorEnabled = false;
-    bool videoRecordingEnabled = false;
 
     instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindBySessionId(&m_sessionId);
 
@@ -1053,7 +1071,6 @@ HRESULT CMsRdpExtendedSettings::PrepareVideoRecorder()
     }
 
     instance->GetOutputMirrorEnabled(&outputMirrorEnabled);
-    instance->GetVideoRecordingEnabled(&videoRecordingEnabled);
 
     if (outputMirrorEnabled) {
         VARIANT enableHardwareMode;
@@ -1115,6 +1132,11 @@ uint32_t CMsRdpExtendedSettings::GetMouseJigglerInterval()
 uint32_t CMsRdpExtendedSettings::GetMouseJigglerMethod()
 {
     return m_MouseJigglerMethod;
+}
+
+bool CMsRdpExtendedSettings::GetVideoRecordingEnabled()
+{
+    return m_VideoRecordingEnabled;
 }
 
 bool CMsRdpExtendedSettings::GetExtraSystemMenuEnabled()

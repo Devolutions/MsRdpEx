@@ -135,16 +135,24 @@ public:
 
     HRESULT STDMETHODCALLTYPE GetVideoRecordingEnabled(bool* videoRecordingEnabled)
     {
-        *videoRecordingEnabled = m_videoRecordingEnabled;
+        if (!m_pMsRdpExtendedSettings)
+            return E_UNEXPECTED;
+
+        *videoRecordingEnabled = m_pMsRdpExtendedSettings->GetVideoRecordingEnabled();
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE SetVideoRecordingEnabled(bool videoRecordingEnabled)
     {
-        m_videoRecordingEnabled = videoRecordingEnabled;
+        if (!m_pMsRdpExtendedSettings)
+            return E_UNEXPECTED;
 
-        if (videoRecordingEnabled)
-            m_outputMirrorEnabled = true;
+        VARIANT value;
+        VariantInit(&value);
+        value.vt = VT_BOOL;
+        value.boolVal = videoRecordingEnabled ? VARIANT_TRUE : VARIANT_FALSE;
+        bstr_t propName = _com_util::ConvertStringToBSTR("VideoRecordingEnabled");
+        m_pMsRdpExtendedSettings->put_Property(propName, &value);
 
         return S_OK;
     }

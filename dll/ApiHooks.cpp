@@ -406,6 +406,7 @@ bool WINAPI MsRdpEx_CaptureBlt(
     bool dumpBitmapUpdates = false;
     IMsRdpExInstance* instance = NULL;
     MsRdpEx_OutputMirror* outputMirror = NULL;
+    CMsRdpExtendedSettings* pExtendedSettings = NULL;
 
     HWND hWnd = WindowFromDC(hdcDst);
 
@@ -417,10 +418,17 @@ bool WINAPI MsRdpEx_CaptureBlt(
     if (!instance)
         goto end;
 
+    if (instance)
+        instance->GetExtendedSettings(&pExtendedSettings);
+
+    if (!pExtendedSettings)
+        goto end;
+
     MsRdpEx_LogPrint(TRACE, "CaptureBlt: hWnd: %p instance: %p", hWnd, instance);
 
+    videoRecordingEnabled = pExtendedSettings->GetVideoRecordingEnabled();
+
     instance->GetOutputMirrorEnabled(&outputMirrorEnabled);
-    instance->GetVideoRecordingEnabled(&videoRecordingEnabled);
     instance->GetDumpBitmapUpdates(&dumpBitmapUpdates);
 
     if (!outputMirrorEnabled)
