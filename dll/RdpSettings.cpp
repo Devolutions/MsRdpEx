@@ -3,6 +3,7 @@
 
 #include <MsRdpEx/Memory.h>
 #include <MsRdpEx/RdpFile.h>
+#include <MsRdpEx/RdpInstance.h>
 #include <MsRdpEx/Environment.h>
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/Detours.h>
@@ -11,6 +12,7 @@
 
 #include "MsRdpEx.h"
 #include "TSObjects.h"
+#include "ComHelpers.h"
 
 extern "C" const GUID IID_ITSPropertySet;
 
@@ -479,6 +481,7 @@ CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown, GUID* pSessio
 CMsRdpExtendedSettings::~CMsRdpExtendedSettings()
 {
     this->SetKdcProxyUrl(NULL);
+    this->SetRecordingPath(NULL);
 
     if (m_pMsRdpExtendedSettings)
         m_pMsRdpExtendedSettings->Release();
@@ -606,6 +609,67 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
 
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "OutputMirrorEnabled"))
+    {
+        if (pValue->vt != VT_BOOL)
+            goto end;
+
+        m_DumpBitmapUpdates = pValue->boolVal ? true : false;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "VideoRecordingEnabled"))
+    {
+        if (pValue->vt != VT_BOOL)
+            goto end;
+
+        m_VideoRecordingEnabled = pValue->boolVal ? true : false;
+
+        if (m_VideoRecordingEnabled)
+            m_OutputMirrorEnabled = true;
+
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "VideoRecordingQuality"))
+    {
+        if ((pValue->vt != VT_UI4) && (pValue->vt != VT_I4))
+            goto end;
+
+        m_VideoRecordingQuality = (uint32_t)pValue->uintVal;
+
+        if (m_VideoRecordingQuality < 1)
+            m_VideoRecordingQuality = 1;
+
+        if (m_VideoRecordingQuality > 10)
+            m_VideoRecordingQuality = 10;
+
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "RecordingPath"))
+    {
+        if (pValue->vt != VT_BSTR)
+            goto end;
+
+        char* propValue = _com_util::ConvertBSTRToString(pValue->bstrVal);
+
+        if (propValue) {
+            hr = this->SetRecordingPath(propValue);
+        }
+
+        free(propValue);
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "DumpBitmapUpdates"))
+    {
+        if (pValue->vt != VT_BOOL)
+            goto end;
+
+        m_DumpBitmapUpdates = pValue->boolVal ? true : false;
+
+        if (m_DumpBitmapUpdates)
+            m_OutputMirrorEnabled = true;
+
+        hr = S_OK;
+    }
     else
     {
         if (pValue->vt == VT_BSTR) {
@@ -699,6 +763,22 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         pValue->bstrVal = _com_util::ConvertStringToBSTR(m_KeyboardHookToggleShortcutKey);
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "VideoRecordingEnabled")) {
+        pValue->vt = VT_BOOL;
+        pValue->boolVal = m_VideoRecordingEnabled ? VARIANT_TRUE : VARIANT_FALSE;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "VideoRecordingQuality")) {
+        pValue->vt = VT_I4;
+        pValue->intVal = (INT)m_VideoRecordingQuality;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "RecordingPath")) {
+        pValue->vt = VT_BSTR;
+        const char* recordingPath = m_RecordingPath ? m_RecordingPath : "";
+        pValue->bstrVal = _com_util::ConvertStringToBSTR(recordingPath);
+        hr = S_OK;
+    }
     else if (MsRdpEx_StringEquals(propName, "MsRdpEx_SessionId")) {
         pValue->vt = VT_BSTR;
         char sessionId[MSRDPEX_GUID_STRING_SIZE];
@@ -789,6 +869,16 @@ HRESULT __stdcall CMsRdpExtendedSettings::SetKdcProxyUrl(const char* kdcProxyUrl
 
     if (kdcProxyUrl) {
         m_KdcProxyUrl = _strdup(kdcProxyUrl);
+    }
+    return S_OK;
+}
+
+HRESULT __stdcall CMsRdpExtendedSettings::SetRecordingPath(const char* recordingPath) {
+    free(m_RecordingPath);
+    m_RecordingPath = NULL;
+
+    if (recordingPath) {
+        m_RecordingPath = _strdup(recordingPath);
     }
     return S_OK;
 }
@@ -1060,6 +1150,31 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "WinSCardSmartcardPin")) {
             MsRdpEx_SetEnv("WINSCARD_SMARTCARD_PIN", entry->value);
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "VideoRecordingEnabled")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "VideoRecordingQuality")) {
+            if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "RecordingPath")) {
+            bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+            bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+            value.bstrVal = propValue;
+            value.vt = VT_BSTR;
+            pMsRdpExtendedSettings->put_Property(propName, &value);
+        }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "DumpBitmapUpdates")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
     }
 
     MsRdpEx_ArrayListIt_Finish(it);
@@ -1177,6 +1292,32 @@ HRESULT CMsRdpExtendedSettings::PrepareMouseJiggler()
     return hr;
 }
 
+HRESULT CMsRdpExtendedSettings::PrepareVideoRecorder()
+{
+    HRESULT hr = S_OK;
+    IMsRdpExInstance* instance;
+    bool outputMirrorEnabled = false;
+
+    instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindBySessionId(&m_sessionId);
+
+    if (!instance)
+    {
+        MsRdpEx_LogPrint(ERROR, "PrepareVideoRecorder - cannot find instance!");
+        return E_UNEXPECTED;
+    }
+
+    instance->GetOutputMirrorEnabled(&outputMirrorEnabled);
+
+    if (outputMirrorEnabled) {
+        VARIANT enableHardwareMode;
+        bstr_t enableHardwareModeName = _com_util::ConvertStringToBSTR("EnableHardwareMode");
+        VariantInitBool(&enableHardwareMode, false);
+        this->put_Property(enableHardwareModeName, &enableHardwareMode);
+    }
+
+    return hr;
+}
+
 HRESULT CMsRdpExtendedSettings::PrepareExtraSystemMenu()
 {
     HRESULT hr = S_OK;
@@ -1235,6 +1376,40 @@ bool CMsRdpExtendedSettings::GetKeyboardHookToggleShortcutEnabled()
 const char* CMsRdpExtendedSettings::GetKeyboardHookToggleShortcutKey()
 {
     return (const char*) m_KeyboardHookToggleShortcutKey;
+}
+
+const char* CMsRdpExtendedSettings::GetSessionId()
+{
+    MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, m_sessionIdStr, 0);
+    return m_sessionIdStr;
+}
+
+bool CMsRdpExtendedSettings::GetOutputMirrorEnabled()
+{
+    return m_OutputMirrorEnabled;
+}
+
+bool CMsRdpExtendedSettings::GetVideoRecordingEnabled()
+{
+    return m_VideoRecordingEnabled;
+}
+
+uint32_t CMsRdpExtendedSettings::GetVideoRecordingQuality()
+{
+    return m_VideoRecordingQuality;
+}
+
+char* CMsRdpExtendedSettings::GetRecordingPath()
+{
+    if (m_RecordingPath)
+        return _strdup(m_RecordingPath);
+
+    return NULL;
+}
+
+bool CMsRdpExtendedSettings::GetDumpBitmapUpdates()
+{
+    return m_DumpBitmapUpdates;
 }
 
 bool CMsRdpExtendedSettings::GetExtraSystemMenuEnabled()

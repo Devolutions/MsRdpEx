@@ -37,6 +37,7 @@ extern "C" {
 #endif
 
 const char* MsRdpEx_FileBase(const char* filename);
+char* MsRdpEx_FileDir(const char* filename);
 bool MsRdpEx_FileExists(const char* filename);
 
 FILE* MsRdpEx_FileOpen(const char* path, const char* mode);
@@ -48,6 +49,7 @@ uint64_t MsRdpEx_FileSize(const char* filename);
 
 bool MsRdpEx_GetFileBuildVersion(const char* filename, uint64_t* version);
 bool MsRdpEx_MakePath(const char* path, LPSECURITY_ATTRIBUTES lpAttributes);
+BOOL MsRdpEx_MoveFile(LPCSTR lpExistingFileName, LPCSTR lpNewFileName, DWORD flags);
 
 uint64_t MsRdpEx_GetUnixTime();
 
@@ -65,6 +67,9 @@ HMODULE MsRdpEx_LoadLibrary(const char* filename);
 #define MSRDPEX_MSRDC_EXE_PATH          0x00000400
 #define MSRDPEX_RDCLIENTAX_DLL_PATH     0x00000800
 #define MSRDPEX_DEFAULT_RDP_PATH        0x00001000
+#define MSRDPEX_MODULE_DIR_PATH         0x00002000
+#define MSRDPEX_LIBRARY_DIR_PATH        0x00004000
+#define MSRDPEX_XMF_DLL_PATH            0x00008000
 #define MSRDPEX_ALL_PATHS               0xFFFFFFFF
 
 bool MsRdpEx_InitPaths(uint32_t pathIds);
@@ -96,6 +101,8 @@ bool MsRdpEx_StringEndsWith(const char* str, const char* val);
 bool MsRdpEx_IStringEndsWith(const char* str, const char* val);
 
 bool MsRdpEx_IStringEndsWithW(const WCHAR* str, const WCHAR* val);
+
+bool MsRdpEx_StringIsNullOrEmpty(const char* str);
 
 #define MSRDPEX_STRING_FLAG_UPPERCASE       0x00000001
 #define MSRDPEX_STRING_FLAG_NO_TERMINATOR   0x00000002

@@ -22,6 +22,11 @@ typedef void (CDECL* fnRecorder_Timeout)(XmfRecorder* ctx);
 typedef uint32_t (CDECL* fnRecorder_GetTimeout)(XmfRecorder* ctx);
 typedef void (CDECL* fnRecorder_Free)(XmfRecorder* ctx);
 
+typedef void XmfWebMMuxer;
+typedef XmfWebMMuxer* (CDECL* fnXmfWebMMuxer_New)();
+typedef int (CDECL* fnXmfWebMMuxer_Remux)(XmfWebMMuxer* ctx, const char* inputFile, const char* outputFile);
+typedef void (CDECL* fnXmfWebMMuxer_Free)(XmfWebMMuxer* ctx);
+
 struct _MsRdpEx_VideoRecorder
 {
     HMODULE hModule;
@@ -37,6 +42,12 @@ struct _MsRdpEx_VideoRecorder
     fnRecorder_Timeout Recorder_Timeout;
     fnRecorder_GetTimeout Recorder_GetTimeout;
     fnRecorder_Free Recorder_Free;
+
+    fnXmfWebMMuxer_New XmfWebMMuxer_New;
+    fnXmfWebMMuxer_Remux XmfWebMMuxer_Remux;
+    fnXmfWebMMuxer_Free XmfWebMMuxer_Free;
+
+    char filename[MSRDPEX_MAX_PATH];
 };
 typedef struct _MsRdpEx_VideoRecorder MsRdpEx_VideoRecorder;
 
@@ -55,6 +66,8 @@ void MsRdpEx_VideoRecorder_UpdateFrame(MsRdpEx_VideoRecorder* ctx,
 
 void MsRdpEx_VideoRecorder_Timeout(MsRdpEx_VideoRecorder* ctx);
 uint32_t MsRdpEx_VideoRecorder_GetTimeout(MsRdpEx_VideoRecorder* ctx);
+
+bool MsRdpEx_VideoRecorder_Remux(MsRdpEx_VideoRecorder* ctx, const char* filename);
 
 MsRdpEx_VideoRecorder* MsRdpEx_VideoRecorder_New();
 void MsRdpEx_VideoRecorder_Free(MsRdpEx_VideoRecorder* ctx);

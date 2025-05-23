@@ -205,7 +205,10 @@ public:
         }
         
         if (m_pMsRdpExInstance) {
+            IMsRdpExInstance* pMsRdpExInstance = (IMsRdpExInstance*)m_pMsRdpExInstance;
             MsRdpEx_InstanceManager_Remove(m_pMsRdpExInstance);
+            pMsRdpExInstance->Release();
+            pMsRdpExInstance = NULL;
         }
     }
 
@@ -499,6 +502,7 @@ public:
         m_pMsRdpExtendedSettings->LoadRdpFileFromNamedPipe(NULL);
         m_pMsRdpExtendedSettings->PrepareSspiSessionIdHack();
         m_pMsRdpExtendedSettings->PrepareMouseJiggler();
+        m_pMsRdpExtendedSettings->PrepareVideoRecorder();
         m_pMsRdpExtendedSettings->PrepareExtraSystemMenu();
 
         hr = m_pMsTscAx->raw_Connect();

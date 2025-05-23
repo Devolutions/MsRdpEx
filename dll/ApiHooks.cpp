@@ -404,9 +404,11 @@ bool WINAPI MsRdpEx_CaptureBlt(
     bool captured = false;
     bool outputMirrorEnabled = false;
     bool videoRecordingEnabled = false;
+    uint32_t videoRecordingQuality = 5;
     bool dumpBitmapUpdates = false;
     IMsRdpExInstance* instance = NULL;
     MsRdpEx_OutputMirror* outputMirror = NULL;
+    CMsRdpExtendedSettings* pExtendedSettings = NULL;
 
     HWND hWnd = WindowFromDC(hdcDst);
 
@@ -418,11 +420,18 @@ bool WINAPI MsRdpEx_CaptureBlt(
     if (!instance)
         goto end;
 
+    if (instance)
+        instance->GetExtendedSettings(&pExtendedSettings);
+
+    if (!pExtendedSettings)
+        goto end;
+
     MsRdpEx_LogPrint(TRACE, "CaptureBlt: hWnd: %p instance: %p", hWnd, instance);
 
-    instance->GetOutputMirrorEnabled(&outputMirrorEnabled);
-    instance->GetVideoRecordingEnabled(&videoRecordingEnabled);
-    instance->GetDumpBitmapUpdates(&dumpBitmapUpdates);
+    outputMirrorEnabled = pExtendedSettings->GetOutputMirrorEnabled();
+    videoRecordingEnabled = pExtendedSettings->GetVideoRecordingEnabled();
+    videoRecordingQuality = pExtendedSettings->GetVideoRecordingQuality();
+    dumpBitmapUpdates = pExtendedSettings->GetDumpBitmapUpdates();
 
     if (!outputMirrorEnabled)
         goto end;
@@ -440,6 +449,17 @@ bool WINAPI MsRdpEx_CaptureBlt(
         outputMirror = MsRdpEx_OutputMirror_New();
         MsRdpEx_OutputMirror_SetDumpBitmapUpdates(outputMirror, dumpBitmapUpdates);
         MsRdpEx_OutputMirror_SetVideoRecordingEnabled(outputMirror, videoRecordingEnabled);
+        MsRdpEx_OutputMirror_SetVideoQualityLevel(outputMirror, videoRecordingQuality);
+
+        char* recordingPath = pExtendedSettings->GetRecordingPath();
+        if (recordingPath) {
+            MsRdpEx_OutputMirror_SetRecordingPath(outputMirror, recordingPath);
+            free(recordingPath);
+        }
+
+        const char* sessionId = pExtendedSettings->GetSessionId();
+        MsRdpEx_OutputMirror_SetSessionId(outputMirror, sessionId);
+
         instance->SetOutputMirrorObject((LPVOID) outputMirror);
     }
 
