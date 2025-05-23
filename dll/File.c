@@ -33,6 +33,33 @@ const char* MsRdpEx_FileBase(const char* filename)
     return filename;
 }
 
+char* MsRdpEx_FileDir(const char* filename)
+{
+	size_t length;
+	char* separator;
+
+	if (!filename)
+		return NULL;
+
+	separator = strrchr(filename, '\\');
+
+	if (!separator)
+		separator = strrchr(filename, '/');
+
+	if (!separator)
+		return NULL;
+
+	length = (separator - filename) + 1; // include the separator
+	char* dirname = (char*)malloc(length + 1);
+	if (!dirname)
+		return NULL;
+
+	memcpy(dirname, filename, length);
+	dirname[length] = '\0';
+
+	return dirname;
+}
+
 bool MsRdpEx_FileExists(const char* filename)
 {
     bool result = false;
@@ -239,6 +266,32 @@ bool MsRdpEx_MakePath(const char* path, LPSECURITY_ATTRIBUTES lpAttributes)
 exit:
 	free(pathW);
     return result;
+}
+
+BOOL MsRdpEx_MoveFile(LPCSTR lpExistingFileName, LPCSTR lpNewFileName, DWORD flags)
+{
+	BOOL result = FALSE;
+	LPWSTR lpExistingFileNameW = NULL;
+	LPWSTR lpNewFileNameW = NULL;
+
+	if (!lpExistingFileName)
+		goto cleanup;
+
+	if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, lpExistingFileName, -1, &lpExistingFileNameW, 0) < 1)
+		goto cleanup;
+
+	if (lpNewFileName)
+	{
+		if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, lpNewFileName, -1, &lpNewFileNameW, 0) < 1)
+			goto cleanup;
+	}
+
+	result = MoveFileExW(lpExistingFileNameW, lpNewFileNameW, flags);
+
+cleanup:
+	free(lpExistingFileNameW);
+	free(lpNewFileNameW);
+	return result;
 }
 
 uint64_t MsRdpEx_GetUnixTime()

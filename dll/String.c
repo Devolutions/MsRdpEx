@@ -270,6 +270,17 @@ bool MsRdpEx_IStringEndsWithW(const WCHAR* str, const WCHAR* val)
     return false;
 }
 
+bool MsRdpEx_StringIsNullOrEmpty(const char* str)
+{
+    if (!str)
+        return true;
+
+    if (strlen(str) < 1)
+        return true;
+
+    return false;
+}
+
 static GUID GUID_NIL =
 {
 	0x00000000, 0x0000, 0x0000,

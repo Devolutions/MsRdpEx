@@ -39,6 +39,7 @@ public:
     HRESULT __stdcall SetTargetPassword(const char* password);
     HRESULT __stdcall SetGatewayPassword(const char* password);
     HRESULT __stdcall SetKdcProxyUrl(const char* kdcProxyUrl);
+    HRESULT __stdcall SetRecordingPath(const char* recordingPath);
     HRESULT __stdcall AttachRdpClient(IMsTscAx* pMsTscAx);
     HRESULT __stdcall ApplyRdpFile(void* rdpFilePtr);
     HRESULT __stdcall LoadRdpFile(const char* rdpFileName);
@@ -46,6 +47,7 @@ public:
     HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw);
     HRESULT __stdcall PrepareSspiSessionIdHack();
     HRESULT __stdcall PrepareMouseJiggler();
+    HRESULT __stdcall PrepareVideoRecorder();
     HRESULT __stdcall PrepareExtraSystemMenu();
     char* __stdcall GetKdcProxyUrl();
     char* __stdcall GetKdcProxyName();
@@ -54,10 +56,17 @@ public:
     uint32_t GetMouseJigglerMethod();
     bool GetKeyboardHookToggleShortcutEnabled();
     const char* GetKeyboardHookToggleShortcutKey();
+    const char* GetSessionId();
+    bool GetOutputMirrorEnabled();
+    bool GetVideoRecordingEnabled();
+    uint32_t GetVideoRecordingQuality();
+    char* GetRecordingPath();
+    bool GetDumpBitmapUpdates();
     bool GetExtraSystemMenuEnabled();
 
 private:
     GUID m_sessionId;
+    char m_sessionIdStr[MSRDPEX_GUID_STRING_SIZE];
     ULONG m_refCount = 0;
     IUnknown* m_pUnknown = NULL;
     IMsTscAx* m_pMsTscAx = NULL;
@@ -72,6 +81,11 @@ private:
     bool m_MouseJigglerEnabled = false;
     uint32_t m_MouseJigglerInterval = 60;
     uint32_t m_MouseJigglerMethod = 0;
+    bool m_OutputMirrorEnabled = false;
+    bool m_VideoRecordingEnabled = false;
+    uint32_t m_VideoRecordingQuality = 5;
+    char* m_RecordingPath = NULL;
+    bool m_DumpBitmapUpdates = false;
     bool m_ExtraSystemMenuEnabled = true;
     bool m_KeyboardHookToggleShortcutEnabled = false;
     char m_KeyboardHookToggleShortcutKey[32];
