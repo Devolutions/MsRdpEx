@@ -448,6 +448,13 @@ bool WINAPI MsRdpEx_CaptureBlt(
         MsRdpEx_OutputMirror_SetDumpBitmapUpdates(outputMirror, dumpBitmapUpdates);
         MsRdpEx_OutputMirror_SetVideoRecordingEnabled(outputMirror, videoRecordingEnabled);
         MsRdpEx_OutputMirror_SetVideoQualityLevel(outputMirror, videoRecordingQuality);
+
+        char* recordingPath = pExtendedSettings->GetRecordingPath();
+        if (recordingPath) {
+            MsRdpEx_OutputMirror_SetRecordingPath(outputMirror, recordingPath);
+            free(recordingPath);
+        }
+
         instance->SetOutputMirrorObject((LPVOID) outputMirror);
     }
 

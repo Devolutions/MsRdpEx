@@ -417,6 +417,7 @@ CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown, GUID* pSessio
 CMsRdpExtendedSettings::~CMsRdpExtendedSettings()
 {
     this->SetKdcProxyUrl(NULL);
+    this->SetRecordingPath(NULL);
 
     if (m_pMsRdpExtendedSettings)
         m_pMsRdpExtendedSettings->Release();
@@ -560,6 +561,20 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
 
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "RecordingPath"))
+    {
+        if (pValue->vt != VT_BSTR)
+            goto end;
+
+        char* propValue = _com_util::ConvertBSTRToString(pValue->bstrVal);
+
+        if (propValue) {
+            hr = this->SetRecordingPath(propValue);
+        }
+
+        free(propValue);
+        hr = S_OK;
+    }
     else if (MsRdpEx_StringEquals(propName, "DumpBitmapUpdates"))
     {
         if (pValue->vt != VT_BOOL)
@@ -663,6 +678,12 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         pValue->intVal = (INT)m_VideoRecordingQuality;
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "RecordingPath")) {
+        pValue->vt = VT_BSTR;
+        const char* recordingPath = m_RecordingPath ? m_RecordingPath : "";
+        pValue->bstrVal = _com_util::ConvertStringToBSTR(recordingPath);
+        hr = S_OK;
+    }
     else if (MsRdpEx_StringEquals(propName, "MsRdpEx_SessionId")) {
         pValue->vt = VT_BSTR;
         char sessionId[MSRDPEX_GUID_STRING_SIZE];
@@ -747,6 +768,16 @@ HRESULT __stdcall CMsRdpExtendedSettings::SetKdcProxyUrl(const char* kdcProxyUrl
 
     if (kdcProxyUrl) {
         m_KdcProxyUrl = _strdup(kdcProxyUrl);
+    }
+    return S_OK;
+}
+
+HRESULT __stdcall CMsRdpExtendedSettings::SetRecordingPath(const char* recordingPath) {
+    free(m_RecordingPath);
+    m_RecordingPath = NULL;
+
+    if (recordingPath) {
+        m_RecordingPath = _strdup(recordingPath);
     }
     return S_OK;
 }
@@ -990,6 +1021,13 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
                 pMsRdpExtendedSettings->put_Property(propName, &value);
             }
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "RecordingPath")) {
+            bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+            bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+            value.bstrVal = propValue;
+            value.vt = VT_BSTR;
+            pMsRdpExtendedSettings->put_Property(propName, &value);
+        }
     }
 
     MsRdpEx_ArrayListIt_Finish(it);
@@ -1196,6 +1234,14 @@ bool CMsRdpExtendedSettings::GetVideoRecordingEnabled()
 uint32_t CMsRdpExtendedSettings::GetVideoRecordingQuality()
 {
     return m_VideoRecordingQuality;
+}
+
+char* CMsRdpExtendedSettings::GetRecordingPath()
+{
+    if (m_RecordingPath)
+        return _strdup(m_RecordingPath);
+
+    return NULL;
 }
 
 bool CMsRdpExtendedSettings::GetDumpBitmapUpdates()
