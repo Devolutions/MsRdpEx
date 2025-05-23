@@ -54,6 +54,7 @@ public:
     bool GetMouseJigglerEnabled();
     uint32_t GetMouseJigglerInterval();
     uint32_t GetMouseJigglerMethod();
+    const char* GetSessionId();
     bool GetOutputMirrorEnabled();
     bool GetVideoRecordingEnabled();
     uint32_t GetVideoRecordingQuality();
@@ -63,6 +64,7 @@ public:
 
 private:
     GUID m_sessionId;
+    char m_sessionIdStr[MSRDPEX_GUID_STRING_SIZE];
     ULONG m_refCount = 0;
     IUnknown* m_pUnknown = NULL;
     IMsTscAx* m_pMsTscAx = NULL;

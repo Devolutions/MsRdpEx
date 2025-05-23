@@ -20,10 +20,12 @@ struct _MsRdpEx_OutputMirror
 	uint32_t captureIndex;
 	uint64_t captureBaseTime;
 
+	int videoRecordingCount;
 	bool dumpBitmapUpdates;
 	bool videoRecordingEnabled;
 	uint32_t videoQualityLevel;
 	char recordingPath[MSRDPEX_MAX_PATH];
+	char sessionId[MSRDPEX_GUID_STRING_SIZE];
 	MsRdpEx_VideoRecorder* videoRecorder;
 	FILE* frameMetadataFile;
 
@@ -114,6 +116,11 @@ void MsRdpEx_OutputMirror_SetRecordingPath(MsRdpEx_OutputMirror* ctx, const char
 	strcpy_s(ctx->recordingPath, MSRDPEX_MAX_PATH, recordingPath);
 }
 
+void MsRdpEx_OutputMirror_SetSessionId(MsRdpEx_OutputMirror* ctx, const char* sessionId)
+{
+	strcpy_s(ctx->sessionId, MSRDPEX_GUID_STRING_SIZE, sessionId);
+}
+
 bool MsRdpEx_OutputMirror_GetShadowBitmap(MsRdpEx_OutputMirror* ctx,
 	HDC* phDC, HBITMAP* phBitmap, uint8_t** pBitmapData,
 	uint32_t* pBitmapWidth, uint32_t* pBitmapHeight, uint32_t* pBitmapStep)
@@ -159,24 +166,24 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 		sprintf_s(ctx->recordingPath, MSRDPEX_MAX_PATH, "%s\\recordings", appDataPath);
 	}
 
-	if (ctx->videoRecordingEnabled) {
-		char filename[MSRDPEX_MAX_PATH];
-		uint64_t timestamp = MsRdpEx_GetUnixTime();
+	if (MsRdpEx_StringIsNullOrEmpty(ctx->sessionId)) {
+		GUID guid;
+		MsRdpEx_GuidGenerate(&guid);
+		MsRdpEx_GuidBinToStr((GUID*)&guid, ctx->sessionId, 0);
+	}
 
-		MsRdpEx_MakePath(ctx->recordingPath, NULL);
+	if (ctx->videoRecordingEnabled) {
+		char outputPath[MSRDPEX_MAX_PATH];
+		char filename[MSRDPEX_MAX_PATH];
+
+		sprintf_s(outputPath, MSRDPEX_MAX_PATH, "%s\\%s", ctx->recordingPath, ctx->sessionId);
+		MsRdpEx_MakePath(outputPath, NULL);
 
 		ctx->videoRecorder = MsRdpEx_VideoRecorder_New();
 
 		if (ctx->videoRecorder) {
-			char* videoFileName = MsRdpEx_GetEnv("MSRDPEX_VIDEO_FILENAME");
-
-			if (videoFileName) {
-				strcpy_s(filename, MSRDPEX_MAX_PATH, videoFileName);
-				free(videoFileName);
-			} else {
-				sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\%llu.webm", ctx->recordingPath, timestamp);
-			}
-
+			sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\recording-%d.webm", outputPath, ctx->videoRecordingCount);
+			ctx->videoRecordingCount++;
 			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
 			MsRdpEx_VideoRecorder_SetFileName(ctx->videoRecorder, filename);
 			MsRdpEx_VideoRecorder_SetVideoQuality(ctx->videoRecorder, ctx->videoQualityLevel);
@@ -186,7 +193,7 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 		if (ctx->dumpBitmapUpdates) {
 			char metadata[1024];
 			sprintf_s(metadata, sizeof(metadata), "FrameTime|FrameSize|FrameFile|UpdatePos|UpdateSize\n");
-			sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\frame_meta.psv", ctx->recordingPath);
+			sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\frame_meta.psv", outputPath);
 			ctx->frameMetadataFile = MsRdpEx_FileOpen(filename, "wb");
 			fwrite(metadata, 1, strlen(metadata), ctx->frameMetadataFile);
 		}

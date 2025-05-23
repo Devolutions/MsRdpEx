@@ -455,6 +455,9 @@ bool WINAPI MsRdpEx_CaptureBlt(
             free(recordingPath);
         }
 
+        const char* sessionId = pExtendedSettings->GetSessionId();
+        MsRdpEx_OutputMirror_SetSessionId(outputMirror, sessionId);
+
         instance->SetOutputMirrorObject((LPVOID) outputMirror);
     }
 

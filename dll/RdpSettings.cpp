@@ -1221,6 +1221,12 @@ uint32_t CMsRdpExtendedSettings::GetMouseJigglerMethod()
     return m_MouseJigglerMethod;
 }
 
+const char* CMsRdpExtendedSettings::GetSessionId()
+{
+    MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, m_sessionIdStr, 0);
+    return m_sessionIdStr;
+}
+
 bool CMsRdpExtendedSettings::GetOutputMirrorEnabled()
 {
     return m_OutputMirrorEnabled;
