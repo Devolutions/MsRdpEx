@@ -1,10 +1,14 @@
 
 #include <MsRdpEx/MsRdpEx.h>
 
+#include <MsRdpEx/Environment.h>
+
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
 static char g_CURRENT_MODULE_PATH[MSRDPEX_MAX_PATH] = { 0 };
 static char g_CURRENT_LIBRARY_PATH[MSRDPEX_MAX_PATH] = { 0 };
+static char g_MODULE_DIR_PATH[MSRDPEX_MAX_PATH] = { 0 };
+static char g_LIBRARY_DIR_PATH[MSRDPEX_MAX_PATH] = { 0 };
 
 static char g_MSRDPEX_EXE_PATH[MSRDPEX_MAX_PATH] = { 0 };
 static char g_MSRDPEX_DLL_PATH[MSRDPEX_MAX_PATH] = { 0 };
@@ -18,6 +22,8 @@ static char g_MSRDC_EXE_PATH[MSRDPEX_MAX_PATH] = { 0 };
 static char g_RDCLIENTAX_DLL_PATH[MSRDPEX_MAX_PATH] = { 0 };
 
 static char g_DEFAULT_RDP_PATH[MSRDPEX_MAX_PATH] = { 0 };
+
+static char g_XMF_DLL_PATH[MSRDPEX_MAX_PATH] = { 0 };
 
 bool MsRdpEx_PathCchRenameExtension(char* pszPath, size_t cchPath, const char* pszExt)
 {
@@ -170,10 +176,28 @@ bool MsRdpEx_InitPaths(uint32_t pathIds)
 
     if (pathIds & MSRDPEX_CURRENT_MODULE_PATH) {
         MsRdpEx_PathCchDetect(g_CURRENT_MODULE_PATH, MSRDPEX_MAX_PATH, MSRDPEX_CURRENT_MODULE_PATH);
+
+        if (pathIds & MSRDPEX_MODULE_DIR_PATH) {
+            char* dirname = MsRdpEx_FileDir(g_CURRENT_MODULE_PATH);
+
+            if (dirname) {
+                strcpy_s(g_MODULE_DIR_PATH, MSRDPEX_MAX_PATH, dirname);
+                free(dirname);
+            }
+        }
     }
     
     if (pathIds & MSRDPEX_CURRENT_LIBRARY_PATH) {
         MsRdpEx_PathCchDetect(g_CURRENT_LIBRARY_PATH, MSRDPEX_MAX_PATH, MSRDPEX_CURRENT_LIBRARY_PATH);
+
+        if (pathIds & MSRDPEX_LIBRARY_DIR_PATH) {
+            char* dirname = MsRdpEx_FileDir(g_CURRENT_LIBRARY_PATH);
+
+            if (dirname) {
+                strcpy_s(g_LIBRARY_DIR_PATH, MSRDPEX_MAX_PATH, dirname);
+                free(dirname);
+            }
+        }
     }
 
     const char* ModuleFileName = MsRdpEx_FileBase(g_CURRENT_MODULE_PATH);
@@ -232,6 +256,23 @@ bool MsRdpEx_InitPaths(uint32_t pathIds)
         MsRdpEx_ExpandEnvironmentStrings("%UserProfile%\\Documents\\Default.rdp", g_DEFAULT_RDP_PATH, MSRDPEX_MAX_PATH);
     }
 
+    if (pathIds & MSRDPEX_XMF_DLL_PATH) {
+        char* envPath = MsRdpEx_GetEnv("MSRDPEX_XMF_DLL");
+
+        if (envPath) {
+            strcpy_s(g_XMF_DLL_PATH, MSRDPEX_MAX_PATH, envPath);
+            free(envPath);
+        }
+        else {
+            char libPath[MSRDPEX_MAX_PATH];
+            sprintf_s(libPath, MSRDPEX_MAX_PATH, "%s%s", g_LIBRARY_DIR_PATH, "xmf.dll");
+
+            if (MsRdpEx_FileExists(libPath)) {
+                strcpy_s(g_XMF_DLL_PATH, MSRDPEX_MAX_PATH, libPath);
+            }
+        }
+    }
+
     return true;
 }
 
@@ -279,6 +320,18 @@ const char* MsRdpEx_GetPath(uint32_t pathId)
 
         case MSRDPEX_DEFAULT_RDP_PATH:
             path = (const char*) g_DEFAULT_RDP_PATH;
+            break;
+
+        case MSRDPEX_MODULE_DIR_PATH:
+            path = (const char*) g_MODULE_DIR_PATH;
+            break;
+
+        case MSRDPEX_LIBRARY_DIR_PATH:
+            path = (const char*) g_LIBRARY_DIR_PATH;
+            break;
+
+        case MSRDPEX_XMF_DLL_PATH:
+            path = (const char*) g_XMF_DLL_PATH;
             break;
     }
 

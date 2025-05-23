@@ -23,6 +23,7 @@ struct _MsRdpEx_OutputMirror
 
 	bool dumpBitmapUpdates;
 	bool videoRecordingEnabled;
+	uint32_t videoQualityLevel;
 	MsRdpEx_VideoRecorder* videoRecorder;
 	FILE* frameMetadataFile;
 
@@ -103,6 +104,11 @@ void MsRdpEx_OutputMirror_SetVideoRecordingEnabled(MsRdpEx_OutputMirror* ctx, bo
 	ctx->videoRecordingEnabled = videoRecordingEnabled;
 }
 
+void MsRdpEx_OutputMirror_SetVideoQualityLevel(MsRdpEx_OutputMirror* ctx, uint32_t videoQualityLevel)
+{
+	ctx->videoQualityLevel = videoQualityLevel;
+}
+
 bool MsRdpEx_OutputMirror_GetShadowBitmap(MsRdpEx_OutputMirror* ctx,
 	HDC* phDC, HBITMAP* phBitmap, uint8_t** pBitmapData,
 	uint32_t* pBitmapWidth, uint32_t* pBitmapHeight, uint32_t* pBitmapStep)
@@ -167,6 +173,7 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 
 			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
 			MsRdpEx_VideoRecorder_SetFileName(ctx->videoRecorder, filename);
+			MsRdpEx_VideoRecorder_SetVideoQuality(ctx->videoRecorder, ctx->videoQualityLevel);
 			MsRdpEx_VideoRecorder_Init(ctx->videoRecorder);
 		}
 
@@ -224,6 +231,7 @@ MsRdpEx_OutputMirror* MsRdpEx_OutputMirror_New()
 
 	ctx->bitsPerPixel = 32;
 	ctx->videoRecordingEnabled = false;
+	ctx->videoQualityLevel = 5;
 	ctx->dumpBitmapUpdates = false;
 
     InitializeCriticalSectionAndSpinCount(&ctx->lock, 4000);

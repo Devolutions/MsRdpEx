@@ -21,6 +21,7 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx);
 
 void MsRdpEx_OutputMirror_SetDumpBitmapUpdates(MsRdpEx_OutputMirror* ctx, bool dumpBitmapUpdates);
 void MsRdpEx_OutputMirror_SetVideoRecordingEnabled(MsRdpEx_OutputMirror* ctx, bool videoRecordingEnabled);
+void MsRdpEx_OutputMirror_SetVideoQualityLevel(MsRdpEx_OutputMirror* ctx, uint32_t videoQualityLevel);
 
 bool MsRdpEx_OutputMirror_GetShadowBitmap(MsRdpEx_OutputMirror* ctx,
 	HDC* phDC, HBITMAP* phBitmap, uint8_t** pBitmapData,

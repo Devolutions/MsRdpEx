@@ -18,20 +18,19 @@ MsRdpEx_VideoRecorder* MsRdpEx_VideoRecorder_New()
 {
     HMODULE hModule;
     MsRdpEx_VideoRecorder* ctx;
-    char* libraryPath = MsRdpEx_GetEnv("MSRDPEX_XMF_DLL");
+    const char* libPath = MsRdpEx_GetPath(MSRDPEX_XMF_DLL_PATH);
 
-    if (!libraryPath) {
-        libraryPath = _strdup("xmf.dll");
-    }
-
-    hModule = MsRdpEx_LoadLibrary(libraryPath);
-
-    if (!hModule) {
-        MsRdpEx_LogPrint(DEBUG, "LoadLibrary(%s): not found", libraryPath);
+    if (MsRdpEx_StringIsNullOrEmpty(libPath)) {
+        MsRdpEx_LogPrint(DEBUG, "no xmf.dll (cadeau) library detected");
         return NULL;
     }
 
-    free(libraryPath);
+    hModule = MsRdpEx_LoadLibrary(libPath);
+
+    if (!hModule) {
+        MsRdpEx_LogPrint(DEBUG, "Could not load cadeau library: '%s'", libPath);
+        return NULL;
+    }
 
     ctx = (MsRdpEx_VideoRecorder*) malloc(sizeof(MsRdpEx_VideoRecorder));
 

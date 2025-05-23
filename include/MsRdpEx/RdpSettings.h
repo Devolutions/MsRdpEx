@@ -55,6 +55,7 @@ public:
     uint32_t GetMouseJigglerMethod();
     bool GetOutputMirrorEnabled();
     bool GetVideoRecordingEnabled();
+    uint32_t GetVideoRecordingQuality();
     bool GetDumpBitmapUpdates();
     bool GetExtraSystemMenuEnabled();
 
@@ -76,7 +77,7 @@ private:
     uint32_t m_MouseJigglerMethod = 0;
     bool m_OutputMirrorEnabled = false;
     bool m_VideoRecordingEnabled = false;
-    uint32_t m_VideoQualityLevel = 5;
+    uint32_t m_VideoRecordingQuality = 5;
     bool m_DumpBitmapUpdates = false;
     bool m_ExtraSystemMenuEnabled = true;
     IUnknown* m_pWTSPlugin = NULL;

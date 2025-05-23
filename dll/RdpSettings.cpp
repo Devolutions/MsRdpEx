@@ -545,6 +545,21 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
 
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "VideoRecordingQuality"))
+    {
+        if ((pValue->vt != VT_UI4) && (pValue->vt != VT_I4))
+            goto end;
+
+        m_VideoRecordingQuality = (uint32_t)pValue->uintVal;
+
+        if (m_VideoRecordingQuality < 1)
+            m_VideoRecordingQuality = 1;
+
+        if (m_VideoRecordingQuality > 10)
+            m_VideoRecordingQuality = 10;
+
+        hr = S_OK;
+    }
     else if (MsRdpEx_StringEquals(propName, "DumpBitmapUpdates"))
     {
         if (pValue->vt != VT_BOOL)
@@ -641,6 +656,11 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
     else if (MsRdpEx_StringEquals(propName, "VideoRecordingEnabled")) {
         pValue->vt = VT_BOOL;
         pValue->boolVal = m_VideoRecordingEnabled ? VARIANT_TRUE : VARIANT_FALSE;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "VideoRecordingQuality")) {
+        pValue->vt = VT_I4;
+        pValue->intVal = (INT)m_VideoRecordingQuality;
         hr = S_OK;
     }
     else if (MsRdpEx_StringEquals(propName, "MsRdpEx_SessionId")) {
@@ -964,6 +984,12 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
                 pMsRdpExtendedSettings->put_Property(propName, &value);
             }
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "VideoRecordingQuality")) {
+            if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
     }
 
     MsRdpEx_ArrayListIt_Finish(it);
@@ -1165,6 +1191,11 @@ bool CMsRdpExtendedSettings::GetOutputMirrorEnabled()
 bool CMsRdpExtendedSettings::GetVideoRecordingEnabled()
 {
     return m_VideoRecordingEnabled;
+}
+
+uint32_t CMsRdpExtendedSettings::GetVideoRecordingQuality()
+{
+    return m_VideoRecordingQuality;
 }
 
 bool CMsRdpExtendedSettings::GetDumpBitmapUpdates()

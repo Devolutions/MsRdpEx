@@ -33,6 +33,33 @@ const char* MsRdpEx_FileBase(const char* filename)
     return filename;
 }
 
+char* MsRdpEx_FileDir(const char* filename)
+{
+	size_t length;
+	char* separator;
+
+	if (!filename)
+		return NULL;
+
+	separator = strrchr(filename, '\\');
+
+	if (!separator)
+		separator = strrchr(filename, '/');
+
+	if (!separator)
+		return NULL;
+
+	length = (separator - filename) + 1; // include the separator
+	char* dirname = (char*)malloc(length + 1);
+	if (!dirname)
+		return NULL;
+
+	memcpy(dirname, filename, length);
+	dirname[length] = '\0';
+
+	return dirname;
+}
+
 bool MsRdpEx_FileExists(const char* filename)
 {
     bool result = false;
