@@ -6,6 +6,7 @@
 #include <MsRdpEx/Environment.h>
 
 #include "TSObjects.h"
+#include "ComHelpers.h"
 
 extern "C" const GUID IID_IMsRdpExInstance;
 
@@ -21,13 +22,6 @@ public:
         char sessionId[MSRDPEX_GUID_STRING_SIZE];
         MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, sessionId, 0);
         MsRdpEx_LogPrint(DEBUG, "CMsRdpExInstance SessionId: %s", sessionId);
-
-        m_outputMirrorEnabled = MsRdpEx_GetEnvBool("MSRDPEX_OUTPUT_MIRROR_ENABLED", false);
-        m_videoRecordingEnabled = MsRdpEx_GetEnvBool("MSRDPEX_VIDEO_RECORDING_ENABLED", false);
-        m_dumpBitmapUpdates = MsRdpEx_GetEnvBool("MSRDPEX_DUMP_BITMAP_UPDATES", false);
-
-        if (m_videoRecordingEnabled)
-            m_outputMirrorEnabled = true;
     }
 
     ~CMsRdpExInstance()
@@ -123,13 +117,23 @@ public:
 
     HRESULT STDMETHODCALLTYPE GetOutputMirrorEnabled(bool* outputMirrorEnabled)
     {
-        *outputMirrorEnabled = m_outputMirrorEnabled;
+        if (!m_pMsRdpExtendedSettings)
+            return E_UNEXPECTED;
+
+        *outputMirrorEnabled = m_pMsRdpExtendedSettings->GetOutputMirrorEnabled();
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE SetOutputMirrorEnabled(bool outputMirrorEnabled)
     {
-        m_outputMirrorEnabled = outputMirrorEnabled;
+        if (!m_pMsRdpExtendedSettings)
+            return E_UNEXPECTED;
+
+        VARIANT propValue;
+        VariantInitBool(&propValue, outputMirrorEnabled);
+        bstr_t propName = _com_util::ConvertStringToBSTR("OutputMirrorEnabled");
+        m_pMsRdpExtendedSettings->put_Property(propName, &propValue);
+
         return S_OK;
     }
 
@@ -147,28 +151,32 @@ public:
         if (!m_pMsRdpExtendedSettings)
             return E_UNEXPECTED;
 
-        VARIANT value;
-        VariantInit(&value);
-        value.vt = VT_BOOL;
-        value.boolVal = videoRecordingEnabled ? VARIANT_TRUE : VARIANT_FALSE;
+        VARIANT propValue;
+        VariantInitBool(&propValue, videoRecordingEnabled);
         bstr_t propName = _com_util::ConvertStringToBSTR("VideoRecordingEnabled");
-        m_pMsRdpExtendedSettings->put_Property(propName, &value);
+        m_pMsRdpExtendedSettings->put_Property(propName, &propValue);
 
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetDumpBitmapUpdates(bool* dumpBitmapUpdates)
     {
-        *dumpBitmapUpdates = m_dumpBitmapUpdates;
+        if (!m_pMsRdpExtendedSettings)
+            return E_UNEXPECTED;
+
+        *dumpBitmapUpdates = m_pMsRdpExtendedSettings->GetDumpBitmapUpdates();
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE SetDumpBitmapUpdates(bool dumpBitmapUpdates)
     {
-        m_dumpBitmapUpdates = dumpBitmapUpdates;
+        if (!m_pMsRdpExtendedSettings)
+            return E_UNEXPECTED;
 
-        if (dumpBitmapUpdates)
-            m_outputMirrorEnabled = true;
+        VARIANT propValue;
+        VariantInitBool(&propValue, dumpBitmapUpdates);
+        bstr_t propName = _com_util::ConvertStringToBSTR("DumpBitmapUpdates");
+        m_pMsRdpExtendedSettings->put_Property(propName, &propValue);
 
         return S_OK;
     }
@@ -293,9 +301,6 @@ public:
 public:
     GUID m_sessionId;
     ULONG m_refCount = NULL;
-    bool m_outputMirrorEnabled = false;
-    bool m_videoRecordingEnabled = false;
-    bool m_dumpBitmapUpdates = false;
     CMsRdpClient* m_pMsRdpClient = NULL;
     HWND m_hInputCaptureWnd = NULL;
     HWND m_hOutputPresenterWnd = NULL;

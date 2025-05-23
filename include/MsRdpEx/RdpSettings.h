@@ -53,7 +53,9 @@ public:
     bool GetMouseJigglerEnabled();
     uint32_t GetMouseJigglerInterval();
     uint32_t GetMouseJigglerMethod();
+    bool GetOutputMirrorEnabled();
     bool GetVideoRecordingEnabled();
+    bool GetDumpBitmapUpdates();
     bool GetExtraSystemMenuEnabled();
 
 private:
@@ -72,7 +74,10 @@ private:
     bool m_MouseJigglerEnabled = false;
     uint32_t m_MouseJigglerInterval = 60;
     uint32_t m_MouseJigglerMethod = 0;
+    bool m_OutputMirrorEnabled = false;
     bool m_VideoRecordingEnabled = false;
+    uint32_t m_VideoQualityLevel = 5;
+    bool m_DumpBitmapUpdates = false;
     bool m_ExtraSystemMenuEnabled = true;
     IUnknown* m_pWTSPlugin = NULL;
 };

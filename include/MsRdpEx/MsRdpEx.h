@@ -48,6 +48,7 @@ uint64_t MsRdpEx_FileSize(const char* filename);
 
 bool MsRdpEx_GetFileBuildVersion(const char* filename, uint64_t* version);
 bool MsRdpEx_MakePath(const char* path, LPSECURITY_ATTRIBUTES lpAttributes);
+BOOL MsRdpEx_MoveFile(LPCSTR lpExistingFileName, LPCSTR lpNewFileName, DWORD flags);
 
 uint64_t MsRdpEx_GetUnixTime();
 

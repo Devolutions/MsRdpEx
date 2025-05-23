@@ -241,6 +241,32 @@ exit:
     return result;
 }
 
+BOOL MsRdpEx_MoveFile(LPCSTR lpExistingFileName, LPCSTR lpNewFileName, DWORD flags)
+{
+	BOOL result = FALSE;
+	LPWSTR lpExistingFileNameW = NULL;
+	LPWSTR lpNewFileNameW = NULL;
+
+	if (!lpExistingFileName)
+		goto cleanup;
+
+	if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, lpExistingFileName, -1, &lpExistingFileNameW, 0) < 1)
+		goto cleanup;
+
+	if (lpNewFileName)
+	{
+		if (MsRdpEx_ConvertToUnicode(CP_UTF8, 0, lpNewFileName, -1, &lpNewFileNameW, 0) < 1)
+			goto cleanup;
+	}
+
+	result = MoveFileExW(lpExistingFileNameW, lpNewFileNameW, flags);
+
+cleanup:
+	free(lpExistingFileNameW);
+	free(lpNewFileNameW);
+	return result;
+}
+
 uint64_t MsRdpEx_GetUnixTime()
 {
     uint64_t unixTime;

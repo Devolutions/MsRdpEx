@@ -200,6 +200,7 @@ bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx)
 
 	if (ctx->videoRecorder) {
 		MsRdpEx_VideoRecorder_Uninit(ctx->videoRecorder);
+		MsRdpEx_VideoRecorder_Remux(ctx->videoRecorder, NULL);
 		MsRdpEx_VideoRecorder_Free(ctx->videoRecorder);
 		ctx->videoRecorder = NULL;
 	}

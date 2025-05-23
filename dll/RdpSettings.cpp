@@ -11,6 +11,7 @@
 #include <intrin.h>
 
 #include "TSObjects.h"
+#include "ComHelpers.h"
 
 extern "C" const GUID IID_ITSPropertySet;
 
@@ -524,12 +525,36 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         m_MouseJigglerMethod = (uint32_t) pValue->uintVal;
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "OutputMirrorEnabled"))
+    {
+        if (pValue->vt != VT_BOOL)
+            goto end;
+
+        m_DumpBitmapUpdates = pValue->boolVal ? true : false;
+        hr = S_OK;
+    }
     else if (MsRdpEx_StringEquals(propName, "VideoRecordingEnabled"))
     {
         if (pValue->vt != VT_BOOL)
             goto end;
 
         m_VideoRecordingEnabled = pValue->boolVal ? true : false;
+
+        if (m_VideoRecordingEnabled)
+            m_OutputMirrorEnabled = true;
+
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "DumpBitmapUpdates"))
+    {
+        if (pValue->vt != VT_BOOL)
+            goto end;
+
+        m_DumpBitmapUpdates = pValue->boolVal ? true : false;
+
+        if (m_DumpBitmapUpdates)
+            m_OutputMirrorEnabled = true;
+
         hr = S_OK;
     }
     else
@@ -1075,9 +1100,7 @@ HRESULT CMsRdpExtendedSettings::PrepareVideoRecorder()
     if (outputMirrorEnabled) {
         VARIANT enableHardwareMode;
         bstr_t enableHardwareModeName = _com_util::ConvertStringToBSTR("EnableHardwareMode");
-        VariantInit(&enableHardwareMode);
-        enableHardwareMode.vt = VT_BOOL;
-        enableHardwareMode.boolVal = VARIANT_FALSE;
+        VariantInitBool(&enableHardwareMode, false);
         this->put_Property(enableHardwareModeName, &enableHardwareMode);
     }
 
@@ -1134,9 +1157,19 @@ uint32_t CMsRdpExtendedSettings::GetMouseJigglerMethod()
     return m_MouseJigglerMethod;
 }
 
+bool CMsRdpExtendedSettings::GetOutputMirrorEnabled()
+{
+    return m_OutputMirrorEnabled;
+}
+
 bool CMsRdpExtendedSettings::GetVideoRecordingEnabled()
 {
     return m_VideoRecordingEnabled;
+}
+
+bool CMsRdpExtendedSettings::GetDumpBitmapUpdates()
+{
+    return m_DumpBitmapUpdates;
 }
 
 bool CMsRdpExtendedSettings::GetExtraSystemMenuEnabled()

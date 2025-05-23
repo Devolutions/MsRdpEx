@@ -205,7 +205,10 @@ public:
         }
         
         if (m_pMsRdpExInstance) {
+            IMsRdpExInstance* pMsRdpExInstance = (IMsRdpExInstance*)m_pMsRdpExInstance;
             MsRdpEx_InstanceManager_Remove(m_pMsRdpExInstance);
+            pMsRdpExInstance->Release();
+            pMsRdpExInstance = NULL;
         }
     }
 

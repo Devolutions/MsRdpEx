@@ -426,10 +426,9 @@ bool WINAPI MsRdpEx_CaptureBlt(
 
     MsRdpEx_LogPrint(TRACE, "CaptureBlt: hWnd: %p instance: %p", hWnd, instance);
 
+    outputMirrorEnabled = pExtendedSettings->GetOutputMirrorEnabled();
     videoRecordingEnabled = pExtendedSettings->GetVideoRecordingEnabled();
-
-    instance->GetOutputMirrorEnabled(&outputMirrorEnabled);
-    instance->GetDumpBitmapUpdates(&dumpBitmapUpdates);
+    dumpBitmapUpdates = pExtendedSettings->GetDumpBitmapUpdates();
 
     if (!outputMirrorEnabled)
         goto end;
