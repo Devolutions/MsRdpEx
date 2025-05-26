@@ -70,6 +70,7 @@ HMODULE MsRdpEx_LoadLibrary(const char* filename);
 #define MSRDPEX_MODULE_DIR_PATH         0x00002000
 #define MSRDPEX_LIBRARY_DIR_PATH        0x00004000
 #define MSRDPEX_XMF_DLL_PATH            0x00008000
+#define MSRDPEX_VMCONNECT_EXE_PATH      0x00010000
 #define MSRDPEX_ALL_PATHS               0xFFFFFFFF
 
 bool MsRdpEx_InitPaths(uint32_t pathIds);
