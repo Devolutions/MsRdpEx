@@ -346,7 +346,7 @@ void* MsRdpEx_ArrayList_GetHead(MsRdpEx_ArrayList* ctx)
 	if (ctx->synchronized)
 		EnterCriticalSection(&ctx->lock);
 
-	if (ctx->count > 1)
+	if (ctx->count >= 1)
 	{
 		index = 0;
 		obj = ctx->array[index];
@@ -370,7 +370,7 @@ void* MsRdpEx_ArrayList_GetTail(MsRdpEx_ArrayList* ctx)
 	if (ctx->synchronized)
 		EnterCriticalSection(&ctx->lock);
 
-	if (ctx->count > 1)
+	if (ctx->count >= 1)
 	{
 		index = ctx->count - 1;
 		obj = ctx->array[index];
