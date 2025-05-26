@@ -327,6 +327,9 @@ public:
             else if (MsRdpEx_StringIEquals(appName, "msrdc") || MsRdpEx_StringIEquals(appName, "msrdc.exe")) {
                 appPathId = MSRDPEX_MSRDC_EXE_PATH;
             }
+            else if (MsRdpEx_StringIEquals(appName, "vmconnect") || MsRdpEx_StringIEquals(appName, "vmconnect.exe")) {
+                appPathId = MSRDPEX_VMCONNECT_EXE_PATH;
+            }
         }
 
         const char* lpApplicationName = appName;

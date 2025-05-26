@@ -25,6 +25,11 @@
 					</Extension>
 				</ProgId>
 			</Component>
+			<Component Guid="beb220dc-b822-49bf-90c7-62153f6980f2">
+				<File Id="vmconnectex.exe" Source="$(var.BinDir)\vmconnectex.exe" KeyPath="yes">
+					<Shortcut Name="vmconnectex" Directory="ProgramMenuFolder" WorkingDirectory="INSTALLDIR" Icon="vmconnectex.ico" Advertise="yes" />
+				</File>
+			</Component>
 			<Component Guid="17d5f23d-df19-42e2-bd40-7db9306fac2b">
 				<File Source="$(var.BinDir)\MsRdpEx.dll"></File>
 			</Component>

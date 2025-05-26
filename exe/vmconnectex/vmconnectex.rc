@@ -1,0 +1,4 @@
+
+IDI_APP_ICON ICON "vmconnectex.ico"
+
+#include "version.rc"

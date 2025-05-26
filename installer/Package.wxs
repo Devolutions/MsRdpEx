@@ -7,6 +7,7 @@
 		<MajorUpgrade AllowSameVersionUpgrades="no" DowngradeErrorMessage="!(loc.DowngradeError)" />
 		<Icon Id="mstscex.ico" SourceFile="..\exe\mstscex\mstscex.ico" />
 		<Icon Id="msrdcex.ico" SourceFile="..\exe\msrdcex\msrdcex.ico" />
+		<Icon Id="vmconnectex.ico" SourceFile="..\exe\vmconnectex\vmconnectex.ico" />
 		<Property Id="ARPPRODUCTICON" Value="mstscex.ico" />
 		<Property Id="ARPHELPLINK" Value="$(var.InfoURL)" />
 		<MediaTemplate EmbedCab="yes" CabinetTemplate="MsRdpEx{0}.cab" />

@@ -155,7 +155,7 @@ jobs:
           cmake -G "Visual Studio 17 2022" -A $MsvcArch -DWITH_DOTNET=OFF -B $BuildDir
           cmake --build $BuildDir --config Release
           New-Item -ItemType Directory -Path "dependencies/MsRdpEx/$Arch" | Out-Null
-          @('MsRdpEx.dll','MsRdpEx.pdb','mstscex.exe','msrdcex.exe') | % {
+          @('MsRdpEx.dll','MsRdpEx.pdb','mstscex.exe','msrdcex.exe', 'vmconnectex.exe') | % {
             Copy-Item "$BuildDir/Release/$_" "dependencies/MsRdpEx/$Arch"
           }
           Compress-Archive "dependencies\MsRdpEx\$Arch\*.pdb" ".\symbols\MsRdpEx-$PackageVersion-$Arch.symbols.zip" -CompressionLevel Optimal
