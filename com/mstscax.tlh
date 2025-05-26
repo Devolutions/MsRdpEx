@@ -170,14 +170,14 @@ typedef enum __MIDL___MIDL_itf_mstsax_0000_0057_0002 RemoteWindowDisplayedAttrib
 typedef enum __MIDL___MIDL_itf_mstsax_0000_0000_0001 ExtendedDisconnectReasonCode;
 typedef enum __MIDL_IMsRdpClient_0001 ControlCloseStatus;
 #if !defined(_WIN64)
-typedef __w64 unsigned long UINT_PTR;
+// typedef __w64 unsigned long UINT_PTR;
 #else
-typedef unsigned __int64 UINT_PTR;
+// typedef unsigned __int64 UINT_PTR;
 #endif
 #if !defined(_WIN64)
-typedef __w64 long LONG_PTR;
+// typedef __w64 long LONG_PTR;
 #else
-typedef __int64 LONG_PTR;
+// typedef __int64 LONG_PTR;
 #endif
 typedef enum __MIDL_IMsRdpClientNonScriptable4_0001 RedirectionWarningType;
 typedef enum __MIDL___MIDL_itf_mstsax_0000_0000_0004 RemoteSessionActionType;

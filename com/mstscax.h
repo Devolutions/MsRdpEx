@@ -1003,9 +1003,9 @@ enum __MIDL___MIDL_itf_mstscax_0001_0009_0002
         controlCloseWaitForEvents	= 1
     } 	;
 
-typedef /* [custom][public] */ UINT64 UINT_PTR;
+// typedef /* [custom][public] */ UINT64 UINT_PTR;
 
-typedef /* [custom][public] */ INT64 LONG_PTR;
+// typedef /* [custom][public] */ INT64 LONG_PTR;
 
 typedef /* [public][public] */ 
 enum __MIDL___MIDL_itf_mstscax_0001_0046_0001
