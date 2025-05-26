@@ -33,6 +33,7 @@ set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/RdpSettings.h"
     "${MSRDPEX_INCLUDE_DIR}/OutputMirror.h"
     "${MSRDPEX_INCLUDE_DIR}/VideoRecorder.h"
+    "${MSRDPEX_INCLUDE_DIR}/RecordingManifest.h"
     "${MSRDPEX_INCLUDE_DIR}/MsRdpEx.h")
 
 set(MSRDPEX_SOURCES
@@ -57,6 +58,7 @@ set(MSRDPEX_SOURCES
     ApiHooks.cpp
     OutputMirror.c
     VideoRecorder.c
+    RecordingManifest.c
     Pcap.cpp
     Bitmap.c
     WinMsg.c
