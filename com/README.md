@@ -35,3 +35,18 @@ The resulting .IDL file needs to be manually edited to fix type declaration orde
 ```powershell
 midl.exe .\mstscax.idl /notlb /header mstscax.h /iid mstscax_i.c
 ```
+
+In 32-bit mode, the generated headers define UINT_PTR and LONG_PTR types that can cause conflicts, use this code snippet to comment them out:
+
+```powershell
+'mstscax.tlh', 'mstscax.h' | ForEach-Object {
+    $file = $_
+    (Get-Content $file) | ForEach-Object {
+        if ($_ -match '^\s*typedef\s+.*?_PTR;') {
+            '// ' + $_
+        } else {
+            $_
+        }
+    } | Set-Content $file
+}
+```
