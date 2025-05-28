@@ -457,6 +457,12 @@ bool WINAPI MsRdpEx_CaptureBlt(
             free(recordingPath);
         }
 
+        char* recordingPipeName = pExtendedSettings->GetRecordingPipeName();
+        if (recordingPipeName) {
+            MsRdpEx_OutputMirror_SetRecordingPipeName(outputMirror, recordingPipeName);
+            free(recordingPipeName);
+        }
+
         const char* sessionId = pExtendedSettings->GetSessionId();
         MsRdpEx_OutputMirror_SetSessionId(outputMirror, sessionId);
 

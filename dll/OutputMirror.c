@@ -27,6 +27,7 @@ struct _MsRdpEx_OutputMirror
 	bool videoRecordingEnabled;
 	uint32_t videoQualityLevel;
 	char recordingPath[MSRDPEX_MAX_PATH];
+	char recordingPipeName[MSRDPEX_MAX_PATH];
 	char outputPath[MSRDPEX_MAX_PATH];
 	char sessionId[MSRDPEX_GUID_STRING_SIZE];
 	MsRdpEx_VideoRecorder* videoRecorder;
@@ -125,6 +126,11 @@ void MsRdpEx_OutputMirror_SetRecordingPath(MsRdpEx_OutputMirror* ctx, const char
 	strcpy_s(ctx->recordingPath, MSRDPEX_MAX_PATH, recordingPath);
 }
 
+void MsRdpEx_OutputMirror_SetRecordingPipeName(MsRdpEx_OutputMirror* ctx, const char* recordingPipeName)
+{
+	strcpy_s(ctx->recordingPipeName, MSRDPEX_MAX_PATH, recordingPipeName);
+}
+
 void MsRdpEx_OutputMirror_SetSessionId(MsRdpEx_OutputMirror* ctx, const char* sessionId)
 {
 	strcpy_s(ctx->sessionId, MSRDPEX_GUID_STRING_SIZE, sessionId);
@@ -207,6 +213,11 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
 			MsRdpEx_VideoRecorder_SetFileName(ctx->videoRecorder, filename);
 			MsRdpEx_VideoRecorder_SetVideoQuality(ctx->videoRecorder, ctx->videoQualityLevel);
+
+			if (!MsRdpEx_StringIsNullOrEmpty(ctx->recordingPipeName)) {
+				MsRdpEx_VideoRecorder_SetPipeName(ctx->videoRecorder, ctx->recordingPipeName);
+			}
+
 			MsRdpEx_VideoRecorder_Init(ctx->videoRecorder);
 		}
 
@@ -293,7 +304,9 @@ void MsRdpEx_OutputMirror_Free(MsRdpEx_OutputMirror* ctx)
 	if (!ctx)
 		return;
 
-	MsRdpEx_OutputMirror_WriteManifestFile(ctx);
+	if (MsRdpEx_StringIsNullOrEmpty(ctx->recordingPipeName)) {
+		MsRdpEx_OutputMirror_WriteManifestFile(ctx);
+	}
 
 	MsRdpEx_OutputMirror_Uninit(ctx);
 
