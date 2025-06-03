@@ -151,7 +151,7 @@ static HRESULT Hook_ITSPropertySet_GetStringProperty(ITSPropertySet* This, const
 
     if (SUCCEEDED(hr)) {
         char* propValueA = _com_util::ConvertBSTRToString((BSTR)*propValue);
-        MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetStringProperty(%s, \"%s\")", propName, propValueA);
+        MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetStringProperty(%s, \"%s\")", propName, propValueA ? propValueA : "");
         delete[] propValueA;
     }
     else {
@@ -233,6 +233,175 @@ static bool TSPropertySet_Hook(ITSPropertySet* pTSPropertySet, ITSPropertySetVtb
     return true;
 }
 
+static bool IsLikelyVoidMethodNoArgs(void* fn)
+{
+    if (!fn)
+        return false;
+
+    MEMORY_BASIC_INFORMATION mbi = { 0 };
+    if (!VirtualQuery(fn, &mbi, sizeof(mbi)))
+        return false;
+
+    DWORD prot = mbi.Protect;
+
+    bool isExecutable =
+        (prot & PAGE_EXECUTE) ||
+        (prot & PAGE_EXECUTE_READ) ||
+        (prot & PAGE_EXECUTE_READWRITE) ||
+        (prot & PAGE_EXECUTE_WRITECOPY);
+
+    if (!isExecutable || mbi.State != MEM_COMMIT || (prot & PAGE_GUARD))
+        return false;
+
+#if defined(_M_AMD64) || defined(__x86_64__)
+    uint8_t* code = (uint8_t*)fn;
+
+    size_t available = mbi.RegionSize - ((uintptr_t)fn - (uintptr_t)mbi.BaseAddress);
+    if (available < 8)
+        return false;
+
+    // Pattern 1: sub rsp, 0x28
+    if (code[0] == 0x48 && code[1] == 0x83 && code[2] == 0xEC)
+        return true;
+
+    // Pattern 2: push rbp; mov rbp, rsp
+    if (code[0] == 0x55 && code[1] == 0x48 && code[2] == 0x89 && code[3] == 0xE5)
+        return true;
+
+    // Pattern 3: add rcx, 0x50; jmp rel32 — lock method stubs
+    if (code[0] == 0x48 && code[1] == 0x83 && code[2] == 0xC1 && code[3] == 0x50 &&
+        code[4] == 0xE9)
+        return true;
+
+#elif defined(_M_IX86) || defined(__i386__)
+    uint8_t* code = (uint8_t*)fn;
+
+    if ((mbi.RegionSize - ((uintptr_t)fn - (uintptr_t)mbi.BaseAddress)) < 3)
+        return false;
+
+    // Typical prologue: push ebp; mov ebp, esp
+    if (code[0] == 0x55 && code[1] == 0x8B && code[2] == 0xEC)
+        return true;
+
+    // Alternate: sub esp, imm8
+    if (code[0] == 0x83 && code[1] == 0xEC)
+        return true;
+
+#elif defined(_M_ARM64) || defined(__aarch64__)
+    uint32_t* ins = (uint32_t*)fn;
+
+    size_t available = mbi.RegionSize - ((uintptr_t)fn - (uintptr_t)mbi.BaseAddress);
+    if (available < 8)
+        return false;
+
+    uint32_t instr0 = ins[0];
+    uint32_t instr1 = ins[1];
+
+    // Pattern 1: stp x29, x30, [sp, #-16]! ; mov x29, sp
+    if (instr0 == 0xA9BF7BF0 && instr1 == 0x910003FD)
+        return true;
+
+    // Pattern 2: ret
+    if (instr0 == 0xD65F03C0)
+        return true;
+
+    // Pattern 3: add x0, x0, #imm ; b target
+    if ((instr0 & 0xFFC003FF) == 0x91000000 && // ADD x0, x0, #imm
+        (instr1 & 0xFC000000) == 0x14000000)   // B <imm>
+        return true;
+#endif
+
+    return false;
+}
+
+static int TSPropertySet_FindLockFunctionsInVtbl(void** vtbl)
+{
+    const int blockSize = 4;
+    const int maxEntries = 30;
+
+    for (int i = 0; i <= maxEntries - blockSize; i++)
+    {
+        bool allMatch = true;
+
+        for (int j = 0; j < blockSize; j++) {
+            void* fn = vtbl[i + j];
+
+            if (!IsLikelyVoidMethodNoArgs(fn)) {
+                allMatch = false;
+                break;
+            }
+        }
+
+        if (allMatch)
+            return i; // found the start of a 4-function block
+    }
+
+    return -1; // not found
+}
+
+static int TSPropertySet_DetectVtblVersion(void** vtbl)
+{
+    int vtblVersion = -1;
+    DWORD ctlVersion = 0;
+
+    if (MsRdpEx_IsAddressInRdclientAxModule(vtbl))
+    {
+        ctlVersion = g_rdclientax.tscCtlVer;
+
+        if (ctlVersion >= 5326) {
+            vtblVersion = 32;
+        }
+        else {
+            vtblVersion = 30;
+        }
+    }
+    else
+    {
+        ctlVersion = g_mstscax.tscCtlVer;
+
+        if (ctlVersion >= 27842) {
+            // First seen in Windows 11 Insider Preview Build 27842
+            vtblVersion = 32;
+        }
+        else {
+            vtblVersion = 30;
+        }
+    }
+
+    /**
+     * The vtable contains a block of 4 functions that take void and return void.
+     * Detect common assembly pattern matching that simple function prototype,
+     * and leverage this to find the offset where those functions begin:
+     * 
+     * CTSPropertySet::EnterReadLock(void)
+     * CTSPropertySet::LeaveReadLock(void)
+     * CTSPropertySet::EnterWriteLock(void)
+     * CTSPropertySet::LeaveWriteLock(void)
+     * 
+     * Once we know the offset, use it to detect which vtable we're dealing with
+     */
+
+    int lockFunctionsOffset = TSPropertySet_FindLockFunctionsInVtbl(vtbl);
+
+    if (lockFunctionsOffset > 0) {
+        MsRdpEx_LogPrint(DEBUG, "Found TSPropertySet lock functions at vtable offset %d", lockFunctionsOffset);
+
+        if (lockFunctionsOffset == 20) {
+            vtblVersion = 32;
+        }
+        else if (lockFunctionsOffset == 18) {
+            vtblVersion = 30;
+        }
+        else {
+            MsRdpEx_LogPrint(WARN, "Unknown TSPropertySet lock functions vtable offset: %d", lockFunctionsOffset);
+        }
+    }
+
+    MsRdpEx_LogPrint(DEBUG, "TSPropertySet ctlVersion: %d vtblVersion: %d", ctlVersion, vtblVersion);
+
+    return vtblVersion;
+}
+
 class CMsRdpPropertySet : public IMsRdpExtendedSettings
 {
 public:
@@ -244,19 +413,18 @@ public:
 
         if (m_pTSPropertySet)
         {
-            if (MsRdpEx_IsAddressInRdclientAxModule(m_pTSPropertySet->vtbl))
-            {
-                DWORD version = g_rdclientax.tscCtlVer;
+            int vtblVersion = TSPropertySet_DetectVtblVersion(((void**)m_pTSPropertySet->vtbl));
 
-                if (version >= 5326) {
-                    m_vtbl32 = (ITSPropertySetVtbl32*)m_pTSPropertySet->vtbl;
-                } else {
-                    m_vtbl30 = (ITSPropertySetVtbl30*)m_pTSPropertySet->vtbl;
-                }
+            if (vtblVersion == 32) {
+                m_vtbl32 = (ITSPropertySetVtbl32*)m_pTSPropertySet->vtbl;
+                m_vtbl30 = NULL;
             }
-            else
-            {
+            else if (vtblVersion == 30) {
+                m_vtbl32 = NULL;
                 m_vtbl30 = (ITSPropertySetVtbl30*)m_pTSPropertySet->vtbl;
+            }
+            else {
+                MsRdpEx_LogPrint(ERROR, "Unknown TSPropertySet vtable version: %d", vtblVersion);
             }
 
             if (!g_TSPropertySet_Hooked) {
@@ -423,7 +591,6 @@ public:
 
     HRESULT __stdcall GetBStrProperty(const char* propName, BSTR* propValue) {
         HRESULT hr = E_FAIL;
-        BSTR bstrVal = NULL;
         WCHAR* wstrVal = NULL;
 
         if (m_vtbl32) {
@@ -916,8 +1083,6 @@ HRESULT __stdcall CMsRdpExtendedSettings::SetRecordingPipeName(const char* recor
 
 HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
 {
-    HRESULT hr;
-
     m_pMsTscAx = pMsTscAx;
 
     ITSObjectBase* pTSWin32CoreApi = NULL;
