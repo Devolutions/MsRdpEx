@@ -782,7 +782,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         if (pValue->vt != VT_BOOL)
             goto end;
 
-        m_DumpBitmapUpdates = pValue->boolVal ? true : false;
+        m_OutputMirrorEnabled = pValue->boolVal ? true : false;
         hr = S_OK;
     }
     else if (MsRdpEx_StringEquals(propName, "VideoRecordingEnabled"))
