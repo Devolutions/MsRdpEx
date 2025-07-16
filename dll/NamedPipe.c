@@ -40,10 +40,38 @@ HANDLE MsRdpEx_NamedPipe_Open(const char* np_name)
 
     sprintf_s(filename, sizeof(filename) - 1, "\\\\.\\pipe\\%s", np_name);
 
-    np_handle = CreateFileA(filename, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+    for (int attempt = 0; attempt < 10; ++attempt)
+    {
+        np_handle = CreateFileA(filename, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 
-    if (np_handle == INVALID_HANDLE_VALUE) {
-        return NULL;
+        if (np_handle != INVALID_HANDLE_VALUE)
+        {
+            return np_handle;
+        }
+
+        DWORD err = GetLastError();
+
+        if (err == ERROR_PIPE_BUSY)
+        {
+            MsRdpEx_LogPrint(DEBUG, "named pipe '%s' is busy, wait and retry", np_name);
+
+            if (!WaitNamedPipeA(filename, 25))
+            {
+                Sleep(75);
+            }
+        }
+        else if (err == ERROR_FILE_NOT_FOUND)
+        {
+            MsRdpEx_LogPrint(DEBUG, "named pipe '%s' not found, wait and retry", np_name);
+
+            Sleep(100);
+            continue;
+        }
+        else
+        {
+            MsRdpEx_LogPrint(WARN, "failed to open named pipe '%s' (%lu)", np_name, errno);
+            break;
+        }
     }
 
     return np_handle;
