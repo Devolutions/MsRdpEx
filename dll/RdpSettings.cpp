@@ -103,6 +103,11 @@ static HRESULT Hook_ITSPropertySet_GetBoolProperty(ITSPropertySet* This, const c
         *propValue = 1;
     }
 
+    if (MsRdpEx_StringIEquals(propName, "SkipAvdSignatureChecks")) {
+        // Workaround to force-disable AVD signature checks
+        *propValue = 1;
+    }
+
     MsRdpEx_LogPrint(TRACE, "ITSPropertySet::GetBoolProperty(%s, %d)", propName, *propValue);
 
     return hr;
