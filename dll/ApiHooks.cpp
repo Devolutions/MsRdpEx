@@ -155,6 +155,32 @@ HMODULE WINAPI Hook_LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dw
         free(credsspDllA);
     }
 
+    if (MsRdpEx_IsAddressInRdpExeModule(_ReturnAddress())) {
+        // mstsc.exe!CAxHostWnd::CreateControl calls LoadLibraryExW instead of LoadLibraryW
+        // on Windows 11 23H2 - we want to intercept that call to get ourselves loaded
+        // instead of the RDP ActiveX, while being careful not to intercept other calls
+
+        const char* msrdpexLibraryA = NULL;
+        WCHAR* msrdpexLibraryW = NULL;
+
+        if (MsRdpEx_StringIEquals(filename, "mstscax.dll")) {
+            msrdpexLibraryA = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
+            MsRdpEx_ConvertToUnicode(CP_UTF8, 0, msrdpexLibraryA, -1, &msrdpexLibraryW, 0);
+            MsRdpEx_LogPrint(DEBUG, "LoadLibraryExW: \"%s\" -> \"%s\"", lpLibFileNameA, msrdpexLibraryA);
+            hModule = Real_LoadLibraryW(msrdpexLibraryW);
+            interceptedCall = true;
+        }
+        else if (MsRdpEx_StringIEquals(filename, "rdclientax.dll")) {
+            msrdpexLibraryA = MsRdpEx_GetPath(MSRDPEX_LIBRARY_PATH);
+            MsRdpEx_ConvertToUnicode(CP_UTF8, 0, msrdpexLibraryA, -1, &msrdpexLibraryW, 0);
+            MsRdpEx_LogPrint(DEBUG, "LoadLibraryExW: \"%s\" -> \"%s\"", lpLibFileNameA, msrdpexLibraryA);
+            hModule = Real_LoadLibraryW(msrdpexLibraryW);
+            interceptedCall = true;
+        }
+
+        free(msrdpexLibraryW);
+    }
+
     if (!interceptedCall)
     {
         // reduce log verbosity for repeated LoadLibraryExW calls
