@@ -150,8 +150,9 @@ class CMsRdpClient : public IMsRdpClient10
 public:
     CMsRdpClient(IUnknown* pUnknown)
     {
-        m_refCount = 0;
+        m_refCount = 1;
         m_pUnknown = pUnknown;
+        pUnknown->AddRef();
 
         pUnknown->QueryInterface(IID_IDispatch, (LPVOID*)&m_pDispatch);
         pUnknown->QueryInterface(IID_IMsTscAx, (LPVOID*)&m_pMsTscAx);
@@ -168,13 +169,10 @@ public:
 
         m_pMsRdpExInstance = CMsRdpExInstance_New(this);
         IMsRdpExInstance* pMsRdpExInstance = (IMsRdpExInstance*)m_pMsRdpExInstance;
-        pMsRdpExInstance->AddRef();
         pMsRdpExInstance->GetSessionId(&m_sessionId);
         MsRdpEx_InstanceManager_Add(m_pMsRdpExInstance);
 
         m_pMsRdpExtendedSettings = CMsRdpExtendedSettings_New(pUnknown, (IUnknown*)m_pMsTscAx, &m_sessionId);
-        IMsRdpExtendedSettings* pMsRdpExtendedSettings = (IMsRdpExtendedSettings*)m_pMsRdpExtendedSettings;
-        pMsRdpExtendedSettings->AddRef();
         pMsRdpExInstance->AttachExtendedSettings(m_pMsRdpExtendedSettings);
 
         void* pCorePropsRaw = NULL;
@@ -205,10 +203,9 @@ public:
         }
         
         if (m_pMsRdpExInstance) {
-            IMsRdpExInstance* pMsRdpExInstance = (IMsRdpExInstance*)m_pMsRdpExInstance;
             MsRdpEx_InstanceManager_Remove(m_pMsRdpExInstance);
-            pMsRdpExInstance->Release();
-            pMsRdpExInstance = NULL;
+            ((IMsRdpExInstance*)m_pMsRdpExInstance)->Release();
+            m_pMsRdpExInstance = NULL;
         }
     }
 
@@ -715,7 +712,7 @@ public:
 
 private:
     GUID m_sessionId;
-    ULONG m_refCount = 0;
+    ULONG m_refCount;
     IUnknown* m_pUnknown = NULL;
     IDispatch* m_pDispatch = NULL;
     IMsTscAx* m_pMsTscAx = NULL;
@@ -762,12 +759,12 @@ public:
 
         if (riid == IID_IUnknown) {
             *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
+            InterlockedIncrement(&m_refCount);
             return S_OK;
         }
         if (riid == IID_IClassFactory) {
             *ppvObject = (LPVOID)((IClassFactory*)this);
-            m_refCount++;
+            InterlockedIncrement(&m_refCount);
             return S_OK;
         }
 
@@ -776,19 +773,21 @@ public:
 
     ULONG STDMETHODCALLTYPE AddRef()
     {
-        MsRdpEx_LogPrint(DEBUG, "CClassFactory::AddRef");
-        return ++m_refCount;
+        ULONG refCount = InterlockedIncrement(&m_refCount);
+        MsRdpEx_LogPrint(DEBUG, "CClassFactory::AddRef = %d", refCount);
+        return refCount;
     }
 
     ULONG STDMETHODCALLTYPE Release()
     {
-        MsRdpEx_LogPrint(DEBUG, "CClassFactory::Release");
-        if (--m_refCount == 0)
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+        MsRdpEx_LogPrint(DEBUG, "CClassFactory::Release = %d", refCount);
+        if (refCount == 0)
         {
             delete this;
             return 0;
         }
-        return m_refCount;
+        return refCount;
     }
 
     // IClassFactory interface
@@ -824,6 +823,7 @@ public:
             {
                 CMsRdpClient* pMsRdpClient = new CMsRdpClient((IUnknown*)*ppvObject);
                 hr = pMsRdpClient->QueryInterface(riid, ppvObject);
+                pMsRdpClient->Release();
             }
         }
 

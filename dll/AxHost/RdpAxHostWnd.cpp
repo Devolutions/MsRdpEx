@@ -120,10 +120,10 @@ public:
         if (riid == IID_IUnknown) {
             *ppv = this;
         }
-        else if (riid == IID_IOleClientSite) {
+        else if (riid == IID_IOleClientSite && m_pOleClientSite) {
             *ppv = (void*)m_pOleClientSite;
         }
-        else if (riid == IID_IOleInPlaceSiteEx) {
+        else if (riid == IID_IOleInPlaceSiteEx && m_pOleInPlaceSiteEx) {
             *ppv = (void*)m_pOleInPlaceSiteEx;
         }
 
@@ -687,7 +687,7 @@ public:
     HANDLE m_stopEvent = NULL;
 
 private:
-    LONG m_refCount = 0;
+    LONG m_refCount = 1;
     HWND m_hWnd = NULL;
     HWND m_hWndParent = NULL;
     DWORD m_dwAdviseCookie = 0;

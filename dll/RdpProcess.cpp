@@ -86,7 +86,7 @@ class CMsRdpExProcess : public IMsRdpExProcess
 public:
     CMsRdpExProcess()
     {
-        m_refCount = 0;
+        m_refCount = 1;
         m_exitCode = 0;
         m_hasExited = false;
         m_filename = NULL;

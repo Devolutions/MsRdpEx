@@ -15,7 +15,7 @@ class CMsRdpExInstance : public IMsRdpExInstance
 public:
     CMsRdpExInstance(CMsRdpClient* pMsRdpClient)
     {
-        m_refCount = 0;
+        m_refCount = 1;
         m_pMsRdpClient = pMsRdpClient;
         MsRdpEx_GuidGenerate(&m_sessionId);
 
@@ -48,6 +48,12 @@ public:
         char iid[MSRDPEX_GUID_STRING_SIZE];
         MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
+        if (!ppvObject) {
+            return E_INVALIDARG;
+        }
+
+        *ppvObject = NULL;  // Initialize to NULL for safety
+
         if (riid == IID_IUnknown)
         {
             *ppvObject = (LPVOID)((IUnknown*)this);
@@ -56,7 +62,7 @@ public:
         }
         else if (riid == IID_IMsRdpExInstance)
         {
-            *ppvObject = (LPVOID)((IUnknown*)this);
+            *ppvObject = (LPVOID)((IMsRdpExInstance*)this);
             refCount = InterlockedIncrement(&m_refCount);
             hr = S_OK;
         }
@@ -300,7 +306,7 @@ public:
 
 public:
     GUID m_sessionId;
-    ULONG m_refCount = NULL;
+    ULONG m_refCount;
     CMsRdpClient* m_pMsRdpClient = NULL;
     HWND m_hInputCaptureWnd = NULL;
     HWND m_hOutputPresenterWnd = NULL;

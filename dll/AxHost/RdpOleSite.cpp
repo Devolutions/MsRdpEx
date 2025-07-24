@@ -3,7 +3,7 @@
 
 CRdpOleClientSite::CRdpOleClientSite(IUnknown* pUnkOuter)
 {
-    m_refCount = 0;
+    m_refCount = 1;
     m_pUnkOuter = pUnkOuter;
     m_pUnkOuter->AddRef();
 }
@@ -91,7 +91,7 @@ STDMETHODIMP CRdpOleClientSite::RequestNewObjectLayout()
 }
 
 CRdpOleInPlaceSiteEx::CRdpOleInPlaceSiteEx(IUnknown* pUnkOuter)
-    : m_refCount(0), m_hWnd(0)
+    : m_refCount(1), m_hWnd(0)
 {
     m_pUnkOuter = pUnkOuter;
     m_pUnkOuter->AddRef();
