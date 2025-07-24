@@ -15,7 +15,7 @@ class CMsRdpExCoreApi : public IMsRdpExCoreApi
 public:
     CMsRdpExCoreApi()
     {
-        m_refCount = 0;
+        m_refCount = 1;
         MsRdpEx_PathCchDetect(m_MsRdpExDllPath, MSRDPEX_MAX_PATH, MSRDPEX_CURRENT_LIBRARY_PATH);
     }
 
@@ -127,7 +127,6 @@ public:
 
     bool __stdcall QueryInstanceByWindowHandle(HWND hWnd, LPVOID* ppvObject)
     {
-        HRESULT hr;
         IMsRdpExInstance* instance = NULL;
 
         instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
@@ -135,14 +134,14 @@ public:
         if (!instance)
             return false;
 
-        hr = instance->QueryInterface(IID_IMsRdpExInstance, ppvObject);
+        instance->AddRef();
+        *ppvObject = (LPVOID)instance;
 
-        return (hr == S_OK) ? true : false;
+        return true;
     }
 
     bool __stdcall OpenInstanceForWindowHandle(HWND hWnd, LPVOID* ppvObject)
     {
-        HRESULT hr;
         IMsRdpExInstance* instance = NULL;
 
         instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
@@ -153,10 +152,14 @@ public:
             instance->AttachOutputWindow(hWnd, NULL);
             MsRdpEx_InstanceManager_Add((CMsRdpExInstance*) instance);
         }
+        else
+        {
+            instance->AddRef();
+        }
 
-        hr = instance->QueryInterface(IID_IMsRdpExInstance, ppvObject);
+        *ppvObject = (LPVOID)instance;
 
-        return (hr == S_OK) ? true : false;
+        return true;
     }
 
 private:

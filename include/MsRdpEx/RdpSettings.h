@@ -71,7 +71,7 @@ public:
 private:
     GUID m_sessionId;
     char m_sessionIdStr[MSRDPEX_GUID_STRING_SIZE];
-    ULONG m_refCount = 0;
+    ULONG m_refCount;
     IUnknown* m_pUnknown = NULL;
     IMsTscAx* m_pMsTscAx = NULL;
     IMsRdpClient7* m_pMsRdpClient7 = NULL;

@@ -164,7 +164,7 @@ STDMETHODIMP CRdpEventSink::OnConfirmClose(VARIANT_BOOL* pfAllowClose)
 
 CRdpEventSink::CRdpEventSink(HWND hWndParent)
 {
-    m_refCount = 0;
+    m_refCount = 1;
     m_hWndParent = hWndParent;
 }
 

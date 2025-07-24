@@ -93,7 +93,7 @@ void CRdpDvcClient::SetListener(IWTSListener* pListener)
 
 CRdpDvcClient::CRdpDvcClient(void)
 {
-
+    m_refCount = 1;
 }
 
 CRdpDvcClient::~CRdpDvcClient()
@@ -184,7 +184,7 @@ HRESULT STDMETHODCALLTYPE CRdpDvcListener::OnNewChannelConnection(IWTSVirtualCha
 
 CRdpDvcListener::CRdpDvcListener(void)
 {
-
+    m_refCount = 1;
 }
 
 CRdpDvcListener::~CRdpDvcListener()
@@ -288,7 +288,7 @@ HRESULT STDMETHODCALLTYPE CRdpDvcPlugin::Terminated(void)
 
 CRdpDvcPlugin::CRdpDvcPlugin(void)
 {
-
+    m_refCount = 1;
 }
 
 CRdpDvcPlugin::~CRdpDvcPlugin()
@@ -324,12 +324,12 @@ public:
 
         if (riid == IID_IUnknown) {
             *ppvObject = (LPVOID)((IUnknown*)this);
-            m_refCount++;
+            InterlockedIncrement(&m_refCount);
             return S_OK;
         }
         if (riid == IID_IClassFactory) {
             *ppvObject = (LPVOID)((IClassFactory*)this);
-            m_refCount++;
+            InterlockedIncrement(&m_refCount);
             return S_OK;
         }
 

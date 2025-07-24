@@ -27,7 +27,7 @@ namespace MsRdpEx_App
         private string outputPath;
         private int captureIndex = 0;
         private string captureOutputPath;
-        private bool enableCapture = true;
+        private bool enableCapture = false;
         private Timer captureTimer = null;
 
         private bool closeOnDisconnect = true;
@@ -322,29 +322,45 @@ namespace MsRdpEx_App
             object instance = null;
             bool success = coreApi.OpenInstanceForWindowHandle(hWnd, out instance);
             IMsRdpExInstance rdpInstance = (IMsRdpExInstance) instance;
-            rdpInstance.SetOutputMirrorEnabled(true);
-
-            IntPtr hShadowDC = IntPtr.Zero;
-            IntPtr hShadowBitmap = IntPtr.Zero;
-            IntPtr shadowData = IntPtr.Zero;
-            UInt32 shadowWidth = 0;
-            UInt32 shadowHeight = 0;
-            UInt32 shadowStep = 0;
-
-            int captureWidth = 1024;
-            int captureHeight = 768;
-
-            if (rdpInstance.GetShadowBitmap(ref hShadowDC, ref hShadowBitmap, ref shadowData, ref shadowWidth, ref shadowHeight, ref shadowStep))
+            
+            try
             {
-                rdpInstance.LockShadowBitmap();
-                Bitmap bitmap = ShadowToBitmap(hWnd, hShadowDC, hShadowBitmap, (int)shadowWidth, (int)shadowHeight, captureWidth, captureHeight);
-                rdpInstance.UnlockShadowBitmap();
+                rdpInstance.SetOutputMirrorEnabled(true);
 
-                if (bitmap != null)
+                IntPtr hShadowDC = IntPtr.Zero;
+                IntPtr hShadowBitmap = IntPtr.Zero;
+                IntPtr shadowData = IntPtr.Zero;
+                UInt32 shadowWidth = 0;
+                UInt32 shadowHeight = 0;
+                UInt32 shadowStep = 0;
+
+                int captureWidth = 1024;
+                int captureHeight = 768;
+
+                if (rdpInstance.GetShadowBitmap(ref hShadowDC, ref hShadowBitmap, ref shadowData, ref shadowWidth, ref shadowHeight, ref shadowStep))
                 {
-                    string bitmapName = String.Format("capture_{0:0000}.bmp", captureIndex++);
-                    string filename = Path.Combine(captureOutputPath, bitmapName);
-                    bitmap.Save(filename);
+                    rdpInstance.LockShadowBitmap();
+                    Bitmap bitmap = ShadowToBitmap(hWnd, hShadowDC, hShadowBitmap, (int)shadowWidth, (int)shadowHeight, captureWidth, captureHeight);
+                    rdpInstance.UnlockShadowBitmap();
+
+                    if (bitmap != null)
+                    {
+                        string bitmapName = String.Format("capture_{0:0000}.bmp", captureIndex++);
+                        string filename = Path.Combine(captureOutputPath, bitmapName);
+                        bitmap.Save(filename);
+                    }
+                }
+            }
+            finally
+            {
+                // Release COM objects to prevent leaks
+                if (rdpInstance != null)
+                {
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(rdpInstance);
+                }
+                if (coreApi != null)
+                {
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(coreApi);
                 }
             }
         }

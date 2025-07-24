@@ -26,7 +26,7 @@ public:
     virtual ~CRdpDvcClient();
 
 private:
-    ULONG m_refCount = 0;
+    ULONG m_refCount;
     IWTSVirtualChannel* m_pChannel = NULL;
     IWTSListener* m_pListener = NULL;
 };
@@ -48,7 +48,7 @@ public:
     CRdpDvcListener(void);
     virtual ~CRdpDvcListener();
 private:
-    ULONG m_refCount = 0;
+    ULONG m_refCount;
 };
 
 class CRdpDvcPlugin :
@@ -71,7 +71,7 @@ public:
     virtual ~CRdpDvcPlugin();
 
 private:
-    ULONG m_refCount = 0;
+    ULONG m_refCount;
     IWTSVirtualChannel* m_pChannel = NULL;
 };
 

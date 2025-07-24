@@ -273,7 +273,7 @@ static bool IsLikelyVoidMethodNoArgs(void* fn)
     if (code[0] == 0x55 && code[1] == 0x48 && code[2] == 0x89 && code[3] == 0xE5)
         return true;
 
-    // Pattern 3: add rcx, 0x50; jmp rel32 — lock method stubs
+    // Pattern 3: add rcx, 0x50; jmp rel32 ï¿½ lock method stubs
     if (code[0] == 0x48 && code[1] == 0x83 && code[2] == 0xC1 && code[3] == 0x50 &&
         code[4] == 0xE9)
         return true;
@@ -412,7 +412,7 @@ class CMsRdpPropertySet : public IMsRdpExtendedSettings
 public:
     CMsRdpPropertySet(IUnknown* pUnknown)
     {
-        m_refCount = 0;
+        m_refCount = 1;
         m_pUnknown = pUnknown;
         pUnknown->QueryInterface(IID_ITSPropertySet, (LPVOID*)&m_pTSPropertySet);
 
@@ -460,7 +460,7 @@ public:
         char iid[MSRDPEX_GUID_STRING_SIZE];
         MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
-        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::QueryInterface");
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::QueryInterface [Object: 0x%p]", this);
 
         if (riid == IID_IUnknown)
         {
@@ -479,7 +479,7 @@ public:
             hr = m_pUnknown->QueryInterface(riid, ppvObject);
         }
 
-        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::QueryInterface(%s) = 0x%08X, %d", iid, hr, refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::QueryInterface(%s) = 0x%08X, %d [Object: 0x%p]", iid, hr, refCount, this);
 
         return hr;
     }
@@ -487,7 +487,9 @@ public:
     ULONG STDMETHODCALLTYPE AddRef()
     {
         ULONG refCount = InterlockedIncrement(&m_refCount);
-        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::AddRef() = %d", refCount);
+        
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::AddRef() = %d [Object: 0x%p]", refCount, this);
+        
         return refCount;
     }
 
@@ -495,7 +497,7 @@ public:
     {
         ULONG refCount = InterlockedDecrement(&m_refCount);
 
-        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::Release() = %d", refCount);
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpPropertySet::Release() = %d [Object: 0x%p]", refCount, this);
 
         if (refCount == 0)
         {
@@ -624,7 +626,7 @@ CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown, GUID* pSessio
 {
     HRESULT hr;
 
-    m_refCount = 0;
+    m_refCount = 1;
     m_pUnknown = pUnknown;
 
     MsRdpEx_GuidCopy(&m_sessionId, pSessionId);
@@ -633,20 +635,11 @@ CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown, GUID* pSessio
 
     hr = pUnknown->QueryInterface(IID_IMsRdpClient7, (LPVOID*)&m_pMsRdpClient7);
 
-    if (SUCCEEDED(hr) && m_pMsRdpClient7)
-        m_pMsRdpClient7->AddRef();
-
     hr = pUnknown->QueryInterface(IID_IMsRdpExtendedSettings, (LPVOID*)&m_pMsRdpExtendedSettings);
-
-    if (SUCCEEDED(hr) && m_pMsRdpExtendedSettings)
-        m_pMsRdpExtendedSettings->AddRef();
 
     if (m_pMsRdpClient7)
     {
         m_pMsRdpClient7->get_TransportSettings2(&m_pMsRdpClientTransportSettings2);
-
-        if (m_pMsRdpClientTransportSettings2)
-            m_pMsRdpClientTransportSettings2->AddRef();
     }
 }
 
@@ -665,6 +658,21 @@ CMsRdpExtendedSettings::~CMsRdpExtendedSettings()
 
     if (m_pMsRdpClient7)
         m_pMsRdpClient7->Release();
+
+    if (m_CoreProps) {
+        m_CoreProps->Release();
+        m_CoreProps = NULL;
+    }
+    
+    if (m_BaseProps) {
+        m_BaseProps->Release();
+        m_BaseProps = NULL;
+    }
+    
+    if (m_TransportProps) {
+        m_TransportProps->Release();
+        m_TransportProps = NULL;
+    }
 }
 
 HRESULT STDMETHODCALLTYPE CMsRdpExtendedSettings::QueryInterface(
@@ -903,10 +911,6 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         pValue->vt = VT_UNKNOWN;
         pValue->punkVal = NULL;
         hr = m_CoreProps->QueryInterface(IID_IUnknown, (LPVOID*) &pValue->punkVal);
-
-        if (pValue->punkVal) {
-            pValue->punkVal->AddRef();
-        }
     }
     else if (MsRdpEx_StringEquals(propName, "BaseProperties")) {
         if (!m_BaseProps) {
@@ -916,10 +920,6 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         pValue->vt = VT_UNKNOWN;
         pValue->punkVal = NULL;
         hr = m_BaseProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
-
-        if (pValue->punkVal) {
-            pValue->punkVal->AddRef();
-        }
     }
     else if (MsRdpEx_StringEquals(propName, "TransportProperties")) {
         if (!m_TransportProps) {
@@ -929,10 +929,6 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
         pValue->vt = VT_UNKNOWN;
         pValue->punkVal = NULL;
         hr = m_TransportProps->QueryInterface(IID_IUnknown, (LPVOID*)&pValue->punkVal);
-
-        if (pValue->punkVal) {
-            pValue->punkVal->AddRef();
-        }
     }
     else if (MsRdpEx_StringEquals(propName, "KDCProxyURL")) {
         pValue->vt = VT_BSTR;
