@@ -40,6 +40,7 @@ public:
     HRESULT __stdcall SetGatewayPassword(const char* password);
     HRESULT __stdcall SetKdcProxyUrl(const char* kdcProxyUrl);
     HRESULT __stdcall SetRecordingPath(const char* recordingPath);
+    HRESULT __stdcall SetRecordingSessionId(const char* sessionId);
     HRESULT __stdcall SetRecordingPipeName(const char* recordingPipeName);
     HRESULT __stdcall AttachRdpClient(IMsTscAx* pMsTscAx);
     HRESULT __stdcall ApplyRdpFile(void* rdpFilePtr);
@@ -62,6 +63,7 @@ public:
     bool GetVideoRecordingEnabled();
     uint32_t GetVideoRecordingQuality();
     char* GetRecordingPath();
+    char* GetRecordingSessionId();
     char* GetRecordingPipeName();
     bool GetDumpBitmapUpdates();
     bool GetExtraSystemMenuEnabled();
@@ -87,6 +89,7 @@ private:
     bool m_VideoRecordingEnabled = false;
     uint32_t m_VideoRecordingQuality = 5;
     char* m_RecordingPath = NULL;
+    char* m_RecordingSessionId = NULL;
     char* m_RecordingPipeName = NULL;
     bool m_DumpBitmapUpdates = false;
     bool m_ExtraSystemMenuEnabled = true;
