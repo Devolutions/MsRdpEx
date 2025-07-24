@@ -654,6 +654,7 @@ CMsRdpExtendedSettings::~CMsRdpExtendedSettings()
 {
     this->SetKdcProxyUrl(NULL);
     this->SetRecordingPath(NULL);
+    this->SetRecordingSessionId(NULL);
     this->SetRecordingPipeName(NULL);
 
     if (m_pMsRdpExtendedSettings)
@@ -831,6 +832,20 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         free(propValue);
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "RecordingSessionId"))
+    {
+        if (pValue->vt != VT_BSTR)
+            goto end;
+
+        char* propValue = _com_util::ConvertBSTRToString(pValue->bstrVal);
+
+        if (propValue) {
+            hr = this->SetRecordingSessionId(propValue);
+        }
+
+        free(propValue);
+        hr = S_OK;
+    }
     else if (MsRdpEx_StringEquals(propName, "RecordingPipeName"))
     {
         if (pValue->vt != VT_BSTR)
@@ -844,7 +859,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
 
         free(propValue);
         hr = S_OK;
-        }
+    }
     else if (MsRdpEx_StringEquals(propName, "DumpBitmapUpdates"))
     {
         if (pValue->vt != VT_BOOL)
@@ -1072,6 +1087,16 @@ HRESULT __stdcall CMsRdpExtendedSettings::SetRecordingPath(const char* recording
 
     if (recordingPath) {
         m_RecordingPath = _strdup(recordingPath);
+    }
+    return S_OK;
+}
+
+HRESULT __stdcall CMsRdpExtendedSettings::SetRecordingSessionId(const char* sessionId) {
+    free(m_RecordingSessionId);
+    m_RecordingSessionId = NULL;
+
+    if (sessionId) {
+        m_RecordingSessionId = _strdup(sessionId);
     }
     return S_OK;
 }
@@ -1370,6 +1395,13 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
             value.vt = VT_BSTR;
             pMsRdpExtendedSettings->put_Property(propName, &value);
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "RecordingSessionId")) {
+            bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+            bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
+            value.bstrVal = propValue;
+            value.vt = VT_BSTR;
+            pMsRdpExtendedSettings->put_Property(propName, &value);
+        }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "RecordingPipeName")) {
             bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
             bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
@@ -1611,6 +1643,14 @@ char* CMsRdpExtendedSettings::GetRecordingPath()
 {
     if (m_RecordingPath)
         return _strdup(m_RecordingPath);
+
+    return NULL;
+}
+
+char* CMsRdpExtendedSettings::GetRecordingSessionId()
+{
+    if (m_RecordingSessionId)
+        return _strdup(m_RecordingSessionId);
 
     return NULL;
 }

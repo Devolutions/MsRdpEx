@@ -489,7 +489,10 @@ bool WINAPI MsRdpEx_CaptureBlt(
             free(recordingPipeName);
         }
 
-        const char* sessionId = pExtendedSettings->GetSessionId();
+		const char* sessionId = pExtendedSettings->GetRecordingSessionId();
+        if (!sessionId) {
+            sessionId = pExtendedSettings->GetSessionId();
+        }
         MsRdpEx_OutputMirror_SetSessionId(outputMirror, sessionId);
 
         instance->SetOutputMirrorObject((LPVOID) outputMirror);

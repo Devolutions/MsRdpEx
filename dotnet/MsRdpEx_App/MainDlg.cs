@@ -307,6 +307,14 @@ namespace MsRdpEx_App
                                     transportSettings.GatewayEncryptedAuthCookieSize = (uint)encryptedAuthCookie.Length;
                                 }
                                 break;
+
+                            case "recordingpath":
+                                extendedSettings.set_Property("RecordingPath", value);
+                                break;
+
+                            case "recordingsessionid":
+                                extendedSettings.set_Property("RecordingSessionId", value);
+                                break;
                         }
                     }
                     else if (type == 'i')
@@ -366,6 +374,14 @@ namespace MsRdpEx_App
 
                             case "mousejigglermethod":
                                 extendedSettings.set_Property("MouseJigglerMethod", iValue);
+                                break;
+
+                            case "videorecordingenabled":
+                                extendedSettings.set_Property("VideoRecordingEnabled", bValue);
+                                break;
+
+                            case "videorecordingquality":
+                                extendedSettings.set_Property("VideoRecordingQuality", iValue);
                                 break;
                         }
                     }
