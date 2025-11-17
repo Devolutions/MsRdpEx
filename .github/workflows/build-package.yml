@@ -62,7 +62,7 @@ jobs:
           } else {
             "publish-test"
           }
-          
+
           if (-Not $IsMasterBranch) {
             $DryRun = $true # force dry run when not on master branch
           }
@@ -302,7 +302,7 @@ jobs:
           }
           Remove-Item $PackedFile -ErrorAction SilentlyContinue | Out-Null
           Compress-Archive -Path "$UnpackedDir\*" -Destination $PackedFile -CompressionLevel Optimal
-            
+
       - name: Code sign nuget package
         if: ${{ fromJSON(needs.preflight.outputs.sign-nuget) == true }}
         shell: pwsh
@@ -317,7 +317,7 @@ jobs:
             '-tr', '${{ vars.CODE_SIGNING_TIMESTAMP_SERVER }}',
             '-v')
           & NuGetKeyVaultSignTool @Params
-  
+
       - name: Upload nuget package
         uses: actions/upload-artifact@v4.3.6
         with:
@@ -365,6 +365,8 @@ jobs:
     needs: [preflight, build-native, build-managed]
     environment: ${{ needs.preflight.outputs.package-env }}
     if: ${{ fromJSON(needs.preflight.outputs.skip-publish) == false }}
+    permissions:
+      id-token: write
 
     steps:
       - name: Download zip package
@@ -391,6 +393,12 @@ jobs:
           name: MsRdpEx-symbols
           path: package
 
+      - name: NuGet login (OIDC)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_BOT_USERNAME }}
+
       - name: Publish to nuget.org
         shell: pwsh
         run: |
@@ -399,7 +407,7 @@ jobs:
 
           $PushArgs = @(
             'nuget', 'push', "$NugetPackage",
-            '--api-key', '${{ secrets.NUGET_API_KEY }}',
+            '--api-key', '${{ steps.nuget-login.outputs.NUGET_API_KEY }}',
             '--source', 'https://api.nuget.org/v3/index.json',
             '--skip-duplicate', '--no-symbols'
           )
