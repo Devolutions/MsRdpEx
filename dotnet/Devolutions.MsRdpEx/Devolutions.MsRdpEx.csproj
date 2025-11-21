@@ -2,6 +2,7 @@
   <Import Project="..\common.build.pre.props" />
 
   <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <AssemblyName>Devolutions.MsRdpEx</AssemblyName>
     <PackageId>Devolutions.MsRdpEx</PackageId>
     <Version>1.0.0.0</Version>
