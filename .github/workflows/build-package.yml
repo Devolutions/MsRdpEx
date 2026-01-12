@@ -367,6 +367,7 @@ jobs:
     if: ${{ fromJSON(needs.preflight.outputs.skip-publish) == false }}
     permissions:
       id-token: write
+      contents: write
 
     steps:
       - name: Download zip package
@@ -394,6 +395,7 @@ jobs:
           path: package
 
       - name: NuGet login (OIDC)
+        if: ${{ fromJSON(needs.preflight.outputs.dry-run) == false }}
         id: nuget-login
         uses: NuGet/login@v1
         with:
