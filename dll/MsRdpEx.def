@@ -26,3 +26,11 @@ EXPORTS
     MsRdpEx_GetArgumentVector
     MsRdpEx_FreeArgumentVector
     MsRdpEx_WinMain
+    MsRdpEx_DvcPluginExtractor_Init
+    MsRdpEx_DvcPluginExtractor_Uninit
+    MsRdpEx_DvcPluginGetCount
+    MsRdpEx_DvcPluginGetEntry
+    MsRdpEx_DvcPluginGetEntryByName
+    MsRdpEx_DvcPluginGetName
+    MsRdpEx_VirtualChannelGetInstance
+    MsRdpEx_DvcPluginGetInstanceByName

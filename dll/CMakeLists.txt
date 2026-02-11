@@ -35,6 +35,7 @@ set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/VideoRecorder.h"
     "${MSRDPEX_INCLUDE_DIR}/RecordingManifest.h"
     "${MSRDPEX_INCLUDE_DIR}/NamedPipe.h"
+    "${MSRDPEX_INCLUDE_DIR}/DvcPluginExtractor.h"
     "${MSRDPEX_INCLUDE_DIR}/MsRdpEx.h")
 
 set(MSRDPEX_SOURCES
@@ -73,6 +74,7 @@ set(MSRDPEX_SOURCES
     RdpDvcClient.h
     TSObjects.cpp
     TSObjects.h
+    DvcPluginExtractor.cpp
     MsRdpEx.cpp
     MsRdpEx.h
     AxDll.cpp)
@@ -115,3 +117,10 @@ target_compile_options(MsRdpEx_Dll PRIVATE /W4)
 target_link_libraries(MsRdpEx_Dll ${MSRDPEX_LIBS})
 
 set_target_properties(MsRdpEx_Dll PROPERTIES OUTPUT_NAME "MsRdpEx")
+
+# Test executable for DVC plugin extractor
+add_executable(TestDvcExtractor TestDvcExtractor.cpp)
+target_link_libraries(TestDvcExtractor ole32.lib)
+set_target_properties(TestDvcExtractor PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/Debug"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/Release")

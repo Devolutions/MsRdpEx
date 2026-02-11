@@ -4,6 +4,7 @@
 #include "MsRdpClient.h"
 
 #include <MsRdpEx/MsRdpEx.h>
+#include <MsRdpEx/DvcPluginExtractor.h>
 
 #include <MsRdpEx/Environment.h>
 
