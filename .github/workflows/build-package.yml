@@ -136,7 +136,7 @@ jobs:
         run: |
           Enter-VsDevShell ${{matrix.arch}}
           $GitCommit = '${{ needs.preflight.outputs.detours-git-commit }}'
-          .\detours.ps1 -GitCommit $GitCommit
+          .\scripts\detours.ps1 -GitCommit $GitCommit
 
       - name: Save Detours Cache (${{matrix.arch}})
         if: steps.cache-detours.outputs.cache-hit != 'true'
