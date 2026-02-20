@@ -57,18 +57,11 @@ The trace log level is extremely verbose, so it should only be used when necessa
 
 ## Building from source
 
-Using a [Visual Studio developer shell](https://www.powershellgallery.com/packages/VsDevShell), build the [Detours](https://github.com/Microsoft/Detours) library:
-
-```powershell
-Enter-VsDevShell x64
-.\detours.ps1
-```
-
 Generate the Visual Studio project files for your target platform:
 
 ```powershell
 mkdir build-x64 && cd build-x64
-cmake -G "Visual Studio 17 2022" -A x64 ..
+cmake -G "Visual Studio 18 2026" -A x64 ..
 ```
 
 Open the Visual Studio solution or build it from the command-line:

@@ -3,5 +3,8 @@ bin/
 obj/
 .vscode/
 .nupkg
-dependencies/
+dependencies/*
+!dependencies/detours/
+dependencies/sources/
 package/
+packages.lock.json
