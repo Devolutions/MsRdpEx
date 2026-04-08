@@ -105,7 +105,7 @@ jobs:
 
     steps:
       - name: Check out ${{ github.repository }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure runner
         shell: pwsh
@@ -125,7 +125,7 @@ jobs:
 
       - name: Restore Detours Cache (${{matrix.arch}})
         id: cache-detours
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: dependencies/detours
           key: detours-${{ matrix.arch }}-${{ needs.preflight.outputs.detours-git-commit }}
@@ -140,7 +140,7 @@ jobs:
 
       - name: Save Detours Cache (${{matrix.arch}})
         if: steps.cache-detours.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: dependencies/detours
           key: detours-${{ matrix.arch }}-${{ needs.preflight.outputs.detours-git-commit }}
@@ -163,13 +163,13 @@ jobs:
           Compress-Archive "dependencies\MsRdpEx\$Arch\*" ".\package\MsRdpEx-$PackageVersion-$Arch.zip" -CompressionLevel Optimal
 
       - name: Upload MsRdpEx (${{matrix.arch}})
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v7
         with:
           name: MsRdpEx-zip-${{matrix.arch}}
           path: package/*.zip
 
       - name: Upload MsRdpEx symbols (${{matrix.arch}})
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v7
         with:
           name: MsRdpEx-symbols-${{matrix.arch}}
           path: symbols/*.zip
@@ -182,7 +182,7 @@ jobs:
 
     steps:
       - name: Check out ${{ github.repository }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configure runner
         shell: pwsh
@@ -213,14 +213,14 @@ jobs:
           Set-Content -Path $csprojPath -Value $csprojContent -Encoding UTF8
 
       - name: Download native dependencies
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: MsRdpEx-zip-*
           merge-multiple: true
           path: package
 
       - name: Download native symbols
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: MsRdpEx-symbols-*
           merge-multiple: true
@@ -260,13 +260,13 @@ jobs:
           }
 
       - name: Upload zip packages
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v7
         with:
           name: MsRdpEx-zip
           path: package/*.zip
 
       - name: Upload native symbols
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v7
         with:
           name: MsRdpEx-symbols
           path: symbols/*.zip
@@ -319,7 +319,7 @@ jobs:
           & NuGetKeyVaultSignTool @Params
 
       - name: Upload nuget package
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v7
         with:
           name: MsRdpEx-nupkg
           path: package/*.nupkg
@@ -354,7 +354,7 @@ jobs:
           }
 
       - name: Upload MSI packages
-        uses: actions/upload-artifact@v4.3.6
+        uses: actions/upload-artifact@v7
         with:
           name: MsRdpEx-msi
           path: package/*.msi
@@ -371,25 +371,25 @@ jobs:
 
     steps:
       - name: Download zip package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: MsRdpEx-zip
           path: package
 
       - name: Download nuget package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: MsRdpEx-nupkg
           path: package
 
       - name: Download MSI package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: MsRdpEx-msi
           path: package
 
       - name: Download symbols package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: MsRdpEx-symbols
           path: package
