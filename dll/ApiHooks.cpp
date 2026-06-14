@@ -431,6 +431,9 @@ bool WINAPI MsRdpEx_CaptureBlt(
     bool outputMirrorEnabled = false;
     bool videoRecordingEnabled = false;
     uint32_t videoRecordingQuality = 5;
+    uint32_t videoRecordingFrameRate = 0;
+    uint32_t videoRecordingWidth = 0;
+    uint32_t videoRecordingHeight = 0;
     bool dumpBitmapUpdates = false;
     IMsRdpExInstance* instance = NULL;
     MsRdpEx_OutputMirror* outputMirror = NULL;
@@ -457,6 +460,9 @@ bool WINAPI MsRdpEx_CaptureBlt(
     outputMirrorEnabled = pExtendedSettings->GetOutputMirrorEnabled();
     videoRecordingEnabled = pExtendedSettings->GetVideoRecordingEnabled();
     videoRecordingQuality = pExtendedSettings->GetVideoRecordingQuality();
+    videoRecordingFrameRate = pExtendedSettings->GetVideoRecordingFrameRate();
+    videoRecordingWidth = pExtendedSettings->GetVideoRecordingWidth();
+    videoRecordingHeight = pExtendedSettings->GetVideoRecordingHeight();
     dumpBitmapUpdates = pExtendedSettings->GetDumpBitmapUpdates();
 
     if (!outputMirrorEnabled)
@@ -476,6 +482,8 @@ bool WINAPI MsRdpEx_CaptureBlt(
         MsRdpEx_OutputMirror_SetDumpBitmapUpdates(outputMirror, dumpBitmapUpdates);
         MsRdpEx_OutputMirror_SetVideoRecordingEnabled(outputMirror, videoRecordingEnabled);
         MsRdpEx_OutputMirror_SetVideoQualityLevel(outputMirror, videoRecordingQuality);
+        MsRdpEx_OutputMirror_SetVideoFrameRate(outputMirror, videoRecordingFrameRate);
+        MsRdpEx_OutputMirror_SetRecordingResolution(outputMirror, videoRecordingWidth, videoRecordingHeight);
 
         char* recordingPath = pExtendedSettings->GetRecordingPath();
         if (recordingPath) {

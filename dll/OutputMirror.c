@@ -34,6 +34,20 @@ struct _MsRdpEx_OutputMirror
 	MsRdpEx_RecordingManifest* manifest;
 	FILE* frameMetadataFile;
 
+	uint32_t videoFrameRate;
+	uint32_t recordingWidth;
+	uint32_t recordingHeight;
+	uint64_t lastEncodeTime;
+
+	bool scalingEnabled;
+	HDC hScaledDC;
+	HBITMAP hScaledBitmap;
+	HGDIOBJ hScaledObject;
+	uint8_t* scaledBitmapData;
+	uint32_t scaledBitmapWidth;
+	uint32_t scaledBitmapHeight;
+	uint32_t scaledBitmapStep;
+
     CRITICAL_SECTION lock;
 };
 
@@ -83,9 +97,36 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 	captureTime = GetTickCount64() - ctx->captureBaseTime;
 
 	if (ctx->videoRecordingEnabled && ctx->videoRecorder) {
-		MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
-			0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
-		MsRdpEx_VideoRecorder_Timeout(ctx->videoRecorder);
+		// The native path is paint-driven (one DumpFrame per RDP update), so cap the encode cadence to the
+		// configured frame rate here -- the encoder itself does not drop frames. Mirrors the internal timer path.
+		bool encodeThisFrame = true;
+
+		if (ctx->videoFrameRate > 0) {
+			uint64_t now = GetTickCount64();
+			uint32_t intervalMs = 1000 / ctx->videoFrameRate;
+
+			if ((ctx->lastEncodeTime != 0) && ((now - ctx->lastEncodeTime) < intervalMs)) {
+				encodeThisFrame = false;
+			}
+			else {
+				ctx->lastEncodeTime = now;
+			}
+		}
+
+		if (encodeThisFrame) {
+			if (ctx->scalingEnabled) {
+				StretchBlt(ctx->hScaledDC, 0, 0, ctx->scaledBitmapWidth, ctx->scaledBitmapHeight,
+					ctx->hShadowDC, 0, 0, ctx->bitmapWidth, ctx->bitmapHeight, SRCCOPY);
+				GdiFlush();
+				MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->scaledBitmapData,
+					0, 0, ctx->scaledBitmapWidth, ctx->scaledBitmapHeight, ctx->scaledBitmapStep);
+			}
+			else {
+				MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
+					0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
+			}
+			MsRdpEx_VideoRecorder_Timeout(ctx->videoRecorder);
+		}
 	}
 
 	if (ctx->dumpBitmapUpdates) {
@@ -119,6 +160,17 @@ void MsRdpEx_OutputMirror_SetVideoRecordingEnabled(MsRdpEx_OutputMirror* ctx, bo
 void MsRdpEx_OutputMirror_SetVideoQualityLevel(MsRdpEx_OutputMirror* ctx, uint32_t videoQualityLevel)
 {
 	ctx->videoQualityLevel = videoQualityLevel;
+}
+
+void MsRdpEx_OutputMirror_SetVideoFrameRate(MsRdpEx_OutputMirror* ctx, uint32_t videoFrameRate)
+{
+	ctx->videoFrameRate = videoFrameRate;
+}
+
+void MsRdpEx_OutputMirror_SetRecordingResolution(MsRdpEx_OutputMirror* ctx, uint32_t recordingWidth, uint32_t recordingHeight)
+{
+	ctx->recordingWidth = recordingWidth;
+	ctx->recordingHeight = recordingHeight;
 }
 
 void MsRdpEx_OutputMirror_SetRecordingPath(MsRdpEx_OutputMirror* ctx, const char* recordingPath)
@@ -202,6 +254,28 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 		sprintf_s(ctx->outputPath, MSRDPEX_MAX_PATH, "%s\\%s", ctx->recordingPath, ctx->sessionId);
 		MsRdpEx_MakePath(ctx->outputPath, NULL);
 
+		uint32_t encodeWidth = ctx->bitmapWidth;
+		uint32_t encodeHeight = ctx->bitmapHeight;
+
+		// Downscale the captured frame to the requested recording resolution before encoding. The xmf encoder
+		// does not scale, so without this it records at the native desktop size regardless of the configured value.
+		ctx->scalingEnabled = (ctx->recordingWidth > 0) && (ctx->recordingHeight > 0)
+			&& ((ctx->recordingWidth != ctx->bitmapWidth) || (ctx->recordingHeight != ctx->bitmapHeight));
+
+		if (ctx->scalingEnabled) {
+			encodeWidth = ctx->recordingWidth;
+			encodeHeight = ctx->recordingHeight;
+			ctx->scaledBitmapWidth = encodeWidth;
+			ctx->scaledBitmapHeight = encodeHeight;
+			ctx->scaledBitmapStep = encodeWidth * 4;
+			ctx->hScaledDC = CreateCompatibleDC(ctx->hSourceDC);
+			ctx->hScaledBitmap = MsRdpEx_CreateDIBSection(ctx->hSourceDC,
+				encodeWidth, encodeHeight, ctx->bitsPerPixel, &ctx->scaledBitmapData);
+			ctx->hScaledObject = SelectObject(ctx->hScaledDC, ctx->hScaledBitmap);
+			SetStretchBltMode(ctx->hScaledDC, HALFTONE);
+			SetBrushOrgEx(ctx->hScaledDC, 0, 0, NULL);
+		}
+
 		ctx->videoRecorder = MsRdpEx_VideoRecorder_New();
 
 		if (ctx->videoRecorder) {
@@ -210,9 +284,13 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 			MsRdpEx_RecordingManifest_FinalizeFile(ctx->manifest, 0);
 			MsRdpEx_RecordingManifest_AddFile(ctx->manifest, MsRdpEx_FileBase(filename), startTime, 0);
 			ctx->videoRecordingCount++;
-			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
+			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, encodeWidth, encodeHeight);
 			MsRdpEx_VideoRecorder_SetFileName(ctx->videoRecorder, filename);
 			MsRdpEx_VideoRecorder_SetVideoQuality(ctx->videoRecorder, ctx->videoQualityLevel);
+
+			if (ctx->videoFrameRate > 0) {
+				MsRdpEx_VideoRecorder_SetFrameRate(ctx->videoRecorder, ctx->videoFrameRate);
+			}
 
 			if (!MsRdpEx_StringIsNullOrEmpty(ctx->recordingPipeName)) {
 				MsRdpEx_VideoRecorder_SetPipeName(ctx->videoRecorder, ctx->recordingPipeName);
@@ -247,6 +325,18 @@ bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx)
 	{
 		DeleteDC(ctx->hShadowDC);
 		ctx->hShadowDC = NULL;
+	}
+
+	if (ctx->hScaledDC)
+	{
+		SelectObject(ctx->hScaledDC, ctx->hScaledObject);
+		DeleteObject(ctx->hScaledBitmap);
+		DeleteDC(ctx->hScaledDC);
+		ctx->hScaledObject = NULL;
+		ctx->hScaledBitmap = NULL;
+		ctx->hScaledDC = NULL;
+		ctx->scaledBitmapData = NULL;
+		ctx->scalingEnabled = false;
 	}
 
 	if (ctx->videoRecorder) {
