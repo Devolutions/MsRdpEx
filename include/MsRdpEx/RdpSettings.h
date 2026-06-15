@@ -63,8 +63,6 @@ public:
     bool GetVideoRecordingEnabled();
     uint32_t GetVideoRecordingQuality();
     uint32_t GetVideoRecordingFrameRate();
-    uint32_t GetVideoRecordingWidth();
-    uint32_t GetVideoRecordingHeight();
     char* GetRecordingPath();
     char* GetRecordingSessionId();
     char* GetRecordingPipeName();
@@ -92,8 +90,6 @@ private:
     bool m_VideoRecordingEnabled = false;
     uint32_t m_VideoRecordingQuality = 5;
     uint32_t m_VideoRecordingFrameRate = 0;
-    uint32_t m_VideoRecordingWidth = 0;
-    uint32_t m_VideoRecordingHeight = 0;
     char* m_RecordingPath = NULL;
     char* m_RecordingSessionId = NULL;
     char* m_RecordingPipeName = NULL;

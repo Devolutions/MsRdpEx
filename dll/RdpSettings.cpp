@@ -19,6 +19,19 @@ extern "C" const GUID IID_ITSPropertySet;
 extern MsRdpEx_mstscax g_mstscax;
 extern MsRdpEx_rdclientax g_rdclientax;
 
+#define MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE 60
+
+static uint32_t MsRdpEx_VariantToNonNegativeUInt32(VARIANT* pValue)
+{
+    if (pValue->vt == VT_UI4)
+        return pValue->uintVal;
+
+    if (pValue->vt == VT_I4)
+        return pValue->intVal > 0 ? (uint32_t)pValue->intVal : 0;
+
+    return 0;
+}
+
 static bool g_TSPropertySet_Hooked = false;
 
 static ITSPropertySet_SetBoolProperty Real_ITSPropertySet_SetBoolProperty = NULL;
@@ -831,23 +844,11 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         if ((pValue->vt != VT_UI4) && (pValue->vt != VT_I4))
             goto end;
 
-        m_VideoRecordingFrameRate = (uint32_t)pValue->uintVal;
-        hr = S_OK;
-    }
-    else if (MsRdpEx_StringEquals(propName, "VideoRecordingWidth"))
-    {
-        if ((pValue->vt != VT_UI4) && (pValue->vt != VT_I4))
-            goto end;
+        m_VideoRecordingFrameRate = MsRdpEx_VariantToNonNegativeUInt32(pValue);
 
-        m_VideoRecordingWidth = (uint32_t)pValue->uintVal;
-        hr = S_OK;
-    }
-    else if (MsRdpEx_StringEquals(propName, "VideoRecordingHeight"))
-    {
-        if ((pValue->vt != VT_UI4) && (pValue->vt != VT_I4))
-            goto end;
+        if (m_VideoRecordingFrameRate > MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE)
+            m_VideoRecordingFrameRate = MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE;
 
-        m_VideoRecordingHeight = (uint32_t)pValue->uintVal;
         hr = S_OK;
     }
     else if (MsRdpEx_StringEquals(propName, "RecordingPath"))
@@ -998,16 +999,6 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
     else if (MsRdpEx_StringEquals(propName, "VideoRecordingFrameRate")) {
         pValue->vt = VT_I4;
         pValue->intVal = (INT)m_VideoRecordingFrameRate;
-        hr = S_OK;
-    }
-    else if (MsRdpEx_StringEquals(propName, "VideoRecordingWidth")) {
-        pValue->vt = VT_I4;
-        pValue->intVal = (INT)m_VideoRecordingWidth;
-        hr = S_OK;
-    }
-    else if (MsRdpEx_StringEquals(propName, "VideoRecordingHeight")) {
-        pValue->vt = VT_I4;
-        pValue->intVal = (INT)m_VideoRecordingHeight;
         hr = S_OK;
     }
     else if (MsRdpEx_StringEquals(propName, "RecordingPath")) {
@@ -1429,18 +1420,6 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
                 pMsRdpExtendedSettings->put_Property(propName, &value);
             }
         }
-        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "VideoRecordingWidth")) {
-            if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
-                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                pMsRdpExtendedSettings->put_Property(propName, &value);
-            }
-        }
-        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "VideoRecordingHeight")) {
-            if (MsRdpEx_RdpFileEntry_GetIntValue(entry, &value)) {
-                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                pMsRdpExtendedSettings->put_Property(propName, &value);
-            }
-        }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "RecordingPath")) {
             bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
             bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
@@ -1695,16 +1674,6 @@ uint32_t CMsRdpExtendedSettings::GetVideoRecordingQuality()
 uint32_t CMsRdpExtendedSettings::GetVideoRecordingFrameRate()
 {
     return m_VideoRecordingFrameRate;
-}
-
-uint32_t CMsRdpExtendedSettings::GetVideoRecordingWidth()
-{
-    return m_VideoRecordingWidth;
-}
-
-uint32_t CMsRdpExtendedSettings::GetVideoRecordingHeight()
-{
-    return m_VideoRecordingHeight;
 }
 
 char* CMsRdpExtendedSettings::GetRecordingPath()

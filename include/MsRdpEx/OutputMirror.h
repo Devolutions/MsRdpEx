@@ -23,7 +23,6 @@ void MsRdpEx_OutputMirror_SetDumpBitmapUpdates(MsRdpEx_OutputMirror* ctx, bool d
 void MsRdpEx_OutputMirror_SetVideoRecordingEnabled(MsRdpEx_OutputMirror* ctx, bool videoRecordingEnabled);
 void MsRdpEx_OutputMirror_SetVideoQualityLevel(MsRdpEx_OutputMirror* ctx, uint32_t videoQualityLevel);
 void MsRdpEx_OutputMirror_SetVideoFrameRate(MsRdpEx_OutputMirror* ctx, uint32_t videoFrameRate);
-void MsRdpEx_OutputMirror_SetRecordingResolution(MsRdpEx_OutputMirror* ctx, uint32_t recordingWidth, uint32_t recordingHeight);
 void MsRdpEx_OutputMirror_SetRecordingPath(MsRdpEx_OutputMirror* ctx, const char* recordingPath);
 void MsRdpEx_OutputMirror_SetRecordingPipeName(MsRdpEx_OutputMirror* ctx, const char* recordingPipeName);
 void MsRdpEx_OutputMirror_SetSessionId(MsRdpEx_OutputMirror* ctx, const char* sessionId);

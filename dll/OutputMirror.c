@@ -7,6 +7,8 @@
 #include <MsRdpEx/RecordingManifest.h>
 #include <MsRdpEx/OutputMirror.h>
 
+#define MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE 60
+
 struct _MsRdpEx_OutputMirror
 {
 	uint8_t* bitmapData;
@@ -35,18 +37,7 @@ struct _MsRdpEx_OutputMirror
 	FILE* frameMetadataFile;
 
 	uint32_t videoFrameRate;
-	uint32_t recordingWidth;
-	uint32_t recordingHeight;
 	uint64_t lastEncodeTime;
-
-	bool scalingEnabled;
-	HDC hScaledDC;
-	HBITMAP hScaledBitmap;
-	HGDIOBJ hScaledObject;
-	uint8_t* scaledBitmapData;
-	uint32_t scaledBitmapWidth;
-	uint32_t scaledBitmapHeight;
-	uint32_t scaledBitmapStep;
 
     CRITICAL_SECTION lock;
 };
@@ -114,17 +105,8 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 		}
 
 		if (encodeThisFrame) {
-			if (ctx->scalingEnabled) {
-				StretchBlt(ctx->hScaledDC, 0, 0, ctx->scaledBitmapWidth, ctx->scaledBitmapHeight,
-					ctx->hShadowDC, 0, 0, ctx->bitmapWidth, ctx->bitmapHeight, SRCCOPY);
-				GdiFlush();
-				MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->scaledBitmapData,
-					0, 0, ctx->scaledBitmapWidth, ctx->scaledBitmapHeight, ctx->scaledBitmapStep);
-			}
-			else {
-				MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
-					0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
-			}
+			MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
+				0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
 			MsRdpEx_VideoRecorder_Timeout(ctx->videoRecorder);
 		}
 	}
@@ -164,13 +146,11 @@ void MsRdpEx_OutputMirror_SetVideoQualityLevel(MsRdpEx_OutputMirror* ctx, uint32
 
 void MsRdpEx_OutputMirror_SetVideoFrameRate(MsRdpEx_OutputMirror* ctx, uint32_t videoFrameRate)
 {
-	ctx->videoFrameRate = videoFrameRate;
-}
+	if (videoFrameRate > MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE) {
+		videoFrameRate = MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE;
+	}
 
-void MsRdpEx_OutputMirror_SetRecordingResolution(MsRdpEx_OutputMirror* ctx, uint32_t recordingWidth, uint32_t recordingHeight)
-{
-	ctx->recordingWidth = recordingWidth;
-	ctx->recordingHeight = recordingHeight;
+	ctx->videoFrameRate = videoFrameRate;
 }
 
 void MsRdpEx_OutputMirror_SetRecordingPath(MsRdpEx_OutputMirror* ctx, const char* recordingPath)
@@ -254,28 +234,6 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 		sprintf_s(ctx->outputPath, MSRDPEX_MAX_PATH, "%s\\%s", ctx->recordingPath, ctx->sessionId);
 		MsRdpEx_MakePath(ctx->outputPath, NULL);
 
-		uint32_t encodeWidth = ctx->bitmapWidth;
-		uint32_t encodeHeight = ctx->bitmapHeight;
-
-		// Downscale the captured frame to the requested recording resolution before encoding. The xmf encoder
-		// does not scale, so without this it records at the native desktop size regardless of the configured value.
-		ctx->scalingEnabled = (ctx->recordingWidth > 0) && (ctx->recordingHeight > 0)
-			&& ((ctx->recordingWidth != ctx->bitmapWidth) || (ctx->recordingHeight != ctx->bitmapHeight));
-
-		if (ctx->scalingEnabled) {
-			encodeWidth = ctx->recordingWidth;
-			encodeHeight = ctx->recordingHeight;
-			ctx->scaledBitmapWidth = encodeWidth;
-			ctx->scaledBitmapHeight = encodeHeight;
-			ctx->scaledBitmapStep = encodeWidth * 4;
-			ctx->hScaledDC = CreateCompatibleDC(ctx->hSourceDC);
-			ctx->hScaledBitmap = MsRdpEx_CreateDIBSection(ctx->hSourceDC,
-				encodeWidth, encodeHeight, ctx->bitsPerPixel, &ctx->scaledBitmapData);
-			ctx->hScaledObject = SelectObject(ctx->hScaledDC, ctx->hScaledBitmap);
-			SetStretchBltMode(ctx->hScaledDC, HALFTONE);
-			SetBrushOrgEx(ctx->hScaledDC, 0, 0, NULL);
-		}
-
 		ctx->videoRecorder = MsRdpEx_VideoRecorder_New();
 
 		if (ctx->videoRecorder) {
@@ -284,7 +242,7 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 			MsRdpEx_RecordingManifest_FinalizeFile(ctx->manifest, 0);
 			MsRdpEx_RecordingManifest_AddFile(ctx->manifest, MsRdpEx_FileBase(filename), startTime, 0);
 			ctx->videoRecordingCount++;
-			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, encodeWidth, encodeHeight);
+			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
 			MsRdpEx_VideoRecorder_SetFileName(ctx->videoRecorder, filename);
 			MsRdpEx_VideoRecorder_SetVideoQuality(ctx->videoRecorder, ctx->videoQualityLevel);
 
@@ -325,18 +283,6 @@ bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx)
 	{
 		DeleteDC(ctx->hShadowDC);
 		ctx->hShadowDC = NULL;
-	}
-
-	if (ctx->hScaledDC)
-	{
-		SelectObject(ctx->hScaledDC, ctx->hScaledObject);
-		DeleteObject(ctx->hScaledBitmap);
-		DeleteDC(ctx->hScaledDC);
-		ctx->hScaledObject = NULL;
-		ctx->hScaledBitmap = NULL;
-		ctx->hScaledDC = NULL;
-		ctx->scaledBitmapData = NULL;
-		ctx->scalingEnabled = false;
 	}
 
 	if (ctx->videoRecorder) {
