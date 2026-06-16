@@ -7,8 +7,6 @@
 #include <MsRdpEx/RecordingManifest.h>
 #include <MsRdpEx/OutputMirror.h>
 
-#define MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE 60
-
 struct _MsRdpEx_OutputMirror
 {
 	uint8_t* bitmapData;
@@ -127,10 +125,6 @@ void MsRdpEx_OutputMirror_SetVideoQualityLevel(MsRdpEx_OutputMirror* ctx, uint32
 
 void MsRdpEx_OutputMirror_SetVideoFrameRate(MsRdpEx_OutputMirror* ctx, uint32_t videoFrameRate)
 {
-	if (videoFrameRate > MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE) {
-		videoFrameRate = MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE;
-	}
-
 	ctx->videoFrameRate = videoFrameRate;
 }
 

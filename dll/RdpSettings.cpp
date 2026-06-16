@@ -21,17 +21,6 @@ extern MsRdpEx_rdclientax g_rdclientax;
 
 #define MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE 60
 
-static uint32_t MsRdpEx_VariantToNonNegativeUInt32(VARIANT* pValue)
-{
-    if (pValue->vt == VT_UI4)
-        return pValue->uintVal;
-
-    if (pValue->vt == VT_I4)
-        return pValue->intVal > 0 ? (uint32_t)pValue->intVal : 0;
-
-    return 0;
-}
-
 static bool g_TSPropertySet_Hooked = false;
 
 static ITSPropertySet_SetBoolProperty Real_ITSPropertySet_SetBoolProperty = NULL;
@@ -844,7 +833,7 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         if ((pValue->vt != VT_UI4) && (pValue->vt != VT_I4))
             goto end;
 
-        m_VideoRecordingFrameRate = MsRdpEx_VariantToNonNegativeUInt32(pValue);
+        m_VideoRecordingFrameRate = (uint32_t)pValue->uintVal;
 
         if (m_VideoRecordingFrameRate > MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE)
             m_VideoRecordingFrameRate = MSRDPEX_VIDEO_RECORDING_MAX_FRAME_RATE;
