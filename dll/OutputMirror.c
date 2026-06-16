@@ -37,7 +37,6 @@ struct _MsRdpEx_OutputMirror
 	FILE* frameMetadataFile;
 
 	uint32_t videoFrameRate;
-	uint64_t lastEncodeTime;
 
     CRITICAL_SECTION lock;
 };
@@ -88,27 +87,11 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 	captureTime = GetTickCount64() - ctx->captureBaseTime;
 
 	if (ctx->videoRecordingEnabled && ctx->videoRecorder) {
-		// The native path is paint-driven (one DumpFrame per RDP update), so cap the encode cadence to the
-		// configured frame rate here -- the encoder itself does not drop frames. Mirrors the internal timer path.
-		bool encodeThisFrame = true;
-
-		if (ctx->videoFrameRate > 0) {
-			uint64_t now = GetTickCount64();
-			uint32_t intervalMs = 1000 / ctx->videoFrameRate;
-
-			if ((ctx->lastEncodeTime != 0) && ((now - ctx->lastEncodeTime) < intervalMs)) {
-				encodeThisFrame = false;
-			}
-			else {
-				ctx->lastEncodeTime = now;
-			}
-		}
-
-		if (encodeThisFrame) {
-			MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
-				0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
-			MsRdpEx_VideoRecorder_Timeout(ctx->videoRecorder);
-		}
+		// [DVLS-14562] Submit every captured paint and let cadeau cap the encode rate to the configured
+		// frame rate (ms_per_frame). No manual throttle and no per-paint Timeout -- Timeout force-encodes
+		// and would bypass cadeau's cap. The frame rate is conveyed once via SetFrameRate in Init.
+		MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
+			0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
 	}
 
 	if (ctx->dumpBitmapUpdates) {
