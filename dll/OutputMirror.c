@@ -87,9 +87,7 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 	captureTime = GetTickCount64() - ctx->captureBaseTime;
 
 	if (ctx->videoRecordingEnabled && ctx->videoRecorder) {
-		// [DVLS-14562] Submit every captured paint and let cadeau cap the encode rate to the configured
-		// frame rate (ms_per_frame). No manual throttle and no per-paint Timeout -- Timeout force-encodes
-		// and would bypass cadeau's cap. The frame rate is conveyed once via SetFrameRate in Init.
+		// Submit every paint; cadeau caps the encode rate. A per-paint Timeout would force-encode and bypass that cap.
 		MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
 			0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
 	}
