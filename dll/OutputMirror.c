@@ -34,6 +34,8 @@ struct _MsRdpEx_OutputMirror
 	MsRdpEx_RecordingManifest* manifest;
 	FILE* frameMetadataFile;
 
+	uint32_t videoFrameRate;
+
     CRITICAL_SECTION lock;
 };
 
@@ -83,9 +85,9 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 	captureTime = GetTickCount64() - ctx->captureBaseTime;
 
 	if (ctx->videoRecordingEnabled && ctx->videoRecorder) {
+		// Submit every paint; cadeau caps the encode rate. A per-paint Timeout would force-encode and bypass that cap.
 		MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
 			0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
-		MsRdpEx_VideoRecorder_Timeout(ctx->videoRecorder);
 	}
 
 	if (ctx->dumpBitmapUpdates) {
@@ -119,6 +121,11 @@ void MsRdpEx_OutputMirror_SetVideoRecordingEnabled(MsRdpEx_OutputMirror* ctx, bo
 void MsRdpEx_OutputMirror_SetVideoQualityLevel(MsRdpEx_OutputMirror* ctx, uint32_t videoQualityLevel)
 {
 	ctx->videoQualityLevel = videoQualityLevel;
+}
+
+void MsRdpEx_OutputMirror_SetVideoFrameRate(MsRdpEx_OutputMirror* ctx, uint32_t videoFrameRate)
+{
+	ctx->videoFrameRate = videoFrameRate;
 }
 
 void MsRdpEx_OutputMirror_SetRecordingPath(MsRdpEx_OutputMirror* ctx, const char* recordingPath)
@@ -213,6 +220,10 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 			MsRdpEx_VideoRecorder_SetFrameSize(ctx->videoRecorder, ctx->bitmapWidth, ctx->bitmapHeight);
 			MsRdpEx_VideoRecorder_SetFileName(ctx->videoRecorder, filename);
 			MsRdpEx_VideoRecorder_SetVideoQuality(ctx->videoRecorder, ctx->videoQualityLevel);
+
+			if (ctx->videoFrameRate > 0) {
+				MsRdpEx_VideoRecorder_SetFrameRate(ctx->videoRecorder, ctx->videoFrameRate);
+			}
 
 			if (!MsRdpEx_StringIsNullOrEmpty(ctx->recordingPipeName)) {
 				MsRdpEx_VideoRecorder_SetPipeName(ctx->videoRecorder, ctx->recordingPipeName);
