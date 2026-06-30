@@ -4,10 +4,12 @@
 
 #include <MsRdpEx/Sspi.h>
 #include <MsRdpEx/Environment.h>
+#include <MsRdpEx/Memory.h>
 #include <MsRdpEx/RdpSettings.h>
 #include <MsRdpEx/RdpInstance.h>
 
 #include <intrin.h>
+#include <ntsecapi.h>
 
 #include <MsRdpEx/Detours.h>
 
@@ -18,6 +20,7 @@ static bool g_PcapEnabled = false;
 static char g_PcapFilePath[MSRDPEX_MAX_PATH] = { 0 };
 
 static bool g_SspiDump = false;
+static bool g_SspiSmartCardDebug = false;
 
 void MsRdpEx_SetPcapEnabled(bool pcapEnabled)
 {
@@ -41,6 +44,9 @@ void MsRdpEx_PcapEnvInit()
 	
     bool sspiDump = MsRdpEx_GetEnvBool("MSRDPEX_SSPI_DUMP", false);
     g_SspiDump = sspiDump;
+
+    bool sspiSmartCardDebug = MsRdpEx_GetEnvBool("MSRDPEX_SSPI_SMARTCARD_DEBUG", false);
+    g_SspiSmartCardDebug = sspiSmartCardDebug;
 
     envvar = MsRdpEx_GetEnv("MSRDPEX_PCAP_FILE_PATH");
 
@@ -110,6 +116,189 @@ static QUERY_CONTEXT_ATTRIBUTES_EX_FN_W Real_QueryContextAttributesExW = NULL;
 static QUERY_CREDENTIALS_ATTRIBUTES_EX_FN_W Real_QueryCredentialsAttributesExW = NULL;
 
 static const char* MsRdpEx_GetSecurityStatusString(SECURITY_STATUS status);
+
+typedef struct _MsRdpEx_SspiSessionContext
+{
+	bool active;
+	uint32_t depth;
+	GUID sessionId;
+} MsRdpEx_SspiSessionContext;
+
+static INIT_ONCE g_SspiSessionTlsInitOnce = INIT_ONCE_STATIC_INIT;
+static INIT_ONCE g_SspiSessionLockInitOnce = INIT_ONCE_STATIC_INIT;
+static DWORD g_SspiSessionTlsIndex = TLS_OUT_OF_INDEXES;
+static CRITICAL_SECTION g_SspiSessionLock;
+static bool g_SspiGlobalSessionValid = false;
+static bool g_SspiGlobalSessionAmbiguous = false;
+static uint32_t g_SspiGlobalSessionDepth = 0;
+static GUID g_SspiGlobalSessionId = { 0 };
+
+static BOOL CALLBACK sspi_InitSessionTls(PINIT_ONCE, PVOID, PVOID*)
+{
+	g_SspiSessionTlsIndex = TlsAlloc();
+	return (g_SspiSessionTlsIndex != TLS_OUT_OF_INDEXES) ? TRUE : FALSE;
+}
+
+static BOOL CALLBACK sspi_InitSessionLock(PINIT_ONCE, PVOID, PVOID*)
+{
+	InitializeCriticalSection(&g_SspiSessionLock);
+	return TRUE;
+}
+
+static bool sspi_EnsureSessionTls()
+{
+	return InitOnceExecuteOnce(&g_SspiSessionTlsInitOnce, sspi_InitSessionTls, NULL, NULL) ? true : false;
+}
+
+static bool sspi_EnsureSessionLock()
+{
+	return InitOnceExecuteOnce(&g_SspiSessionLockInitOnce, sspi_InitSessionLock, NULL, NULL) ? true : false;
+}
+
+static MsRdpEx_SspiSessionContext* sspi_GetThreadSessionContext(bool create)
+{
+	MsRdpEx_SspiSessionContext* ctx = NULL;
+
+	if (!sspi_EnsureSessionTls())
+		return NULL;
+
+	ctx = (MsRdpEx_SspiSessionContext*) TlsGetValue(g_SspiSessionTlsIndex);
+
+	if (!ctx && create)
+	{
+		ctx = (MsRdpEx_SspiSessionContext*) calloc(1, sizeof(MsRdpEx_SspiSessionContext));
+
+		if (ctx)
+			TlsSetValue(g_SspiSessionTlsIndex, ctx);
+	}
+
+	return ctx;
+}
+
+void MsRdpEx_Sspi_BeginSession(GUID* sessionId)
+{
+	MsRdpEx_SspiSessionContext* ctx = NULL;
+
+	if (!sessionId)
+		return;
+
+	ctx = sspi_GetThreadSessionContext(true);
+
+	if (ctx)
+	{
+		if (!ctx->active || (ctx->depth == 0))
+		{
+			MsRdpEx_GuidCopy(&ctx->sessionId, sessionId);
+			ctx->active = true;
+			ctx->depth = 1;
+		}
+		else
+		{
+			if (!MsRdpEx_GuidIsEqual(&ctx->sessionId, sessionId))
+				MsRdpEx_LogPrint(WARN, "SSPI session scope changed while nested");
+
+			ctx->depth++;
+		}
+	}
+
+	if (sspi_EnsureSessionLock())
+	{
+		EnterCriticalSection(&g_SspiSessionLock);
+
+		if (g_SspiGlobalSessionDepth == 0)
+		{
+			MsRdpEx_GuidCopy(&g_SspiGlobalSessionId, sessionId);
+			g_SspiGlobalSessionValid = true;
+			g_SspiGlobalSessionAmbiguous = false;
+		}
+		else if (!MsRdpEx_GuidIsEqual(&g_SspiGlobalSessionId, sessionId))
+		{
+			g_SspiGlobalSessionAmbiguous = true;
+		}
+
+		g_SspiGlobalSessionDepth++;
+		LeaveCriticalSection(&g_SspiSessionLock);
+	}
+}
+
+void MsRdpEx_Sspi_EndSession(GUID* sessionId)
+{
+	MsRdpEx_SspiSessionContext* ctx = sspi_GetThreadSessionContext(false);
+
+	if (ctx && ctx->active && (ctx->depth > 0))
+	{
+		if (sessionId && !MsRdpEx_GuidIsEqual(&ctx->sessionId, sessionId))
+			MsRdpEx_LogPrint(WARN, "SSPI session scope ended with a different session id");
+
+		ctx->depth--;
+
+		if (ctx->depth == 0)
+		{
+			ctx->active = false;
+			MsRdpEx_GuidSetNil(&ctx->sessionId);
+		}
+	}
+
+	if (sspi_EnsureSessionLock())
+	{
+		EnterCriticalSection(&g_SspiSessionLock);
+
+		if (g_SspiGlobalSessionDepth > 0)
+			g_SspiGlobalSessionDepth--;
+
+		if (g_SspiGlobalSessionDepth == 0)
+		{
+			g_SspiGlobalSessionValid = false;
+			g_SspiGlobalSessionAmbiguous = false;
+			MsRdpEx_GuidSetNil(&g_SspiGlobalSessionId);
+		}
+
+		LeaveCriticalSection(&g_SspiSessionLock);
+	}
+}
+
+static bool sspi_GetCurrentSessionId(GUID* sessionId, bool* usedGlobalFallback)
+{
+	bool found = false;
+	MsRdpEx_SspiSessionContext* ctx = sspi_GetThreadSessionContext(false);
+
+	if (usedGlobalFallback)
+		*usedGlobalFallback = false;
+
+	if (ctx && ctx->active && (ctx->depth > 0))
+	{
+		MsRdpEx_GuidCopy(sessionId, &ctx->sessionId);
+		return true;
+	}
+
+	if (!sspi_EnsureSessionLock())
+		return false;
+
+	EnterCriticalSection(&g_SspiSessionLock);
+
+	if (g_SspiGlobalSessionValid && !g_SspiGlobalSessionAmbiguous)
+	{
+		MsRdpEx_GuidCopy(sessionId, &g_SspiGlobalSessionId);
+		found = true;
+
+		if (usedGlobalFallback)
+			*usedGlobalFallback = true;
+	}
+
+	LeaveCriticalSection(&g_SspiSessionLock);
+
+	return found;
+}
+
+static CMsRdpExtendedSettings* sspi_GetCurrentExtendedSettings(bool* usedGlobalFallback)
+{
+	GUID sessionId = { 0 };
+
+	if (!sspi_GetCurrentSessionId(&sessionId, usedGlobalFallback))
+		return NULL;
+
+	return MsRdpEx_FindExtendedSettingsBySessionId(&sessionId);
+}
 
 static SECURITY_STATUS SEC_ENTRY sspi_EnumerateSecurityPackagesW(ULONG* pcPackages,
 	PSecPkgInfoW* ppPackageInfo)
@@ -250,6 +439,446 @@ static bool sspi_DumpCredSspAuthData(void* pAuthData)
 	return true;
 }
 
+static const char* sspi_GetCredSspTypeName(CREDSPP_SUBMIT_TYPE type)
+{
+	switch (type)
+	{
+		case CredsspPasswordCreds:
+			return "CredsspPasswordCreds";
+		case CredsspSchannelCreds:
+			return "CredsspSchannelCreds";
+		case CredsspCertificateCreds:
+			return "CredsspCertificateCreds";
+		case CredsspSubmitBufferBoth:
+			return "CredsspSubmitBufferBoth";
+		case CredsspSubmitBufferBothOld:
+			return "CredsspSubmitBufferBothOld";
+		case CredsspCredEx:
+			return "CredsspCredEx";
+		default:
+			return "Unknown";
+	}
+}
+
+static const char* sspi_GetCallerModuleName(void* returnAddress, char* moduleName, size_t moduleNameSize)
+{
+	HMODULE hModule = NULL;
+	char modulePath[MSRDPEX_MAX_PATH] = { 0 };
+
+	if (!moduleName || (moduleNameSize < 1))
+		return "";
+
+	moduleName[0] = '\0';
+
+	if (!returnAddress)
+		return moduleName;
+
+	if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)returnAddress, &hModule))
+	{
+		return moduleName;
+	}
+
+	if (!GetModuleFileNameA(hModule, modulePath, sizeof(modulePath)))
+		return moduleName;
+
+	strncpy_s(moduleName, moduleNameSize, MsRdpEx_FileBase(modulePath), _TRUNCATE);
+	return moduleName;
+}
+
+static bool sspi_TryGetCredSspCredential(void* pAuthData, CREDSSP_CRED** ppCred,
+	CREDSSP_CRED_EX** ppCredEx)
+{
+	CREDSSP_CRED* pCred = NULL;
+	CREDSSP_CRED_EX* pCredEx = NULL;
+
+	if (ppCred)
+		*ppCred = NULL;
+
+	if (ppCredEx)
+		*ppCredEx = NULL;
+
+	if (!pAuthData || !MsRdpEx_CanReadUnsafePtr(pAuthData, sizeof(CREDSSP_CRED)))
+		return false;
+
+	pCred = (CREDSSP_CRED*)pAuthData;
+
+	if (pCred->Type == CredsspCredEx)
+	{
+		if (!MsRdpEx_CanReadUnsafePtr(pAuthData, sizeof(CREDSSP_CRED_EX)))
+			return false;
+
+		pCredEx = (CREDSSP_CRED_EX*)pAuthData;
+		pCred = &pCredEx->Cred;
+
+		if (ppCredEx)
+			*ppCredEx = pCredEx;
+	}
+
+	if (ppCred)
+		*ppCred = pCred;
+
+	return true;
+}
+
+static DWORD sspi_ReadAuthDataMessageType(void* pAuthData, bool* pRead)
+{
+	DWORD messageType = 0;
+
+	if (pRead)
+		*pRead = false;
+
+	if (!pAuthData || !MsRdpEx_CanReadUnsafePtr(pAuthData, sizeof(DWORD)))
+		return 0;
+
+	CopyMemory(&messageType, pAuthData, sizeof(DWORD));
+
+	if (pRead)
+		*pRead = true;
+
+	return messageType;
+}
+
+static DWORD sspi_GetLocalAllocSizeAsDword(void* ptr)
+{
+	SIZE_T size = 0;
+
+	if (!ptr)
+		return 0;
+
+	size = LocalSize((HLOCAL)ptr);
+
+	if (size > MAXDWORD)
+		return 0;
+
+	return (DWORD)size;
+}
+
+static void sspi_LogCredSspAuthMetadata(const char* pszPackageA, void* pAuthData, void* returnAddress)
+{
+	CREDSSP_CRED* pCred = NULL;
+	CREDSSP_CRED_EX* pCredEx = NULL;
+	bool readMessageType = false;
+	char callerModule[MSRDPEX_MAX_PATH] = { 0 };
+
+	if (!g_SspiSmartCardDebug)
+		return;
+
+	sspi_GetCallerModuleName(returnAddress, callerModule, sizeof(callerModule));
+
+	if (!sspi_TryGetCredSspCredential(pAuthData, &pCred, &pCredEx))
+	{
+		MsRdpEx_LogPrint(DEBUG, "CredSSP auth metadata: package=%s authData=%p caller=%s unreadable",
+			pszPackageA ? pszPackageA : "", pAuthData, callerModule);
+		return;
+	}
+
+	DWORD messageType = sspi_ReadAuthDataMessageType(pCred->pSpnegoCred, &readMessageType);
+	DWORD spnegoSize = sspi_GetLocalAllocSizeAsDword(pCred->pSpnegoCred);
+
+	MsRdpEx_LogPrint(DEBUG,
+		"CredSSP auth metadata: package=%s credEx=%d type=%d(%s) spnego=%p localSize=%u firstDword=%s%u schannel=%p caller=%s",
+		pszPackageA ? pszPackageA : "",
+		pCredEx ? 1 : 0,
+		pCred->Type,
+		sspi_GetCredSspTypeName(pCred->Type),
+		pCred->pSpnegoCred,
+		spnegoSize,
+		readMessageType ? "" : "unreadable:",
+		readMessageType ? messageType : 0,
+		pCred->pSchannelCred,
+		callerModule);
+}
+
+static void sspi_FreeUnpackedCredentials(WCHAR* userName, WCHAR* domainName, WCHAR* password)
+{
+	if (userName)
+	{
+		SecureZeroMemory(userName, wcslen(userName) * sizeof(WCHAR));
+		free(userName);
+	}
+
+	if (domainName)
+	{
+		SecureZeroMemory(domainName, wcslen(domainName) * sizeof(WCHAR));
+		free(domainName);
+	}
+
+	if (password)
+	{
+		SecureZeroMemory(password, wcslen(password) * sizeof(WCHAR));
+		free(password);
+	}
+}
+
+static bool sspi_UnpackAuthenticationBuffer(DWORD flags, void* pAuthBuffer, DWORD cbAuthBuffer,
+	WCHAR** ppUserName, WCHAR** ppDomainName, WCHAR** ppPassword)
+{
+	BOOL success;
+	DWORD error;
+	DWORD cchUserName = 0;
+	DWORD cchDomainName = 0;
+	DWORD cchPassword = 0;
+	WCHAR* userName = NULL;
+	WCHAR* domainName = NULL;
+	WCHAR* password = NULL;
+
+	if (ppUserName)
+		*ppUserName = NULL;
+
+	if (ppDomainName)
+		*ppDomainName = NULL;
+
+	if (ppPassword)
+		*ppPassword = NULL;
+
+	if (!pAuthBuffer || (cbAuthBuffer < sizeof(DWORD)))
+		return false;
+
+	success = CredUnPackAuthenticationBufferW(flags, pAuthBuffer, cbAuthBuffer,
+		NULL, &cchUserName, NULL, &cchDomainName, NULL, &cchPassword);
+
+	if (!success)
+	{
+		error = GetLastError();
+
+		if (error != ERROR_INSUFFICIENT_BUFFER)
+			return false;
+	}
+
+	if ((cchUserName < 1) || (cchPassword < 1))
+		return false;
+
+	userName = (WCHAR*) calloc((size_t)cchUserName + 1, sizeof(WCHAR));
+	domainName = (WCHAR*) calloc((size_t)((cchDomainName > 0) ? cchDomainName : 1) + 1, sizeof(WCHAR));
+	password = (WCHAR*) calloc((size_t)cchPassword + 1, sizeof(WCHAR));
+
+	if (!userName || !domainName || !password)
+		goto fail;
+
+	success = CredUnPackAuthenticationBufferW(flags, pAuthBuffer, cbAuthBuffer,
+		userName, &cchUserName, domainName, &cchDomainName, password, &cchPassword);
+
+	if (!success)
+		goto fail;
+
+	*ppUserName = userName;
+	*ppDomainName = domainName;
+	*ppPassword = password;
+	return true;
+
+fail:
+	sspi_FreeUnpackedCredentials(userName, domainName, password);
+	return false;
+}
+
+static bool sspi_UnpackSmartCardPinCredential(void* pAuthBuffer, DWORD cbAuthBuffer,
+	WCHAR** ppUserName, WCHAR** ppDomainName, WCHAR** ppPassword)
+{
+	if (sspi_UnpackAuthenticationBuffer(0, pAuthBuffer, cbAuthBuffer, ppUserName, ppDomainName, ppPassword))
+		return true;
+
+	return sspi_UnpackAuthenticationBuffer(CRED_PACK_PROTECTED_CREDENTIALS,
+		pAuthBuffer, cbAuthBuffer, ppUserName, ppDomainName, ppPassword);
+}
+
+typedef struct _SspiCertificateLogonRewrite
+{
+	bool active;
+	void* pAuthData;
+	CREDSSP_CRED cred;
+	CREDSSP_CRED_EX credEx;
+	HLOCAL packedCredentials;
+	DWORD cbPackedCredentials;
+} SspiCertificateLogonRewrite;
+
+static void sspi_FreeCertificateLogonRewrite(SspiCertificateLogonRewrite* rewrite)
+{
+	if (!rewrite)
+		return;
+
+	if (rewrite->packedCredentials)
+	{
+		SecureZeroMemory(rewrite->packedCredentials, rewrite->cbPackedCredentials);
+		LocalFree(rewrite->packedCredentials);
+		rewrite->packedCredentials = NULL;
+	}
+
+	ZeroMemory(rewrite, sizeof(SspiCertificateLogonRewrite));
+}
+
+static bool sspi_IsCertificateMarshaledUserName(WCHAR* userName)
+{
+	bool result = false;
+	CRED_MARSHAL_TYPE credType;
+	PVOID pCredential = NULL;
+
+	if (!userName || !CredIsMarshaledCredentialW(userName))
+		return false;
+
+	if (!CredUnmarshalCredentialW(userName, &credType, &pCredential))
+		return false;
+
+	result = (credType == CertCredential) ? true : false;
+
+	if (pCredential)
+		CredFree(pCredential);
+
+	return result;
+}
+
+static bool sspi_CreatePackedCertificateLogon(WCHAR* marshaledCertificateUserName,
+	WCHAR* pin, HLOCAL* phPackedCredentials, DWORD* pcbPackedCredentials)
+{
+	BOOL success;
+	DWORD cbPackedCredentials = 0;
+	HLOCAL hPackedCredentials = NULL;
+	bool readMessageType = false;
+	DWORD messageType = 0;
+
+	*phPackedCredentials = NULL;
+	*pcbPackedCredentials = 0;
+
+	if (!marshaledCertificateUserName || !pin)
+		return false;
+
+	success = CredPackAuthenticationBufferW(0, marshaledCertificateUserName, pin,
+		NULL, &cbPackedCredentials);
+
+	if (!success && (GetLastError() != ERROR_INSUFFICIENT_BUFFER))
+	{
+		MsRdpEx_LogPrint(WARN, "CredPackAuthenticationBufferW certificate probe failed: error=%u", GetLastError());
+		return false;
+	}
+
+	if (cbPackedCredentials < sizeof(DWORD))
+		return false;
+
+	hPackedCredentials = LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, cbPackedCredentials);
+
+	if (!hPackedCredentials)
+		return false;
+
+	success = CredPackAuthenticationBufferW(0, marshaledCertificateUserName, pin,
+		(PBYTE)hPackedCredentials, &cbPackedCredentials);
+
+	if (!success)
+	{
+		MsRdpEx_LogPrint(WARN, "CredPackAuthenticationBufferW certificate pack failed: error=%u", GetLastError());
+		LocalFree(hPackedCredentials);
+		return false;
+	}
+
+	messageType = sspi_ReadAuthDataMessageType(hPackedCredentials, &readMessageType);
+
+	if (!readMessageType || (messageType != KerbCertificateLogon))
+	{
+		MsRdpEx_LogPrint(WARN, "CredPackAuthenticationBufferW did not produce KerbCertificateLogon: firstDword=%u", messageType);
+		SecureZeroMemory(hPackedCredentials, cbPackedCredentials);
+		LocalFree(hPackedCredentials);
+		return false;
+	}
+
+	*phPackedCredentials = hPackedCredentials;
+	*pcbPackedCredentials = cbPackedCredentials;
+	return true;
+}
+
+static bool sspi_TryBuildCertificateLogonRewrite(void* pAuthData,
+	CMsRdpExtendedSettings* extendedSettings, SspiCertificateLogonRewrite* rewrite)
+{
+	CREDSSP_CRED* pCred = NULL;
+	CREDSSP_CRED_EX* pCredEx = NULL;
+	DWORD cbSpnegoCred = 0;
+	bool readMessageType = false;
+	DWORD messageType = 0;
+	WCHAR* userName = NULL;
+	WCHAR* domainName = NULL;
+	WCHAR* password = NULL;
+	HLOCAL hPackedCredentials = NULL;
+	DWORD cbPackedCredentials = 0;
+
+	ZeroMemory(rewrite, sizeof(SspiCertificateLogonRewrite));
+
+	if (!extendedSettings || !extendedSettings->GetKerbCertificateLogonEnabled())
+		return false;
+
+	if (!sspi_TryGetCredSspCredential(pAuthData, &pCred, &pCredEx))
+		return false;
+
+	if (!pCred->pSpnegoCred)
+		return false;
+
+	messageType = sspi_ReadAuthDataMessageType(pCred->pSpnegoCred, &readMessageType);
+
+	if ((pCred->Type == CredsspCertificateCreds) && readMessageType &&
+		(messageType == KerbCertificateLogon))
+	{
+		if (g_SspiSmartCardDebug)
+			MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card credential is already KerbCertificateLogon");
+
+		return false;
+	}
+
+	cbSpnegoCred = sspi_GetLocalAllocSizeAsDword(pCred->pSpnegoCred);
+
+	if (cbSpnegoCred < sizeof(DWORD))
+	{
+		if (g_SspiSmartCardDebug)
+			MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: pSpnegoCred has no LocalAlloc size");
+
+		return false;
+	}
+
+	if (!sspi_UnpackSmartCardPinCredential(pCred->pSpnegoCred, cbSpnegoCred,
+		&userName, &domainName, &password))
+	{
+		if (g_SspiSmartCardDebug)
+			MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: cannot unpack authentication buffer");
+
+		return false;
+	}
+
+	if (!sspi_IsCertificateMarshaledUserName(userName))
+	{
+		if (g_SspiSmartCardDebug)
+			MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: username is not a marshaled certificate credential");
+
+		sspi_FreeUnpackedCredentials(userName, domainName, password);
+		return false;
+	}
+
+	if (!sspi_CreatePackedCertificateLogon(userName, password, &hPackedCredentials, &cbPackedCredentials))
+	{
+		sspi_FreeUnpackedCredentials(userName, domainName, password);
+		return false;
+	}
+
+	rewrite->cred = *pCred;
+	rewrite->cred.Type = CredsspCertificateCreds;
+	rewrite->cred.pSpnegoCred = hPackedCredentials;
+	rewrite->packedCredentials = hPackedCredentials;
+	rewrite->cbPackedCredentials = cbPackedCredentials;
+
+	if (pCredEx)
+	{
+		rewrite->credEx = *pCredEx;
+		rewrite->credEx.Cred = rewrite->cred;
+		rewrite->pAuthData = &rewrite->credEx;
+	}
+	else
+	{
+		rewrite->pAuthData = &rewrite->cred;
+	}
+
+	rewrite->active = true;
+
+	MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card credential replaced with KerbCertificateLogon (size=%u)", cbPackedCredentials);
+
+	sspi_FreeUnpackedCredentials(userName, domainName, password);
+	return true;
+}
+
 static bool sspi_SetKdcProxySettings(PCredHandle phCredential, const char* proxyServer)
 {
 	SECURITY_STATUS status;
@@ -294,6 +923,10 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 	SECURITY_STATUS status;
 	char* pszPrincipalA = NULL;
 	char* pszPackageA = NULL;
+	void* returnAddress = _ReturnAddress();
+	bool isCredSsp = false;
+	SspiCertificateLogonRewrite rewrite = { 0 };
+	void* pEffectiveAuthData = pAuthData;
 
 	if (pszPrincipal)
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszPrincipal, -1, &pszPrincipalA, 0, NULL, NULL);
@@ -301,15 +934,36 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 	if (pszPackage)
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszPackage, -1, &pszPackageA, 0, NULL, NULL);
 
-	if (g_SspiDump) {
-		if (pAuthData && MsRdpEx_StringIEquals(pszPackageA, "CREDSSP")) {
+	isCredSsp = (pAuthData && MsRdpEx_StringIEquals(pszPackageA, "CREDSSP")) ? true : false;
+
+	if (isCredSsp) {
+		if (g_SspiDump) {
 			//sspi_DumpCredSspAuthData(pAuthData);
+		}
+
+		sspi_LogCredSspAuthMetadata(pszPackageA, pAuthData, returnAddress);
+
+		bool usedGlobalFallback = false;
+		CMsRdpExtendedSettings* extendedSettings = sspi_GetCurrentExtendedSettings(&usedGlobalFallback);
+
+		if (extendedSettings && extendedSettings->GetKerbCertificateLogonEnabled()) {
+			if (sspi_TryBuildCertificateLogonRewrite(pAuthData, extendedSettings, &rewrite) && rewrite.active) {
+				if (usedGlobalFallback)
+					MsRdpEx_LogPrint(WARN, "CredSSP KerbCertificateLogon rewrite using global session fallback");
+
+				pEffectiveAuthData = rewrite.pAuthData;
+			}
 		}
 	}
 
 	status = Real_AcquireCredentialsHandleW(pszPrincipal, pszPackage, fCredentialUse, pvLogonID,
-		pAuthData, pGetKeyFn, pvGetKeyArgument,
+		pEffectiveAuthData, pGetKeyFn, pvGetKeyArgument,
 		phCredential, ptsExpiry);
+
+	if (rewrite.active) {
+		MsRdpEx_LogPrint(DEBUG, "sspi_AcquireCredentialsHandleW CredSSP KerbCertificateLogon rewrite applied, status = 0x%08X", status);
+		sspi_FreeCertificateLogonRewrite(&rewrite);
+	}
 
 	MsRdpEx_LogPrint(DEBUG, "sspi_AcquireCredentialsHandleW(principal=\"%s\", package=\"%s\", phCredential=%p,%p), status = 0x%08X",
 		pszPrincipalA ? pszPrincipalA : "",

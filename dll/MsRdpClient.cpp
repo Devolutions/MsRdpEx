@@ -8,6 +8,7 @@
 #include <MsRdpEx/RdpProcess.h>
 #include <MsRdpEx/RdpInstance.h>
 #include <MsRdpEx/RdpSettings.h>
+#include <MsRdpEx/Sspi.h>
 #include <MsRdpEx/NameResolver.h>
 
 #include "TSObjects.h"
@@ -502,7 +503,9 @@ public:
         m_pMsRdpExtendedSettings->PrepareVideoRecorder();
         m_pMsRdpExtendedSettings->PrepareExtraSystemMenu();
 
+        MsRdpEx_Sspi_BeginSession(&m_sessionId);
         hr = m_pMsTscAx->raw_Connect();
+        MsRdpEx_Sspi_EndSession(&m_sessionId);
 
         return hr;
     }

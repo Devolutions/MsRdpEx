@@ -750,6 +750,38 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         delete[] propValue;
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "KerbCertificateLogon") ||
+        MsRdpEx_StringEquals(propName, "KerbCertificateLogonEnabled"))
+    {
+        if ((pValue->vt != VT_BOOL) && (pValue->vt != VT_I4) && (pValue->vt != VT_UI4))
+            goto end;
+
+        if (pValue->vt == VT_BOOL)
+            m_KerbCertificateLogonEnabled = pValue->boolVal ? true : false;
+        else if (pValue->vt == VT_I4)
+            m_KerbCertificateLogonEnabled = pValue->intVal ? true : false;
+        else
+            m_KerbCertificateLogonEnabled = pValue->uintVal ? true : false;
+
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "PasswordContainsSCardPin"))
+    {
+        if ((pValue->vt != VT_BOOL) && (pValue->vt != VT_I4) && (pValue->vt != VT_UI4))
+            goto end;
+
+        if (pValue->vt == VT_BOOL)
+            m_PasswordContainsSCardPin = pValue->boolVal ? true : false;
+        else if (pValue->vt == VT_I4)
+            m_PasswordContainsSCardPin = pValue->intVal ? true : false;
+        else
+            m_PasswordContainsSCardPin = pValue->uintVal ? true : false;
+
+        if (m_CoreProps)
+            hr = m_CoreProps->put_Property(bstrPropertyName, pValue);
+        else
+            hr = S_OK;
+    }
     else if (MsRdpEx_StringEquals(propName, "EnableMouseJiggler"))
     {
         if (pValue->vt != VT_BOOL)
@@ -1349,8 +1381,14 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {
             pMsRdpExtendedSettings->SetTargetPassword(entry->value);
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "KerbCertificateLogon")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                m_KerbCertificateLogonEnabled = value.boolVal ? true : false;
+            }
+        }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "PasswordContainsSCardPin")) {
             if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                m_PasswordContainsSCardPin = value.boolVal ? true : false;
                 bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                 pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
             }
@@ -1615,6 +1653,16 @@ char* CMsRdpExtendedSettings::GetKdcProxyUrl()
 char* CMsRdpExtendedSettings::GetKdcProxyName()
 {
     return MsRdpEx_KdcProxyUrlToName(m_KdcProxyUrl);
+}
+
+bool CMsRdpExtendedSettings::GetKerbCertificateLogonEnabled()
+{
+    return m_KerbCertificateLogonEnabled;
+}
+
+bool CMsRdpExtendedSettings::GetPasswordContainsSCardPin()
+{
+    return m_PasswordContainsSCardPin;
 }
 
 bool CMsRdpExtendedSettings::GetMouseJigglerEnabled()

@@ -53,6 +53,8 @@ public:
     HRESULT __stdcall PrepareExtraSystemMenu();
     char* __stdcall GetKdcProxyUrl();
     char* __stdcall GetKdcProxyName();
+    bool GetKerbCertificateLogonEnabled();
+    bool GetPasswordContainsSCardPin();
     bool GetMouseJigglerEnabled();
     uint32_t GetMouseJigglerInterval();
     uint32_t GetMouseJigglerMethod();
@@ -83,6 +85,8 @@ private:
     CMsRdpPropertySet* m_BaseProps = NULL;
     CMsRdpPropertySet* m_TransportProps = NULL;
     char* m_KdcProxyUrl = NULL;
+    bool m_KerbCertificateLogonEnabled = false;
+    bool m_PasswordContainsSCardPin = false;
     bool m_MouseJigglerEnabled = false;
     uint32_t m_MouseJigglerInterval = 60;
     uint32_t m_MouseJigglerMethod = 0;

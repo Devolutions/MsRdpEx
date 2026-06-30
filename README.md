@@ -33,6 +33,27 @@ MsRdpEx processes additional .RDP file options that are not normally supported b
 | EnableHardwareMode:i:value | Disable DirectX client presenter (force GDI client presenter) | 0/1 | 1 |
 | ClearTextPassword:s:value | Target RDP server password - use for testing only | Insecure password | - |
 | GatewayPassword:s:value | RD Gateway server password - use for testing only | Insecure password | - |
+| KerbCertificateLogon:i:value | Force smart card credentials into a KERB_CERTIFICATE_LOGON buffer (see below) | 0/1 | 0 |
+
+### Smart card certificate logon (KerbCertificateLogon)
+
+When a smart card certificate thumbprint and PIN are both pre-supplied (for example by a
+connection manager that stores them and sets `PasswordContainsSCardPin:i:1`), the CredSSP/SSPI
+credential that reaches LSAS can take a code path in `tspkg` that calls
+`CryptAcquireCertificatePrivateKey` without `CRYPT_ACQUIRE_ALLOW_NCRYPT_KEY_FLAG`, which fails for
+keys backed by a CNG/NCrypt key storage provider (the common case for smart cards). The interactive
+Windows credential prompt avoids this because it builds a packed `KERB_CERTIFICATE_LOGON` structure.
+
+Setting `KerbCertificateLogon:i:1` opts the session in to a client-side workaround: MsRdpEx hooks
+`AcquireCredentialsHandleW` and, only for the matching session, rewrites a smart card CredSSP
+credential into the equivalent `KERB_CERTIFICATE_LOGON`-shaped buffer
+(`CredsspCertificateCreds`) before it is handed to LSAS. The rewrite is strictly opt-in per session
+and only activates when the existing credential is a marshaled certificate credential; in every
+other case the original credential is passed through unchanged. No PINs, passwords, or certificate
+bytes are ever logged, and PIN-bearing buffers are zeroed before they are freed.
+
+Set the `MSRDPEX_SSPI_SMARTCARD_DEBUG=1` environment variable to emit additional (secret-free)
+CredSSP credential metadata to the log while diagnosing smart card logon issues.
 
 ## Extended RDP client logs
 
