@@ -627,6 +627,40 @@ CMsRdpExtendedSettings* MsRdpEx_FindExtendedSettingsBySessionId(GUID* sessionId)
     return settings;
 }
 
+// Resolve the extended settings that owns a given core property set, so the SetSecureStringProperty hook can route a
+// captured PIN to the right session instance (the hook only has the raw ITSPropertySet, not a session id).
+CMsRdpExtendedSettings* MsRdpEx_FindExtendedSettingsByCoreProps(void* pCoreProps)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx || !pCoreProps)
+        return NULL;
+
+    CMsRdpExtendedSettings* found = NULL;
+    MsRdpEx_ArrayListIt* it = NULL;
+
+    it = MsRdpEx_ArrayList_It(ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        CMsRdpExInstance* obj = (CMsRdpExInstance*) MsRdpEx_ArrayListIt_Next(it);
+        void* corePropsRaw = NULL;
+
+        if (obj)
+            obj->GetCorePropsRawPtr(&corePropsRaw);
+
+        if (corePropsRaw == pCoreProps)
+        {
+            found = obj->m_pMsRdpExtendedSettings;
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+
+    return found;
+}
+
 MsRdpEx_InstanceManager* MsRdpEx_InstanceManager_New()
 {
     MsRdpEx_InstanceManager* ctx;

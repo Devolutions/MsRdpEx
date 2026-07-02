@@ -9,6 +9,8 @@
 #include <MsRdpEx/Detours.h>
 
 #include <intrin.h>
+#include <dpapi.h>
+#include <wincred.h>
 
 #include "MsRdpEx.h"
 #include "TSObjects.h"
@@ -176,6 +178,16 @@ static HRESULT Hook_ITSPropertySet_SetSecureStringProperty(ITSPropertySet* This,
     //MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetSecureStringProperty(%s, \"%s\")", propName, propValueA);
 
     MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetSecureStringProperty(%s, \"%s\")", propName, "*omitted*");
+
+    // The PIN cannot be read back from this secure property later, so capture it as it is set and hand it to the
+    // owning session instance, which holds it DPAPI-encrypted and only keeps it for a KerbCertificateLogon connection.
+    if (propValue && MsRdpEx_StringEquals(propName, "Password"))
+    {
+        CMsRdpExtendedSettings* settings = MsRdpEx_FindExtendedSettingsByCoreProps(This);
+
+        if (settings)
+            settings->SetCapturedPin(propValue);
+    }
 
     hr = Real_ITSPropertySet_SetSecureStringProperty(This, propName, propValue);
 
@@ -652,6 +664,8 @@ CMsRdpExtendedSettings::~CMsRdpExtendedSettings()
     this->SetRecordingSessionId(NULL);
     this->SetRecordingPipeName(NULL);
 
+    this->ClearCapturedPin();
+
     if (m_pMsRdpExtendedSettings)
         m_pMsRdpExtendedSettings->Release();
 
@@ -749,6 +763,38 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
 
         delete[] propValue;
         hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "KerbCertificateLogon") ||
+        MsRdpEx_StringEquals(propName, "KerbCertificateLogonEnabled"))
+    {
+        if ((pValue->vt != VT_BOOL) && (pValue->vt != VT_I4) && (pValue->vt != VT_UI4))
+            goto end;
+
+        if (pValue->vt == VT_BOOL)
+            m_KerbCertificateLogonEnabled = pValue->boolVal ? true : false;
+        else if (pValue->vt == VT_I4)
+            m_KerbCertificateLogonEnabled = pValue->intVal ? true : false;
+        else
+            m_KerbCertificateLogonEnabled = pValue->uintVal ? true : false;
+
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "PasswordContainsSCardPin"))
+    {
+        if ((pValue->vt != VT_BOOL) && (pValue->vt != VT_I4) && (pValue->vt != VT_UI4))
+            goto end;
+
+        if (pValue->vt == VT_BOOL)
+            m_PasswordContainsSCardPin = pValue->boolVal ? true : false;
+        else if (pValue->vt == VT_I4)
+            m_PasswordContainsSCardPin = pValue->intVal ? true : false;
+        else
+            m_PasswordContainsSCardPin = pValue->uintVal ? true : false;
+
+        if (m_CoreProps)
+            hr = m_CoreProps->put_Property(bstrPropertyName, pValue);
+        else
+            hr = S_OK;
     }
     else if (MsRdpEx_StringEquals(propName, "EnableMouseJiggler"))
     {
@@ -1349,8 +1395,14 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "ClearTextPassword")) {
             pMsRdpExtendedSettings->SetTargetPassword(entry->value);
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "KerbCertificateLogon")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                m_KerbCertificateLogonEnabled = value.boolVal ? true : false;
+            }
+        }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "PasswordContainsSCardPin")) {
             if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                m_PasswordContainsSCardPin = value.boolVal ? true : false;
                 bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
                 pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
             }
@@ -1530,6 +1582,17 @@ HRESULT CMsRdpExtendedSettings::PrepareSspiSessionIdHack()
     return hr;
 }
 
+// Drop the speculatively captured PIN when this is not a smart card certificate logon, so it is never retained for
+// ordinary password connections. PasswordContainsSCardPin is intentionally NOT forced here: whether the remote gets a
+// smart card credential is the caller's decision (RDM sets both KerbCertificateLogon and PasswordContainsSCardPin).
+HRESULT CMsRdpExtendedSettings::DiscardCapturedPinIfNotCertLogon()
+{
+    if (!m_KerbCertificateLogonEnabled)
+        this->ClearCapturedPin();
+
+    return S_OK;
+}
+
 HRESULT CMsRdpExtendedSettings::PrepareMouseJiggler()
 {
     HRESULT hr = S_OK;
@@ -1615,6 +1678,139 @@ char* CMsRdpExtendedSettings::GetKdcProxyUrl()
 char* CMsRdpExtendedSettings::GetKdcProxyName()
 {
     return MsRdpEx_KdcProxyUrlToName(m_KdcProxyUrl);
+}
+
+bool CMsRdpExtendedSettings::GetKerbCertificateLogonEnabled()
+{
+    return m_KerbCertificateLogonEnabled;
+}
+
+bool CMsRdpExtendedSettings::GetPasswordContainsSCardPin()
+{
+    return m_PasswordContainsSCardPin;
+}
+
+// The embedded in-process ActiveX control never hands the smart card credential to AcquireCredentialsHandleW;
+// expose the marshaled certificate UserName and the PIN so the SSPI hook can synthesize a KERB_CERTIFICATE_LOGON.
+WCHAR* CMsRdpExtendedSettings::GetCredentialUserName()
+{
+    BSTR value = NULL;
+    WCHAR* result = NULL;
+
+    // Prefer the marshaled certificate username snapshotted at PIN-capture time; the live property is replaced with
+    // the resolved account name after the first logon, which would break reconnect.
+    if (m_CapturedCertUserName)
+        return _wcsdup(m_CapturedCertUserName);
+
+    if (!m_CoreProps)
+        return NULL;
+
+    if (m_CoreProps->GetBStrProperty("UserName", &value) != S_OK)
+        return NULL;
+
+    if (value)
+    {
+        result = _wcsdup(value);
+        SysFreeString(value);
+    }
+
+    return result;
+}
+
+// Store the PIN DPAPI-encrypted on the instance. It is captured speculatively for any password set; a
+// non-KerbCertificateLogon connection discards it in DiscardCapturedPinIfNotCertLogon, and it is zeroed in the destructor.
+void CMsRdpExtendedSettings::SetCapturedPin(const WCHAR* pin)
+{
+    this->ClearCapturedPin();
+
+    // An empty PIN counts as "no PIN supplied" -- the un-broken scenario where mstscax prompts and builds the
+    // KERB_CERTIFICATE_LOGON itself. Do not capture it, so the workaround stays inert.
+    if (!pin || !pin[0])
+        return;
+
+    DWORD cbPin = (DWORD)((wcslen(pin) + 1) * sizeof(WCHAR));
+    DWORD cbPadded = ((cbPin + CRYPTPROTECTMEMORY_BLOCK_SIZE - 1) /
+        CRYPTPROTECTMEMORY_BLOCK_SIZE) * CRYPTPROTECTMEMORY_BLOCK_SIZE;
+
+    BYTE* buffer = (BYTE*) calloc(1, cbPadded);
+
+    if (!buffer)
+        return;
+
+    CopyMemory(buffer, pin, cbPin);
+
+    if (!CryptProtectMemory(buffer, cbPadded, CRYPTPROTECTMEMORY_SAME_PROCESS))
+    {
+        MsRdpEx_LogPrint(WARN, "Failed to protect captured smart card PIN");
+        SecureZeroMemory(buffer, cbPadded);
+        free(buffer);
+        return;
+    }
+
+    m_ProtectedPin = buffer;
+    m_ProtectedPinSize = cbPadded;
+
+    // Snapshot the marshaled certificate username while it is still present. After the first successful logon
+    // mstscax replaces the UserName property with the resolved account name, so a reconnect would otherwise lose
+    // the marshaled certificate blob and synthesis could not rebuild the KERB_CERTIFICATE_LOGON.
+    if (m_CoreProps)
+    {
+        BSTR userName = NULL;
+
+        if ((m_CoreProps->GetBStrProperty("UserName", &userName) == S_OK) && userName)
+        {
+            if (CredIsMarshaledCredentialW(userName))
+                m_CapturedCertUserName = _wcsdup(userName);
+
+            SysFreeString(userName);
+        }
+    }
+}
+
+void CMsRdpExtendedSettings::ClearCapturedPin()
+{
+    if (m_ProtectedPin)
+    {
+        SecureZeroMemory(m_ProtectedPin, m_ProtectedPinSize);
+        free(m_ProtectedPin);
+        m_ProtectedPin = NULL;
+    }
+
+    m_ProtectedPinSize = 0;
+
+    if (m_CapturedCertUserName)
+    {
+        free(m_CapturedCertUserName);
+        m_CapturedCertUserName = NULL;
+    }
+}
+
+WCHAR* CMsRdpExtendedSettings::GetCredentialPin()
+{
+    // The PIN is a protected secure-string property that cannot be read back from the property set, so return the
+    // plaintext captured when it was set (see SetCapturedPin). Caller must SecureZeroMemory + free the result.
+    if (!m_ProtectedPin || !m_ProtectedPinSize)
+        return NULL;
+
+    BYTE* buffer = (BYTE*) malloc(m_ProtectedPinSize);
+
+    if (!buffer)
+        return NULL;
+
+    CopyMemory(buffer, m_ProtectedPin, m_ProtectedPinSize);
+
+    if (!CryptUnprotectMemory(buffer, m_ProtectedPinSize, CRYPTPROTECTMEMORY_SAME_PROCESS))
+    {
+        SecureZeroMemory(buffer, m_ProtectedPinSize);
+        free(buffer);
+        return NULL;
+    }
+
+    WCHAR* result = _wcsdup((WCHAR*) buffer);
+    SecureZeroMemory(buffer, m_ProtectedPinSize);
+    free(buffer);
+
+    return result;
 }
 
 bool CMsRdpExtendedSettings::GetMouseJigglerEnabled()

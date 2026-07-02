@@ -8,6 +8,7 @@
 #include <MsRdpEx/RdpProcess.h>
 #include <MsRdpEx/RdpInstance.h>
 #include <MsRdpEx/RdpSettings.h>
+#include <MsRdpEx/Sspi.h>
 #include <MsRdpEx/NameResolver.h>
 
 #include "TSObjects.h"
@@ -182,6 +183,8 @@ public:
 
     ~CMsRdpClient()
     {
+        EndSspiSessionScope("destroy");
+
         m_pUnknown->Release();
         if (m_pDispatch) m_pDispatch->Release();
         if (m_pMsTscAx) m_pMsTscAx->Release();
@@ -494,15 +497,19 @@ public:
         HRESULT hr;
         MsRdpEx_LogPrint(DEBUG, "CMsRdpClient::Connect");
 
-        CMsRdpExtendedSettings* pMsRdpExtendedSettings = m_pMsRdpExtendedSettings;
         m_pMsRdpExtendedSettings->LoadRdpFile(NULL);
         m_pMsRdpExtendedSettings->LoadRdpFileFromNamedPipe(NULL);
         m_pMsRdpExtendedSettings->PrepareSspiSessionIdHack();
+        m_pMsRdpExtendedSettings->DiscardCapturedPinIfNotCertLogon();
         m_pMsRdpExtendedSettings->PrepareMouseJiggler();
         m_pMsRdpExtendedSettings->PrepareVideoRecorder();
         m_pMsRdpExtendedSettings->PrepareExtraSystemMenu();
 
+        BeginSspiSessionScope("connect");
         hr = m_pMsTscAx->raw_Connect();
+
+        if (FAILED(hr))
+            EndSspiSessionScope("connect-failed");
 
         return hr;
     }
@@ -512,8 +519,27 @@ public:
         MsRdpEx_LogPrint(DEBUG, "CMsRdpClient::Disconnect");
 
         hr = m_pMsTscAx->raw_Disconnect();
+        EndSspiSessionScope("disconnect");
 
         return hr;
+    }
+
+    void BeginSspiSessionScope(const char* reason) {
+        if (m_sspiSessionActive)
+            return;
+
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpClient::BeginSspiSessionScope(%s)", reason ? reason : "");
+        MsRdpEx_Sspi_BeginSession(&m_sessionId);
+        m_sspiSessionActive = true;
+    }
+
+    void EndSspiSessionScope(const char* reason) {
+        if (!m_sspiSessionActive)
+            return;
+
+        MsRdpEx_LogPrint(DEBUG, "CMsRdpClient::EndSspiSessionScope(%s)", reason ? reason : "");
+        MsRdpEx_Sspi_EndSession(&m_sessionId);
+        m_sspiSessionActive = false;
     }
 
     HRESULT __stdcall raw_CreateVirtualChannels(BSTR newVal) {
@@ -728,6 +754,7 @@ private:
     IMsRdpClient10* m_pMsRdpClient10 = NULL;
     CMsRdpExInstance* m_pMsRdpExInstance = NULL;
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
+    bool m_sspiSessionActive = false;
 };
 
 class CClassFactory : IClassFactory

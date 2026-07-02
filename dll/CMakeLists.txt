@@ -108,6 +108,7 @@ set(MSRDPEX_LIBS
     secur32.lib
     credui.lib
     advapi32.lib
+    crypt32.lib
     comctl32.lib)
 
 target_compile_options(MsRdpEx_Dll PRIVATE /W4)
