@@ -15,6 +15,8 @@ extern "C" {
 
 LONG MsRdpEx_AttachSspiHooks();
 LONG MsRdpEx_DetachSspiHooks();
+void MsRdpEx_Sspi_BeginSession(GUID* sessionId);
+void MsRdpEx_Sspi_EndSession(GUID* sessionId);
 
 #ifdef __cplusplus
 }

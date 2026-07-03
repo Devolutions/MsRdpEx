@@ -67,6 +67,8 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_FindBySessionId(GUID* sessionId);
 
 CMsRdpExtendedSettings* MsRdpEx_FindExtendedSettingsBySessionId(GUID* sessionId);
 
+CMsRdpExtendedSettings* MsRdpEx_FindExtendedSettingsByCoreProps(void* pCoreProps);
+
 MsRdpEx_InstanceManager* MsRdpEx_InstanceManager_Get();
 void MsRdpEx_InstanceManager_Release();
 
