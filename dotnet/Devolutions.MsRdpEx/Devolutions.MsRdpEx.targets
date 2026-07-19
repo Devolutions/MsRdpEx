@@ -1,5 +1,32 @@
 <?xml version="1.0"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MsRdpExComInterop Condition="'$(MsRdpExComInterop)' == ''">Legacy</MsRdpExComInterop>
+    <_MsRdpExPackageRoot>$(MSBuildThisFileDirectory)..\</_MsRdpExPackageRoot>
+  </PropertyGroup>
+
+  <Target Name="_MsRdpExValidateComInteropSelection"
+          BeforeTargets="ResolveReferences"
+          Condition="'$(MsRdpExComInterop)' != 'Legacy' And '$(MsRdpExComInterop)' != 'Generated' And '$(MsRdpExComInterop)' != 'None'">
+    <Error Text="Unsupported MsRdpExComInterop value '$(MsRdpExComInterop)'. Use 'Legacy', 'Generated', or 'None'." />
+  </Target>
+
+  <ItemGroup Condition="'$(MsRdpExComInterop)' == 'Legacy'">
+    <Reference Include="Interop.MSTSCLib">
+      <HintPath>$(_MsRdpExPackageRoot)interop\legacy\Interop.MSTSCLib.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MsRdpExComInterop)' == 'Generated'">
+    <Reference Include="AxInterop.MSTSCLib">
+      <HintPath>$(_MsRdpExPackageRoot)interop\generated\AxInterop.MSTSCLib.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+  </ItemGroup>
+
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-x86\native\MsRdpEx.dll">
       <Link>runtimes\win-x86\native\MsRdpEx.dll</Link>

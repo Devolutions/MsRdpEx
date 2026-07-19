@@ -18,6 +18,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>$(NoWarn);NU5100;NU5128</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,11 +31,13 @@
   </Target>
 
   <ItemGroup>
-    <Content Include="$(OutputPath)/AxInterop.MSTSCLib.dll" PackagePath="lib/$(TargetFramework)/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
+    <Content Include="../Interop.MSTSCLib/Interop.MSTSCLib.dll" PackagePath="interop/legacy/Interop.MSTSCLib.dll" Pack="true" Visible="false" />
+    <Content Include="$(OutputPath)/AxInterop.MSTSCLib.dll" PackagePath="interop/generated/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
     <Content Include="../../dependencies/MsRdpEx/x86/MsRdpEx.dll" PackagePath="runtimes/win-x86/native/MsRdpEx.dll" Pack="true" Visible="false" />
     <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll" PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" Visible="false" />
     <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll" PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" Visible="false" />
     <Content Include="Devolutions.MsRdpEx.targets" PackagePath="build/Devolutions.MsRdpEx.targets" Pack="true" />
+    <Content Include="Devolutions.MsRdpEx.targets" PackagePath="buildTransitive/Devolutions.MsRdpEx.targets" Pack="true" />
   </ItemGroup>
 
 </Project>
