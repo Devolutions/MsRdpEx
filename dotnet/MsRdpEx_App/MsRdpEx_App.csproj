@@ -5,12 +5,14 @@
     <OutputType>WinExe</OutputType>
     <Platforms>Win32;x64;ARM64</Platforms>
     <TargetFrameworks>net8.0-windows</TargetFrameworks>
-    <UseWindowsForms>True</UseWindowsForms>
+    <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
-    <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
-    <AppendTargetFrameworkToOutputPath>True</AppendTargetFrameworkToOutputPath>
-    <LangVersion>11</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <LangVersion>12</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableGeneratedComInterfaceComImportInterop>true</EnableGeneratedComInterfaceComImportInterop>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -36,12 +38,5 @@
 
   <ItemGroup>
     <ProjectReference Include="../Devolutions.MsRdpEx/Devolutions.MsRdpEx.csproj" IncludeAssets="all" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Interop.MSTSCLib">
-      <Private>True</Private>
-      <HintPath>..\Interop.MSTSCLib\Interop.MSTSCLib.dll</HintPath>
-    </Reference>
   </ItemGroup>
 </Project>

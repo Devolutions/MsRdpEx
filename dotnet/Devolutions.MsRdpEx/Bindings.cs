@@ -2,6 +2,7 @@ using System;
 using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace MsRdpEx
 {
@@ -16,65 +17,117 @@ namespace MsRdpEx
         Off = 6
     }
 
+#if NET8_0_OR_GREATER
+    [GeneratedComInterface]
+#else
+    [ComImport]
+#endif
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [Guid("13F6E86F-EE7D-44D1-AA94-1136B784441D")]
-    public interface IMsRdpExCoreApi
+    public partial interface IMsRdpExCoreApi
     {
         void Load();
         void Unload();
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         IntPtr GetMsRdpExDllPath();
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetLogEnabled([MarshalAs(UnmanagedType.U1)] bool logEnabled);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
-        void SetLogLevel([MarshalAs(UnmanagedType.U4)] MsRdpEx_LogLevel logLevel);
+        [PreserveSig]
+        void SetLogLevel(MsRdpEx_LogLevel logLevel);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
+#if NET8_0_OR_GREATER
+        void SetLogFilePath([MarshalUsing(typeof(MarshalHelpers.LPUTF8Str))] string logFilePath);
+#else
         void SetLogFilePath([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string logFilePath);
+#endif
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetPcapEnabled([MarshalAs(UnmanagedType.U1)] bool pcapEnabled);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
+#if NET8_0_OR_GREATER
+        void SetPcapFilePath([MarshalUsing(typeof(MarshalHelpers.LPUTF8Str))] string pcapFilePath);
+#else
         void SetPcapFilePath([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string pcapFilePath);
+#endif
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetAxHookEnabled([MarshalAs(UnmanagedType.U1)] bool axHookEnabled);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         [return: MarshalAs(UnmanagedType.U1)]
-        bool QueryInstanceByWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.IUnknown)] out object rdpInstance);
+        bool QueryInstanceByWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.Interface)] out object rdpInstance);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         [return: MarshalAs(UnmanagedType.U1)]
-        bool OpenInstanceForWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.IUnknown)] out object rdpInstance);
+        bool OpenInstanceForWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.Interface)] out object rdpInstance);
     }
 
+#if NET8_0_OR_GREATER
+    [GeneratedComInterface]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [Guid("338784B3-3363-45A2-8ECD-80A65DBAF636")]
-    public interface IMsRdpExProcess
+    public partial interface IMsRdpExProcess
     {
-        [MethodImpl(MethodImplOptions.PreserveSig)]
-        void SetFileName([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef=typeof(MarshalHelpers.LPUTF8Str))] string filename);
+        [PreserveSig]
+        void SetFileName([MarshalUsing(typeof(MarshalHelpers.LPUTF8Str))] string filename);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
+        void SetArguments([MarshalUsing(typeof(MarshalHelpers.LPUTF8Str))] string arguments);
+
+        [PreserveSig]
+        void SetArgumentBlock([MarshalUsing(typeof(MarshalHelpers.LPUTF8Str))] string argumentBlock);
+
+        [PreserveSig]
+        void SetEnvironmentBlock([MarshalUsing(typeof(MarshalHelpers.LPUTF8Str))] string environmentBlock);
+
+        [PreserveSig]
+        void SetWorkingDirectory([MarshalUsing(typeof(MarshalHelpers.LPUTF8Str))] string workingDirectory);
+
+        void StartWithInfo();
+
+        void Start(int argc, [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] ref IntPtr[] argv,
+            [MarshalUsing(typeof(MarshalHelpers.LPUTF8Str))] string appName,
+            [MarshalUsing(typeof(MarshalHelpers.LPUTF8Str))] string axName);
+
+        void Stop(UInt32 exitCode);
+
+        void Wait(UInt32 milliseconds);
+
+        [PreserveSig]
+        uint GetProcessId();
+
+        [PreserveSig]
+        uint GetExitCode();
+    }
+#else
+    [ComImport]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [Guid("338784B3-3363-45A2-8ECD-80A65DBAF636")]
+    public partial interface IMsRdpExProcess
+    {
+        [PreserveSig]
+        void SetFileName([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string filename);
+
+        [PreserveSig]
         void SetArguments([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string arguments);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetArgumentBlock([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string argumentBlock);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetEnvironmentBlock([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string environmentBlock);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetWorkingDirectory([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string workingDirectory);
 
         void StartWithInfo();
 
-        void Start(int argc, ref IntPtr[] argv,
+        void Start(int argc, [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] ref IntPtr[] argv,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string appName,
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))] string axName);
 
@@ -82,20 +135,26 @@ namespace MsRdpEx
 
         void Wait(UInt32 milliseconds);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         uint GetProcessId();
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         uint GetExitCode();
     }
+#endif
 
+#if NET8_0_OR_GREATER
+    [GeneratedComInterface]
+#else
+    [ComImport]
+#endif
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [Guid("94CDA65A-EFDF-4453-B8B2-2493A12D31C7")]
-    public interface IMsRdpExInstance
+    public partial interface IMsRdpExInstance
     {
         void GetSessionId(out Guid sessionId);
 
-        void GetRdpClient([MarshalAs(UnmanagedType.IUnknown)] out object rdpClient);
+        void GetRdpClient([MarshalAs(UnmanagedType.Interface)] out object rdpClient);
 
         void GetOutputMirrorObject(out IntPtr outputMirror);
 
@@ -131,25 +190,25 @@ namespace MsRdpEx
 
         void AttachExtendedSettings(IntPtr pExtendedSettings);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         [return: MarshalAs(UnmanagedType.U1)]
         bool GetExtendedSettings(out IntPtr ppExtendedSettings);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         [return: MarshalAs(UnmanagedType.U1)]
         bool GetShadowBitmap(ref IntPtr phDC, ref IntPtr phBitmap, ref IntPtr pBitmapData,
             ref UInt32 pBitmapWidth, ref UInt32 pBitmapHeight, ref UInt32 pBitmapStep);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void LockShadowBitmap();
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void UnlockShadowBitmap();
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void GetLastMousePosition(ref Int32 posX, ref Int32 posY);
 
-        [MethodImpl(MethodImplOptions.PreserveSig)]
+        [PreserveSig]
         void SetLastMousePosition(Int32 posX, Int32 posY);
 
         void GetWTSPluginObject(out IntPtr plugin);
@@ -157,7 +216,7 @@ namespace MsRdpEx
         void SetWTSPluginObject(IntPtr plugin);
     }
 
-    public static class Bindings
+    public static partial class Bindings
     {
         private static Guid IID_IMsRdpExCoreApi = new Guid(0x13F6E86F, 0xEE7D, 0x44D1,0xAA, 0x94, 0x11, 0x36, 0xB7, 0x84, 0x44, 0x1D);
         private static Guid IID_IMsRdpExProcess = new Guid(0x338784B3, 0x3363, 0x45A2, 0x8E, 0xCD, 0x80, 0xA6, 0x5D, 0xBA, 0xF6, 0x36);
@@ -211,9 +270,15 @@ namespace MsRdpEx
             public int Bottom;
         }
 
+#if NET8_0_OR_GREATER
+        [LibraryImport("MsRdpEx.dll")]
+        public static partial uint MsRdpEx_CreateInstance(ref Guid riid,
+            [MarshalAs(UnmanagedType.Interface)] out object ppvObject);
+#else
         [DllImport("MsRdpEx.dll")]
         public static extern uint MsRdpEx_CreateInstance(ref Guid riid,
-            [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
+            [MarshalAs(UnmanagedType.Interface)] out object ppvObject);
+#endif
 
         [DllImport("MsRdpEx.dll")]
         public static extern uint MsRdpEx_GetClaimsToken(

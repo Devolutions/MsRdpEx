@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <OutputPath>$(CMakeOutputPath)</OutputPath>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\Interop.MSTSCLib\Interop.MSTSCLib.dll" LinkBase="Resources" LogicalName="Interop.MSTSCLib.dll"/>
+  </ItemGroup>
+
+</Project>
