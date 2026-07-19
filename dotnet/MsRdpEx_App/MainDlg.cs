@@ -14,15 +14,7 @@ using System.Runtime.InteropServices;
 using MSTSCLib;
 
 using MsRdpEx;
-using MsRdpEx.Interop;
 using AxProxyObject = MSTSCLib.ProxyObject;
-using RdpAdvancedSettings8 = MsRdpEx.Interop.IMsRdpClientAdvancedSettings8;
-using RdpExtendedSettings = MsRdpEx.Interop.IMsRdpExtendedSettings;
-using RdpNonScriptable = MsRdpEx.Interop.IMsTscNonScriptable;
-using RdpPreferredRedirectionInfo = MsRdpEx.Interop.IMsRdpPreferredRedirectionInfo;
-using RdpRemoteProgram2 = MsRdpEx.Interop.ITSRemoteProgram2;
-using RdpTransportSettings4 = MsRdpEx.Interop.IMsRdpClientTransportSettings4;
-using RdpTscAdvancedSettings = MsRdpEx.Interop.IMsTscAdvancedSettings;
 
 namespace MsRdpEx_App
 {
@@ -201,188 +193,184 @@ namespace MsRdpEx_App
             return TsCryptDecryptString(Convert.FromBase64String(cookieString));
         }
 
-        public static void SetLoadBalanceInfo(RdpAdvancedSettings8 advancedSettings, string loadBalanceInfo)
+        public static void SetLoadBalanceInfo(IMsRdpClientAdvancedSettings8 advancedSettings, string loadBalanceInfo)
         {
             loadBalanceInfo += "\r\n";
             byte[] bytes = Encoding.UTF8.GetBytes(loadBalanceInfo);
-            advancedSettings.SetLoadBalanceInfo(bytes);
+            advancedSettings.LoadBalanceInfo = bytes;
         }
 
         private void ParseRdpFile(string filename, AxMSTSCLib.AxMsRdpClient9NotSafeForScripting rdp)
         {
-            RdpExtendedSettings extendedSettings = AxProxyObject.Unpack<RdpExtendedSettings>(rdp.GetOcx());
-            RdpPreferredRedirectionInfo redirectionInfo = AxProxyObject.Unpack<RdpPreferredRedirectionInfo>(rdp.GetOcx());
-            RdpAdvancedSettings8 advancedSettings = AxProxyObject.Unpack<RdpAdvancedSettings8>(rdp.AdvancedSettings9);
-            RdpTransportSettings4 transportSettings = AxProxyObject.Unpack<RdpTransportSettings4>(rdp.TransportSettings4);
-            RdpRemoteProgram2 remoteProgram = AxProxyObject.Unpack<RdpRemoteProgram2>(rdp.RemoteProgram2);
-
-            object corePropsVal = extendedSettings.GetProperty("CoreProperties");
-            RdpExtendedSettings coreProps = AxProxyObject.Unpack<RdpExtendedSettings>(corePropsVal);
-
-            object basePropsVal = extendedSettings.GetProperty("BaseProperties");
-            RdpExtendedSettings baseProps = AxProxyObject.Unpack<RdpExtendedSettings>(basePropsVal);
+            IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)rdp.GetOcx();
+            IMsRdpPreferredRedirectionInfo redirectionInfo = (IMsRdpPreferredRedirectionInfo)rdp.GetOcx();
+            IMsRdpClientAdvancedSettings8 advancedSettings = rdp.AdvancedSettings9;
+            IMsRdpClientTransportSettings4 transportSettings = rdp.TransportSettings4;
+            ITSRemoteProgram2 remoteProgram = rdp.RemoteProgram2;
+            IMsRdpExtendedSettings coreProps = extendedSettings.GetProperty<IMsRdpExtendedSettings>("CoreProperties");
+            IMsRdpExtendedSettings baseProps = extendedSettings.GetProperty<IMsRdpExtendedSettings>("BaseProperties");
 
             string[] lines = File.ReadAllLines(filename);
 
-                foreach (string line in lines)
+            foreach (string line in lines)
+            {
+                int sc1 = line.IndexOf(':');
+                int sc2 = (sc1 > 0) ? sc1 + 2 : -1;
+                if ((sc1 > 0) && (sc2 < line.Length) && (line[sc2] == ':'))
                 {
-                    int sc1 = line.IndexOf(':');
-                    int sc2 = (sc1 > 0) ? sc1 + 2 : -1;
-                    if ((sc1 > 0) && (sc2 < line.Length) && (line[sc2] == ':'))
+                    string name = line.Substring(0, sc1);
+                    char type = line[sc1 + 1];
+                    string value = line.Substring(sc2 + 1, line.Length - sc2 - 1);
+
+                    Debug.WriteLine("{0}:{1}:{2}", name, type, value);
+
+                    if (type == 's')
                     {
-                        string name = line.Substring(0, sc1);
-                        char type = line[sc1 + 1];
-                        string value = line.Substring(sc2 + 1, line.Length - sc2 - 1);
-
-                        Debug.WriteLine("{0}:{1}:{2}", name, type, value);
-
-                        if (type == 's')
+                        switch (name.ToLower())
                         {
-                            switch (name.ToLower())
-                            {
-                                case "full address":
-                                    rdp.Server = value;
-                                    break;
+                            case "full address":
+                                rdp.Server = value;
+                                break;
 
-                                case "alternate full address":
-                                    break;
+                            case "alternate full address":
+                                break;
 
-                                case "loadbalanceinfo":
-                                    SetLoadBalanceInfo(advancedSettings, value);
-                                    break;
+                            case "loadbalanceinfo":
+                                SetLoadBalanceInfo(advancedSettings, value);
+                                break;
 
-                                case "workspace id":
-                                    baseProps.SetProperty("WorkspaceID", value);
-                                    break;
+                            case "workspace id":
+                                baseProps.SetProperty("WorkspaceID", value);
+                                break;
 
-                                case "gatewayhostname":
-                                    transportSettings.SetGatewayHostname(value);
-                                    break;
+                            case "gatewayhostname":
+                                transportSettings.GatewayHostname = value;
+                                break;
 
-                                case "remoteapplicationname":
-                                    remoteProgram.SetRemoteApplicationName(value);
-                                    break;
+                            case "remoteapplicationname":
+                                remoteProgram.RemoteApplicationName = value;
+                                break;
 
-                                case "remoteapplicationprogram":
-                                    remoteProgram.SetRemoteApplicationProgram(value);
-                                    break;
+                            case "remoteapplicationprogram":
+                                remoteProgram.RemoteApplicationProgram = value;
+                                break;
 
-                                case "remotedesktopname":
-                                    coreProps.SetProperty("RemoteDesktopName", value);
-                                    break;
+                            case "remotedesktopname":
+                                coreProps.SetProperty("RemoteDesktopName", value);
+                                break;
 
-                                case "wvd endpoint pool":
-                                    coreProps.SetProperty("HostPoolId", value);
-                                    break;
+                            case "wvd endpoint pool":
+                                coreProps.SetProperty("HostPoolId", value);
+                                break;
 
-                                case "diagnosticserviceurl":
-                                    coreProps.SetProperty("RDmiDiagnosticsUrl", value);
-                                    break;
+                            case "diagnosticserviceurl":
+                                coreProps.SetProperty("RDmiDiagnosticsUrl", value);
+                                break;
 
-                                case "hubdiscoverygeourl":
-                                    coreProps.SetProperty("RDmiEHDiscoveryUrl", value);
-                                    break;
+                            case "hubdiscoverygeourl":
+                                coreProps.SetProperty("RDmiEHDiscoveryUrl", value);
+                                break;
 
-                                case "resourceprovider":
-                                    coreProps.SetProperty("RDmiResourceProvider", value);
-                                    break;
+                            case "resourceprovider":
+                                coreProps.SetProperty("RDmiResourceProvider", value);
+                                break;
 
-                                case "armpath":
-                                    coreProps.SetProperty("armPath", value);
-                                    break;
+                            case "armpath":
+                                coreProps.SetProperty("armPath", value);
+                                break;
 
-                                case "geo":
-                                    break;
+                            case "geo":
+                                break;
 
-                                case "kdcproxyurl":
-                                    extendedSettings.SetProperty("KDCProxyURL", value);
-                                    break;
+                            case "kdcproxyurl":
+                                extendedSettings.SetProperty("KDCProxyURL", value);
+                                break;
 
-                                case "gatewayaccesstoken":
-                                    {
-                                        string encryptedAuthCookie = EncryptAuthCookieString(value);
-                                        transportSettings.SetGatewayEncryptedAuthCookie(encryptedAuthCookie); // "Cookie based authentication"
-                                        transportSettings.SetGatewayEncryptedAuthCookieSize((uint)encryptedAuthCookie.Length);
-                                    }
-                                    break;
+                            case "gatewayaccesstoken":
+                                {
+                                    string encryptedAuthCookie = EncryptAuthCookieString(value);
+                                    transportSettings.GatewayEncryptedAuthCookie = encryptedAuthCookie; // "Cookie based authentication"
+                                    transportSettings.GatewayEncryptedAuthCookieSize = (uint)encryptedAuthCookie.Length;
+                                }
+                                break;
 
-                                case "recordingpath":
-                                    extendedSettings.SetProperty("RecordingPath", value);
-                                    break;
+                            case "recordingpath":
+                                extendedSettings.SetProperty("RecordingPath", value);
+                                break;
 
-                                case "recordingsessionid":
-                                    extendedSettings.SetProperty("RecordingSessionId", value);
-                                    break;
-                            }
+                            case "recordingsessionid":
+                                extendedSettings.SetProperty("RecordingSessionId", value);
+                                break;
                         }
-                        else if (type == 'i')
+                    }
+                    else if (type == 'i')
+                    {
+                        uint iValue = uint.Parse(value);
+                        bool bValue = iValue == 0 ? false : true;
+
+                        switch (name.ToLower())
                         {
-                            uint iValue = uint.Parse(value);
-                            bool bValue = iValue == 0 ? false : true;
+                            case "authentication level":
+                                advancedSettings.AuthenticationLevel = iValue;
+                                break;
 
-                            switch (name.ToLower())
-                            {
-                                case "authentication level":
-                                    advancedSettings.SetAuthenticationLevel(iValue);
-                                    break;
+                            case "enablecredsspsupport":
+                                advancedSettings.EnableCredSspSupport = bValue;
+                                break;
 
-                                case "enablecredsspsupport":
-                                    advancedSettings.SetEnableCredSspSupport(bValue);
-                                    break;
+                            case "promptcredentialonce":
+                                transportSettings.GatewayCredSharing = iValue;
+                                break;
 
-                                case "promptcredentialonce":
-                                    transportSettings.SetGatewayCredSharing(iValue);
-                                    break;
+                            case "audiomode":
+                                advancedSettings.AudioRedirectionMode = iValue;
+                                break;
 
-                                case "audiomode":
-                                    advancedSettings.SetAudioRedirectionMode(iValue);
-                                    break;
+                            case "gatewayusagemethod":
+                                transportSettings.GatewayUsageMethod = iValue;
+                                break;
 
-                                case "gatewayusagemethod":
-                                    transportSettings.SetGatewayUsageMethod(iValue);
-                                    break;
+                            case "gatewayprofileusagemethod":
+                                transportSettings.GatewayProfileUsageMethod = iValue;
+                                break;
 
-                                case "gatewayprofileusagemethod":
-                                    transportSettings.SetGatewayProfileUsageMethod(iValue);
-                                    break;
+                            case "gatewaybrokeringtype":
+                                transportSettings.GatewayBrokeringType = iValue;
+                                break;
 
-                                case "gatewaybrokeringtype":
-                                    transportSettings.SetGatewayBrokeringType(iValue);
-                                    break;
+                            case "gatewaycredentialssource":
+                                transportSettings.GatewayCredsSource = iValue;
+                                break;
 
-                                case "gatewaycredentialssource":
-                                    transportSettings.SetGatewayCredsSource(iValue);
-                                    break;
+                            case "use redirection server name":
+                                redirectionInfo.UseRedirectionServerName = bValue;
+                                break;
 
-                                case "use redirection server name":
-                                    redirectionInfo.SetUseRedirectionServerName(bValue);
-                                    break;
+                            case "allowbackgroundinput":
+                                advancedSettings.allowBackgroundInput = bValue ? 1 : 0;
+                                break;
 
-                                case "allowbackgroundinput":
-                                    advancedSettings.SetAllowBackgroundInput(bValue ? 1 : 0);
-                                    break;
+                            case "enablemousejiggler":
+                                extendedSettings.SetProperty("EnableMouseJiggler", bValue);
+                                break;
 
-                                case "enablemousejiggler":
-                                    extendedSettings.SetProperty("EnableMouseJiggler", bValue);
-                                    break;
+                            case "mousejigglerinterval":
+                                extendedSettings.SetProperty("MouseJigglerInterval", iValue);
+                                break;
 
-                                case "mousejigglerinterval":
-                                    extendedSettings.SetProperty("MouseJigglerInterval", iValue);
-                                    break;
+                            case "mousejigglermethod":
+                                extendedSettings.SetProperty("MouseJigglerMethod", iValue);
+                                break;
 
-                                case "mousejigglermethod":
-                                    extendedSettings.SetProperty("MouseJigglerMethod", iValue);
-                                    break;
+                            case "videorecordingenabled":
+                                extendedSettings.SetProperty("VideoRecordingEnabled", bValue);
+                                break;
 
-                                case "videorecordingenabled":
-                                    extendedSettings.SetProperty("VideoRecordingEnabled", bValue);
-                                    break;
-
-                                case "videorecordingquality":
-                                    extendedSettings.SetProperty("VideoRecordingQuality", iValue);
-                                    break;
-                            }
+                            case "videorecordingquality":
+                                extendedSettings.SetProperty("VideoRecordingQuality", iValue);
+                                break;
                         }
+                    }
                 }
             }
         }
@@ -469,14 +457,13 @@ namespace MsRdpEx_App
 
             rdp.Server = this.txtComputer.Text;
             rdp.UserName = this.txtUserName.Text;
-            RdpAdvancedSettings8 advancedSettings = AxProxyObject.Unpack<RdpAdvancedSettings8>(rdp.AdvancedSettings9);
-            advancedSettings.SetEnableCredSspSupport(true);
-            RdpNonScriptable secured = AxProxyObject.Unpack<RdpNonScriptable>(rdp.GetOcx());
-            secured.SetClearTextPassword(this.txtPassword.Text);
-            RdpExtendedSettings extendedSettings = AxProxyObject.Unpack<RdpExtendedSettings>(rdp.GetOcx());
+            IMsRdpClientAdvancedSettings8 advancedSettings = rdp.AdvancedSettings9;
+            advancedSettings.EnableCredSspSupport = true;
+            IMsTscNonScriptable secured = (IMsTscNonScriptable)rdp.GetOcx();
+            secured.ClearTextPassword = this.txtPassword.Text;
+            IMsRdpExtendedSettings extendedSettings = (IMsRdpExtendedSettings)rdp.GetOcx();
             extendedSettings.SetProperty("EnableHardwareMode", false);
-            RdpTscAdvancedSettings tscAdvancedSettings = AxProxyObject.Unpack<RdpTscAdvancedSettings>(rdp.AdvancedSettings);
-            tscAdvancedSettings.SetAllowBackgroundInput(1);
+            advancedSettings.allowBackgroundInput = 1;
             Size DesktopSize = new Size(1920, 1080);
             rdp.DesktopWidth = DesktopSize.Width;
             rdp.DesktopHeight = DesktopSize.Height;
@@ -487,7 +474,7 @@ namespace MsRdpEx_App
             string pluginCLSID = "7009F103-4B7E-48E2-81BC-46AB3FC1B64C";
             pluginCLSID = sessionId.ToString("D");
             string pluginDlls = String.Format("{0}:{{{1}}}", rdpExDll, pluginCLSID);
-            tscAdvancedSettings.SetPluginDlls(pluginDlls);
+            advancedSettings.PluginDlls = pluginDlls;
 
             try {
                 extendedSettings.SetProperty("RequestUseNewOutputPresenter", true);
@@ -495,8 +482,7 @@ namespace MsRdpEx_App
 
             if (axHookEnabled)
             {
-                object corePropsVal = extendedSettings.GetProperty("CoreProperties");
-                RdpExtendedSettings coreProps = AxProxyObject.Unpack<RdpExtendedSettings>(corePropsVal);
+                IMsRdpExtendedSettings coreProps = extendedSettings.GetProperty<IMsRdpExtendedSettings>("CoreProperties");
 
                 coreProps.SetProperty("BandwidthAutodetect", false);
                 coreProps.SetProperty("DisableUDPTransport", true);
