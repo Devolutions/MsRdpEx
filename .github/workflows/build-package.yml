@@ -280,6 +280,18 @@ jobs:
           cmake --build $BuildDir --config Release
           & dotnet pack .\dotnet\Devolutions.MsRdpEx -o package
 
+      - name: Test NuGet package consumers
+        shell: pwsh
+        run: |
+          $PackageVersion = '${{ needs.preflight.outputs.package-version }}'
+          $PackageSource = (Resolve-Path .\package).Path
+          $BuildDir = "build-dotnet"
+
+          dotnet test .\dotnet\MsRdpEx_Test\MsRdpEx_Test.csproj -c Release -p:CMakeOutputPath="$BuildDir\Release" -v:minimal
+          dotnet run --project .\dotnet\MsRdpEx_LegacyInterop_Test\MsRdpEx_LegacyInterop_Test.csproj -c Release -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" --no-launch-profile
+          dotnet publish .\dotnet\MsRdpEx_NativeAotInterop_Test\MsRdpEx_NativeAotInterop_Test.csproj -c Release -o .\nativeaot-test -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" -v:minimal
+          & .\nativeaot-test\MsRdpEx_NativeAotInterop_Test.exe
+
       - name: Code sign nuget contents
         shell: pwsh
         run: |
@@ -297,7 +309,7 @@ jobs:
             '-kvc', '${{ secrets.CODE_SIGNING_CERTIFICATE_NAME }}',
             '-tr', '${{ vars.CODE_SIGNING_TIMESTAMP_SERVER }}',
             '-v')
-          Get-ChildItem "$UnpackedDir\lib" -Include @("*.dll") -Recurse | ForEach-Object {
+          Get-ChildItem -Path @("$UnpackedDir\lib", "$UnpackedDir\interop") -Filter "*.dll" -Recurse | ForEach-Object {
             AzureSignTool @Params $_.FullName
           }
           Remove-Item $PackedFile -ErrorAction SilentlyContinue | Out-Null
