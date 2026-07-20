@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishAot>true</PublishAot>
+    <SelfContained>true</SelfContained>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <MsRdpExComInterop>Generated</MsRdpExComInterop>
+    <MsRdpExPackageVersion Condition="'$(MsRdpExPackageVersion)' == ''">1.0.0</MsRdpExPackageVersion>
+    <RestoreAdditionalProjectSources Condition="'$(MsRdpExTestPackageSource)' != ''">$(MsRdpExTestPackageSource)</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Devolutions.MsRdpEx" Version="[$(MsRdpExPackageVersion)]" />
+  </ItemGroup>
+</Project>

@@ -22,7 +22,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" />
+    <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../Interop.MSTSCLib.Generated/Interop.MSTSCLib.Generated.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
@@ -32,7 +33,8 @@
 
   <ItemGroup>
     <Content Include="../Interop.MSTSCLib/Interop.MSTSCLib.dll" PackagePath="interop/legacy/Interop.MSTSCLib.dll" Pack="true" Visible="false" />
-    <Content Include="$(OutputPath)/AxInterop.MSTSCLib.dll" PackagePath="interop/generated/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
+    <Content Include="$(OutputPath)/Interop.MSTSCLib.Generated.dll" PackagePath="interop/generated/Interop.MSTSCLib.Generated.dll" Pack="true" Visible="false" />
+    <Content Include="$(OutputPath)/AxInterop.MSTSCLib.dll" PackagePath="interop/generated-winforms/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
     <Content Include="../../dependencies/MsRdpEx/x86/MsRdpEx.dll" PackagePath="runtimes/win-x86/native/MsRdpEx.dll" Pack="true" Visible="false" />
     <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll" PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" Visible="false" />
     <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll" PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" Visible="false" />

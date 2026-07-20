@@ -12,6 +12,24 @@ The installer automatically associates .RDP files with mstscex, and .RDPW files 
 
 This repository also contains a C# [nuget package](https://www.nuget.org/packages/Devolutions.MsRdpEx) that can be used to consume the RDP ActiveX interface with or without API hooking, along with launching mstsc.exe or msrdc.exe as external processes using MsRdpEx.dll.
 
+### COM interop selection
+
+The package selects legacy COM interop by default, preserving the original `Interop.MSTSCLib.dll` API:
+
+```xml
+<PackageReference Include="Devolutions.MsRdpEx" Version="..." />
+```
+
+Set `MsRdpExComInterop` to `Generated` to reference the source-generated, NativeAOT-compatible `Interop.MSTSCLib.Generated.dll` instead:
+
+```xml
+<PropertyGroup>
+  <MsRdpExComInterop>Generated</MsRdpExComInterop>
+</PropertyGroup>
+```
+
+`GeneratedWinForms` selects the source-generated `AxInterop.MSTSCLib.dll` ActiveX host wrapper. It is intended for WinForms and is not NativeAOT-compatible. Set the property to `None` when an application needs neither interop assembly.
+
 ## Extended .RDP File Options
 
 MsRdpEx processes additional .RDP file options that are not normally supported by mstsc.exe:

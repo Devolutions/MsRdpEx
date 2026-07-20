@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\common.build.pre.props" />
+
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <AssemblyName>Interop.MSTSCLib.Generated</AssemblyName>
+    <PackageId>Interop.MSTSCLib.Generated</PackageId>
+    <Version>1.0.0.0</Version>
+    <TargetFrameworks>net8.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <OutputPath>$(CMakeOutputPath)</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>12</LangVersion>
+    <EnableGeneratedComInterfaceComImportInterop>true</EnableGeneratedComInterfaceComImportInterop>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\AxInterop.MSTSCLib\Generated\Enums.cs" Link="Generated\Enums.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Generated\NetCore\Interfaces.cs" Link="Generated\NetCore\Interfaces.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Generated\NetCore\Redirection.cs" Link="Generated\NetCore\Redirection.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\BinaryString.cs" Link="Interop\BinaryString.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\Compatibility.cs" Link="Interop\Compatibility.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\Extensions.cs" Link="Interop\Extensions.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\BinaryString.cs" Link="Interop\NetCore\BinaryString.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\BinaryStringRef.cs" Link="Interop\NetCore\BinaryStringRef.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\Extensions.cs" Link="Interop\NetCore\Extensions.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\IDispatch.cs" Link="Interop\NetCore\IDispatch.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\ProxyObject.cs" Link="Interop\NetCore\ProxyObject.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\Variant.cs" Link="Interop\NetCore\Variant.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\MSTSCLib\*.cs" Link="MSTSCLib\%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
