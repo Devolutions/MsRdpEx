@@ -32,7 +32,7 @@ Set `MsRdpExComInterop` to `Generated` to reference the source-generated, Native
 
 #### Legacy and generated API compatibility
 
-`Generated` preserves the public `MSTSCLib` interface names and enums from the legacy assembly. It uses source-generated COM interfaces internally, so raw `MsRdpEx.Interop` interfaces expose explicit `GetX` and `SetX` methods; use the `MSTSCLib` compatibility interfaces and extensions for property-shaped APIs. `MSTSCLibExtensions` provides conventional `GetDriveByIndex`, `GetDeviceByIndex`, and `GetDeviceById` helpers for collection access.
+`Generated` preserves the public `MSTSCLib` interface names and enums from the legacy assembly. It uses source-generated COM interfaces internally, so raw `MsRdpEx.Interop` interfaces expose explicit `GetX` and `SetX` methods; use the `MSTSCLib` compatibility interfaces and extensions for property-shaped APIs. `MSTSCLibExtensions` provides conventional methods for extended-settings values, endpoint configuration, and drive, device, and camera collection lookups.
 
 The generated assets deliberately do not provide legacy COM coclasses (such as `MsRdpClient10Class`), classic `*_Event`/`SinkHelper` event helpers, or MIDL implementation-detail types. Use `Legacy` when an application needs those APIs. `GeneratedWinForms` adds the `AxMSTSCLib` ActiveX host controls but has the same generated interop boundary.
 

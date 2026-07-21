@@ -9,6 +9,11 @@ namespace MSTSCLib
             settings.set_Property(bstrPropertyName, ref pValue);
         }
 
+        public static void SetConnectWithEndpoint(this IMsRdpClientAdvancedSettings settings, object endpoint)
+        {
+            settings.set_ConnectWithEndpoint(ref endpoint);
+        }
+
         public static object GetProperty(this IMsRdpExtendedSettings settings, BinaryString bstrPropertyName)
         {
             return settings.get_Property(bstrPropertyName);
@@ -32,6 +37,21 @@ namespace MSTSCLib
         public static IMsRdpDevice GetDeviceById(this IMsRdpDeviceCollection devices, BinaryString deviceInstanceId)
         {
             return devices.get_DeviceById(deviceInstanceId);
+        }
+
+        public static IMsRdpCameraRedirConfig GetCameraByIndex(this IMsRdpCameraRedirConfigCollection cameras, uint index)
+        {
+            return cameras.get_ByIndex(index);
+        }
+
+        public static IMsRdpCameraRedirConfig GetCameraBySymbolicLink(this IMsRdpCameraRedirConfigCollection cameras, BinaryString symbolicLink)
+        {
+            return cameras.get_BySymbolicLink(symbolicLink);
+        }
+
+        public static IMsRdpCameraRedirConfig GetCameraByInstanceId(this IMsRdpCameraRedirConfigCollection cameras, BinaryString instanceId)
+        {
+            return cameras.get_ByInstanceId(instanceId);
         }
 
         public static void set_Property(this IMsRdpExtendedSettings settings, BinaryString bstrPropertyName, object pValue)

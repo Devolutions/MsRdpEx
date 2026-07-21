@@ -45,19 +45,37 @@ namespace MsRdpEx.Tests
         }
 
         [Fact]
-        public void CompatibilityCollectionAccessorsUseModernMethodNames()
+        public void CompatibilityExtensionsProvideModernAccessors()
         {
             var extensions = typeof(ModernInterop::MSTSCLib.MSTSCLibExtensions);
 
-            Assert.NotNull(extensions.GetMethod(
+            AssertExtension(extensions,
+                nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.SetProperty),
+                typeof(ModernInterop::MSTSCLib.IMsRdpExtendedSettings), typeof(ModernInterop::MsRdpEx.Interop.BinaryString), typeof(object));
+            AssertExtension(extensions,
+                nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.GetProperty),
+                typeof(ModernInterop::MSTSCLib.IMsRdpExtendedSettings), typeof(ModernInterop::MsRdpEx.Interop.BinaryString));
+            AssertExtension(extensions,
+                nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.SetConnectWithEndpoint),
+                typeof(ModernInterop::MSTSCLib.IMsRdpClientAdvancedSettings), typeof(object));
+            AssertExtension(extensions,
                 nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.GetDriveByIndex),
-                [typeof(ModernInterop::MSTSCLib.IMsRdpDriveCollection), typeof(uint)]));
-            Assert.NotNull(extensions.GetMethod(
+                typeof(ModernInterop::MSTSCLib.IMsRdpDriveCollection), typeof(uint));
+            AssertExtension(extensions,
                 nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.GetDeviceByIndex),
-                [typeof(ModernInterop::MSTSCLib.IMsRdpDeviceCollection), typeof(uint)]));
-            Assert.NotNull(extensions.GetMethod(
+                typeof(ModernInterop::MSTSCLib.IMsRdpDeviceCollection), typeof(uint));
+            AssertExtension(extensions,
                 nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.GetDeviceById),
-                [typeof(ModernInterop::MSTSCLib.IMsRdpDeviceCollection), typeof(ModernInterop::MsRdpEx.Interop.BinaryString)]));
+                typeof(ModernInterop::MSTSCLib.IMsRdpDeviceCollection), typeof(ModernInterop::MsRdpEx.Interop.BinaryString));
+            AssertExtension(extensions,
+                nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.GetCameraByIndex),
+                typeof(ModernInterop::MSTSCLib.IMsRdpCameraRedirConfigCollection), typeof(uint));
+            AssertExtension(extensions,
+                nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.GetCameraBySymbolicLink),
+                typeof(ModernInterop::MSTSCLib.IMsRdpCameraRedirConfigCollection), typeof(ModernInterop::MsRdpEx.Interop.BinaryString));
+            AssertExtension(extensions,
+                nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.GetCameraByInstanceId),
+                typeof(ModernInterop::MSTSCLib.IMsRdpCameraRedirConfigCollection), typeof(ModernInterop::MsRdpEx.Interop.BinaryString));
         }
 
         [Fact]
@@ -83,6 +101,14 @@ namespace MsRdpEx.Tests
                     legacy.GetFields(BindingFlags.Public | BindingFlags.Static).Select(field => (field.Name, field.GetRawConstantValue())),
                     modern.GetFields(BindingFlags.Public | BindingFlags.Static).Select(field => (field.Name, field.GetRawConstantValue())));
             }
+        }
+
+        private static void AssertExtension(Type extensions, string name, params Type[] parameterTypes)
+        {
+            Assert.NotNull(extensions.GetMethods().SingleOrDefault(method =>
+                method.Name == name &&
+                !method.IsGenericMethod &&
+                method.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(parameterTypes)));
         }
 
     }
