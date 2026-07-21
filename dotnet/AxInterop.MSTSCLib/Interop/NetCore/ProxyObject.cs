@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 
@@ -63,12 +62,12 @@ namespace MSTSCLib
 
         bool IDynamicInterfaceCastable.IsInterfaceImplemented(RuntimeTypeHandle interfaceType, bool throwIfNotImplemented)
         {
-            return Type.GetTypeFromHandle(interfaceType)?.GetCustomAttribute<ProxyGuidAttribute>() is not null;
+            return ProxyMetadata.TryGetImplementation(interfaceType, out _);
         }
 
         RuntimeTypeHandle IDynamicInterfaceCastable.GetInterfaceImplementation(RuntimeTypeHandle interfaceType)
         {
-            return Type.GetTypeFromHandle(interfaceType)?.GetCustomAttribute<ProxyGuidAttribute>()?.Type.TypeHandle ?? default;
+            return ProxyMetadata.TryGetImplementation(interfaceType, out var implementationType) ? implementationType : default;
         }
     }
 }

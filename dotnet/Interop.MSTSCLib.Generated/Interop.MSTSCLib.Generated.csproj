@@ -28,7 +28,10 @@
     <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\BinaryStringRef.cs" Link="Interop\NetCore\BinaryStringRef.cs" />
     <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\Extensions.cs" Link="Interop\NetCore\Extensions.cs" />
     <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\IDispatch.cs" Link="Interop\NetCore\IDispatch.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\ProxyMetadata.cs" Link="Interop\NetCore\ProxyMetadata.cs" />
     <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\ProxyObject.cs" Link="Interop\NetCore\ProxyObject.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\RdpClientFactory.cs" Link="Interop\NetCore\RdpClientFactory.cs" />
+    <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\RdpClientEvents.cs" Link="Interop\NetCore\RdpClientEvents.cs" />
     <Compile Include="..\AxInterop.MSTSCLib\Interop\NetCore\Variant.cs" Link="Interop\NetCore\Variant.cs" />
     <Compile Include="..\AxInterop.MSTSCLib\MSTSCLib\*.cs" Link="MSTSCLib\%(Filename)%(Extension)" />
   </ItemGroup>

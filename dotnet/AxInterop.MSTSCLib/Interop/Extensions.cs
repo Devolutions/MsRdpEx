@@ -1,9 +1,18 @@
-﻿using MsRdpEx.Interop;
+﻿using System;
+using MsRdpEx.Interop;
 
 namespace MSTSCLib
 {
     public static class MSTSCLibExtensions
     {
+        public static T GetValue<T>(this IMsRdpExtendedSettings settings, BinaryString bstrPropertyName) where T : struct
+        {
+            object value = settings.GetProperty(bstrPropertyName);
+            return value is T result
+                ? result
+                : throw new InvalidCastException($"The '{bstrPropertyName}' extended setting is not a {typeof(T).Name}.");
+        }
+
         public static void SetProperty(this IMsRdpExtendedSettings settings, BinaryString bstrPropertyName, object pValue)
         {
             settings.set_Property(bstrPropertyName, ref pValue);

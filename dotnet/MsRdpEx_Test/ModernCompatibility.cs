@@ -2,6 +2,7 @@ extern alias ModernInterop;
 
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace MsRdpEx.Tests
 {
@@ -42,6 +43,74 @@ namespace MsRdpEx.Tests
             Assert.Equal(
                 GetLegacyInterfaces().Select(type => type.FullName),
                 GetModernInterfaces().Select(type => type.FullName));
+        }
+
+        [Fact]
+        public void CompatibilityInterfacesHaveStaticProxyMappings()
+        {
+            var proxyMetadata = modernInteropLib.GetType("MSTSCLib.ProxyMetadata", throwOnError: true)!;
+            var tryGetImplementation = proxyMetadata.GetMethod(
+                "TryGetImplementation",
+                BindingFlags.Public | BindingFlags.Static)!;
+
+            foreach (var compatibilityInterface in GetModernInterfaces())
+            {
+                var arguments = new object?[] { compatibilityInterface.TypeHandle, null };
+                Assert.True((bool)tryGetImplementation.Invoke(null, arguments)!);
+                Assert.NotNull(arguments[1]);
+            }
+        }
+
+        [Fact]
+        public void ModernInteropExposesActivationAndEventApis()
+        {
+            Assert.NotNull(modernInteropLib.GetType("MSTSCLib.RdpClientFactory"));
+            Assert.NotNull(modernInteropLib.GetType("MSTSCLib.RdpClientEventSubscription"));
+            Assert.NotNull(modernInteropLib.GetType("MSTSCLib.RdpClientEvents"));
+        }
+
+        [Fact]
+        public void EventSubscriptionDispatchesIDispatchCallbacks()
+        {
+            var subscription = (ModernInterop::MSTSCLib.RdpClientEventSubscription)RuntimeHelpers.GetUninitializedObject(
+                typeof(ModernInterop::MSTSCLib.RdpClientEventSubscription));
+            var sinkType = typeof(ModernInterop::MSTSCLib.RdpClientEventSubscription).GetNestedType(
+                "RdpClientEventSink",
+                BindingFlags.NonPublic)!;
+            var sink = Activator.CreateInstance(
+                sinkType,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                args: [subscription],
+                culture: null)!;
+            var invoke = sinkType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public)!;
+
+            int? disconnectedReason = null;
+            (int Width, int Height)? remoteDesktopSize = null;
+            subscription.Disconnected += reason => disconnectedReason = reason;
+            subscription.RemoteDesktopSizeChanged += (width, height) => remoteDesktopSize = (width, height);
+
+            unsafe
+            {
+                var arguments = stackalloc ModernInterop::MsRdpEx.Interop.NativeVariant[2];
+                arguments[0] = new ModernInterop::MsRdpEx.Interop.NativeVariant(
+                    ModernInterop::MsRdpEx.Interop.VariantType.Int32) { Content1 = 600 };
+                arguments[1] = new ModernInterop::MsRdpEx.Interop.NativeVariant(
+                    ModernInterop::MsRdpEx.Interop.VariantType.Int32) { Content1 = 800 };
+                var parameters = new DispatchParameters
+                {
+                    Arguments = (nint)arguments,
+                    ArgumentCount = 2,
+                };
+
+                invoke.Invoke(sink, [12, nint.Zero, 0, (short)0, (nint)(&parameters), nint.Zero, nint.Zero, nint.Zero]);
+                parameters.ArgumentCount = 1;
+                arguments[0].Content1 = 42;
+                invoke.Invoke(sink, [4, nint.Zero, 0, (short)0, (nint)(&parameters), nint.Zero, nint.Zero, nint.Zero]);
+            }
+
+            Assert.Equal((800, 600), remoteDesktopSize);
+            Assert.Equal(42, disconnectedReason);
         }
 
         [Fact]
@@ -109,6 +178,14 @@ namespace MsRdpEx.Tests
                 method.Name == name &&
                 !method.IsGenericMethod &&
                 method.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(parameterTypes)));
+        }
+
+        private unsafe struct DispatchParameters
+        {
+            public nint Arguments;
+            public nint NamedArguments;
+            public uint ArgumentCount;
+            public uint NamedArgumentCount;
         }
 
     }
