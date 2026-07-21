@@ -30,6 +30,14 @@ Set `MsRdpExComInterop` to `Generated` to reference the source-generated, Native
 
 `GeneratedWinForms` selects the source-generated `AxInterop.MSTSCLib.dll` ActiveX host wrapper. It is intended for WinForms and is not NativeAOT-compatible. Set the property to `None` when an application needs neither interop assembly.
 
+#### Legacy and generated API compatibility
+
+`Generated` preserves the public `MSTSCLib` interface names and enums from the legacy assembly. It uses source-generated COM interfaces internally, so raw `MsRdpEx.Interop` interfaces expose explicit `GetX` and `SetX` methods; use the `MSTSCLib` compatibility interfaces and extensions for property-shaped APIs. `MSTSCLibExtensions` provides conventional `GetDriveByIndex`, `GetDeviceByIndex`, and `GetDeviceById` helpers for collection access.
+
+The generated assets deliberately do not provide legacy COM coclasses (such as `MsRdpClient10Class`), classic `*_Event`/`SinkHelper` event helpers, or MIDL implementation-detail types. Use `Legacy` when an application needs those APIs. `GeneratedWinForms` adds the `AxMSTSCLib` ActiveX host controls but has the same generated interop boundary.
+
+The legacy and generated assets define overlapping `MSTSCLib` type names and cannot be referenced by the same application. Select exactly one `MsRdpExComInterop` mode per project.
+
 ## Extended .RDP File Options
 
 MsRdpEx processes additional .RDP file options that are not normally supported by mstsc.exe:
