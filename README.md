@@ -12,6 +12,50 @@ The installer automatically associates .RDP files with mstscex, and .RDPW files 
 
 This repository also contains a C# [nuget package](https://www.nuget.org/packages/Devolutions.MsRdpEx) that can be used to consume the RDP ActiveX interface with or without API hooking, along with launching mstsc.exe or msrdc.exe as external processes using MsRdpEx.dll.
 
+### COM interop selection
+
+The package selects legacy COM interop by default, preserving the original `Interop.MSTSCLib.dll` and `AxInterop.MSTSCLib.dll` APIs for both .NET Framework 4.8 and `net8.0-windows` consumers:
+
+```xml
+<PackageReference Include="Devolutions.MsRdpEx" Version="..." />
+```
+
+Set `MsRdpExComInterop` to `Generated` to reference the source-generated, NativeAOT-compatible `Interop.MSTSCLib.Generated.dll` instead:
+
+```xml
+<PropertyGroup>
+  <MsRdpExComInterop>Generated</MsRdpExComInterop>
+</PropertyGroup>
+```
+
+For a WinForms ActiveX host alongside the standalone generated projection, set `MsRdpExGeneratedWinForms` separately:
+
+```xml
+<PropertyGroup>
+  <MsRdpExComInterop>Generated</MsRdpExComInterop>
+  <MsRdpExGeneratedWinForms>true</MsRdpExGeneratedWinForms>
+  <UseWindowsForms>true</UseWindowsForms>
+</PropertyGroup>
+```
+
+This adds `Interop.MSTSCLib.Generated.WinForms.dll`, whose `MsRdpEx.WinForms.GeneratedRdpClientHost` hosts a generated RDP proxy with a configurable CLSID, ActiveX DLL name, and optional MsRdpEx DLL path; call `GetClient<T>()` after the control is created. It is a WinForms-only feature and is not NativeAOT-compatible.
+
+`GeneratedWinForms` remains available for applications moving to the generated projection that require its `AxMSTSCLib` wrapper types. Existing legacy `AxMSTSCLib` consumers remain on the default `Legacy` mode. Set `MsRdpExComInterop` to `None` when an application needs neither interop assembly.
+
+Packages that ship generated assets expose `MsRdpExGeneratedInteropSupported=true`, `MsRdpExGeneratedWinFormsInteropSupported=true`, and `MsRdpExGeneratedWinFormsHostSupported=true` after the package targets are imported. Selecting a generated mode or host validates that its assembly is present and fails with a clear package capability error otherwise.
+
+#### Legacy and generated API compatibility
+
+`Generated` preserves the public `MSTSCLib` interface names and enums from the legacy assembly. It uses source-generated COM interfaces internally, so raw `MsRdpEx.Interop` interfaces expose explicit `GetX` and `SetX` methods; use the `MSTSCLib` compatibility interfaces and extensions for property-shaped APIs. `MSTSCLibExtensions` provides conventional methods for extended-settings values, endpoint and publisher-certificate-chain configuration, byte-preserving load-balance information, generated interface conversion, and drive, device, and camera collection lookups.
+
+Use `RdpClientFactory.CreateClient10()` to activate the Microsoft RDP Client Control version 11 without legacy coclasses. The returned compatibility interface can use `Subscribe()` to obtain an `RdpClientEventSubscription`; dispose it to unadvise the COM connection point. The subscription exposes all legacy `IMsTscAxEvents` callbacks as managed events, including mutable confirmation, public-key, and auto-reconnect response event arguments for COM by-ref callbacks. This runtime API requires Windows and an apartment-threaded caller.
+
+The NativeAOT package-consumer fixture accepts `--com-integration` to check activation, generated proxy invocation, and event Advise/Unadvise behavior without opening a remote connection. It exits with code `77` and prints `SKIPPED` when the RDP Client Control version 11 is not registered.
+
+The generated assets deliberately do not provide legacy COM coclasses (such as `MsRdpClient10Class`), classic `*_Event`/`SinkHelper` event helpers, or MIDL implementation-detail types. Use `Legacy` when an application needs those APIs. The additive WinForms host has the same generated interop boundary; `GeneratedWinForms` instead adds the older `AxMSTSCLib` host controls.
+
+The legacy and generated assets define overlapping `MSTSCLib` type names and cannot be referenced by the same application. Select exactly one `MsRdpExComInterop` mode per project.
+
 ## Extended .RDP File Options
 
 MsRdpEx processes additional .RDP file options that are not normally supported by mstsc.exe:

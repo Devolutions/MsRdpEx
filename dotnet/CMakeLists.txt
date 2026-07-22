@@ -2,6 +2,12 @@
 include_external_msproject(AxInterop.MSTSCLib
     "${CMAKE_CURRENT_SOURCE_DIR}/AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj")
 
+include_external_msproject(AxInterop.MSTSCLib.Legacy
+    "${CMAKE_CURRENT_SOURCE_DIR}/AxInterop.MSTSCLib.Legacy/AxInterop.MSTSCLib.Legacy.csproj")
+
+include_external_msproject(Interop.MSTSCLib.Generated.WinForms
+    "${CMAKE_CURRENT_SOURCE_DIR}/Interop.MSTSCLib.Generated.WinForms/Interop.MSTSCLib.Generated.WinForms.csproj")
+
 include_external_msproject(Devolutions.MsRdpEx
     "${CMAKE_CURRENT_SOURCE_DIR}/Devolutions.MsRdpEx/Devolutions.MsRdpEx.csproj")
 

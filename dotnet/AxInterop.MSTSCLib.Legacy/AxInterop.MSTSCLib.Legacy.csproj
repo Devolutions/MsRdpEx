@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\common.build.pre.props" />
+
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <AssemblyName>AxInterop.MSTSCLib</AssemblyName>
+    <PackageId>AxInterop.MSTSCLib</PackageId>
+    <Version>1.0.0.0</Version>
+    <OutputType>Library</OutputType>
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>disable</Nullable>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <OutputPath Condition="'$(CMakeOutputPath)' != ''">$(CMakeOutputPath)\legacy\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Interop.MSTSCLib">
+      <Private>true</Private>
+      <HintPath>..\Interop.MSTSCLib\Interop.MSTSCLib.dll</HintPath>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+  </ItemGroup>
+
+</Project>

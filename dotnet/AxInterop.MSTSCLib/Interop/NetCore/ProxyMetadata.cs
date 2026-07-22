@@ -1,0 +1,138 @@
+using System;
+using System.Collections.Generic;
+
+namespace MSTSCLib
+{
+    internal static class ProxyMetadata
+    {
+        private static readonly Dictionary<RuntimeTypeHandle, RuntimeTypeHandle> implementations = new()
+        {
+            [typeof(IMsTscAx_Redist).TypeHandle] = typeof(IMsTscAx_RedistProxy).TypeHandle,
+            [typeof(IMsTscAx).TypeHandle] = typeof(IMsTscAxProxy).TypeHandle,
+            [typeof(IMsTscSecuredSettings).TypeHandle] = typeof(IMsTscSecuredSettingsProxy).TypeHandle,
+            [typeof(IMsTscAdvancedSettings).TypeHandle] = typeof(IMsTscAdvancedSettingsProxy).TypeHandle,
+            [typeof(IMsTscDebug).TypeHandle] = typeof(IMsTscDebugProxy).TypeHandle,
+            [typeof(IMsTscAxEvents).TypeHandle] = typeof(IMsTscAxEventsProxy).TypeHandle,
+            [typeof(IMsRdpClient).TypeHandle] = typeof(IMsRdpClientProxy).TypeHandle,
+            [typeof(IMsRdpClientAdvancedSettings).TypeHandle] = typeof(IMsRdpClientAdvancedSettingsProxy).TypeHandle,
+            [typeof(IMsRdpClientSecuredSettings).TypeHandle] = typeof(IMsRdpClientSecuredSettingsProxy).TypeHandle,
+            [typeof(IMsTscNonScriptable).TypeHandle] = typeof(IMsTscNonScriptableProxy).TypeHandle,
+            [typeof(IMsRdpClientNonScriptable).TypeHandle] = typeof(IMsRdpClientNonScriptableProxy).TypeHandle,
+            [typeof(IMsRdpClient2).TypeHandle] = typeof(IMsRdpClient2Proxy).TypeHandle,
+            [typeof(IMsRdpClientAdvancedSettings2).TypeHandle] = typeof(IMsRdpClientAdvancedSettings2Proxy).TypeHandle,
+            [typeof(IMsRdpClient3).TypeHandle] = typeof(IMsRdpClient3Proxy).TypeHandle,
+            [typeof(IMsRdpClientAdvancedSettings3).TypeHandle] = typeof(IMsRdpClientAdvancedSettings3Proxy).TypeHandle,
+            [typeof(IMsRdpClient4).TypeHandle] = typeof(IMsRdpClient4Proxy).TypeHandle,
+            [typeof(IMsRdpClientAdvancedSettings4).TypeHandle] = typeof(IMsRdpClientAdvancedSettings4Proxy).TypeHandle,
+            [typeof(IMsRdpClientNonScriptable2).TypeHandle] = typeof(IMsRdpClientNonScriptable2Proxy).TypeHandle,
+            [typeof(IMsRdpClient5).TypeHandle] = typeof(IMsRdpClient5Proxy).TypeHandle,
+            [typeof(IMsRdpClientTransportSettings).TypeHandle] = typeof(IMsRdpClientTransportSettingsProxy).TypeHandle,
+            [typeof(IMsRdpClientAdvancedSettings5).TypeHandle] = typeof(IMsRdpClientAdvancedSettings5Proxy).TypeHandle,
+            [typeof(ITSRemoteProgram).TypeHandle] = typeof(ITSRemoteProgramProxy).TypeHandle,
+            [typeof(IMsRdpClientShell).TypeHandle] = typeof(IMsRdpClientShellProxy).TypeHandle,
+            [typeof(IMsRdpClientNonScriptable3).TypeHandle] = typeof(IMsRdpClientNonScriptable3Proxy).TypeHandle,
+            [typeof(IMsRdpDeviceCollection).TypeHandle] = typeof(IMsRdpDeviceCollectionProxy).TypeHandle,
+            [typeof(IMsRdpDriveCollection).TypeHandle] = typeof(IMsRdpDriveCollectionProxy).TypeHandle,
+            [typeof(IMsRdpClient6).TypeHandle] = typeof(IMsRdpClient6Proxy).TypeHandle,
+            [typeof(IMsRdpClientAdvancedSettings6).TypeHandle] = typeof(IMsRdpClientAdvancedSettings6Proxy).TypeHandle,
+            [typeof(IMsRdpClientTransportSettings2).TypeHandle] = typeof(IMsRdpClientTransportSettings2Proxy).TypeHandle,
+            [typeof(IMsRdpClientNonScriptable4).TypeHandle] = typeof(IMsRdpClientNonScriptable4Proxy).TypeHandle,
+            [typeof(IMsRdpClient7).TypeHandle] = typeof(IMsRdpClient7Proxy).TypeHandle,
+            [typeof(IMsRdpClientAdvancedSettings7).TypeHandle] = typeof(IMsRdpClientAdvancedSettings7Proxy).TypeHandle,
+            [typeof(IMsRdpClientTransportSettings3).TypeHandle] = typeof(IMsRdpClientTransportSettings3Proxy).TypeHandle,
+            [typeof(IMsRdpClientSecuredSettings2).TypeHandle] = typeof(IMsRdpClientSecuredSettings2Proxy).TypeHandle,
+            [typeof(ITSRemoteProgram2).TypeHandle] = typeof(ITSRemoteProgram2Proxy).TypeHandle,
+            [typeof(IMsRdpClientNonScriptable5).TypeHandle] = typeof(IMsRdpClientNonScriptable5Proxy).TypeHandle,
+            [typeof(IMsRdpPreferredRedirectionInfo).TypeHandle] = typeof(IMsRdpPreferredRedirectionInfoProxy).TypeHandle,
+            [typeof(IMsRdpExtendedSettings).TypeHandle] = typeof(IMsRdpExtendedSettingsProxy).TypeHandle,
+            [typeof(IMsRdpClient8).TypeHandle] = typeof(IMsRdpClient8Proxy).TypeHandle,
+            [typeof(IMsRdpClientAdvancedSettings8).TypeHandle] = typeof(IMsRdpClientAdvancedSettings8Proxy).TypeHandle,
+            [typeof(IMsRdpClient9).TypeHandle] = typeof(IMsRdpClient9Proxy).TypeHandle,
+            [typeof(IMsRdpClientTransportSettings4).TypeHandle] = typeof(IMsRdpClientTransportSettings4Proxy).TypeHandle,
+            [typeof(IMsRdpClient10).TypeHandle] = typeof(IMsRdpClient10Proxy).TypeHandle,
+            [typeof(ITSRemoteProgram3).TypeHandle] = typeof(ITSRemoteProgram3Proxy).TypeHandle,
+            [typeof(IMsRdpClientNonScriptable6).TypeHandle] = typeof(IMsRdpClientNonScriptable6Proxy).TypeHandle,
+            [typeof(IMsRdpClientNonScriptable7).TypeHandle] = typeof(IMsRdpClientNonScriptable7Proxy).TypeHandle,
+            [typeof(IMsRdpCameraRedirConfigCollection).TypeHandle] = typeof(IMsRdpCameraRedirConfigCollectionProxy).TypeHandle,
+            [typeof(IMsRdpClipboard).TypeHandle] = typeof(IMsRdpClipboardProxy).TypeHandle,
+            [typeof(IRemoteDesktopClient).TypeHandle] = typeof(IRemoteDesktopClientProxy).TypeHandle,
+            [typeof(IRemoteDesktopClientSettings).TypeHandle] = typeof(IRemoteDesktopClientSettingsProxy).TypeHandle,
+            [typeof(IRemoteDesktopClientActions).TypeHandle] = typeof(IRemoteDesktopClientActionsProxy).TypeHandle,
+            [typeof(IRemoteDesktopClientTouchPointer).TypeHandle] = typeof(IRemoteDesktopClientTouchPointerProxy).TypeHandle,
+            [typeof(IRemoteDesktopClientEvents).TypeHandle] = typeof(IRemoteDesktopClientEventsProxy).TypeHandle,
+            [typeof(IMsRdpDevice).TypeHandle] = typeof(IMsRdpDeviceProxy).TypeHandle,
+            [typeof(IMsRdpDrive).TypeHandle] = typeof(IMsRdpDriveProxy).TypeHandle,
+            [typeof(IMsRdpCameraRedirConfig).TypeHandle] = typeof(IMsRdpCameraRedirConfigProxy).TypeHandle,
+        };
+
+        private static readonly Dictionary<RuntimeTypeHandle, Guid> interfaceIds = new()
+        {
+            [typeof(IMsTscAx_Redist).TypeHandle] = new("327BB5CD-834E-4400-AEF2-B30E15E5D682"),
+            [typeof(IMsTscAx).TypeHandle] = new("8C11EFAE-92C3-11D1-BC1E-00C04FA31489"),
+            [typeof(IMsTscSecuredSettings).TypeHandle] = new("C9D65442-A0F9-45B2-8F73-D61D2DB8CBB6"),
+            [typeof(IMsTscAdvancedSettings).TypeHandle] = new("809945CC-4B3B-4A92-A6B0-DBF9B5F2EF2D"),
+            [typeof(IMsTscDebug).TypeHandle] = new("209D0EB9-6254-47B1-9033-A98DAE55BB27"),
+            [typeof(IMsTscAxEvents).TypeHandle] = new("336D5562-EFA8-482E-8CB3-C5C0FC7A7DB6"),
+            [typeof(IMsRdpClient).TypeHandle] = new("92B4A539-7115-4B7C-A5A9-E5D9EFC2780A"),
+            [typeof(IMsRdpClientAdvancedSettings).TypeHandle] = new("3C65B4AB-12B3-465B-ACD4-B8DAD3BFF9E2"),
+            [typeof(IMsRdpClientSecuredSettings).TypeHandle] = new("605BEFCF-39C1-45CC-A811-068FB7BE346D"),
+            [typeof(IMsTscNonScriptable).TypeHandle] = new("C1E6743A-41C1-4A74-832A-0DD06C1C7A0E"),
+            [typeof(IMsRdpClientNonScriptable).TypeHandle] = new("2F079C4C-87B2-4AFD-97AB-20CDB43038AE"),
+            [typeof(IMsRdpClient2).TypeHandle] = new("E7E17DC4-3B71-4BA7-A8E6-281FFADCA28F"),
+            [typeof(IMsRdpClientAdvancedSettings2).TypeHandle] = new("9AC42117-2B76-4320-AA44-0E616AB8437B"),
+            [typeof(IMsRdpClient3).TypeHandle] = new("91B7CBC5-A72E-4FA0-9300-D647D7E897FF"),
+            [typeof(IMsRdpClientAdvancedSettings3).TypeHandle] = new("19CD856B-C542-4C53-ACEE-F127E3BE1A59"),
+            [typeof(IMsRdpClient4).TypeHandle] = new("095E0738-D97D-488B-B9F6-DD0E8D66C0DE"),
+            [typeof(IMsRdpClientAdvancedSettings4).TypeHandle] = new("FBA7F64E-7345-4405-AE50-FA4A763DC0DE"),
+            [typeof(IMsRdpClientNonScriptable2).TypeHandle] = new("17A5E535-4072-4FA4-AF32-C8D0D47345E9"),
+            [typeof(IMsRdpClient5).TypeHandle] = new("4EB5335B-6429-477D-B922-E06A28ECD8BF"),
+            [typeof(IMsRdpClientTransportSettings).TypeHandle] = new("720298C0-A099-46F5-9F82-96921BAE4701"),
+            [typeof(IMsRdpClientAdvancedSettings5).TypeHandle] = new("FBA7F64E-6783-4405-DA45-FA4A763DABD0"),
+            [typeof(ITSRemoteProgram).TypeHandle] = new("FDD029F9-467A-4C49-8529-64B521DBD1B4"),
+            [typeof(IMsRdpClientShell).TypeHandle] = new("D012AE6D-C19A-4BFE-B367-201F8911F134"),
+            [typeof(IMsRdpClientNonScriptable3).TypeHandle] = new("B3378D90-0728-45C7-8ED7-B6159FB92219"),
+            [typeof(IMsRdpDeviceCollection).TypeHandle] = new("56540617-D281-488C-8738-6A8FDF64A118"),
+            [typeof(IMsRdpDriveCollection).TypeHandle] = new("7FF17599-DA2C-4677-AD35-F60C04FE1585"),
+            [typeof(IMsRdpClient6).TypeHandle] = new("D43B7D80-8517-4B6D-9EAC-96AD6800D7F2"),
+            [typeof(IMsRdpClientAdvancedSettings6).TypeHandle] = new("222C4B5D-45D9-4DF0-A7C6-60CF9089D285"),
+            [typeof(IMsRdpClientTransportSettings2).TypeHandle] = new("67341688-D606-4C73-A5D2-2E0489009319"),
+            [typeof(IMsRdpClientNonScriptable4).TypeHandle] = new("F50FA8AA-1C7D-4F59-B15C-A90CACAE1FCB"),
+            [typeof(IMsRdpClient7).TypeHandle] = new("B2A5B5CE-3461-444A-91D4-ADD26D070638"),
+            [typeof(IMsRdpClientAdvancedSettings7).TypeHandle] = new("26036036-4010-4578-8091-0DB9A1EDF9C3"),
+            [typeof(IMsRdpClientTransportSettings3).TypeHandle] = new("3D5B21AC-748D-41DE-8F30-E15169586BD4"),
+            [typeof(IMsRdpClientSecuredSettings2).TypeHandle] = new("25F2CE20-8B1D-4971-A7CD-549DAE201FC0"),
+            [typeof(ITSRemoteProgram2).TypeHandle] = new("92C38A7D-241A-418C-9936-099872C9AF20"),
+            [typeof(IMsRdpClientNonScriptable5).TypeHandle] = new("4F6996D5-D7B1-412C-B0FF-063718566907"),
+            [typeof(IMsRdpPreferredRedirectionInfo).TypeHandle] = new("FDD029F9-9574-4DEF-8529-64B521CCCAA4"),
+            [typeof(IMsRdpExtendedSettings).TypeHandle] = new("302D8188-0052-4807-806A-362B628F9AC5"),
+            [typeof(IMsRdpClient8).TypeHandle] = new("4247E044-9271-43A9-BC49-E2AD9E855D62"),
+            [typeof(IMsRdpClientAdvancedSettings8).TypeHandle] = new("89ACB528-2557-4D16-8625-226A30E97E9A"),
+            [typeof(IMsRdpClient9).TypeHandle] = new("28904001-04B6-436C-A55B-0AF1A0883DC9"),
+            [typeof(IMsRdpClientTransportSettings4).TypeHandle] = new("011C3236-4D81-4515-9143-067AB630D299"),
+            [typeof(IMsRdpClient10).TypeHandle] = new("7ED92C39-EB38-4927-A70A-708AC5A59321"),
+            [typeof(ITSRemoteProgram3).TypeHandle] = new("4B84EA77-ACEA-418C-881A-4A8C28AB1510"),
+            [typeof(IMsRdpClientNonScriptable6).TypeHandle] = new("05293249-B28B-4BD8-BE64-1B2F496B910E"),
+            [typeof(IMsRdpClientNonScriptable7).TypeHandle] = new("71B4A60A-FE21-46D8-A39B-8E32BA0C5ECC"),
+            [typeof(IMsRdpCameraRedirConfigCollection).TypeHandle] = new("AE45252B-AAAB-4504-B681-649D6073A37A"),
+            [typeof(IMsRdpClipboard).TypeHandle] = new("2E769EE8-00C7-43DC-AFD9-235D75B72A40"),
+            [typeof(IRemoteDesktopClient).TypeHandle] = new("57D25668-625A-4905-BE4E-304CAA13F89C"),
+            [typeof(IRemoteDesktopClientSettings).TypeHandle] = new("48A0F2A7-2713-431F-BBAC-6F4558E7D64D"),
+            [typeof(IRemoteDesktopClientActions).TypeHandle] = new("7D54BC4E-1028-45D4-8B0A-B9B6BFFBA176"),
+            [typeof(IRemoteDesktopClientTouchPointer).TypeHandle] = new("260EC22D-8CBC-44B5-9E88-2A37F6C93AE9"),
+            [typeof(IRemoteDesktopClientEvents).TypeHandle] = new("079863B7-6D47-4105-8BFE-0CDCB360E67D"),
+            [typeof(IMsRdpDevice).TypeHandle] = new("60C3B9C8-9E92-4F5E-A3E7-604A912093EA"),
+            [typeof(IMsRdpDrive).TypeHandle] = new("D28B5458-F694-47A8-8E61-40356A767E46"),
+            [typeof(IMsRdpCameraRedirConfig).TypeHandle] = new("09750604-D625-47C1-9FCD-F09F735705D7"),
+        };
+
+        public static bool TryGetImplementation(RuntimeTypeHandle interfaceType, out RuntimeTypeHandle implementationType)
+        {
+            return implementations.TryGetValue(interfaceType, out implementationType);
+        }
+
+        public static bool TryGetInterfaceId(RuntimeTypeHandle interfaceType, out Guid interfaceId)
+        {
+            return interfaceIds.TryGetValue(interfaceType, out interfaceId);
+        }
+    }
+}
