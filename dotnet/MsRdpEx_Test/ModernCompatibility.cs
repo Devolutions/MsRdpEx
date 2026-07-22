@@ -70,6 +70,14 @@ namespace MsRdpEx.Tests
         }
 
         [Fact]
+        public void RdpClientFactoryExposesCompatibleModernControlFactories()
+        {
+            AssertFactoryReturnType("CreateClient9", typeof(MSTSCLib.IMsRdpClient9));
+            AssertFactoryReturnType("CreateClient10", typeof(MSTSCLib.IMsRdpClient10));
+            AssertFactoryReturnType("CreateClient11", typeof(MSTSCLib.IMsRdpClient10));
+        }
+
+        [Fact]
         public void EventSubscriptionDispatchesIDispatchCallbacks()
         {
             var subscription = (ModernInterop::MSTSCLib.RdpClientEventSubscription)RuntimeHelpers.GetUninitializedObject(
@@ -178,6 +186,12 @@ namespace MsRdpEx.Tests
                 method.Name == name &&
                 !method.IsGenericMethod &&
                 method.GetParameters().Select(parameter => parameter.ParameterType).SequenceEqual(parameterTypes)));
+        }
+
+        private static void AssertFactoryReturnType(string name, Type returnType)
+        {
+            var factory = typeof(MSTSCLib.RdpClientFactory);
+            Assert.Equal(returnType, factory.GetMethod(name, Type.EmptyTypes)?.ReturnType);
         }
 
         private unsafe struct DispatchParameters
