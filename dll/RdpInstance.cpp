@@ -7,6 +7,8 @@
 
 #include "TSObjects.h"
 #include "ComHelpers.h"
+#include "CursorOverlay.h"
+#include "RdpInstanceInternal.h"
 
 extern "C" const GUID IID_IMsRdpExInstance;
 
@@ -17,6 +19,7 @@ public:
     {
         m_refCount = 1;
         m_pMsRdpClient = pMsRdpClient;
+        m_CursorOverlay = MsRdpEx_CursorOverlay_New();
         MsRdpEx_GuidGenerate(&m_sessionId);
 
         char sessionId[MSRDPEX_GUID_STRING_SIZE];
@@ -26,6 +29,11 @@ public:
 
     ~CMsRdpExInstance()
     {
+        if (m_CursorOverlay) {
+            MsRdpEx_CursorOverlay_Free(m_CursorOverlay);
+            m_CursorOverlay = NULL;
+        }
+
         if (m_OutputMirror) {
             MsRdpEx_OutputMirror_Free(m_OutputMirror);
             m_OutputMirror = NULL;
@@ -292,6 +300,67 @@ public:
         m_LastMousePosY = posY;
     }
 
+    void SetCursor(HCURSOR cursor)
+    {
+        if (!m_CursorOverlay)
+            return;
+
+        if (MsRdpEx_CursorOverlay_SetShape(m_CursorOverlay, cursor))
+            EmitCursorFrame();
+    }
+
+    void UpdateCursorPosition(HWND sourceWindow, int32_t posX, int32_t posY)
+    {
+        if (!m_CursorOverlay || !sourceWindow || !m_hOutputPresenterWnd)
+            return;
+
+        POINT point = { posX, posY };
+        MapWindowPoints(sourceWindow, m_hOutputPresenterWnd, &point, 1);
+
+        RECT rect = { 0 };
+        bool visible = GetClientRect(m_hOutputPresenterWnd, &rect) &&
+            (point.x >= rect.left) && (point.y >= rect.top) &&
+            (point.x < rect.right) && (point.y < rect.bottom);
+
+        if (MsRdpEx_CursorOverlay_SetPosition(m_CursorOverlay, point.x, point.y, visible))
+            EmitCursorFrame();
+    }
+
+    void HideCursor()
+    {
+        if (!m_CursorOverlay)
+            return;
+
+        if (MsRdpEx_CursorOverlay_SetPosition(
+            m_CursorOverlay, m_LastMousePosX, m_LastMousePosY, false))
+        {
+            EmitCursorFrame();
+        }
+    }
+
+    void DumpFrameWithCursor()
+    {
+        if (!m_OutputMirror)
+            return;
+
+        if (m_CursorOverlay)
+            MsRdpEx_CursorOverlay_DumpFrame(m_CursorOverlay, m_OutputMirror);
+        else
+            MsRdpEx_OutputMirror_DumpFrame(m_OutputMirror);
+    }
+
+private:
+    void EmitCursorFrame()
+    {
+        if (!m_OutputMirror)
+            return;
+
+        MsRdpEx_OutputMirror_Lock(m_OutputMirror);
+        MsRdpEx_CursorOverlay_DumpFrame(m_CursorOverlay, m_OutputMirror);
+        MsRdpEx_OutputMirror_Unlock(m_OutputMirror);
+    }
+
+public:
     HRESULT STDMETHODCALLTYPE GetWTSPluginObject(LPVOID* ppvObject)
     {
         *ppvObject = m_WTSPlugin;
@@ -311,6 +380,7 @@ public:
     HWND m_hInputCaptureWnd = NULL;
     HWND m_hOutputPresenterWnd = NULL;
     HWND m_hTscShellContainerWnd = NULL;
+    MsRdpEx_CursorOverlay* m_CursorOverlay = NULL;
     MsRdpEx_OutputMirror* m_OutputMirror = NULL;
     ITSPropertySet* m_pCorePropsRaw = NULL;
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
@@ -328,6 +398,27 @@ CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient)
 void MsRdpEx_RdpInstance_Free(CMsRdpExInstance* instance)
 {
     instance->Release();
+}
+
+void MsRdpEx_RdpInstance_SetCursor(IMsRdpExInstance* instance, HCURSOR cursor)
+{
+    ((CMsRdpExInstance*)instance)->SetCursor(cursor);
+}
+
+void MsRdpEx_RdpInstance_UpdateCursorPosition(
+    IMsRdpExInstance* instance, HWND sourceWindow, int32_t x, int32_t y)
+{
+    ((CMsRdpExInstance*)instance)->UpdateCursorPosition(sourceWindow, x, y);
+}
+
+void MsRdpEx_RdpInstance_HideCursor(IMsRdpExInstance* instance)
+{
+    ((CMsRdpExInstance*)instance)->HideCursor();
+}
+
+void MsRdpEx_RdpInstance_DumpFrameWithCursor(IMsRdpExInstance* instance)
+{
+    ((CMsRdpExInstance*)instance)->DumpFrameWithCursor();
 }
 
 typedef struct _MsRdpEx_InstanceManager MsRdpEx_InstanceManager;
@@ -394,6 +485,34 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(HWND hWnd)
     MsRdpEx_ArrayListIt_Finish(it);
 
     return found ? obj : NULL;
+}
+
+IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByOutputPresenterHwnd(HWND hWnd)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx)
+        return NULL;
+
+    CMsRdpExInstance* instance = NULL;
+    MsRdpEx_ArrayListIt* it = MsRdpEx_ArrayList_It(
+        ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        CMsRdpExInstance* candidate =
+            (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+
+        if (candidate->m_hOutputPresenterWnd == hWnd)
+        {
+            instance = candidate;
+            instance->AddRef();
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+    return instance;
 }
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, void* pUserData)
@@ -488,6 +607,70 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_FindByInputCaptureHwnd(HWND hWnd)
     MsRdpEx_ArrayListIt_Finish(it);
 
     return found ? obj : NULL;
+}
+
+IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByInputCaptureHwnd(HWND hWnd)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx)
+        return NULL;
+
+    CMsRdpExInstance* instance = NULL;
+    MsRdpEx_ArrayListIt* it = MsRdpEx_ArrayList_It(
+        ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        CMsRdpExInstance* candidate =
+            (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+
+        if (candidate->m_hInputCaptureWnd == hWnd)
+        {
+            instance = candidate;
+            instance->AddRef();
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+    return instance;
+}
+
+IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByScreenPoint(POINT point)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+    HWND pointWindow = WindowFromPoint(point);
+
+    if (!ctx || !pointWindow)
+        return NULL;
+
+    CMsRdpExInstance* instance = NULL;
+    MsRdpEx_ArrayListIt* it = MsRdpEx_ArrayList_It(
+        ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        CMsRdpExInstance* candidate =
+            (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+
+        bool matchesInput = candidate->m_hInputCaptureWnd &&
+            ((pointWindow == candidate->m_hInputCaptureWnd) ||
+                IsChild(candidate->m_hInputCaptureWnd, pointWindow));
+        bool matchesOutput = candidate->m_hOutputPresenterWnd &&
+            ((pointWindow == candidate->m_hOutputPresenterWnd) ||
+                IsChild(candidate->m_hOutputPresenterWnd, pointWindow));
+
+        if (matchesInput || matchesOutput)
+        {
+            instance = candidate;
+            instance->AddRef();
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+    return instance;
 }
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_AttachInputWindow(HWND hInputWnd, void* pUserData)

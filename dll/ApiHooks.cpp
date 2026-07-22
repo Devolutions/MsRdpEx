@@ -1,5 +1,6 @@
 
 #include "MsRdpEx.h"
+#include "RdpInstanceInternal.h"
 
 #include <MsRdpEx/MsRdpEx.h>
 
@@ -442,7 +443,7 @@ bool WINAPI MsRdpEx_CaptureBlt(
     if (!hWnd)
         goto end;
 
-    instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
+    instance = MsRdpEx_InstanceManager_AcquireByOutputPresenterHwnd(hWnd);
 
     if (!instance)
         goto end;
@@ -515,11 +516,15 @@ bool WINAPI MsRdpEx_CaptureBlt(
 
     HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
-    MsRdpEx_OutputMirror_DumpFrame(outputMirror);
+
+    MsRdpEx_RdpInstance_DumpFrameWithCursor(instance);
     MsRdpEx_OutputMirror_Unlock(outputMirror);
 
     captured = true;
 end:
+    if (instance)
+        instance->Release();
+
     return captured;
 }
 
@@ -567,6 +572,29 @@ BOOL WINAPI Hook_StretchBlt(
 
 end:
     return status;
+}
+
+HCURSOR (WINAPI * Real_SetCursor)(HCURSOR hCursor) = SetCursor;
+BOOL (WINAPI * Real_GetCursorPos)(LPPOINT lpPoint) = GetCursorPos;
+
+HCURSOR WINAPI Hook_SetCursor(HCURSOR hCursor)
+{
+    HCURSOR result = Real_SetCursor(hCursor);
+    POINT point = { 0 };
+
+    if (Real_GetCursorPos(&point))
+    {
+        IMsRdpExInstance* instance =
+            MsRdpEx_InstanceManager_AcquireByScreenPoint(point);
+
+        if (instance)
+        {
+            MsRdpEx_RdpInstance_SetCursor(instance, hCursor);
+            instance->Release();
+        }
+    }
+
+    return result;
 }
 
 #define SYSMENU_RDP_RANGE_FIRST_ID               7100
@@ -760,6 +788,7 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     LRESULT result;
     char* lpWindowNameA = NULL;
     IMsRdpExInstance* instance = NULL;
+    bool releaseInstance = false;
     CMsRdpExtendedSettings* pExtendedSettings = NULL;
 
     //MsRdpEx_LogPrint(DEBUG, "IHWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
@@ -772,7 +801,8 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     }
     else
     {
-        instance = (IMsRdpExInstance*)MsRdpEx_InstanceManager_FindByInputCaptureHwnd(hWnd);
+        instance = MsRdpEx_InstanceManager_AcquireByInputCaptureHwnd(hWnd);
+        releaseInstance = (instance != NULL);
 
         if (instance)
             instance->GetExtendedSettings(&pExtendedSettings);
@@ -958,8 +988,17 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
         if (instance)
         {
+            TRACKMOUSEEVENT trackMouseEvent = { sizeof(TRACKMOUSEEVENT), TME_LEAVE, hWnd, 0 };
+            TrackMouseEvent(&trackMouseEvent);
             instance->SetLastMousePosition(mousePosX, mousePosY);
+            MsRdpEx_RdpInstance_SetCursor(instance, GetCursor());
+            MsRdpEx_RdpInstance_UpdateCursorPosition(instance, hWnd, mousePosX, mousePosY);
         }
+    }
+    else if (uMsg == WM_MOUSELEAVE)
+    {
+        if (instance)
+            MsRdpEx_RdpInstance_HideCursor(instance);
     }
     else if (uMsg == WM_KEYDOWN)
     {
@@ -1031,6 +1070,9 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     }
 
     free(lpWindowNameA);
+
+    if (releaseInstance)
+        instance->Release();
 
     return result;
 }
@@ -1620,6 +1662,7 @@ LONG MsRdpEx_AttachHooks()
 
     MSRDPEX_DETOUR_ATTACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_ATTACH(Real_StretchBlt, Hook_StretchBlt);
+    MSRDPEX_DETOUR_ATTACH(Real_SetCursor, Hook_SetCursor);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassW, Hook_RegisterClassW);
     MSRDPEX_DETOUR_ATTACH(Real_GetClassInfoW, Hook_GetClassInfoW);
@@ -1679,6 +1722,7 @@ LONG MsRdpEx_DetachHooks()
     
     MSRDPEX_DETOUR_DETACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_DETACH(Real_StretchBlt, Hook_StretchBlt);
+    MSRDPEX_DETOUR_DETACH(Real_SetCursor, Hook_SetCursor);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassW, Hook_RegisterClassW);
     MSRDPEX_DETOUR_DETACH(Real_GetClassInfoW, Hook_GetClassInfoW);
