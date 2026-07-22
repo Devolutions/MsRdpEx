@@ -36,6 +36,8 @@ Set `MsRdpExComInterop` to `Generated` to reference the source-generated, Native
 
 Use `RdpClientFactory.CreateClient10()` to activate the Microsoft RDP Client Control version 11 without legacy coclasses. The returned compatibility interface can use `Subscribe()` to obtain an `RdpClientEventSubscription`; dispose it to unadvise the COM connection point. This runtime API requires Windows and an apartment-threaded caller.
 
+The NativeAOT package-consumer fixture accepts `--com-integration` to check activation, generated proxy invocation, and event Advise/Unadvise behavior without opening a remote connection. It exits with code `77` and prints `SKIPPED` when the RDP Client Control version 11 is not registered.
+
 The generated assets deliberately do not provide legacy COM coclasses (such as `MsRdpClient10Class`), classic `*_Event`/`SinkHelper` event helpers, or MIDL implementation-detail types. Use `Legacy` when an application needs those APIs. `GeneratedWinForms` adds the `AxMSTSCLib` ActiveX host controls but has the same generated interop boundary.
 
 The legacy and generated assets define overlapping `MSTSCLib` type names and cannot be referenced by the same application. Select exactly one `MsRdpExComInterop` mode per project.
