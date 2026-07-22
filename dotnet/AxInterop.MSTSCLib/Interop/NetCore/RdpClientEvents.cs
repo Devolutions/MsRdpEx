@@ -17,9 +17,18 @@ namespace MSTSCLib
         private bool disposed;
 
         internal RdpClientEventSubscription(IMsRdpClient client)
+            : this(ProxyObject.Unpack(client) ?? throw new InvalidOperationException("The RDP client proxy is not initialized."), typeof(MsRdpEx.Interop.IMsTscAxEvents).GUID)
         {
-            object rawClient = ProxyObject.Unpack(client) ?? throw new InvalidOperationException("The RDP client proxy is not initialized.");
-            connectionPoint = GetConnectionPoint(rawClient);
+        }
+
+        internal RdpClientEventSubscription(IRemoteDesktopClient client)
+            : this(ProxyObject.Unpack(client) ?? throw new InvalidOperationException("The Remote Desktop client proxy is not initialized."), typeof(MsRdpEx.Interop.IRemoteDesktopClientEvents).GUID)
+        {
+        }
+
+        private RdpClientEventSubscription(object rawClient, Guid eventInterfaceId)
+        {
+            connectionPoint = GetConnectionPoint(rawClient, eventInterfaceId);
             sink = new RdpClientEventSink(this);
             connectionPoint.Advise(sink, out cookie);
         }
@@ -31,6 +40,15 @@ namespace MSTSCLib
         public event Action<int>? FatalError;
         public event Action<int, int>? RemoteDesktopSizeChanged;
         public event Action? AutoReconnected;
+        public event EventHandler<RdpClientDisconnectedEventArgs>? DisconnectedWithDetails;
+        public event Action<int, string?>? StatusChanged;
+        public event EventHandler<RdpClientAutoReconnectingEventArgs>? AutoReconnecting;
+        public event Action? DialogDisplaying;
+        public event Action? DialogDismissed;
+        public event Action<uint, int, int>? NetworkStatusChanged;
+        public event Action<string?>? AdminMessageReceived;
+        public event Action<int>? KeyCombinationPressed;
+        public event Action<int, int>? TouchPointerCursorMoved;
 
         public void Dispose()
         {
@@ -41,7 +59,7 @@ namespace MSTSCLib
             disposed = true;
         }
 
-        private static unsafe IConnectionPoint GetConnectionPoint(object rawClient)
+        private static unsafe IConnectionPoint GetConnectionPoint(object rawClient, Guid eventInterfaceId)
         {
             if (!ComWrappers.TryGetComInstance(rawClient, out nint unknown))
                 throw new InvalidOperationException("Could not obtain an IUnknown pointer for the RDP client.");
@@ -55,8 +73,7 @@ namespace MSTSCLib
                 try
                 {
                     var connectionPointContainer = ComInterfaceMarshaller<IConnectionPointContainer>.ConvertToManaged((void*)container)!;
-                    Guid eventsId = typeof(MsRdpEx.Interop.IMsTscAxEvents).GUID;
-                    connectionPointContainer.FindConnectionPoint(in eventsId, out var connectionPoint);
+                    connectionPointContainer.FindConnectionPoint(in eventInterfaceId, out var connectionPoint);
                     return connectionPoint;
                 }
                 finally
@@ -77,9 +94,20 @@ namespace MSTSCLib
         private void RaiseFatalError(int errorCode) => FatalError?.Invoke(errorCode);
         private void RaiseRemoteDesktopSizeChanged(int width, int height) => RemoteDesktopSizeChanged?.Invoke(width, height);
         private void RaiseAutoReconnected() => AutoReconnected?.Invoke();
+        private void RaiseDisconnectedWithDetails(int disconnectReason, int? extendedDisconnectReason, string? disconnectErrorMessage) =>
+            DisconnectedWithDetails?.Invoke(this, new(disconnectReason, extendedDisconnectReason, disconnectErrorMessage));
+        private void RaiseStatusChanged(int statusCode, string? statusMessage) => StatusChanged?.Invoke(statusCode, statusMessage);
+        private void RaiseAutoReconnecting(int disconnectReason, int? extendedDisconnectReason, string? disconnectErrorMessage, bool? networkAvailable, int attemptCount, int? maxAttemptCount) =>
+            AutoReconnecting?.Invoke(this, new(disconnectReason, extendedDisconnectReason, disconnectErrorMessage, networkAvailable, attemptCount, maxAttemptCount));
+        private void RaiseDialogDisplaying() => DialogDisplaying?.Invoke();
+        private void RaiseDialogDismissed() => DialogDismissed?.Invoke();
+        private void RaiseNetworkStatusChanged(uint qualityLevel, int bandwidth, int rtt) => NetworkStatusChanged?.Invoke(qualityLevel, bandwidth, rtt);
+        private void RaiseAdminMessageReceived(string? adminMessage) => AdminMessageReceived?.Invoke(adminMessage);
+        private void RaiseKeyCombinationPressed(int keyCombination) => KeyCombinationPressed?.Invoke(keyCombination);
+        private void RaiseTouchPointerCursorMoved(int x, int y) => TouchPointerCursorMoved?.Invoke(x, y);
 
         [GeneratedComClass]
-        private sealed partial class RdpClientEventSink(RdpClientEventSubscription subscription) : MsRdpEx.Interop.IMsTscAxEvents
+        private sealed partial class RdpClientEventSink(RdpClientEventSubscription subscription) : MsRdpEx.Interop.IMsTscAxEvents, MsRdpEx.Interop.IRemoteDesktopClientEvents
         {
             public void OnConnecting() => subscription.RaiseConnecting();
             public void OnConnected() => subscription.RaiseConnected();
@@ -97,7 +125,11 @@ namespace MSTSCLib
             public void OnRequestContainerMinimize() { }
             public void OnConfirmClose(out bool pfAllowClose) => pfAllowClose = true;
             public void OnReceivedTSPublicKey(BinaryStringRef publicKey, out bool pfContinueLogon) => pfContinueLogon = true;
-            public void OnAutoReconnecting(int disconnectReason, int attemptCount, out AutoReconnectContinueState pArcContinueStatus) => pArcContinueStatus = default;
+            public void OnAutoReconnecting(int disconnectReason, int attemptCount, out AutoReconnectContinueState pArcContinueStatus)
+            {
+                subscription.RaiseAutoReconnecting(disconnectReason, null, null, null, attemptCount, null);
+                pArcContinueStatus = default;
+            }
             public void OnAuthenticationWarningDisplayed() { }
             public void OnAuthenticationWarningDismissed() { }
             public void OnRemoteProgramResult(BinaryStringRef bstrRemoteProgram, RemoteProgramResult lError, bool vbIsExecutable) { }
@@ -109,10 +141,27 @@ namespace MSTSCLib
             public void OnMouseInputModeChanged(bool fMouseModeRelative) { }
             public void OnServiceMessageReceived(BinaryStringRef serviceMessage) { }
             public void OnConnectionBarPullDown() { }
-            public void OnNetworkStatusChanged(uint qualityLevel, int bandwidth, int rtt) { }
+            public void OnNetworkStatusChanged(uint qualityLevel, int bandwidth, int rtt) => subscription.RaiseNetworkStatusChanged(qualityLevel, bandwidth, rtt);
             public void OnDevicesButtonPressed() { }
             public void OnAutoReconnected() => subscription.RaiseAutoReconnected();
-            public void OnAutoReconnecting2(int disconnectReason, bool networkAvailable, int attemptCount, int maxAttemptCount) { }
+            public void OnAutoReconnecting2(int disconnectReason, bool networkAvailable, int attemptCount, int maxAttemptCount) =>
+                subscription.RaiseAutoReconnecting(disconnectReason, null, null, networkAvailable, attemptCount, maxAttemptCount);
+            public void OnLoginCompleted() => subscription.RaiseLoginCompleted();
+            public void OnDisconnected(int disconnectReason, int extendedDisconnectReason, BinaryStringRef disconnectErrorMessage)
+            {
+                string? errorMessage = disconnectErrorMessage;
+                subscription.RaiseDisconnected(disconnectReason);
+                subscription.RaiseDisconnectedWithDetails(disconnectReason, extendedDisconnectReason, errorMessage);
+            }
+            public void OnStatusChanged(int statusCode, BinaryStringRef statusMessage) => subscription.RaiseStatusChanged(statusCode, statusMessage);
+            public void OnAutoReconnecting(int disconnectReason, int extendedDisconnectReason, BinaryStringRef disconnectErrorMessage, bool networkAvailable, int attemptCount, int maxAttemptCount) =>
+                subscription.RaiseAutoReconnecting(disconnectReason, extendedDisconnectReason, disconnectErrorMessage, networkAvailable, attemptCount, maxAttemptCount);
+            public void OnDialogDisplaying() => subscription.RaiseDialogDisplaying();
+            public void OnDialogDismissed() => subscription.RaiseDialogDismissed();
+            public void OnAdminMessageReceived(BinaryStringRef adminMessage) => subscription.RaiseAdminMessageReceived(adminMessage);
+            public void OnKeyCombinationPressed(int keyCombination) => subscription.RaiseKeyCombinationPressed(keyCombination);
+            public void OnRemoteDesktopSizeChanged(int width, int height) => subscription.RaiseRemoteDesktopSizeChanged(width, height);
+            public void OnTouchPointerCursorMoved(int x, int y) => subscription.RaiseTouchPointerCursorMoved(x, y);
             public void GetTypeInfoCount(nint pctinfo) { }
             public void GetTypeInfo(int iTInfo, int lcid, nint ppTInfo) { }
             public void GetIDsOfNames(nint riid, nint rgszNames, int cNames, int lcid, nint rgDispId) { }
@@ -145,6 +194,61 @@ namespace MSTSCLib
                         break;
                     case 33:
                         subscription.RaiseAutoReconnected();
+                        break;
+                    case 750:
+                        subscription.RaiseConnecting();
+                        break;
+                    case 751:
+                        subscription.RaiseConnected();
+                        break;
+                    case 752:
+                        subscription.RaiseLoginCompleted();
+                        break;
+                    case 753 when TryGetInt32(arguments, argumentCount, 2, out int modernDisconnectReason) &&
+                                  TryGetInt32(arguments, argumentCount, 1, out int extendedDisconnectReason) &&
+                                  TryGetString(arguments, argumentCount, 0, out string? disconnectErrorMessage):
+                        subscription.RaiseDisconnected(modernDisconnectReason);
+                        subscription.RaiseDisconnectedWithDetails(modernDisconnectReason, extendedDisconnectReason, disconnectErrorMessage);
+                        break;
+                    case 754 when TryGetInt32(arguments, argumentCount, 1, out int statusCode) &&
+                                  TryGetString(arguments, argumentCount, 0, out string? statusMessage):
+                        subscription.RaiseStatusChanged(statusCode, statusMessage);
+                        break;
+                    case 755 when TryGetInt32(arguments, argumentCount, 5, out int reconnectDisconnectReason) &&
+                                  TryGetInt32(arguments, argumentCount, 4, out int reconnectExtendedDisconnectReason) &&
+                                  TryGetString(arguments, argumentCount, 3, out string? reconnectErrorMessage) &&
+                                  TryGetBoolean(arguments, argumentCount, 2, out bool networkAvailable) &&
+                                  TryGetInt32(arguments, argumentCount, 1, out int attemptCount) &&
+                                  TryGetInt32(arguments, argumentCount, 0, out int maxAttemptCount):
+                        subscription.RaiseAutoReconnecting(reconnectDisconnectReason, reconnectExtendedDisconnectReason, reconnectErrorMessage, networkAvailable, attemptCount, maxAttemptCount);
+                        break;
+                    case 756:
+                        subscription.RaiseAutoReconnected();
+                        break;
+                    case 757:
+                        subscription.RaiseDialogDisplaying();
+                        break;
+                    case 758:
+                        subscription.RaiseDialogDismissed();
+                        break;
+                    case 759 when TryGetInt32(arguments, argumentCount, 2, out int qualityLevel) &&
+                                  TryGetInt32(arguments, argumentCount, 1, out int bandwidth) &&
+                                  TryGetInt32(arguments, argumentCount, 0, out int rtt):
+                        subscription.RaiseNetworkStatusChanged(unchecked((uint)qualityLevel), bandwidth, rtt);
+                        break;
+                    case 760 when TryGetString(arguments, argumentCount, 0, out string? adminMessage):
+                        subscription.RaiseAdminMessageReceived(adminMessage);
+                        break;
+                    case 761 when TryGetInt32(arguments, argumentCount, 0, out int keyCombination):
+                        subscription.RaiseKeyCombinationPressed(keyCombination);
+                        break;
+                    case 762 when TryGetInt32(arguments, argumentCount, 1, out int modernWidth) &&
+                                  TryGetInt32(arguments, argumentCount, 0, out int modernHeight):
+                        subscription.RaiseRemoteDesktopSizeChanged(modernWidth, modernHeight);
+                        break;
+                    case 800 when TryGetInt32(arguments, argumentCount, 1, out int x) &&
+                                  TryGetInt32(arguments, argumentCount, 0, out int y):
+                        subscription.RaiseTouchPointerCursorMoved(x, y);
                         break;
                 }
             }
@@ -180,6 +284,30 @@ namespace MSTSCLib
                 }
             }
 
+            private static unsafe bool TryGetBoolean(NativeVariant* arguments, uint argumentCount, uint index, out bool value)
+            {
+                if (arguments is null || index >= argumentCount || arguments[index].Type != VariantType.Boolean)
+                {
+                    value = default;
+                    return false;
+                }
+
+                value = (short)arguments[index].Content1 != 0;
+                return true;
+            }
+
+            private static unsafe bool TryGetString(NativeVariant* arguments, uint argumentCount, uint index, out string? value)
+            {
+                if (arguments is null || index >= argumentCount || arguments[index].Type != VariantType.BinaryString)
+                {
+                    value = default;
+                    return false;
+                }
+
+                value = arguments[index].Content1 == 0 ? null : Marshal.PtrToStringBSTR(arguments[index].Content1);
+                return true;
+            }
+
 #pragma warning disable CS0649 // Fields are populated by the COM DISPPARAMS structure.
             private unsafe struct DispatchParameters
             {
@@ -193,9 +321,34 @@ namespace MSTSCLib
     }
 
     [SupportedOSPlatform("windows")]
+    public sealed class RdpClientDisconnectedEventArgs(int disconnectReason, int? extendedDisconnectReason, string? disconnectErrorMessage) : EventArgs
+    {
+        public int DisconnectReason { get; } = disconnectReason;
+        public int? ExtendedDisconnectReason { get; } = extendedDisconnectReason;
+        public string? DisconnectErrorMessage { get; } = disconnectErrorMessage;
+    }
+
+    [SupportedOSPlatform("windows")]
+    public sealed class RdpClientAutoReconnectingEventArgs(int disconnectReason, int? extendedDisconnectReason, string? disconnectErrorMessage, bool? networkAvailable, int attemptCount, int? maxAttemptCount) : EventArgs
+    {
+        public int DisconnectReason { get; } = disconnectReason;
+        public int? ExtendedDisconnectReason { get; } = extendedDisconnectReason;
+        public string? DisconnectErrorMessage { get; } = disconnectErrorMessage;
+        public bool? NetworkAvailable { get; } = networkAvailable;
+        public int AttemptCount { get; } = attemptCount;
+        public int? MaxAttemptCount { get; } = maxAttemptCount;
+    }
+
+    [SupportedOSPlatform("windows")]
     public static class RdpClientEvents
     {
         public static RdpClientEventSubscription Subscribe(this IMsRdpClient client)
+        {
+            ArgumentNullException.ThrowIfNull(client);
+            return new RdpClientEventSubscription(client);
+        }
+
+        public static RdpClientEventSubscription Subscribe(this IRemoteDesktopClient client)
         {
             ArgumentNullException.ThrowIfNull(client);
             return new RdpClientEventSubscription(client);

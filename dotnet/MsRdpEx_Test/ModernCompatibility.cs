@@ -70,6 +70,34 @@ namespace MsRdpEx.Tests
         }
 
         [Fact]
+        public void EventSubscriptionSupportsRemoteDesktopClientEvents()
+        {
+            var subscriptionType = typeof(ModernInterop::MSTSCLib.RdpClientEventSubscription);
+            var sinkType = subscriptionType.GetNestedType("RdpClientEventSink", BindingFlags.NonPublic)!;
+
+            Assert.Contains(typeof(ModernInterop::MsRdpEx.Interop.IRemoteDesktopClientEvents), sinkType.GetInterfaces());
+            Assert.NotNull(typeof(ModernInterop::MSTSCLib.RdpClientEvents).GetMethod(
+                nameof(ModernInterop::MSTSCLib.RdpClientEvents.Subscribe),
+                [typeof(ModernInterop::MSTSCLib.IRemoteDesktopClient)]));
+
+            foreach (string eventName in new[]
+            {
+                "DisconnectedWithDetails",
+                "StatusChanged",
+                "AutoReconnecting",
+                "DialogDisplaying",
+                "DialogDismissed",
+                "NetworkStatusChanged",
+                "AdminMessageReceived",
+                "KeyCombinationPressed",
+                "TouchPointerCursorMoved",
+            })
+            {
+                Assert.NotNull(subscriptionType.GetEvent(eventName));
+            }
+        }
+
+        [Fact]
         public void EventSubscriptionDispatchesIDispatchCallbacks()
         {
             var subscription = (ModernInterop::MSTSCLib.RdpClientEventSubscription)RuntimeHelpers.GetUninitializedObject(
@@ -111,6 +139,74 @@ namespace MsRdpEx.Tests
 
             Assert.Equal((800, 600), remoteDesktopSize);
             Assert.Equal(42, disconnectedReason);
+        }
+
+        [Fact]
+        public void EventSubscriptionDispatchesRemoteDesktopClientCallbacks()
+        {
+            var subscription = (ModernInterop::MSTSCLib.RdpClientEventSubscription)RuntimeHelpers.GetUninitializedObject(
+                typeof(ModernInterop::MSTSCLib.RdpClientEventSubscription));
+            var sinkType = typeof(ModernInterop::MSTSCLib.RdpClientEventSubscription).GetNestedType(
+                "RdpClientEventSink",
+                BindingFlags.NonPublic)!;
+            var sink = Activator.CreateInstance(
+                sinkType,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                args: [subscription],
+                culture: null)!;
+            var invoke = sinkType.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public)!;
+
+            ModernInterop::MSTSCLib.RdpClientDisconnectedEventArgs? disconnect = null;
+            ModernInterop::MSTSCLib.RdpClientAutoReconnectingEventArgs? reconnect = null;
+            subscription.DisconnectedWithDetails += (_, args) => disconnect = args;
+            subscription.AutoReconnecting += (_, args) => reconnect = args;
+
+            nint disconnectMessage = Marshal.StringToBSTR("The server disconnected the session.");
+            nint reconnectMessage = Marshal.StringToBSTR("Network transition.");
+            try
+            {
+                unsafe
+                {
+                    var arguments = stackalloc ModernInterop::MsRdpEx.Interop.NativeVariant[6];
+                    var parameters = new DispatchParameters
+                    {
+                        Arguments = (nint)arguments,
+                        ArgumentCount = 3,
+                    };
+
+                    arguments[0] = new(ModernInterop::MsRdpEx.Interop.VariantType.BinaryString) { Content1 = disconnectMessage };
+                    arguments[1] = new(ModernInterop::MsRdpEx.Interop.VariantType.Int32) { Content1 = 1001 };
+                    arguments[2] = new(ModernInterop::MsRdpEx.Interop.VariantType.Int32) { Content1 = 42 };
+                    invoke.Invoke(sink, [753, nint.Zero, 0, (short)0, (nint)(&parameters), nint.Zero, nint.Zero, nint.Zero]);
+
+                    parameters.ArgumentCount = 6;
+                    arguments[0] = new(ModernInterop::MsRdpEx.Interop.VariantType.Int32) { Content1 = 5 };
+                    arguments[1] = new(ModernInterop::MsRdpEx.Interop.VariantType.Int32) { Content1 = 2 };
+                    arguments[2] = new(ModernInterop::MsRdpEx.Interop.VariantType.Boolean) { Content1 = -1 };
+                    arguments[3] = new(ModernInterop::MsRdpEx.Interop.VariantType.BinaryString) { Content1 = reconnectMessage };
+                    arguments[4] = new(ModernInterop::MsRdpEx.Interop.VariantType.Int32) { Content1 = 1002 };
+                    arguments[5] = new(ModernInterop::MsRdpEx.Interop.VariantType.Int32) { Content1 = 43 };
+                    invoke.Invoke(sink, [755, nint.Zero, 0, (short)0, (nint)(&parameters), nint.Zero, nint.Zero, nint.Zero]);
+                }
+            }
+            finally
+            {
+                Marshal.FreeBSTR(disconnectMessage);
+                Marshal.FreeBSTR(reconnectMessage);
+            }
+
+            Assert.NotNull(disconnect);
+            Assert.Equal(42, disconnect.DisconnectReason);
+            Assert.Equal(1001, disconnect.ExtendedDisconnectReason);
+            Assert.Equal("The server disconnected the session.", disconnect.DisconnectErrorMessage);
+            Assert.NotNull(reconnect);
+            Assert.Equal(43, reconnect.DisconnectReason);
+            Assert.Equal(1002, reconnect.ExtendedDisconnectReason);
+            Assert.Equal("Network transition.", reconnect.DisconnectErrorMessage);
+            Assert.True(reconnect.NetworkAvailable);
+            Assert.Equal(2, reconnect.AttemptCount);
+            Assert.Equal(5, reconnect.MaxAttemptCount);
         }
 
         [Fact]
