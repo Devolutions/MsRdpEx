@@ -23,6 +23,11 @@ namespace MSTSCLib
             settings.set_ConnectWithEndpoint(ref endpoint);
         }
 
+        public static void SetPublisherCertificateChain(this IMsRdpClientNonScriptable4 client, object certificateChain)
+        {
+            client.set_PublisherCertificateChain(ref certificateChain);
+        }
+
         public static object GetProperty(this IMsRdpExtendedSettings settings, BinaryString bstrPropertyName)
         {
             return settings.get_Property(bstrPropertyName);

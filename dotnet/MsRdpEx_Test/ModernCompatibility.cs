@@ -128,6 +128,9 @@ namespace MsRdpEx.Tests
                 nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.SetConnectWithEndpoint),
                 typeof(ModernInterop::MSTSCLib.IMsRdpClientAdvancedSettings), typeof(object));
             AssertExtension(extensions,
+                nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.SetPublisherCertificateChain),
+                typeof(ModernInterop::MSTSCLib.IMsRdpClientNonScriptable4), typeof(object));
+            AssertExtension(extensions,
                 nameof(ModernInterop::MSTSCLib.MSTSCLibExtensions.GetDriveByIndex),
                 typeof(ModernInterop::MSTSCLib.IMsRdpDriveCollection), typeof(uint));
             AssertExtension(extensions,
