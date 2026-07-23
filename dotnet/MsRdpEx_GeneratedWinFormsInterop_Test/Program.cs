@@ -20,7 +20,13 @@ internal static class Program
             return 0;
         }
 
-        Console.Error.WriteLine("Usage: MsRdpEx_GeneratedWinFormsInterop_Test [--host-activation]");
+        if (args is ["--host-activation-rdpclient10-first"])
+        {
+            VerifyRdpClient10FirstHostActivation();
+            return 0;
+        }
+
+        Console.Error.WriteLine("Usage: MsRdpEx_GeneratedWinFormsInterop_Test [--host-activation|--host-activation-rdpclient10-first]");
         return 64;
     }
 
@@ -68,7 +74,33 @@ internal static class Program
         Console.WriteLine("Generated host activation succeeded.");
         form.Controls.Remove(generatedHost);
 
-        using var rdpClient10 = new AxMsRdpClient10NotSafeForScripting
+        VerifyRdpClient10HostActivation(form, rdpExDll);
+        Console.WriteLine("Host activation succeeded without starting a remote connection.");
+    }
+
+    private static void VerifyRdpClient10FirstHostActivation()
+    {
+        string rdpExDll = GetRdpExDllPath();
+        var client = RdpClientFactory.CreateClient10();
+        Console.WriteLine($"Direct RdpClientFactory activation succeeded (Version={client.Version}).");
+
+        using var form = new Form();
+        VerifyRdpClient10HostActivation(form, rdpExDll);
+        Console.WriteLine("RdpClient10-first host activation succeeded without starting a remote connection.");
+    }
+
+    private static string GetRdpExDllPath()
+    {
+        string rdpExDll = Path.Combine(AppContext.BaseDirectory, "MsRdpEx.dll");
+        if (!File.Exists(rdpExDll))
+            throw new FileNotFoundException("The package's win-x64 MsRdpEx.dll was not copied to the test output.", rdpExDll);
+
+        return rdpExDll;
+    }
+
+    private static void VerifyRdpClient10HostActivation(Form form, string rdpExDll)
+    {
+        using var rdpClient10 = new AxMsRdpClient10
         {
             axName = "mstsc",
             rdpExDll = rdpExDll,
@@ -79,7 +111,6 @@ internal static class Program
         form.CreateControl();
         initializableRdpClient10.EndInit();
         rdpClient10.CreateControl();
-        Console.WriteLine($"AxMsRdpClient10NotSafeForScripting activation succeeded (Version={rdpClient10.Version}).");
-        Console.WriteLine("Host activation succeeded without starting a remote connection.");
+        Console.WriteLine($"AxMsRdpClient10 activation succeeded (Version={rdpClient10.Version}).");
     }
 }
