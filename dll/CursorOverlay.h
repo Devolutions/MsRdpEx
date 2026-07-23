@@ -14,6 +14,10 @@ void MsRdpEx_CursorOverlay_Free(MsRdpEx_CursorOverlay* ctx);
 
 bool MsRdpEx_CursorOverlay_SetShape(MsRdpEx_CursorOverlay* ctx, HCURSOR cursor);
 bool MsRdpEx_CursorOverlay_SetPosition(MsRdpEx_CursorOverlay* ctx, int32_t x, int32_t y, bool visible);
+void MsRdpEx_CursorOverlay_Composite(
+	MsRdpEx_CursorOverlay* ctx, MsRdpEx_OutputMirror* outputMirror,
+	HWND inputWindow, HWND outputWindow);
+void MsRdpEx_CursorOverlay_Restore(MsRdpEx_CursorOverlay* ctx, MsRdpEx_OutputMirror* outputMirror);
 void MsRdpEx_CursorOverlay_DumpFrame(
 	MsRdpEx_CursorOverlay* ctx, MsRdpEx_OutputMirror* outputMirror,
 	HWND inputWindow, HWND outputWindow);

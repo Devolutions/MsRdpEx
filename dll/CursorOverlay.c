@@ -20,6 +20,15 @@ struct _MsRdpEx_CursorOverlay
 	int32_t saveWidth;
 	int32_t saveHeight;
 
+	// Composite() draws the cursor and stashes the region it overwrote here; Restore() puts it back.
+	// They run at separate times (e.g. RDM reads the shadow between LockShadowBitmap/UnlockShadowBitmap),
+	// so the pending-restore state has to survive between the two calls.
+	bool composited;
+	int32_t restoreLeft;
+	int32_t restoreTop;
+	int32_t restoreWidth;
+	int32_t restoreHeight;
+
 	CRITICAL_SECTION lock;
 };
 
@@ -211,23 +220,21 @@ bool MsRdpEx_CursorOverlay_SetPosition(MsRdpEx_CursorOverlay* ctx, int32_t x, in
 	return emit;
 }
 
-void MsRdpEx_CursorOverlay_DumpFrame(
+void MsRdpEx_CursorOverlay_Composite(
 	MsRdpEx_CursorOverlay* ctx, MsRdpEx_OutputMirror* outputMirror,
 	HWND inputWindow, HWND outputWindow)
 {
 	HDC shadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
 	if (!ctx || !shadowDC)
-	{
-		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 		return;
-	}
 
 	EnterCriticalSection(&ctx->lock);
+
+	ctx->composited = false;
 
 	if (!ctx->visible || !ctx->cursor || (ctx->width <= 0) || (ctx->height <= 0) ||
 		!IsWindow(inputWindow) || !IsWindow(outputWindow))
 	{
-		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 		LeaveCriticalSection(&ctx->lock);
 		return;
 	}
@@ -238,7 +245,6 @@ void MsRdpEx_CursorOverlay_DumpFrame(
 
 	if (!GetClientRect(inputWindow, &inputRect) || !PtInRect(&inputRect, point))
 	{
-		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 		LeaveCriticalSection(&ctx->lock);
 		return;
 	}
@@ -248,14 +254,12 @@ void MsRdpEx_CursorOverlay_DumpFrame(
 
 	if ((mapResult == 0) && (GetLastError() != ERROR_SUCCESS))
 	{
-		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 		LeaveCriticalSection(&ctx->lock);
 		return;
 	}
 
 	if (!GetClientRect(outputWindow, &outputRect) || !PtInRect(&outputRect, point))
 	{
-		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 		LeaveCriticalSection(&ctx->lock);
 		return;
 	}
@@ -277,22 +281,48 @@ void MsRdpEx_CursorOverlay_DumpFrame(
 		!MsRdpEx_CursorOverlay_EnsureSaveSurface(ctx, shadowDC, copyWidth, copyHeight) ||
 		!BitBlt(ctx->saveDC, 0, 0, copyWidth, copyHeight, shadowDC, left, top, SRCCOPY))
 	{
-		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 		LeaveCriticalSection(&ctx->lock);
 		return;
 	}
 
-	BOOL drawn = DrawIconEx(shadowDC, cursorX, cursorY, ctx->cursor, 0, 0, 0, NULL, DI_NORMAL);
-	GdiFlush();
-
-	if (drawn)
-		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
-
-	BitBlt(shadowDC, left, top, copyWidth, copyHeight, ctx->saveDC, 0, 0, SRCCOPY);
-	GdiFlush();
-
-	if (!drawn)
-		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
+	if (DrawIconEx(shadowDC, cursorX, cursorY, ctx->cursor, 0, 0, 0, NULL, DI_NORMAL))
+	{
+		GdiFlush();
+		ctx->composited = true;
+		ctx->restoreLeft = left;
+		ctx->restoreTop = top;
+		ctx->restoreWidth = copyWidth;
+		ctx->restoreHeight = copyHeight;
+	}
 
 	LeaveCriticalSection(&ctx->lock);
+}
+
+void MsRdpEx_CursorOverlay_Restore(MsRdpEx_CursorOverlay* ctx, MsRdpEx_OutputMirror* outputMirror)
+{
+	HDC shadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
+	if (!ctx || !shadowDC)
+		return;
+
+	EnterCriticalSection(&ctx->lock);
+
+	if (ctx->composited)
+	{
+		BitBlt(shadowDC, ctx->restoreLeft, ctx->restoreTop, ctx->restoreWidth, ctx->restoreHeight,
+			ctx->saveDC, 0, 0, SRCCOPY);
+		GdiFlush();
+		ctx->composited = false;
+	}
+
+	LeaveCriticalSection(&ctx->lock);
+}
+
+// Push path (MsRdpEx's own recorder): draw the cursor, encode the frame, put the pixels back.
+void MsRdpEx_CursorOverlay_DumpFrame(
+	MsRdpEx_CursorOverlay* ctx, MsRdpEx_OutputMirror* outputMirror,
+	HWND inputWindow, HWND outputWindow)
+{
+	MsRdpEx_CursorOverlay_Composite(ctx, outputMirror, inputWindow, outputWindow);
+	MsRdpEx_OutputMirror_DumpFrame(outputMirror);
+	MsRdpEx_CursorOverlay_Restore(ctx, outputMirror);
 }

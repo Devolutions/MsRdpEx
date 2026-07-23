@@ -276,6 +276,11 @@ public:
             return;
 
         MsRdpEx_OutputMirror_Lock(outputMirror);
+
+        // RDM reads the shadow bitmap between Lock and Unlock (RdpAxThumbnailManager), so draw the
+        // cursor now and undo it in Unlock - that read is what carries the cursor into RDM's recording.
+        if (m_CursorOverlay && IsCursorOverlayEnabled())
+            MsRdpEx_CursorOverlay_Composite(m_CursorOverlay, outputMirror, m_hInputCaptureWnd, m_hOutputPresenterWnd);
     }
 
     void STDMETHODCALLTYPE UnlockShadowBitmap()
@@ -284,6 +289,9 @@ public:
 
         if (!outputMirror)
             return;
+
+        if (m_CursorOverlay && IsCursorOverlayEnabled())
+            MsRdpEx_CursorOverlay_Restore(m_CursorOverlay, outputMirror);
 
         MsRdpEx_OutputMirror_Unlock(outputMirror);
     }
@@ -302,7 +310,7 @@ public:
 
     void STDMETHODCALLTYPE SetCursor(HCURSOR cursor)
     {
-        if (!m_CursorOverlay)
+        if (!m_CursorOverlay || !IsCursorOverlayEnabled())
             return;
 
         if (MsRdpEx_CursorOverlay_SetShape(m_CursorOverlay, cursor))
@@ -311,7 +319,7 @@ public:
 
     void STDMETHODCALLTYPE UpdateCursorPosition(int32_t posX, int32_t posY)
     {
-        if (!m_CursorOverlay)
+        if (!m_CursorOverlay || !IsCursorOverlayEnabled())
             return;
 
         if (MsRdpEx_CursorOverlay_SetPosition(m_CursorOverlay, posX, posY, true))
@@ -320,7 +328,7 @@ public:
 
     void STDMETHODCALLTYPE HideCursor()
     {
-        if (!m_CursorOverlay)
+        if (!m_CursorOverlay || !IsCursorOverlayEnabled())
             return;
 
         if (MsRdpEx_CursorOverlay_SetPosition(
@@ -335,7 +343,7 @@ public:
         if (!m_OutputMirror)
             return;
 
-        if (m_CursorOverlay)
+        if (m_CursorOverlay && IsCursorOverlayEnabled())
             MsRdpEx_CursorOverlay_DumpFrame(
                 m_CursorOverlay, m_OutputMirror,
                 m_hInputCaptureWnd, m_hOutputPresenterWnd);
@@ -344,9 +352,18 @@ public:
     }
 
 private:
+    bool IsCursorOverlayEnabled()
+    {
+        return m_pMsRdpExtendedSettings && m_pMsRdpExtendedSettings->GetVideoRecordingCursor();
+    }
+
     void EmitCursorFrame()
     {
-        if (!m_OutputMirror)
+        if (!m_OutputMirror || !IsCursorOverlayEnabled())
+            return;
+
+        bool outputMirrorEnabled = false;
+        if (FAILED(GetOutputMirrorEnabled(&outputMirrorEnabled)) || !outputMirrorEnabled)
             return;
 
         MsRdpEx_OutputMirror_Lock(m_OutputMirror);

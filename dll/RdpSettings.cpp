@@ -655,6 +655,14 @@ CMsRdpExtendedSettings::CMsRdpExtendedSettings(IUnknown* pUnknown, GUID* pSessio
     {
         m_pMsRdpClient7->get_TransportSettings2(&m_pMsRdpClientTransportSettings2);
     }
+
+    // Lets ops/testing force the cursor overlay on without a client that knows the new property.
+    char* cursorEnv = MsRdpEx_GetEnv("MSRDPEX_RECORDING_CURSOR");
+    if (cursorEnv)
+    {
+        m_VideoRecordingCursor = (atoi(cursorEnv) != 0);
+        free(cursorEnv);
+    }
 }
 
 CMsRdpExtendedSettings::~CMsRdpExtendedSettings()
@@ -889,6 +897,15 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
 
         hr = S_OK;
     }
+    else if (MsRdpEx_StringEquals(propName, "VideoRecordingCursor"))
+    {
+        if (pValue->vt != VT_BOOL)
+            goto end;
+
+        m_VideoRecordingCursor = pValue->boolVal ? true : false;
+
+        hr = S_OK;
+    }
     else if (MsRdpEx_StringEquals(propName, "RecordingPath"))
     {
         if (pValue->vt != VT_BSTR)
@@ -1037,6 +1054,11 @@ HRESULT __stdcall CMsRdpExtendedSettings::get_Property(BSTR bstrPropertyName, VA
     else if (MsRdpEx_StringEquals(propName, "VideoRecordingFrameRate")) {
         pValue->vt = VT_I4;
         pValue->intVal = (INT)m_VideoRecordingFrameRate;
+        hr = S_OK;
+    }
+    else if (MsRdpEx_StringEquals(propName, "VideoRecordingCursor")) {
+        pValue->vt = VT_BOOL;
+        pValue->boolVal = m_VideoRecordingCursor ? VARIANT_TRUE : VARIANT_FALSE;
         hr = S_OK;
     }
     else if (MsRdpEx_StringEquals(propName, "RecordingPath")) {
@@ -1464,6 +1486,12 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
                 pMsRdpExtendedSettings->put_Property(propName, &value);
             }
         }
+        else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "VideoRecordingCursor")) {
+            if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
+                bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
+                pMsRdpExtendedSettings->put_Property(propName, &value);
+            }
+        }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "RecordingPath")) {
             bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
             bstr_t propValue = _com_util::ConvertStringToBSTR(entry->value);
@@ -1862,6 +1890,11 @@ uint32_t CMsRdpExtendedSettings::GetVideoRecordingQuality()
 uint32_t CMsRdpExtendedSettings::GetVideoRecordingFrameRate()
 {
     return m_VideoRecordingFrameRate;
+}
+
+bool CMsRdpExtendedSettings::GetVideoRecordingCursor()
+{
+    return m_VideoRecordingCursor;
 }
 
 char* CMsRdpExtendedSettings::GetRecordingPath()
