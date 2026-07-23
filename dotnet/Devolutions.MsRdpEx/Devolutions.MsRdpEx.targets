@@ -1,7 +1,91 @@
 <?xml version="1.0"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <ItemGroup>
-    <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-x86\native\MsRdpEx.dll">
+  <PropertyGroup>
+    <MsRdpExComInterop Condition="'$(MsRdpExComInterop)' == ''">Legacy</MsRdpExComInterop>
+    <MsRdpExGeneratedInteropSupported>true</MsRdpExGeneratedInteropSupported>
+    <MsRdpExGeneratedWinFormsInteropSupported>true</MsRdpExGeneratedWinFormsInteropSupported>
+    <MsRdpExGeneratedWinFormsHostSupported>true</MsRdpExGeneratedWinFormsHostSupported>
+    <MsRdpExGeneratedWinForms Condition="'$(MsRdpExGeneratedWinForms)' == ''">false</MsRdpExGeneratedWinForms>
+    <_MsRdpExPackageRoot>$(MSBuildThisFileDirectory)..\</_MsRdpExPackageRoot>
+    <_MsRdpExLegacyInteropPath>$(_MsRdpExPackageRoot)interop\legacy\Interop.MSTSCLib.dll</_MsRdpExLegacyInteropPath>
+    <_MsRdpExLegacyAxInteropPath Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">$(_MsRdpExPackageRoot)interop\legacy\net48\AxInterop.MSTSCLib.dll</_MsRdpExLegacyAxInteropPath>
+    <_MsRdpExLegacyAxInteropPath Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp'">$(_MsRdpExPackageRoot)interop\legacy\net8.0-windows\AxInterop.MSTSCLib.dll</_MsRdpExLegacyAxInteropPath>
+    <_MsRdpExGeneratedInteropPath>$(_MsRdpExPackageRoot)interop\generated\Interop.MSTSCLib.Generated.dll</_MsRdpExGeneratedInteropPath>
+    <_MsRdpExGeneratedWinFormsInteropPath>$(_MsRdpExPackageRoot)interop\generated-winforms\AxInterop.MSTSCLib.dll</_MsRdpExGeneratedWinFormsInteropPath>
+    <_MsRdpExGeneratedWinFormsHostPath>$(_MsRdpExPackageRoot)interop\generated-winforms\Interop.MSTSCLib.Generated.WinForms.dll</_MsRdpExGeneratedWinFormsHostPath>
+    <_MsRdpExNativeArchitecture Condition="'$(RuntimeIdentifier)' == '' And ('$(PlatformTarget)' == 'x86' Or '$(Platform)' == 'Win32' Or '$(Platform)' == 'x86')">x86</_MsRdpExNativeArchitecture>
+    <_MsRdpExNativeArchitecture Condition="'$(RuntimeIdentifier)' == '' And ('$(PlatformTarget)' == 'x64' Or '$(Platform)' == 'x64')">x64</_MsRdpExNativeArchitecture>
+    <_MsRdpExNativeArchitecture Condition="'$(RuntimeIdentifier)' == '' And ('$(PlatformTarget)' == 'arm64' Or '$(Platform)' == 'ARM64' Or '$(Platform)' == 'arm64')">arm64</_MsRdpExNativeArchitecture>
+  </PropertyGroup>
+
+  <Target Name="_MsRdpExValidateComInteropSelection"
+          BeforeTargets="ResolveReferences">
+    <Error Condition="'$(MsRdpExComInterop)' != 'Legacy' And '$(MsRdpExComInterop)' != 'Generated' And '$(MsRdpExComInterop)' != 'GeneratedWinForms' And '$(MsRdpExComInterop)' != 'None'"
+           Text="Unsupported MsRdpExComInterop value '$(MsRdpExComInterop)'. Use 'Legacy', 'Generated', 'GeneratedWinForms', or 'None'." />
+    <Error Condition="'$(MsRdpExGeneratedWinForms)' != 'true' And '$(MsRdpExGeneratedWinForms)' != 'false'"
+           Text="MsRdpExGeneratedWinForms must be 'true' or 'false'." />
+    <Error Condition="'$(MsRdpExGeneratedWinForms)' == 'true' And '$(MsRdpExComInterop)' != 'Generated'"
+           Text="MsRdpExGeneratedWinForms=true requires MsRdpExComInterop=Generated." />
+    <Error Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework' And ('$(MsRdpExComInterop)' == 'Generated' Or '$(MsRdpExComInterop)' == 'GeneratedWinForms')"
+           Text="MsRdpExComInterop=$(MsRdpExComInterop) requires a modern Windows .NET target; use Legacy or target net8.0-windows or later." />
+    <Error Condition="'$(MsRdpExComInterop)' == 'Generated' And !Exists('$(_MsRdpExGeneratedInteropPath)')"
+           Text="MsRdpExComInterop=Generated requires '$(_MsRdpExGeneratedInteropPath)', but the selected Devolutions.MsRdpEx package does not contain it. Select a package with MsRdpExGeneratedInteropSupported=true or use Legacy." />
+    <Error Condition="'$(MsRdpExGeneratedWinForms)' == 'true' And !Exists('$(_MsRdpExGeneratedWinFormsHostPath)')"
+           Text="MsRdpExGeneratedWinForms=true requires '$(_MsRdpExGeneratedWinFormsHostPath)', but the selected Devolutions.MsRdpEx package does not contain it. Select a package with MsRdpExGeneratedWinFormsHostSupported=true or disable WinForms hosting." />
+    <Error Condition="'$(MsRdpExGeneratedWinForms)' == 'true' And '$(UseWindowsForms)' != 'true'"
+           Text="MsRdpExGeneratedWinForms=true requires UseWindowsForms=true." />
+    <Error Condition="'$(MsRdpExComInterop)' == 'Legacy' And (!Exists('$(_MsRdpExLegacyInteropPath)') Or !Exists('$(_MsRdpExLegacyAxInteropPath)'))"
+           Text="MsRdpExComInterop=Legacy requires '$(_MsRdpExLegacyInteropPath)' and '$(_MsRdpExLegacyAxInteropPath)', but the selected Devolutions.MsRdpEx package does not contain its legacy interop assets." />
+    <Error Condition="'$(MsRdpExComInterop)' == 'GeneratedWinForms' And (!Exists('$(_MsRdpExGeneratedInteropPath)') Or !Exists('$(_MsRdpExGeneratedWinFormsInteropPath)'))"
+           Text="MsRdpExComInterop=GeneratedWinForms requires '$(_MsRdpExGeneratedInteropPath)' and '$(_MsRdpExGeneratedWinFormsInteropPath)', but the selected Devolutions.MsRdpEx package does not contain both assets. Select a package with MsRdpExGeneratedWinFormsInteropSupported=true or use Legacy." />
+  </Target>
+
+  <ItemGroup Condition="'$(MsRdpExComInterop)' == 'Legacy'">
+    <Reference Include="Interop.MSTSCLib">
+      <HintPath>$(_MsRdpExLegacyInteropPath)</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="AxInterop.MSTSCLib">
+      <HintPath>$(_MsRdpExLegacyAxInteropPath)</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MsRdpExComInterop)' == 'Generated'">
+    <Reference Include="Interop.MSTSCLib.Generated">
+      <HintPath>$(_MsRdpExGeneratedInteropPath)</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MsRdpExComInterop)' == 'Generated' And '$(MsRdpExGeneratedWinForms)' == 'true'">
+    <Reference Include="Interop.MSTSCLib.Generated.WinForms">
+      <HintPath>$(_MsRdpExGeneratedWinFormsHostPath)</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MsRdpExComInterop)' == 'GeneratedWinForms'">
+    <Reference Include="Interop.MSTSCLib.Generated">
+      <HintPath>$(_MsRdpExGeneratedInteropPath)</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+    <Reference Include="AxInterop.MSTSCLib">
+      <HintPath>$(_MsRdpExGeneratedWinFormsInteropPath)</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+  </ItemGroup>
+
+  <!-- RID-aware projects receive native assets through NuGet. Retain the legacy fallback for AnyCPU desktop builds. -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == ''">
+    <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-x86\native\MsRdpEx.dll"
+             Condition="Exists('$(MSBuildThisFileDirectory)\..\runtimes\win-x86\native\MsRdpEx.dll') And ('$(_MsRdpExNativeArchitecture)' == '' Or '$(_MsRdpExNativeArchitecture)' == 'x86')">
       <Link>runtimes\win-x86\native\MsRdpEx.dll</Link>
       <PublishState>Included</PublishState>
       <Visible>False</Visible>
@@ -9,7 +93,8 @@
       <IncludeInVsix>true</IncludeInVsix>
       <Pack>false</Pack>
     </Content>
-    <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-x64\native\MsRdpEx.dll">
+    <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-x64\native\MsRdpEx.dll"
+             Condition="Exists('$(MSBuildThisFileDirectory)\..\runtimes\win-x64\native\MsRdpEx.dll') And ('$(_MsRdpExNativeArchitecture)' == '' Or '$(_MsRdpExNativeArchitecture)' == 'x64')">
       <Link>runtimes\win-x64\native\MsRdpEx.dll</Link>
       <PublishState>Included</PublishState>
       <Visible>False</Visible>
@@ -17,7 +102,8 @@
       <IncludeInVsix>true</IncludeInVsix>
       <Pack>false</Pack>
     </Content>
-    <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-arm64\native\MsRdpEx.dll">
+    <Content Include="$(MSBuildThisFileDirectory)\..\runtimes\win-arm64\native\MsRdpEx.dll"
+             Condition="Exists('$(MSBuildThisFileDirectory)\..\runtimes\win-arm64\native\MsRdpEx.dll') And ('$(_MsRdpExNativeArchitecture)' == '' Or '$(_MsRdpExNativeArchitecture)' == 'arm64')">
       <Link>runtimes\win-arm64\native\MsRdpEx.dll</Link>
       <PublishState>Included</PublishState>
       <Visible>False</Visible>
@@ -26,4 +112,5 @@
       <Pack>false</Pack>
     </Content>
   </ItemGroup>
+
 </Project>

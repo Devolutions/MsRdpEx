@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\common.build.pre.props" />
+
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <AssemblyName>Interop.MSTSCLib.Generated.WinForms</AssemblyName>
+    <PackageId>Interop.MSTSCLib.Generated.WinForms</PackageId>
+    <Version>1.0.0.0</Version>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <OutputPath>$(CMakeOutputPath)</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>12</LangVersion>
+    <EnableGeneratedComInterfaceComImportInterop>true</EnableGeneratedComInterfaceComImportInterop>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Interop.MSTSCLib.Generated\Interop.MSTSCLib.Generated.csproj" />
+  </ItemGroup>
+</Project>

@@ -3,34 +3,39 @@ using System;
 using System.IO;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
+using System.Reflection;
+using MSTSCLib;
+
+[assembly: ComVisible(false)]
 
 namespace AxMSTSCLib {
 
-    internal static class ComHelper
+    internal static partial class ComHelper
     {
         private static Guid IID_IUnknown = new Guid(0x00000000, 0x0000, 0x0000, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
         private static Guid IID_IClassFactory = new Guid(0x00000001, 0x0000, 0x0000, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46);
 
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         private delegate int DllGetClassObject(
             ref Guid clsid,
             ref Guid iid,
-            [Out, MarshalAs(UnmanagedType.Interface)] out IClassFactory classFactory);
+            /*[Out, MarshalAs(UnmanagedType.Interface)] out IClassFactory*/ out nint classFactory);
 
         internal static object CreateInstance(LibraryModule libraryModule, Guid clsid)
         {
             object obj;
             var classFactory = GetClassFactory(libraryModule, clsid);
             classFactory.CreateInstance(null, ref IID_IUnknown, out obj);
-            Marshal.ReleaseComObject(classFactory);
             return obj;
         }
 
-        internal static IClassFactory GetClassFactory(LibraryModule libraryModule, Guid clsid)
+        internal static unsafe IClassFactory GetClassFactory(LibraryModule libraryModule, Guid clsid)
         {
             IntPtr ptr = libraryModule.GetProcAddress("DllGetClassObject");
             var callback = (DllGetClassObject) Marshal.GetDelegateForFunctionPointer(ptr, typeof(DllGetClassObject));
 
-            IClassFactory classFactory;
+            nint classFactory;
             var hr = callback(ref clsid, ref IID_IClassFactory, out classFactory);
 
             if (hr != 0)
@@ -38,20 +43,30 @@ namespace AxMSTSCLib {
                 throw new Win32Exception(hr, "Cannot create class factory");
             }
 
-            return classFactory;
+#if NET8_0_OR_GREATER
+            try { return ComInterfaceMarshaller<IClassFactory>.ConvertToManaged((void*)classFactory); }
+            finally { ComInterfaceMarshaller<IClassFactory>.Free((void*)classFactory); }
+#else
+            try { return (IClassFactory)Marshal.GetObjectForIUnknown(classFactory); }
+            finally { Marshal.Release(classFactory); }
+#endif
         }
     }
 
     [Guid("00000001-0000-0000-c000-000000000046")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+#if NET8_0_OR_GREATER
+    [GeneratedComInterface]
+#else
     [ComImport]
-    internal interface IClassFactory
+#endif
+    internal partial interface IClassFactory
     {
         void CreateInstance(
-            [MarshalAs(UnmanagedType.IUnknown)] object pUnkOuter,
+            [MarshalAs(UnmanagedType.Interface)] object pUnkOuter,
             ref Guid riid,
-            [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
-        void LockServer(bool fLock);
+            [MarshalAs(UnmanagedType.Interface)] out object ppvObject);
+        void LockServer([MarshalAs(UnmanagedType.Bool)] bool fLock);
     }
 
     internal class LibraryModule
@@ -175,9 +190,87 @@ namespace AxMSTSCLib {
 
         protected override object CreateInstanceCore(Guid clsid)
         {
+#if NET8_0_OR_GREATER
+            if (ComWrappers.TryGetComInstance(RdpCreateInstance(clsid), out var pUnkPtr))
+            {
+                try { return Marshal.GetObjectForIUnknown(pUnkPtr); }
+                finally { Marshal.Release(pUnkPtr); }
+            }
+
+            throw new InvalidOperationException("Could not obtain IUnknown pointer from COM object.");
+#else
             return RdpCreateInstance(clsid);
+#endif
         }
 
         public AxHostEx(string clsid): base(clsid) { }
+
+        public new object GetOcx()
+        {
+            return ProxyObject.Pack(base.GetOcx());
+        }
+    }
+}
+
+namespace MSTSCLib {
+
+    /// <summary>
+    /// Describes how <see cref="GeneratedRdpClientHost"/> activates an RDP ActiveX control.
+    /// </summary>
+    public sealed class GeneratedRdpClientHostOptions
+    {
+        /// <summary>The CLSID of the RDP ActiveX control.</summary>
+        public Guid ClassId { get; init; }
+
+        /// <summary>
+        /// Selects the RDP ActiveX DLL when <see cref="RdpExDll"/> is not specified.
+        /// Supported values include <c>mstsc</c> and <c>msrdc</c>.
+        /// </summary>
+        public string AxName { get; init; } = "mstsc";
+
+        /// <summary>
+        /// Optional path to MsRdpEx.dll. When specified, activation uses its class factory.
+        /// </summary>
+        public string? RdpExDll { get; init; }
+    }
+
+    /// <summary>
+    /// Hosts a source-generated RDP ActiveX proxy in a WinForms control.
+    /// </summary>
+    public sealed class GeneratedRdpClientHost : AxMSTSCLib.AxHostEx
+    {
+        public GeneratedRdpClientHost(Guid classId)
+            : this(new GeneratedRdpClientHostOptions { ClassId = classId })
+        {
+        }
+
+        public GeneratedRdpClientHost(GeneratedRdpClientHostOptions options)
+            : base(ValidateOptions(options).ClassId.ToString("B"))
+        {
+            axName = options.AxName;
+            rdpExDll = options.RdpExDll ?? string.Empty;
+        }
+
+        /// <summary>Gets the generated COM proxy associated with this hosted control.</summary>
+        /// <typeparam name="T">A generated RDP interface implemented by the control.</typeparam>
+        /// <exception cref="InvalidOperationException">The ActiveX control has not been created or does not implement <typeparamref name="T"/>.</exception>
+        public T GetClient<T>() where T : class
+        {
+            if (ProxyObject.TryPack(GetOcx(), out T? client))
+                return client;
+
+            throw new InvalidOperationException($"The hosted RDP control does not implement {typeof(T).FullName}.");
+        }
+
+        private static GeneratedRdpClientHostOptions ValidateOptions(GeneratedRdpClientHostOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+            if (options.ClassId == Guid.Empty)
+                throw new ArgumentException("An RDP ActiveX CLSID is required.", nameof(options));
+            if (string.IsNullOrWhiteSpace(options.AxName))
+                throw new ArgumentException("An ActiveX DLL name is required.", nameof(options));
+
+            return options;
+        }
     }
 }

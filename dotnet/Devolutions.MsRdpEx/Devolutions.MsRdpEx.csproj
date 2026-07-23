@@ -10,24 +10,22 @@
     <Company>Devolutions</Company>
     <Description>Microsoft RDP Extensions</Description>
     <OutputType>Library</OutputType>
-    <UseWindowsForms>True</UseWindowsForms>
-    <OutputPath>$(CMakeOutputPath)</OutputPath>
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
+    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
-    <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
-    <SuppressDependenciesWhenPacking>True</SuppressDependenciesWhenPacking>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <OutputPath>$(CMakeOutputPath)</OutputPath>
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>$(NoWarn);NU5100;NU5128</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="Interop.MSTSCLib">
-      <Private>False</Private>
-      <HintPath>..\Interop.MSTSCLib\Interop.MSTSCLib.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
-      <CopyLocal>True</CopyLocal>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" />
+    <ProjectReference Include="../AxInterop.MSTSCLib.Legacy/AxInterop.MSTSCLib.Legacy.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../AxInterop.MSTSCLib/AxInterop.MSTSCLib.csproj" ReferenceOutputAssembly="false" Condition="'$(TargetFramework)' != 'net48'" />
+    <ProjectReference Include="../Interop.MSTSCLib.Generated/Interop.MSTSCLib.Generated.csproj" ReferenceOutputAssembly="false" Condition="'$(TargetFramework)' != 'net48'" />
+    <ProjectReference Include="../Interop.MSTSCLib.Generated.WinForms/Interop.MSTSCLib.Generated.WinForms.csproj" ReferenceOutputAssembly="false" Condition="'$(TargetFramework)' != 'net48'" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
@@ -36,20 +34,17 @@
   </Target>
 
   <ItemGroup>
-    <Content Include="$(OutputPath)/net48/Interop.MSTSCLib.dll" PackagePath="lib/net48/Interop.MSTSCLib.dll" Pack="true" />
-    <Content Include="$(OutputPath)/net48/AxInterop.MSTSCLib.dll" PackagePath="lib/net48/AxInterop.MSTSCLib.dll" Pack="true" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="$(OutputPath)/net8.0-windows/Interop.MSTSCLib.dll" PackagePath="lib/net8.0-windows7.0/Interop.MSTSCLib.dll" Pack="true" />
-    <Content Include="$(OutputPath)/net8.0-windows/AxInterop.MSTSCLib.dll" PackagePath="lib/net8.0-windows7.0/AxInterop.MSTSCLib.dll" Pack="true" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="../../dependencies/MsRdpEx/x86/MsRdpEx.dll" PackagePath="runtimes/win-x86/native/MsRdpEx.dll" Pack="true" />
-    <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll" PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" />
-    <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll" PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" />
+    <Content Include="../Interop.MSTSCLib/Interop.MSTSCLib.dll" PackagePath="interop/legacy/Interop.MSTSCLib.dll" Pack="true" Visible="false" />
+    <Content Include="$(CMakeOutputPath)\legacy\net48\AxInterop.MSTSCLib.dll" PackagePath="interop/legacy/net48/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
+    <Content Include="$(CMakeOutputPath)\legacy\net8.0-windows\AxInterop.MSTSCLib.dll" PackagePath="interop/legacy/net8.0-windows/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
+    <Content Include="$(CMakeOutputPath)\Interop.MSTSCLib.Generated.dll" PackagePath="interop/generated/Interop.MSTSCLib.Generated.dll" Pack="true" Visible="false" />
+    <Content Include="$(CMakeOutputPath)\AxInterop.MSTSCLib.dll" PackagePath="interop/generated-winforms/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
+    <Content Include="$(CMakeOutputPath)\Interop.MSTSCLib.Generated.WinForms.dll" PackagePath="interop/generated-winforms/Interop.MSTSCLib.Generated.WinForms.dll" Pack="true" Visible="false" />
+    <Content Include="../../dependencies/MsRdpEx/x86/MsRdpEx.dll" PackagePath="runtimes/win-x86/native/MsRdpEx.dll" Pack="true" Visible="false" Condition="Exists('../../dependencies/MsRdpEx/x86/MsRdpEx.dll')" />
+    <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll" PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" Visible="false" Condition="Exists('../../dependencies/MsRdpEx/x64/MsRdpEx.dll')" />
+    <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll" PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" Visible="false" Condition="Exists('../../dependencies/MsRdpEx/arm64/MsRdpEx.dll')" />
     <Content Include="Devolutions.MsRdpEx.targets" PackagePath="build/Devolutions.MsRdpEx.targets" Pack="true" />
+    <Content Include="Devolutions.MsRdpEx.targets" PackagePath="buildTransitive/Devolutions.MsRdpEx.targets" Pack="true" />
   </ItemGroup>
 
 </Project>

@@ -3,7 +3,12 @@ using System.IO;
 using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+#if NET8_0_OR_GREATER
+using System.Runtime.InteropServices.Marshalling;
+#endif
 using System.Text;
+
+[assembly: ComVisible(false)]
 
 namespace MsRdpEx
 {
@@ -52,6 +57,26 @@ namespace MsRdpEx
         // Replacement for [MarshalAs(UnmanagedType.LPStr)]
         // [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(MarshalHelpers.LPUTF8Str))]
 
+#if NET8_0_OR_GREATER
+        [CustomMarshaller(typeof(string), MarshalMode.Default, typeof(LPUTF8Str))]
+        public static class LPUTF8Str
+        {
+            public static string ConvertToManaged(IntPtr pNativeData)
+            {
+                return MarshalHelpers.PtrToStringUTF8(pNativeData);
+            }
+
+            public static IntPtr ConvertToUnmanaged(string ManagedObj)
+            {
+                return MarshalHelpers.StringToCoTaskMemUTF8(ManagedObj);
+            }
+
+            public static void Free(IntPtr pNativeData)
+            {
+                Marshal.FreeCoTaskMem(pNativeData);
+            }
+        }
+#else
         public class LPUTF8Str : ICustomMarshaler
         {
             public void CleanUpManagedData(object ManagedObj)
@@ -81,5 +106,6 @@ namespace MsRdpEx
 
             public static ICustomMarshaler GetInstance(string cookie) => new LPUTF8Str();
         }
+#endif
     }
 }

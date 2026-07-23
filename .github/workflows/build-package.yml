@@ -280,6 +280,66 @@ jobs:
           cmake --build $BuildDir --config Release
           & dotnet pack .\dotnet\Devolutions.MsRdpEx -o package
 
+      - name: Test NuGet package consumers
+        shell: pwsh
+        run: |
+          $PackageVersion = '${{ needs.preflight.outputs.package-version }}'
+          $PackageSource = (Resolve-Path .\package).Path
+          $BuildDir = "build-dotnet"
+          $NuGetPackage = (Get-Item .\package\*.nupkg | Select-Object -First 1).FullName
+          $ValidationDirectory = Join-Path $env:RUNNER_TEMP 'MsRdpEx-package-validation'
+          Expand-Archive $NuGetPackage $ValidationDirectory -Force
+          $ExpectedMachines = @{
+            'x86' = 0x014c
+            'x64' = 0x8664
+            'arm64' = 0xAA64
+          }
+
+          foreach ($Architecture in $ExpectedMachines.Keys) {
+            $NativeDll = Join-Path $ValidationDirectory "runtimes\win-$Architecture\native\MsRdpEx.dll"
+            if (-not (Test-Path $NativeDll)) {
+              throw "NuGet package is missing the win-$Architecture MsRdpEx.dll payload."
+            }
+
+            $Bytes = [System.IO.File]::ReadAllBytes($NativeDll)
+            if ($Bytes.Length -lt 0x40 -or $Bytes[0] -ne 0x4d -or $Bytes[1] -ne 0x5a) {
+              throw "NuGet native payload '$NativeDll' is not a PE file."
+            }
+
+            $PeOffset = [System.BitConverter]::ToInt32($Bytes, 0x3c)
+            if ($PeOffset -lt 0 -or $Bytes.Length -lt ($PeOffset + 6) -or
+                $Bytes[$PeOffset] -ne 0x50 -or $Bytes[$PeOffset + 1] -ne 0x45) {
+              throw "NuGet native payload '$NativeDll' has an invalid PE header."
+            }
+
+            $Machine = [System.BitConverter]::ToUInt16($Bytes, $PeOffset + 4)
+            if ($Machine -ne $ExpectedMachines[$Architecture]) {
+              throw "NuGet native payload '$NativeDll' has PE machine 0x$('{0:X4}' -f $Machine); expected 0x$('{0:X4}' -f $ExpectedMachines[$Architecture])."
+            }
+          }
+
+          dotnet test .\dotnet\MsRdpEx_Test\MsRdpEx_Test.csproj -c Release -p:CMakeOutputPath="$BuildDir\Release" -v:minimal
+          dotnet run --project .\dotnet\MsRdpEx_LegacyInterop_Test\MsRdpEx_LegacyInterop_Test.csproj -c Release -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" --no-launch-profile
+          dotnet run --project .\dotnet\MsRdpEx_GeneratedWinFormsInterop_Test\MsRdpEx_GeneratedWinFormsInterop_Test.csproj -c Release -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" --no-launch-profile
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          dotnet run --project .\dotnet\MsRdpEx_GeneratedWinFormsInterop_Test\MsRdpEx_GeneratedWinFormsInterop_Test.csproj -c Release -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" --no-launch-profile -- --com-integration
+          if ($LASTEXITCODE -eq 77) {
+            Write-Host 'Generated WinForms COM integration skipped because the RDP ActiveX control is not registered.'
+          }
+          elseif ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+          dotnet publish .\dotnet\MsRdpEx_NativeAotInterop_Test\MsRdpEx_NativeAotInterop_Test.csproj -c Release -o .\nativeaot-test -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" -v:minimal
+          & .\nativeaot-test\MsRdpEx_NativeAotInterop_Test.exe --com-integration
+          if ($LASTEXITCODE -eq 77) {
+            Write-Host 'NativeAOT COM integration skipped because a required RDP ActiveX control is not registered.'
+          }
+          elseif ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
       - name: Code sign nuget contents
         shell: pwsh
         run: |
@@ -297,7 +357,7 @@ jobs:
             '-kvc', '${{ secrets.CODE_SIGNING_CERTIFICATE_NAME }}',
             '-tr', '${{ vars.CODE_SIGNING_TIMESTAMP_SERVER }}',
             '-v')
-          Get-ChildItem "$UnpackedDir\lib" -Include @("*.dll") -Recurse | ForEach-Object {
+          Get-ChildItem -Path @("$UnpackedDir\lib", "$UnpackedDir\interop") -Filter "*.dll" -Recurse | ForEach-Object {
             AzureSignTool @Params $_.FullName
           }
           Remove-Item $PackedFile -ErrorAction SilentlyContinue | Out-Null

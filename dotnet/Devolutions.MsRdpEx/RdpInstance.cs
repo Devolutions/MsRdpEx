@@ -8,7 +8,18 @@ namespace MsRdpEx
         public IMsRdpExInstance iface;
         
         public RdpInstance(IMsRdpExInstance iface) {
-            this.iface = iface;
+            this.iface = iface ?? throw new ArgumentNullException(nameof(iface));
+        }
+
+        /// <summary>
+        /// Creates an RDP instance wrapper from the raw ActiveX control object.
+        /// </summary>
+        public static RdpInstance FromOcx(object ocx)
+        {
+            if (!Bindings.TryGetRdpInstance(ocx, out IMsRdpExInstance? instance) || instance is null)
+                throw new InvalidOperationException("The hosted RDP ActiveX control does not implement IMsRdpExInstance.");
+
+            return new RdpInstance(instance);
         }
 
         public Guid SessionId
