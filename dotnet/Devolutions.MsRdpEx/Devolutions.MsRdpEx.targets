@@ -36,8 +36,8 @@
            Text="MsRdpExGeneratedWinForms=true requires UseWindowsForms=true." />
     <Error Condition="'$(MsRdpExComInterop)' == 'Legacy' And (!Exists('$(_MsRdpExLegacyInteropPath)') Or !Exists('$(_MsRdpExLegacyAxInteropPath)'))"
            Text="MsRdpExComInterop=Legacy requires '$(_MsRdpExLegacyInteropPath)' and '$(_MsRdpExLegacyAxInteropPath)', but the selected Devolutions.MsRdpEx package does not contain its legacy interop assets." />
-    <Error Condition="'$(MsRdpExComInterop)' == 'GeneratedWinForms' And !Exists('$(_MsRdpExGeneratedWinFormsInteropPath)')"
-           Text="MsRdpExComInterop=GeneratedWinForms requires '$(_MsRdpExGeneratedWinFormsInteropPath)', but the selected Devolutions.MsRdpEx package does not contain it. Select a package with MsRdpExGeneratedWinFormsInteropSupported=true or use Legacy." />
+    <Error Condition="'$(MsRdpExComInterop)' == 'GeneratedWinForms' And (!Exists('$(_MsRdpExGeneratedInteropPath)') Or !Exists('$(_MsRdpExGeneratedWinFormsInteropPath)'))"
+           Text="MsRdpExComInterop=GeneratedWinForms requires '$(_MsRdpExGeneratedInteropPath)' and '$(_MsRdpExGeneratedWinFormsInteropPath)', but the selected Devolutions.MsRdpEx package does not contain both assets. Select a package with MsRdpExGeneratedWinFormsInteropSupported=true or use Legacy." />
   </Target>
 
   <ItemGroup Condition="'$(MsRdpExComInterop)' == 'Legacy'">
@@ -70,6 +70,11 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(MsRdpExComInterop)' == 'GeneratedWinForms'">
+    <Reference Include="Interop.MSTSCLib.Generated">
+      <HintPath>$(_MsRdpExGeneratedInteropPath)</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
     <Reference Include="AxInterop.MSTSCLib">
       <HintPath>$(_MsRdpExGeneratedWinFormsInteropPath)</HintPath>
       <Private>true</Private>

@@ -15,6 +15,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>12</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,17 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Generated/Classic.cs" />
-    <Compile Remove="*/Desktop/*.cs" Condition="'$(TargetFramework)'!='net48'" />
-    <Compile Remove="*/NetCore/*.cs" Condition="'$(TargetFramework)'=='net48'" />
-    <Compile Remove="MSTSCLib/*.cs" Condition="'$(TargetFramework)'=='net48'" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Generated/Classic.cs" />
-    <None Include="*/Desktop/*.cs" Condition="'$(TargetFramework)'!='net48'" />
-    <None Include="*/NetCore/*.cs" Condition="'$(TargetFramework)'=='net48'" />
-    <None Include="MSTSCLib/*.cs" Condition="'$(TargetFramework)'=='net48'" />
+    <Compile Include="AxMSTSCLib.cs" />
+    <Compile Include="RdpAxHost.cs" />
+    <Compile Include="TypeForwards.cs" />
+    <ProjectReference Include="..\Interop.MSTSCLib.Generated\Interop.MSTSCLib.Generated.csproj" />
   </ItemGroup>
 
 </Project>

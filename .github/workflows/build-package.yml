@@ -320,6 +320,10 @@ jobs:
 
           dotnet test .\dotnet\MsRdpEx_Test\MsRdpEx_Test.csproj -c Release -p:CMakeOutputPath="$BuildDir\Release" -v:minimal
           dotnet run --project .\dotnet\MsRdpEx_LegacyInterop_Test\MsRdpEx_LegacyInterop_Test.csproj -c Release -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" --no-launch-profile
+          dotnet run --project .\dotnet\MsRdpEx_GeneratedWinFormsInterop_Test\MsRdpEx_GeneratedWinFormsInterop_Test.csproj -c Release -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" --no-launch-profile
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
           dotnet publish .\dotnet\MsRdpEx_NativeAotInterop_Test\MsRdpEx_NativeAotInterop_Test.csproj -c Release -o .\nativeaot-test -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" -v:minimal
           & .\nativeaot-test\MsRdpEx_NativeAotInterop_Test.exe --com-integration
           if ($LASTEXITCODE -eq 77) {

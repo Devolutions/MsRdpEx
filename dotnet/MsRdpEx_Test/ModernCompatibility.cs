@@ -97,6 +97,15 @@ namespace MsRdpEx.Tests
         }
 
         [Fact]
+        public void GeneratedWinFormsInteropForwardsCanonicalGeneratedTypes()
+        {
+            var forwardedTypes = typeof(AxMSTSCLib.AxHostEx).Assembly.GetForwardedTypes().ToHashSet();
+
+            foreach (var type in modernInteropLib.GetExportedTypes().Where(type => type.DeclaringType is null))
+                Assert.Contains(type, forwardedTypes);
+        }
+
+        [Fact]
         public void RdpInstanceRequiresAValidMsRdpExInterface()
         {
             Assert.False(Bindings.TryGetRdpInstance(new object(), out var instance));
