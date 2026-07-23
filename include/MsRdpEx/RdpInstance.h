@@ -39,6 +39,10 @@ public:
     virtual void __stdcall SetLastMousePosition(int32_t posX, int32_t posY) = 0;
     virtual HRESULT __stdcall GetWTSPluginObject(LPVOID* ppvObject) = 0;
     virtual HRESULT __stdcall SetWTSPluginObject(LPVOID pvObject) = 0;
+    virtual void __stdcall SetCursor(HCURSOR cursor) = 0;
+    virtual void __stdcall UpdateCursorPosition(int32_t x, int32_t y) = 0;
+    virtual void __stdcall HideCursor() = 0;
+    virtual void __stdcall DumpFrameWithCursor() = 0;
 };
 
 class CMsRdpExInstance;

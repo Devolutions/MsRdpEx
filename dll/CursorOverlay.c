@@ -9,8 +9,8 @@ struct _MsRdpEx_CursorOverlay
 	int32_t hotY;
 	int32_t width;
 	int32_t height;
-	int32_t x;
-	int32_t y;
+	int32_t inputX;
+	int32_t inputY;
 	bool visible;
 	ULONGLONG lastEmitTick;
 
@@ -194,10 +194,10 @@ bool MsRdpEx_CursorOverlay_SetPosition(MsRdpEx_CursorOverlay* ctx, int32_t x, in
 
 	visible = visible && (ctx->cursor != NULL);
 	bool visibilityChanged = (ctx->visible != visible);
-	bool positionChanged = (ctx->x != x) || (ctx->y != y);
+	bool positionChanged = (ctx->inputX != x) || (ctx->inputY != y);
 
-	ctx->x = x;
-	ctx->y = y;
+	ctx->inputX = x;
+	ctx->inputY = y;
 	ctx->visible = visible;
 
 	if ((visibilityChanged || positionChanged) &&
@@ -211,7 +211,9 @@ bool MsRdpEx_CursorOverlay_SetPosition(MsRdpEx_CursorOverlay* ctx, int32_t x, in
 	return emit;
 }
 
-void MsRdpEx_CursorOverlay_DumpFrame(MsRdpEx_CursorOverlay* ctx, MsRdpEx_OutputMirror* outputMirror)
+void MsRdpEx_CursorOverlay_DumpFrame(
+	MsRdpEx_CursorOverlay* ctx, MsRdpEx_OutputMirror* outputMirror,
+	HWND inputWindow, HWND outputWindow)
 {
 	HDC shadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
 	if (!ctx || !shadowDC)
@@ -222,7 +224,36 @@ void MsRdpEx_CursorOverlay_DumpFrame(MsRdpEx_CursorOverlay* ctx, MsRdpEx_OutputM
 
 	EnterCriticalSection(&ctx->lock);
 
-	if (!ctx->visible || !ctx->cursor || (ctx->width <= 0) || (ctx->height <= 0))
+	if (!ctx->visible || !ctx->cursor || (ctx->width <= 0) || (ctx->height <= 0) ||
+		!IsWindow(inputWindow) || !IsWindow(outputWindow))
+	{
+		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
+		LeaveCriticalSection(&ctx->lock);
+		return;
+	}
+
+	POINT point = { ctx->inputX, ctx->inputY };
+	RECT inputRect = { 0 };
+	RECT outputRect = { 0 };
+
+	if (!GetClientRect(inputWindow, &inputRect) || !PtInRect(&inputRect, point))
+	{
+		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
+		LeaveCriticalSection(&ctx->lock);
+		return;
+	}
+
+	SetLastError(ERROR_SUCCESS);
+	int mapResult = MapWindowPoints(inputWindow, outputWindow, &point, 1);
+
+	if ((mapResult == 0) && (GetLastError() != ERROR_SUCCESS))
+	{
+		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
+		LeaveCriticalSection(&ctx->lock);
+		return;
+	}
+
+	if (!GetClientRect(outputWindow, &outputRect) || !PtInRect(&outputRect, point))
 	{
 		MsRdpEx_OutputMirror_DumpFrame(outputMirror);
 		LeaveCriticalSection(&ctx->lock);
@@ -233,8 +264,8 @@ void MsRdpEx_CursorOverlay_DumpFrame(MsRdpEx_CursorOverlay* ctx, MsRdpEx_OutputM
 	uint32_t frameHeight = 0;
 	MsRdpEx_OutputMirror_GetFrameSize(outputMirror, &frameWidth, &frameHeight);
 
-	int32_t cursorX = ctx->x - ctx->hotX;
-	int32_t cursorY = ctx->y - ctx->hotY;
+	int32_t cursorX = point.x - ctx->hotX;
+	int32_t cursorY = point.y - ctx->hotY;
 	int32_t left = max(cursorX, 0);
 	int32_t top = max(cursorY, 0);
 	int32_t right = min(cursorX + ctx->width, (int32_t)frameWidth);

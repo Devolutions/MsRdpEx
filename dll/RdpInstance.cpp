@@ -300,7 +300,7 @@ public:
         m_LastMousePosY = posY;
     }
 
-    void SetCursor(HCURSOR cursor)
+    void STDMETHODCALLTYPE SetCursor(HCURSOR cursor)
     {
         if (!m_CursorOverlay)
             return;
@@ -309,24 +309,16 @@ public:
             EmitCursorFrame();
     }
 
-    void UpdateCursorPosition(HWND sourceWindow, int32_t posX, int32_t posY)
+    void STDMETHODCALLTYPE UpdateCursorPosition(int32_t posX, int32_t posY)
     {
-        if (!m_CursorOverlay || !sourceWindow || !m_hOutputPresenterWnd)
+        if (!m_CursorOverlay)
             return;
 
-        POINT point = { posX, posY };
-        MapWindowPoints(sourceWindow, m_hOutputPresenterWnd, &point, 1);
-
-        RECT rect = { 0 };
-        bool visible = GetClientRect(m_hOutputPresenterWnd, &rect) &&
-            (point.x >= rect.left) && (point.y >= rect.top) &&
-            (point.x < rect.right) && (point.y < rect.bottom);
-
-        if (MsRdpEx_CursorOverlay_SetPosition(m_CursorOverlay, point.x, point.y, visible))
+        if (MsRdpEx_CursorOverlay_SetPosition(m_CursorOverlay, posX, posY, true))
             EmitCursorFrame();
     }
 
-    void HideCursor()
+    void STDMETHODCALLTYPE HideCursor()
     {
         if (!m_CursorOverlay)
             return;
@@ -338,13 +330,15 @@ public:
         }
     }
 
-    void DumpFrameWithCursor()
+    void STDMETHODCALLTYPE DumpFrameWithCursor()
     {
         if (!m_OutputMirror)
             return;
 
         if (m_CursorOverlay)
-            MsRdpEx_CursorOverlay_DumpFrame(m_CursorOverlay, m_OutputMirror);
+            MsRdpEx_CursorOverlay_DumpFrame(
+                m_CursorOverlay, m_OutputMirror,
+                m_hInputCaptureWnd, m_hOutputPresenterWnd);
         else
             MsRdpEx_OutputMirror_DumpFrame(m_OutputMirror);
     }
@@ -356,7 +350,9 @@ private:
             return;
 
         MsRdpEx_OutputMirror_Lock(m_OutputMirror);
-        MsRdpEx_CursorOverlay_DumpFrame(m_CursorOverlay, m_OutputMirror);
+        MsRdpEx_CursorOverlay_DumpFrame(
+            m_CursorOverlay, m_OutputMirror,
+            m_hInputCaptureWnd, m_hOutputPresenterWnd);
         MsRdpEx_OutputMirror_Unlock(m_OutputMirror);
     }
 
@@ -398,27 +394,6 @@ CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient)
 void MsRdpEx_RdpInstance_Free(CMsRdpExInstance* instance)
 {
     instance->Release();
-}
-
-void MsRdpEx_RdpInstance_SetCursor(IMsRdpExInstance* instance, HCURSOR cursor)
-{
-    ((CMsRdpExInstance*)instance)->SetCursor(cursor);
-}
-
-void MsRdpEx_RdpInstance_UpdateCursorPosition(
-    IMsRdpExInstance* instance, HWND sourceWindow, int32_t x, int32_t y)
-{
-    ((CMsRdpExInstance*)instance)->UpdateCursorPosition(sourceWindow, x, y);
-}
-
-void MsRdpEx_RdpInstance_HideCursor(IMsRdpExInstance* instance)
-{
-    ((CMsRdpExInstance*)instance)->HideCursor();
-}
-
-void MsRdpEx_RdpInstance_DumpFrameWithCursor(IMsRdpExInstance* instance)
-{
-    ((CMsRdpExInstance*)instance)->DumpFrameWithCursor();
 }
 
 typedef struct _MsRdpEx_InstanceManager MsRdpEx_InstanceManager;
@@ -626,42 +601,6 @@ IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByInputCaptureHwnd(HWND hWnd)
             (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
 
         if (candidate->m_hInputCaptureWnd == hWnd)
-        {
-            instance = candidate;
-            instance->AddRef();
-            break;
-        }
-    }
-
-    MsRdpEx_ArrayListIt_Finish(it);
-    return instance;
-}
-
-IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByScreenPoint(POINT point)
-{
-    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
-    HWND pointWindow = WindowFromPoint(point);
-
-    if (!ctx || !pointWindow)
-        return NULL;
-
-    CMsRdpExInstance* instance = NULL;
-    MsRdpEx_ArrayListIt* it = MsRdpEx_ArrayList_It(
-        ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
-
-    while (!MsRdpEx_ArrayListIt_Done(it))
-    {
-        CMsRdpExInstance* candidate =
-            (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
-
-        bool matchesInput = candidate->m_hInputCaptureWnd &&
-            ((pointWindow == candidate->m_hInputCaptureWnd) ||
-                IsChild(candidate->m_hInputCaptureWnd, pointWindow));
-        bool matchesOutput = candidate->m_hOutputPresenterWnd &&
-            ((pointWindow == candidate->m_hOutputPresenterWnd) ||
-                IsChild(candidate->m_hOutputPresenterWnd, pointWindow));
-
-        if (matchesInput || matchesOutput)
         {
             instance = candidate;
             instance->AddRef();

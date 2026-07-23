@@ -517,7 +517,7 @@ bool WINAPI MsRdpEx_CaptureBlt(
     HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
 
-    MsRdpEx_RdpInstance_DumpFrameWithCursor(instance);
+    instance->DumpFrameWithCursor();
     MsRdpEx_OutputMirror_Unlock(outputMirror);
 
     captured = true;
@@ -572,29 +572,6 @@ BOOL WINAPI Hook_StretchBlt(
 
 end:
     return status;
-}
-
-HCURSOR (WINAPI * Real_SetCursor)(HCURSOR hCursor) = SetCursor;
-BOOL (WINAPI * Real_GetCursorPos)(LPPOINT lpPoint) = GetCursorPos;
-
-HCURSOR WINAPI Hook_SetCursor(HCURSOR hCursor)
-{
-    HCURSOR result = Real_SetCursor(hCursor);
-    POINT point = { 0 };
-
-    if (Real_GetCursorPos(&point))
-    {
-        IMsRdpExInstance* instance =
-            MsRdpEx_InstanceManager_AcquireByScreenPoint(point);
-
-        if (instance)
-        {
-            MsRdpEx_RdpInstance_SetCursor(instance, hCursor);
-            instance->Release();
-        }
-    }
-
-    return result;
 }
 
 #define SYSMENU_RDP_RANGE_FIRST_ID               7100
@@ -991,14 +968,19 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             TRACKMOUSEEVENT trackMouseEvent = { sizeof(TRACKMOUSEEVENT), TME_LEAVE, hWnd, 0 };
             TrackMouseEvent(&trackMouseEvent);
             instance->SetLastMousePosition(mousePosX, mousePosY);
-            MsRdpEx_RdpInstance_SetCursor(instance, GetCursor());
-            MsRdpEx_RdpInstance_UpdateCursorPosition(instance, hWnd, mousePosX, mousePosY);
+            instance->SetCursor(GetCursor());
+            instance->UpdateCursorPosition(mousePosX, mousePosY);
         }
+    }
+    else if (uMsg == WM_SETCURSOR)
+    {
+        if (instance)
+            instance->SetCursor(GetCursor());
     }
     else if (uMsg == WM_MOUSELEAVE)
     {
         if (instance)
-            MsRdpEx_RdpInstance_HideCursor(instance);
+            instance->HideCursor();
     }
     else if (uMsg == WM_KEYDOWN)
     {
@@ -1662,7 +1644,6 @@ LONG MsRdpEx_AttachHooks()
 
     MSRDPEX_DETOUR_ATTACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_ATTACH(Real_StretchBlt, Hook_StretchBlt);
-    MSRDPEX_DETOUR_ATTACH(Real_SetCursor, Hook_SetCursor);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MSRDPEX_DETOUR_ATTACH(Real_RegisterClassW, Hook_RegisterClassW);
     MSRDPEX_DETOUR_ATTACH(Real_GetClassInfoW, Hook_GetClassInfoW);
@@ -1722,7 +1703,6 @@ LONG MsRdpEx_DetachHooks()
     
     MSRDPEX_DETOUR_DETACH(Real_BitBlt, Hook_BitBlt);
     MSRDPEX_DETOUR_DETACH(Real_StretchBlt, Hook_StretchBlt);
-    MSRDPEX_DETOUR_DETACH(Real_SetCursor, Hook_SetCursor);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassExW, Hook_RegisterClassExW);
     MSRDPEX_DETOUR_DETACH(Real_RegisterClassW, Hook_RegisterClassW);
     MSRDPEX_DETOUR_DETACH(Real_GetClassInfoW, Hook_GetClassInfoW);
