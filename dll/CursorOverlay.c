@@ -228,6 +228,10 @@ void MsRdpEx_CursorOverlay_Composite(
 	if (!ctx || !shadowDC)
 		return;
 
+	// Undo a prior composite that never got its Restore (e.g. RDM's read threw between
+	// LockShadowBitmap/UnlockShadowBitmap) so we don't bake a stale cursor into the save surface.
+	MsRdpEx_CursorOverlay_Restore(ctx, outputMirror);
+
 	EnterCriticalSection(&ctx->lock);
 
 	ctx->composited = false;
