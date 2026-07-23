@@ -389,6 +389,39 @@ namespace MsRdpEx.Tests
         }
 
         [Fact]
+        public void EventArgumentLegacyAliasesForwardToCanonicalProperties()
+        {
+            var confirmClose = new ModernInterop::MSTSCLib.RdpClientConfirmCloseEventArgs();
+            Assert.Equal(confirmClose.AllowClose, confirmClose.pfAllowClose);
+            confirmClose.pfAllowClose = false;
+            Assert.False(confirmClose.AllowClose);
+            confirmClose.AllowClose = true;
+            Assert.True(confirmClose.pfAllowClose);
+
+            var publicKey = new ModernInterop::MSTSCLib.RdpClientPublicKeyEventArgs(null);
+            Assert.Equal(publicKey.ContinueLogon, publicKey.pfContinueLogon);
+            publicKey.pfContinueLogon = false;
+            Assert.False(publicKey.ContinueLogon);
+            publicKey.ContinueLogon = true;
+            Assert.True(publicKey.pfContinueLogon);
+
+            var legacyReconnect = new ModernInterop::MSTSCLib.RdpClientLegacyAutoReconnectingEventArgs(42, 3);
+            Assert.Equal(legacyReconnect.DisconnectReason, legacyReconnect.disconnectReason);
+            Assert.Equal(legacyReconnect.AttemptCount, legacyReconnect.attemptCount);
+            legacyReconnect.pArcContinueStatus = ModernInterop::MSTSCLib.AutoReconnectContinueState.autoReconnectContinueAutomatic;
+            Assert.Equal(legacyReconnect.pArcContinueStatus, legacyReconnect.ContinueStatus);
+            legacyReconnect.ContinueStatus = ModernInterop::MSTSCLib.AutoReconnectContinueState.autoReconnectContinueStop;
+            Assert.Equal(legacyReconnect.ContinueStatus, legacyReconnect.pArcContinueStatus);
+
+            var disconnected = new ModernInterop::MSTSCLib.RdpClientDisconnectedEventArgs(43, null, null);
+            Assert.Equal(disconnected.DisconnectReason, disconnected.discReason);
+
+            var reconnect = new ModernInterop::MSTSCLib.RdpClientAutoReconnectingEventArgs(44, null, null, null, 4, null);
+            Assert.Equal(reconnect.DisconnectReason, reconnect.disconnectReason);
+            Assert.Equal(reconnect.AttemptCount, reconnect.attemptCount);
+        }
+
+        [Fact]
         public void CompatibilityExtensionsProvideModernAccessors()
         {
             var extensions = typeof(ModernInterop::MSTSCLib.MSTSCLibExtensions);

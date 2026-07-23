@@ -404,6 +404,11 @@ namespace MSTSCLib
     public sealed class RdpClientConfirmCloseEventArgs : EventArgs
     {
         public bool AllowClose { get; set; } = true;
+        public bool pfAllowClose
+        {
+            get => AllowClose;
+            set => AllowClose = value;
+        }
     }
 
     [SupportedOSPlatform("windows")]
@@ -411,6 +416,11 @@ namespace MSTSCLib
     {
         public BinaryString? PublicKey { get; } = publicKey;
         public bool ContinueLogon { get; set; } = true;
+        public bool pfContinueLogon
+        {
+            get => ContinueLogon;
+            set => ContinueLogon = value;
+        }
     }
 
     [SupportedOSPlatform("windows")]
@@ -419,6 +429,13 @@ namespace MSTSCLib
         public int DisconnectReason { get; } = disconnectReason;
         public int AttemptCount { get; } = attemptCount;
         public AutoReconnectContinueState ContinueStatus { get; set; }
+        public int disconnectReason => DisconnectReason;
+        public int attemptCount => AttemptCount;
+        public AutoReconnectContinueState pArcContinueStatus
+        {
+            get => ContinueStatus;
+            set => ContinueStatus = value;
+        }
     }
 
     [SupportedOSPlatform("windows")]
@@ -427,6 +444,7 @@ namespace MSTSCLib
         public int DisconnectReason { get; } = disconnectReason;
         public int? ExtendedDisconnectReason { get; } = extendedDisconnectReason;
         public string? DisconnectErrorMessage { get; } = disconnectErrorMessage;
+        public int discReason => DisconnectReason;
     }
 
     [SupportedOSPlatform("windows")]
@@ -438,6 +456,8 @@ namespace MSTSCLib
         public bool? NetworkAvailable { get; } = networkAvailable;
         public int AttemptCount { get; } = attemptCount;
         public int? MaxAttemptCount { get; } = maxAttemptCount;
+        public int disconnectReason => DisconnectReason;
+        public int attemptCount => AttemptCount;
     }
 
     [SupportedOSPlatform("windows")]
