@@ -290,7 +290,7 @@ public:
         if (!outputMirror)
             return;
 
-        if (m_CursorOverlay && IsCursorOverlayEnabled())
+        if (m_CursorOverlay)
             MsRdpEx_CursorOverlay_Restore(m_CursorOverlay, outputMirror);
 
         MsRdpEx_OutputMirror_Unlock(outputMirror);
