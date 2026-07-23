@@ -57,6 +57,8 @@ set(MSRDPEX_SOURCES
     MsRdpClient.cpp
     MsRdpClient.h
     ApiHooks.cpp
+    CursorOverlay.c
+    CursorOverlay.h
     OutputMirror.c
     VideoRecorder.c
     RecordingManifest.c
@@ -68,6 +70,7 @@ set(MSRDPEX_SOURCES
     RdpCoreApi.cpp
     RdpProcess.cpp
     RdpInstance.cpp
+    RdpInstanceInternal.h
     RdpSettings.cpp
     RdpDvcClient.cpp
     RdpDvcClient.h

@@ -7,6 +7,8 @@
 
 #include "TSObjects.h"
 #include "ComHelpers.h"
+#include "CursorOverlay.h"
+#include "RdpInstanceInternal.h"
 
 extern "C" const GUID IID_IMsRdpExInstance;
 
@@ -17,6 +19,7 @@ public:
     {
         m_refCount = 1;
         m_pMsRdpClient = pMsRdpClient;
+        m_CursorOverlay = MsRdpEx_CursorOverlay_New();
         MsRdpEx_GuidGenerate(&m_sessionId);
 
         char sessionId[MSRDPEX_GUID_STRING_SIZE];
@@ -26,6 +29,11 @@ public:
 
     ~CMsRdpExInstance()
     {
+        if (m_CursorOverlay) {
+            MsRdpEx_CursorOverlay_Free(m_CursorOverlay);
+            m_CursorOverlay = NULL;
+        }
+
         if (m_OutputMirror) {
             MsRdpEx_OutputMirror_Free(m_OutputMirror);
             m_OutputMirror = NULL;
@@ -268,6 +276,11 @@ public:
             return;
 
         MsRdpEx_OutputMirror_Lock(outputMirror);
+
+        // RDM reads the shadow bitmap between Lock and Unlock (RdpAxThumbnailManager), so draw the
+        // cursor now and undo it in Unlock - that read is what carries the cursor into RDM's recording.
+        if (m_CursorOverlay && IsCursorOverlayEnabled())
+            MsRdpEx_CursorOverlay_Composite(m_CursorOverlay, outputMirror, m_hInputCaptureWnd, m_hOutputPresenterWnd);
     }
 
     void STDMETHODCALLTYPE UnlockShadowBitmap()
@@ -276,6 +289,9 @@ public:
 
         if (!outputMirror)
             return;
+
+        if (m_CursorOverlay)
+            MsRdpEx_CursorOverlay_Restore(m_CursorOverlay, outputMirror);
 
         MsRdpEx_OutputMirror_Unlock(outputMirror);
     }
@@ -292,6 +308,72 @@ public:
         m_LastMousePosY = posY;
     }
 
+    void STDMETHODCALLTYPE SetCursor(HCURSOR cursor)
+    {
+        if (!m_CursorOverlay || !IsCursorOverlayEnabled())
+            return;
+
+        if (MsRdpEx_CursorOverlay_SetShape(m_CursorOverlay, cursor))
+            EmitCursorFrame();
+    }
+
+    void STDMETHODCALLTYPE UpdateCursorPosition(int32_t posX, int32_t posY)
+    {
+        if (!m_CursorOverlay || !IsCursorOverlayEnabled())
+            return;
+
+        if (MsRdpEx_CursorOverlay_SetPosition(m_CursorOverlay, posX, posY, true))
+            EmitCursorFrame();
+    }
+
+    void STDMETHODCALLTYPE HideCursor()
+    {
+        if (!m_CursorOverlay || !IsCursorOverlayEnabled())
+            return;
+
+        if (MsRdpEx_CursorOverlay_SetPosition(
+            m_CursorOverlay, m_LastMousePosX, m_LastMousePosY, false))
+        {
+            EmitCursorFrame();
+        }
+    }
+
+    void STDMETHODCALLTYPE DumpFrameWithCursor()
+    {
+        if (!m_OutputMirror)
+            return;
+
+        if (m_CursorOverlay && IsCursorOverlayEnabled())
+            MsRdpEx_CursorOverlay_DumpFrame(
+                m_CursorOverlay, m_OutputMirror,
+                m_hInputCaptureWnd, m_hOutputPresenterWnd);
+        else
+            MsRdpEx_OutputMirror_DumpFrame(m_OutputMirror);
+    }
+
+private:
+    bool IsCursorOverlayEnabled()
+    {
+        return m_pMsRdpExtendedSettings && m_pMsRdpExtendedSettings->GetVideoRecordingCursor();
+    }
+
+    void EmitCursorFrame()
+    {
+        if (!m_OutputMirror || !IsCursorOverlayEnabled())
+            return;
+
+        bool outputMirrorEnabled = false;
+        if (FAILED(GetOutputMirrorEnabled(&outputMirrorEnabled)) || !outputMirrorEnabled)
+            return;
+
+        MsRdpEx_OutputMirror_Lock(m_OutputMirror);
+        MsRdpEx_CursorOverlay_DumpFrame(
+            m_CursorOverlay, m_OutputMirror,
+            m_hInputCaptureWnd, m_hOutputPresenterWnd);
+        MsRdpEx_OutputMirror_Unlock(m_OutputMirror);
+    }
+
+public:
     HRESULT STDMETHODCALLTYPE GetWTSPluginObject(LPVOID* ppvObject)
     {
         *ppvObject = m_WTSPlugin;
@@ -311,6 +393,7 @@ public:
     HWND m_hInputCaptureWnd = NULL;
     HWND m_hOutputPresenterWnd = NULL;
     HWND m_hTscShellContainerWnd = NULL;
+    MsRdpEx_CursorOverlay* m_CursorOverlay = NULL;
     MsRdpEx_OutputMirror* m_OutputMirror = NULL;
     ITSPropertySet* m_pCorePropsRaw = NULL;
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
@@ -394,6 +477,34 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(HWND hWnd)
     MsRdpEx_ArrayListIt_Finish(it);
 
     return found ? obj : NULL;
+}
+
+IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByOutputPresenterHwnd(HWND hWnd)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx)
+        return NULL;
+
+    CMsRdpExInstance* instance = NULL;
+    MsRdpEx_ArrayListIt* it = MsRdpEx_ArrayList_It(
+        ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        CMsRdpExInstance* candidate =
+            (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+
+        if (candidate->m_hOutputPresenterWnd == hWnd)
+        {
+            instance = candidate;
+            instance->AddRef();
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+    return instance;
 }
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, void* pUserData)
@@ -488,6 +599,34 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_FindByInputCaptureHwnd(HWND hWnd)
     MsRdpEx_ArrayListIt_Finish(it);
 
     return found ? obj : NULL;
+}
+
+IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByInputCaptureHwnd(HWND hWnd)
+{
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+
+    if (!ctx)
+        return NULL;
+
+    CMsRdpExInstance* instance = NULL;
+    MsRdpEx_ArrayListIt* it = MsRdpEx_ArrayList_It(
+        ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        CMsRdpExInstance* candidate =
+            (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+
+        if (candidate->m_hInputCaptureWnd == hWnd)
+        {
+            instance = candidate;
+            instance->AddRef();
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+    return instance;
 }
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_AttachInputWindow(HWND hInputWnd, void* pUserData)

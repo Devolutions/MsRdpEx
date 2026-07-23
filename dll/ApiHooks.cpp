@@ -1,5 +1,6 @@
 
 #include "MsRdpEx.h"
+#include "RdpInstanceInternal.h"
 
 #include <MsRdpEx/MsRdpEx.h>
 
@@ -442,7 +443,7 @@ bool WINAPI MsRdpEx_CaptureBlt(
     if (!hWnd)
         goto end;
 
-    instance = (IMsRdpExInstance*) MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
+    instance = MsRdpEx_InstanceManager_AcquireByOutputPresenterHwnd(hWnd);
 
     if (!instance)
         goto end;
@@ -515,11 +516,15 @@ bool WINAPI MsRdpEx_CaptureBlt(
 
     HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
-    MsRdpEx_OutputMirror_DumpFrame(outputMirror);
+
+    instance->DumpFrameWithCursor();
     MsRdpEx_OutputMirror_Unlock(outputMirror);
 
     captured = true;
 end:
+    if (instance)
+        instance->Release();
+
     return captured;
 }
 
@@ -760,6 +765,7 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     LRESULT result;
     char* lpWindowNameA = NULL;
     IMsRdpExInstance* instance = NULL;
+    bool releaseInstance = false;
     CMsRdpExtendedSettings* pExtendedSettings = NULL;
 
     //MsRdpEx_LogPrint(DEBUG, "IHWndProc: %s (%d)", MsRdpEx_GetWindowMessageName(uMsg), uMsg);
@@ -772,7 +778,8 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     }
     else
     {
-        instance = (IMsRdpExInstance*)MsRdpEx_InstanceManager_FindByInputCaptureHwnd(hWnd);
+        instance = MsRdpEx_InstanceManager_AcquireByInputCaptureHwnd(hWnd);
+        releaseInstance = (instance != NULL);
 
         if (instance)
             instance->GetExtendedSettings(&pExtendedSettings);
@@ -958,8 +965,22 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
         if (instance)
         {
+            TRACKMOUSEEVENT trackMouseEvent = { sizeof(TRACKMOUSEEVENT), TME_LEAVE, hWnd, 0 };
+            TrackMouseEvent(&trackMouseEvent);
             instance->SetLastMousePosition(mousePosX, mousePosY);
+            instance->SetCursor(GetCursor());
+            instance->UpdateCursorPosition(mousePosX, mousePosY);
         }
+    }
+    else if (uMsg == WM_SETCURSOR)
+    {
+        if (instance)
+            instance->SetCursor(GetCursor());
+    }
+    else if (uMsg == WM_MOUSELEAVE)
+    {
+        if (instance)
+            instance->HideCursor();
     }
     else if (uMsg == WM_KEYDOWN)
     {
@@ -1031,6 +1052,9 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
     }
 
     free(lpWindowNameA);
+
+    if (releaseInstance)
+        instance->Release();
 
     return result;
 }
