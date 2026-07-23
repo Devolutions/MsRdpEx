@@ -5,12 +5,19 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <MsRdpExComInterop>GeneratedWinForms</MsRdpExComInterop>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <MsRdpExComInterop>Generated</MsRdpExComInterop>
+    <MsRdpExGeneratedWinForms>true</MsRdpExGeneratedWinForms>
     <MsRdpExPackageVersion Condition="'$(MsRdpExPackageVersion)' == ''">1.0.0</MsRdpExPackageVersion>
     <RestoreAdditionalProjectSources Condition="'$(MsRdpExTestPackageSource)' != ''">$(MsRdpExTestPackageSource)</RestoreAdditionalProjectSources>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Devolutions.MsRdpEx" Version="[$(MsRdpExPackageVersion)]" />
+    <PackageReference Include="Devolutions.MsRdpEx" Version="[$(MsRdpExPackageVersion)]" GeneratePathProperty="true" />
+    <Reference Include="AxInterop.MSTSCLib">
+      <HintPath>$(PkgDevolutions_MsRdpEx)\interop\generated-winforms\AxInterop.MSTSCLib.dll</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
   </ItemGroup>
 </Project>

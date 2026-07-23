@@ -62,18 +62,7 @@ public sealed partial class GeneratedRdpClientHost : AxHost
 
     protected override object CreateInstanceCore(Guid classId)
     {
-        object instance = CreateInstance(classId);
-        if (!ComWrappers.TryGetComInstance(instance, out nint unknown))
-            throw new InvalidOperationException("Could not obtain an IUnknown pointer from the RDP ActiveX control.");
-
-        try
-        {
-            return Marshal.GetObjectForIUnknown(unknown);
-        }
-        finally
-        {
-            Marshal.Release(unknown);
-        }
+        return CreateInstance(classId);
     }
 
     private object CreateInstance(Guid classId)
