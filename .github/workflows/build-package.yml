@@ -321,7 +321,13 @@ jobs:
           dotnet test .\dotnet\MsRdpEx_Test\MsRdpEx_Test.csproj -c Release -p:CMakeOutputPath="$BuildDir\Release" -v:minimal
           dotnet run --project .\dotnet\MsRdpEx_LegacyInterop_Test\MsRdpEx_LegacyInterop_Test.csproj -c Release -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" --no-launch-profile
           dotnet publish .\dotnet\MsRdpEx_NativeAotInterop_Test\MsRdpEx_NativeAotInterop_Test.csproj -c Release -o .\nativeaot-test -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" -v:minimal
-          & .\nativeaot-test\MsRdpEx_NativeAotInterop_Test.exe
+          & .\nativeaot-test\MsRdpEx_NativeAotInterop_Test.exe --com-integration
+          if ($LASTEXITCODE -eq 77) {
+            Write-Host 'NativeAOT COM integration skipped because a required RDP ActiveX control is not registered.'
+          }
+          elseif ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Code sign nuget contents
         shell: pwsh
