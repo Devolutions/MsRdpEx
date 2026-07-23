@@ -324,6 +324,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
+          dotnet run --project .\dotnet\MsRdpEx_GeneratedWinFormsInterop_Test\MsRdpEx_GeneratedWinFormsInterop_Test.csproj -c Release -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" --no-launch-profile -- --com-integration
+          if ($LASTEXITCODE -eq 77) {
+            Write-Host 'Generated WinForms COM integration skipped because the RDP ActiveX control is not registered.'
+          }
+          elseif ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
           dotnet publish .\dotnet\MsRdpEx_NativeAotInterop_Test\MsRdpEx_NativeAotInterop_Test.csproj -c Release -o .\nativeaot-test -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" -v:minimal
           & .\nativeaot-test\MsRdpEx_NativeAotInterop_Test.exe --com-integration
           if ($LASTEXITCODE -eq 77) {

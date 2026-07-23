@@ -36,6 +36,7 @@ public sealed partial class GeneratedRdpClientHost : AxHost
     private static readonly object LoadLock = new();
     private readonly string axName;
     private readonly string rdpExDll;
+    private object? generatedInstance;
 
     public GeneratedRdpClientHost(Guid classId)
         : this(new GeneratedRdpClientHostOptions { ClassId = classId })
@@ -54,7 +55,7 @@ public sealed partial class GeneratedRdpClientHost : AxHost
     /// <exception cref="InvalidOperationException">The ActiveX control has not been created or does not implement <typeparamref name="T"/>.</exception>
     public T GetClient<T>() where T : class
     {
-        if (ProxyObject.TryPack(base.GetOcx(), out T? client))
+        if (ProxyObject.TryPack(generatedInstance ?? base.GetOcx(), out T? client))
             return client;
 
         throw new InvalidOperationException($"The hosted RDP control does not implement {typeof(T).FullName}.");
@@ -62,8 +63,8 @@ public sealed partial class GeneratedRdpClientHost : AxHost
 
     protected override object CreateInstanceCore(Guid classId)
     {
-        object instance = CreateInstance(classId);
-        if (!ComWrappers.TryGetComInstance(instance, out nint unknown))
+        generatedInstance = CreateInstance(classId);
+        if (!ComWrappers.TryGetComInstance(generatedInstance, out nint unknown))
             throw new InvalidOperationException("Could not obtain an IUnknown pointer from the RDP ActiveX control.");
 
         try
@@ -73,6 +74,19 @@ public sealed partial class GeneratedRdpClientHost : AxHost
         finally
         {
             Marshal.Release(unknown);
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        try
+        {
+            base.Dispose(disposing);
+        }
+        finally
+        {
+            if (disposing)
+                generatedInstance = null;
         }
     }
 
@@ -153,11 +167,11 @@ public sealed partial class GeneratedRdpClientHost : AxHost
 
                     try
                     {
-                        return Marshal.GetObjectForIUnknown(instancePointer);
+                        return ComInterfaceMarshaller<object>.ConvertToManaged((void*)instancePointer)!;
                     }
                     finally
                     {
-                        Marshal.Release(instancePointer);
+                        ComInterfaceMarshaller<object>.Free((void*)instancePointer);
                     }
                 }
                 finally

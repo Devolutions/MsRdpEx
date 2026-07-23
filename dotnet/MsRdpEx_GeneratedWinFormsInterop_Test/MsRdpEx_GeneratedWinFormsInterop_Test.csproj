@@ -3,9 +3,11 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <MsRdpExComInterop>GeneratedWinForms</MsRdpExComInterop>
+    <MsRdpExComInterop>Generated</MsRdpExComInterop>
+    <MsRdpExGeneratedWinForms>true</MsRdpExGeneratedWinForms>
     <MsRdpExPackageVersion Condition="'$(MsRdpExPackageVersion)' == ''">1.0.0</MsRdpExPackageVersion>
     <RestoreAdditionalProjectSources Condition="'$(MsRdpExTestPackageSource)' != ''">$(MsRdpExTestPackageSource)</RestoreAdditionalProjectSources>
   </PropertyGroup>
