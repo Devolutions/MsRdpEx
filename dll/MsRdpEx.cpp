@@ -733,11 +733,8 @@ bool CDECL MsRdpEx_UsePrivateAxLayout()
 
     if (axBackend)
     {
-        if (MsRdpEx_StringIEquals(axBackend, "generic") ||
-            MsRdpEx_StringIEquals(axBackend, "ironrdp"))
-        {
+        if (MsRdpEx_StringIEquals(axBackend, "public"))
             usePrivateAxLayout = false;
-        }
     }
     else
     {
