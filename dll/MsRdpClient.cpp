@@ -497,13 +497,16 @@ public:
         HRESULT hr;
         MsRdpEx_LogPrint(DEBUG, "CMsRdpClient::Connect");
 
-        m_pMsRdpExtendedSettings->LoadRdpFile(NULL);
-        m_pMsRdpExtendedSettings->LoadRdpFileFromNamedPipe(NULL);
-        m_pMsRdpExtendedSettings->PrepareSspiSessionIdHack();
-        m_pMsRdpExtendedSettings->DiscardCapturedPinIfNotCertLogon();
-        m_pMsRdpExtendedSettings->PrepareMouseJiggler();
-        m_pMsRdpExtendedSettings->PrepareVideoRecorder();
-        m_pMsRdpExtendedSettings->PrepareExtraSystemMenu();
+        if (MsRdpEx_UsePrivateAxLayout())
+        {
+            m_pMsRdpExtendedSettings->LoadRdpFile(NULL);
+            m_pMsRdpExtendedSettings->LoadRdpFileFromNamedPipe(NULL);
+            m_pMsRdpExtendedSettings->PrepareSspiSessionIdHack();
+            m_pMsRdpExtendedSettings->DiscardCapturedPinIfNotCertLogon();
+            m_pMsRdpExtendedSettings->PrepareMouseJiggler();
+            m_pMsRdpExtendedSettings->PrepareVideoRecorder();
+            m_pMsRdpExtendedSettings->PrepareExtraSystemMenu();
+        }
 
         BeginSspiSessionScope("connect");
         hr = m_pMsTscAx->raw_Connect();
@@ -525,6 +528,9 @@ public:
     }
 
     void BeginSspiSessionScope(const char* reason) {
+        if (!MsRdpEx_UsePrivateAxLayout())
+            return;
+
         if (m_sspiSessionActive)
             return;
 

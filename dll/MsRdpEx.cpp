@@ -108,10 +108,12 @@ uint64_t DllGetTscCtlVer()
     uint64_t version = 0;
 
     if (g_IsOOBClient) {
-        version = g_rdclientax.DllGetTscCtlVer();
+        if (g_rdclientax.DllGetTscCtlVer)
+            version = g_rdclientax.DllGetTscCtlVer();
     }
     else {
-        version = g_mstscax.DllGetTscCtlVer();
+        if (g_mstscax.DllGetTscCtlVer)
+            version = g_mstscax.DllGetTscCtlVer();
     }
 
     MsRdpEx_LogPrint(DEBUG, "DllGetTscCtlVer: 0x%04X", (unsigned int)version);
@@ -723,6 +725,33 @@ HRESULT DllPreCleanUp()
 HRESULT MsRdpEx_PreCleanUp()
 {
     return DllPreCleanUp();
+}
+
+bool CDECL MsRdpEx_UsePrivateAxLayout()
+{
+    bool usePrivateAxLayout = true;
+    char* axBackend = MsRdpEx_GetEnv("MSRDPEX_AX_BACKEND");
+    char* axDll = NULL;
+
+    if (axBackend)
+    {
+        if (MsRdpEx_StringIEquals(axBackend, "public"))
+            usePrivateAxLayout = false;
+    }
+    else
+    {
+        axDll = MsRdpEx_GetEnv("MSRDPEX_MSTSCAX_DLL");
+
+        if (axDll &&
+            MsRdpEx_StringIEquals(MsRdpEx_FileBase(axDll), "ironrdpax.dll"))
+        {
+            usePrivateAxLayout = false;
+        }
+    }
+
+    free(axDll);
+    free(axBackend);
+    return usePrivateAxLayout;
 }
 
 bool MsRdpEx_DetectClientProcess(bool* pIsOOBClient)
