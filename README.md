@@ -139,7 +139,7 @@ The trace log level is extremely verbose, so it should only be used when necessa
 
 Set `MSRDPEX_AX_BACKEND=public` for a non-Microsoft `mstscax`-compatible replacement selected by `MSRDPEX_MSTSCAX_DLL`. MsRdpEx also automatically uses public mode when that replacement DLL is named `ironrdpax.dll`, unless `MSRDPEX_AX_BACKEND` is explicitly set. MsRdpEx continues to load the replacement DLL and forward its public COM class factory, but does not inspect the replacement client's undocumented Microsoft object layout.
 
-Public mode intentionally disables private extended-settings/property hooks and extended `.RDP` option processing, input/output window association (including output mirroring and recording), SSPI session correlation, and other features that depend on Microsoft private ActiveX internals. The default `private` mode retains standard `mstscax.dll` behavior; unset or unrecognized backend values retain that default unless the replacement DLL is `ironrdpax.dll`.
+Public mode intentionally disables private extended-settings/property hooks and extended `.RDP` option processing, input/output window association (including output mirroring and recording), SSPI session correlation, and other features that depend on Microsoft private ActiveX internals. The default `private` mode retains standard `mstscax.dll` behavior. Any explicit backend value other than `public` retains private mode; automatic `ironrdpax.dll` detection applies only when the backend option is unset.
 
 ## Building from source
 

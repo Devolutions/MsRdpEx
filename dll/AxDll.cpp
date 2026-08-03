@@ -55,7 +55,19 @@ bool CDECL MsRdpEx_mstscax_Load(MsRdpEx_mstscax* dll, const char* filename)
     dll->DllCancelAuthentication = (fnDllCancelAuthentication)GetProcAddress(dll->hModule, "DllCancelAuthentication");
     dll->DllDeleteSavedCreds = (fnDllDeleteSavedCreds)GetProcAddress(dll->hModule, "DllDeleteSavedCreds");
 
-    dll->tscCtlVer = dll->DllGetTscCtlVer();
+    if (dll->DllGetTscCtlVer)
+    {
+        dll->tscCtlVer = dll->DllGetTscCtlVer();
+    }
+    else if (MsRdpEx_UsePrivateAxLayout())
+    {
+        MsRdpEx_LogPrint(ERROR, "mstscax_load(%s): missing DllGetTscCtlVer", filename);
+        goto exit;
+    }
+    else
+    {
+        MsRdpEx_LogPrint(DEBUG, "mstscax_load(%s): DllGetTscCtlVer is unavailable in public mode", filename);
+    }
 
     success = true;
 exit:

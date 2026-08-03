@@ -108,10 +108,12 @@ uint64_t DllGetTscCtlVer()
     uint64_t version = 0;
 
     if (g_IsOOBClient) {
-        version = g_rdclientax.DllGetTscCtlVer();
+        if (g_rdclientax.DllGetTscCtlVer)
+            version = g_rdclientax.DllGetTscCtlVer();
     }
     else {
-        version = g_mstscax.DllGetTscCtlVer();
+        if (g_mstscax.DllGetTscCtlVer)
+            version = g_mstscax.DllGetTscCtlVer();
     }
 
     MsRdpEx_LogPrint(DEBUG, "DllGetTscCtlVer: 0x%04X", (unsigned int)version);
