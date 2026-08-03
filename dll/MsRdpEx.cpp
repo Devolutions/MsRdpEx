@@ -725,6 +725,18 @@ HRESULT MsRdpEx_PreCleanUp()
     return DllPreCleanUp();
 }
 
+bool CDECL MsRdpEx_UsePrivateAxLayout()
+{
+    bool usePrivateAxLayout = true;
+    char* axBackend = MsRdpEx_GetEnv("MSRDPEX_AX_BACKEND");
+
+    if (MsRdpEx_StringIEquals(axBackend, "ironrdp"))
+        usePrivateAxLayout = false;
+
+    free(axBackend);
+    return usePrivateAxLayout;
+}
+
 bool MsRdpEx_DetectClientProcess(bool* pIsOOBClient)
 {
     char moduleFilePath[MSRDPEX_MAX_PATH] = { 0 };
