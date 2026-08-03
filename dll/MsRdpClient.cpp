@@ -507,10 +507,6 @@ public:
             m_pMsRdpExtendedSettings->PrepareVideoRecorder();
             m_pMsRdpExtendedSettings->PrepareExtraSystemMenu();
         }
-        else
-        {
-            m_pMsRdpExtendedSettings->DiscardCapturedPinIfNotCertLogon();
-        }
 
         BeginSspiSessionScope("connect");
         hr = m_pMsTscAx->raw_Connect();
