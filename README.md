@@ -137,9 +137,9 @@ The trace log level is extremely verbose, so it should only be used when necessa
 
 ## Opaque ActiveX backends
 
-Set `MSRDPEX_AX_BACKEND=ironrdp` when `MSRDPEX_MSTSCAX_DLL` selects IronRDP's `ironrdpax.dll`. MsRdpEx continues to load the replacement DLL and forward its public COM class factory, but does not inspect the replacement client's undocumented Microsoft object layout.
+Set `MSRDPEX_AX_BACKEND=generic` for a non-Microsoft `mstscax`-compatible replacement selected by `MSRDPEX_MSTSCAX_DLL`. MsRdpEx also automatically uses generic mode when that replacement DLL is named `ironrdpax.dll`, unless `MSRDPEX_AX_BACKEND` is explicitly set. MsRdpEx continues to load the replacement DLL and forward its public COM class factory, but does not inspect the replacement client's undocumented Microsoft object layout.
 
-This compatibility mode intentionally disables private extended-settings/property hooks and extended `.RDP` option processing, input/output window association (including output mirroring and recording), SSPI session correlation, and other features that depend on Microsoft private ActiveX internals. Standard Microsoft `mstscax.dll` behavior is unchanged; unset or unrecognized backend values retain the default behavior.
+Generic mode intentionally disables private extended-settings/property hooks and extended `.RDP` option processing, input/output window association (including output mirroring and recording), SSPI session correlation, and other features that depend on Microsoft private ActiveX internals. The default `microsoft` mode retains standard `mstscax.dll` behavior; unset or unrecognized backend values retain that default unless the replacement DLL is `ironrdpax.dll`.
 
 ## Building from source
 

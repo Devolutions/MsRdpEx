@@ -729,10 +729,28 @@ bool CDECL MsRdpEx_UsePrivateAxLayout()
 {
     bool usePrivateAxLayout = true;
     char* axBackend = MsRdpEx_GetEnv("MSRDPEX_AX_BACKEND");
+    char* axDll = NULL;
 
-    if (MsRdpEx_StringIEquals(axBackend, "ironrdp"))
-        usePrivateAxLayout = false;
+    if (axBackend)
+    {
+        if (MsRdpEx_StringIEquals(axBackend, "generic") ||
+            MsRdpEx_StringIEquals(axBackend, "ironrdp"))
+        {
+            usePrivateAxLayout = false;
+        }
+    }
+    else
+    {
+        axDll = MsRdpEx_GetEnv("MSRDPEX_MSTSCAX_DLL");
 
+        if (axDll &&
+            MsRdpEx_StringIEquals(MsRdpEx_FileBase(axDll), "ironrdpax.dll"))
+        {
+            usePrivateAxLayout = false;
+        }
+    }
+
+    free(axDll);
     free(axBackend);
     return usePrivateAxLayout;
 }
