@@ -135,6 +135,12 @@ $Env:MSRDPEX_LOG_FILE_PATH="C:\Windows\Temp\MsRdpEx.log"
 
 The trace log level is extremely verbose, so it should only be used when necessary. The MsRdpEx logging is very helpful in understanding the Microsoft RDP client internals.
 
+## Opaque ActiveX backends
+
+Set `MSRDPEX_AX_BACKEND=ironrdp` when `MSRDPEX_MSTSCAX_DLL` selects IronRDP's `ironrdpax.dll`. MsRdpEx continues to load the replacement DLL and forward its public COM class factory, but does not inspect the replacement client's undocumented Microsoft object layout.
+
+This compatibility mode intentionally disables private extended-settings/property hooks and extended `.RDP` option processing, input/output window association (including output mirroring and recording), SSPI session correlation, and other features that depend on Microsoft private ActiveX internals. Standard Microsoft `mstscax.dll` behavior is unchanged; unset or unrecognized backend values retain the default behavior.
+
 ## Building from source
 
 Generate the Visual Studio project files for your target platform:

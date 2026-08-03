@@ -46,6 +46,7 @@ set(MSRDPEX_SOURCES
     Stopwatch.c
     DpiHelper.cpp
     DpiHelper.h
+    AxBackend.cpp
     Sspi.cpp
     Stream.cpp
     Detours.cpp

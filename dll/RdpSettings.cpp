@@ -1201,6 +1201,9 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
 {
     m_pMsTscAx = pMsTscAx;
 
+    if (!MsRdpEx_UsePrivateAxLayout())
+        return S_OK;
+
     ITSObjectBase* pTSWin32CoreApi = NULL;
     ITSPropertySet* pTSCoreProps = NULL;
     ITSPropertySet* pTSBaseProps = NULL;
@@ -1594,6 +1597,9 @@ HRESULT CMsRdpExtendedSettings::PrepareSspiSessionIdHack()
     HRESULT hr = S_OK;
     char fakeKdcProxyName[256];
     char sessionId[MSRDPEX_GUID_STRING_SIZE];
+
+    if (!MsRdpEx_UsePrivateAxLayout())
+        return S_OK;
 
     if (!m_CoreProps) {
         MsRdpEx_LogPrint(ERROR, "PrepareSspiSessionIdHack - m_CoreProps is NULL!");

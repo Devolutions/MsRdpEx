@@ -509,6 +509,9 @@ IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByOutputPresenterHwnd(HWND hWnd
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_AttachOutputWindow(HWND hOutputWnd, void* pUserData)
 {
+    if (!MsRdpEx_UsePrivateAxLayout())
+        return NULL;
+
     MsRdpEx_InstanceManager* ctx = g_InstanceManager;
 
     if (!ctx)
@@ -631,6 +634,9 @@ IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByInputCaptureHwnd(HWND hWnd)
 
 CMsRdpExInstance* MsRdpEx_InstanceManager_AttachInputWindow(HWND hInputWnd, void* pUserData)
 {
+    if (!MsRdpEx_UsePrivateAxLayout())
+        return NULL;
+
     MsRdpEx_InstanceManager* ctx = g_InstanceManager;
 
     if (!ctx)

@@ -189,6 +189,9 @@ typedef struct _MsRdpEx_rdclientax MsRdpEx_rdclientax;
 
 void MsRdpEx_SetAxHookEnabled(bool axHookEnabled);
 
+bool CDECL MsRdpEx_IsIronRdpAxBackendName(const char* backend);
+bool CDECL MsRdpEx_UsePrivateAxLayout();
+
 HRESULT MsRdpEx_AxDll_DllGetClassObject(fnDllGetClassObject pfnDllGetClassObject, REFCLSID rclsid, REFIID riid, LPVOID* ppv);
 
 bool CDECL MsRdpEx_mstscax_Load(MsRdpEx_mstscax* dll, const char* filename);

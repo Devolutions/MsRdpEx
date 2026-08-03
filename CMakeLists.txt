@@ -45,6 +45,8 @@ if(NOT DEFINED WITH_DOTNET)
     set(WITH_DOTNET TRUE)
 endif()
 
+option(MSRDPEX_BUILD_TESTS "Build MsRdpEx native tests" OFF)
+
 if(MSVC)
     include(MSVCRuntime)
 
@@ -111,4 +113,9 @@ endif()
 
 if(WITH_DOTNET)
     add_subdirectory(dotnet)
+endif()
+
+if(MSRDPEX_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(dll/tests)
 endif()

@@ -674,7 +674,7 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         result = Real_OPWndProc_mstscax(hWnd, uMsg, wParam, lParam);
     }
 
-	if (uMsg == WM_NCCREATE)
+	if ((uMsg == WM_NCCREATE) && MsRdpEx_UsePrivateAxLayout())
 	{
 		void* pUserData = (void*) GetWindowLongPtrW(hWnd, GWLP_USERDATA);
 
