@@ -102,6 +102,11 @@ The workaround is strictly opt-in and stays inert unless a PIN is available: wit
 credential is left untouched so the normal Windows prompt path is used. It only activates for a
 marshaled certificate credential; any other credential is passed through unchanged.
 
+The credential is passed on exactly as `CredPackAuthenticationBufferW` produced it. The provider and
+container names it records come from the certificate, and the server resolves them through the redirected
+reader — so the same smart card middleware has to be installed on the remote host as on the client. A
+mismatch surfaces as *"the key container does not exist on the smart card"*.
+
 `KerbCertificateLogon` is independent of `PasswordContainsSCardPin`. The latter is the stock RDP
 setting that tells the client the password field holds a smart card PIN, so that a smart card
 credential is delegated to the remote and no prompt is shown; a connection manager doing an

@@ -7,6 +7,7 @@
 #include <MsRdpEx/Environment.h>
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/Detours.h>
+#include <MsRdpEx/Sspi.h>
 
 #include <intrin.h>
 #include <dpapi.h>
@@ -39,6 +40,16 @@ static HRESULT Hook_ITSPropertySet_SetBoolProperty(ITSPropertySet* This, const c
     HRESULT hr;
 
     MsRdpEx_LogPrint(TRACE, "ITSPropertySet::SetBoolProperty(%s, %d)", propName, propValue);
+
+    // The single most diagnostic bit of a failed connection: the CredSSP handshake can complete with
+    // SEC_E_OK and still leave the server unauthenticated, which is what a rejected credential looks like
+    // from the client. Surface it above TRACE so it survives in a log captured at the default level.
+    if (MsRdpEx_StringIEquals(propName, "ServerAuthenticated")) {
+        if (propValue)
+            MsRdpEx_LogPrint(DEBUG, "Server authentication succeeded");
+        else
+            MsRdpEx_LogPrint(WARN, "Server authentication FAILED");
+    }
 
     if (MsRdpEx_StringIEquals(propName, "UsingSavedCreds")) {
         // Workaround for "Always prompt for password upon connection" GPO":
@@ -152,9 +163,32 @@ static HRESULT Hook_ITSPropertySet_SetStringProperty(ITSPropertySet* This, const
     return hr;
 }
 
+// The RDP core reads these from the connection's worker thread in the moments before it acquires a CredSSP
+// credential. That read is the only in-band signal tying that thread to a specific connection, so use it to
+// bind the two. Restricted to this short list to keep the property hooks cheap: they are very hot.
+static void RdpSettings_BindCallingThreadToSession(ITSPropertySet* This, const char* propName)
+{
+    CMsRdpExtendedSettings* settings = NULL;
+    GUID sessionId = { 0 };
+
+    if (!MsRdpEx_StringIEquals(propName, "UserName") &&
+        !MsRdpEx_StringIEquals(propName, "ServerNameUsedForAuthentication"))
+        return;
+
+    settings = MsRdpEx_FindExtendedSettingsByCoreProps(This);
+
+    if (!settings)
+        return;
+
+    settings->GetSessionIdGuid(&sessionId);
+    MsRdpEx_Sspi_BindCurrentThreadToSession(&sessionId);
+}
+
 static HRESULT Hook_ITSPropertySet_GetStringProperty(ITSPropertySet* This, const char* propName, WCHAR** propValue)
 {
     HRESULT hr;
+
+    RdpSettings_BindCallingThreadToSession(This, propName);
 
     hr = Real_ITSPropertySet_GetStringProperty(This, propName, propValue);
 
@@ -1876,6 +1910,11 @@ const char* CMsRdpExtendedSettings::GetSessionId()
 {
     MsRdpEx_GuidBinToStr((GUID*)&m_sessionId, m_sessionIdStr, 0);
     return m_sessionIdStr;
+}
+
+void CMsRdpExtendedSettings::GetSessionIdGuid(GUID* pSessionId)
+{
+    MsRdpEx_GuidCopy(pSessionId, &m_sessionId);
 }
 
 bool CMsRdpExtendedSettings::GetOutputMirrorEnabled()
