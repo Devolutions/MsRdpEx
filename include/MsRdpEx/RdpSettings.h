@@ -66,6 +66,7 @@ public:
     bool GetKeyboardHookToggleShortcutEnabled();
     const char* GetKeyboardHookToggleShortcutKey();
     const char* GetSessionId();
+    void GetSessionIdGuid(GUID* pSessionId);
     bool GetOutputMirrorEnabled();
     bool GetVideoRecordingEnabled();
     uint32_t GetVideoRecordingQuality();

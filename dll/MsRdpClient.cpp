@@ -575,7 +575,15 @@ public:
     }
 
     HRESULT __stdcall get_ExtendedDisconnectReason(ExtendedDisconnectReasonCode* pExtendedDisconnectReason) {
-        return m_pMsRdpClient->get_ExtendedDisconnectReason(pExtendedDisconnectReason);
+        HRESULT hr = m_pMsRdpClient->get_ExtendedDisconnectReason(pExtendedDisconnectReason);
+
+        // Why a session dropped is otherwise invisible in the log: the client goes quiet at the point of
+        // failure. The host asks for this itself, so reporting what it was told costs nothing. Logged even
+        // when the answer is exDiscReasonNoInfo, because "the host asked and got nothing" is also a datum.
+        if (SUCCEEDED(hr) && pExtendedDisconnectReason)
+            MsRdpEx_LogPrint(DEBUG, "CMsRdpClient::ExtendedDisconnectReason: %d", (int) *pExtendedDisconnectReason);
+
+        return hr;
     }
 
     HRESULT __stdcall put_FullScreen(VARIANT_BOOL pfFullScreen) {
@@ -639,7 +647,18 @@ public:
         unsigned int ExtendedDisconnectReason,
         BSTR* pBstrErrorMsg
     ) {
-        return m_pMsRdpClient5->raw_GetErrorDescription(disconnectReason, ExtendedDisconnectReason, pBstrErrorMsg);
+        HRESULT hr = m_pMsRdpClient5->raw_GetErrorDescription(disconnectReason, ExtendedDisconnectReason, pBstrErrorMsg);
+
+        // The host resolves the failure text here, which is the closest thing to a stated reason the client
+        // side ever produces. Both codes plus the resolved message, logged where they are already computed.
+        if (SUCCEEDED(hr) && pBstrErrorMsg && *pBstrErrorMsg) {
+            char* messageA = _com_util::ConvertBSTRToString(*pBstrErrorMsg);
+            MsRdpEx_LogPrint(WARN, "CMsRdpClient::GetErrorDescription(reason=%u extended=%u): %s",
+                disconnectReason, ExtendedDisconnectReason, messageA ? messageA : "");
+            delete[] messageA;
+        }
+
+        return hr;
     }
 
     HRESULT __stdcall get_RemoteProgram(struct ITSRemoteProgram** ppRemoteProgram) {
