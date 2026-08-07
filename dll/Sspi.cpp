@@ -15,7 +15,7 @@
 
 #include <MsRdpEx/Detours.h>
 
-static bool g_PcapInitialized = false;
+static INIT_ONCE g_PcapEnvInitOnce = INIT_ONCE_STATIC_INIT;
 
 static MsRdpEx_PcapFile* g_PcapFile = NULL;
 static bool g_PcapEnabled = false;
@@ -34,12 +34,11 @@ void MsRdpEx_SetPcapFilePath(const char* pcapFilePath)
 	strcpy_s(g_PcapFilePath, MSRDPEX_MAX_PATH, pcapFilePath);
 }
 
-void MsRdpEx_PcapEnvInit()
+// Reached from AcquireCredentialsHandleW and from the message paths, both of which run concurrently on
+// several connection worker threads, so first use has to be serialized rather than guarded by a plain flag.
+static BOOL CALLBACK MsRdpEx_PcapEnvInitOnce(PINIT_ONCE, PVOID, PVOID*)
 {
     char* envvar;
-
-    if (g_PcapInitialized)
-        return;
 
     bool pcapDump = MsRdpEx_GetEnvBool("MSRDPEX_PCAP_DUMP", false);
     MsRdpEx_SetPcapEnabled(pcapDump);
@@ -58,7 +57,12 @@ void MsRdpEx_PcapEnvInit()
 
     free(envvar);
 
-    g_PcapInitialized = true;
+    return TRUE;
+}
+
+void MsRdpEx_PcapEnvInit()
+{
+    InitOnceExecuteOnce(&g_PcapEnvInitOnce, MsRdpEx_PcapEnvInitOnce, NULL, NULL);
 }
 
 static MsRdpEx_PcapFile* MsRdpEx_GetPcapFile()
@@ -989,33 +993,6 @@ static void sspi_FormatCspInfoName(const MsRdpEx_KerbSmartCardCspInfo* cspInfo, 
 	}
 }
 
-// Locate the KERB_SMARTCARD_CSP_INFO inside a packed credential, rejecting anything that does not match the
-// layout this module assumes. KERB_SMARTCARD_CSP_INFO is not in the SDK, so its offsets are asserted at
-// compile time and re-checked here against real bytes: the blob repeats its own length, so a disagreement
-// with CspDataLength means this is not the structure we think it is.
-static MsRdpEx_KerbSmartCardCspInfo* sspi_TryGetCspInfo(void* pLogon, DWORD cbLogon)
-{
-	KERB_CERTIFICATE_LOGON* logon = (KERB_CERTIFICATE_LOGON*)pLogon;
-	MsRdpEx_KerbSmartCardCspInfo* cspInfo = NULL;
-
-	if (!pLogon || !MsRdpEx_CanReadUnsafePtr(pLogon, sizeof(KERB_CERTIFICATE_LOGON)))
-		return NULL;
-
-	if (logon->MessageType != KerbCertificateLogon)
-		return NULL;
-
-	if ((logon->CspDataLength < MSRDPEX_CSP_INFO_HEADER_SIZE) || !logon->CspData)
-		return NULL;
-
-	cspInfo = (MsRdpEx_KerbSmartCardCspInfo*) sspi_ResolvePackedField(pLogon, cbLogon,
-		logon->CspData, logon->CspDataLength);
-
-	if (!cspInfo || (cspInfo->dwCspInfoLen != logon->CspDataLength))
-		return NULL;
-
-	return cspInfo;
-}
-
 // Dump a KERB_CERTIFICATE_LOGON without revealing secrets: the PIN is reported as a length only, and the
 // certificate itself never appears (the credential carries a container name, not the certificate).
 static void sspi_LogKerbCertificateLogon(const char* label, void* pLogon, DWORD cbLogon)
@@ -1037,6 +1014,16 @@ static void sspi_LogKerbCertificateLogon(const char* label, void* pLogon, DWORD 
 		return;
 	}
 
+	// CanReadUnsafePtr proves the pages are committed, not that the allocation extends this far, so a known
+	// size too small to hold the fixed header has to be rejected before the first dereference. Zero means the
+	// size is simply unknown (a buffer that is not a LocalAlloc block) and is handled further down.
+	if (cbLogon && (cbLogon < sizeof(KERB_CERTIFICATE_LOGON)))
+	{
+		MsRdpEx_LogPrint(DEBUG, "KerbCertificateLogon(%s): truncated, size=%u is below the header size",
+			label, cbLogon);
+		return;
+	}
+
 	logon = (KERB_CERTIFICATE_LOGON*)pLogon;
 
 	if (logon->MessageType != KerbCertificateLogon)
@@ -1054,6 +1041,16 @@ static void sspi_LogKerbCertificateLogon(const char* label, void* pLogon, DWORD 
 	if ((logon->CspDataLength < MSRDPEX_CSP_INFO_HEADER_SIZE) || !logon->CspData)
 	{
 		MsRdpEx_LogPrint(DEBUG, "KerbCertificateLogon(%s): no CspData", label);
+		return;
+	}
+
+	// Without a known allocation size the extent check in sspi_ResolvePackedField cannot run, and walking the
+	// blob would then trust CspDataLength alone and could read past the credential. The fields above are
+	// already bounded by CanReadUnsafePtr, so report them and stop. A credential arriving in-band often has
+	// no LocalAlloc size (reconnect passes such a buffer), so this is a normal outcome, not a failure.
+	if (!cbLogon)
+	{
+		MsRdpEx_LogPrint(DEBUG, "KerbCertificateLogon(%s): CspData not parsed, allocation size unknown", label);
 		return;
 	}
 
@@ -1283,20 +1280,6 @@ static bool sspi_IsCertificateMarshaledUserName(WCHAR* userName)
 	return result;
 }
 
-// Repoint a packed credential at the smart card KSP by overwriting, in place, the provider name that
-// CredPackAuthenticationBufferW copied from the certificate.
-//
-// The Base Smart Card Crypto Provider is the CAPI front end over a card minidriver, so a certificate that
-// records it is by definition on a minidriver card -- and every minidriver card is also reachable through the
-// Smart Card KSP, under the same container name. KB5066793 stopped honouring the CAPI route for RSA smart card
-// keys, so naming the KSP reaches the same key over the path that remains supported. No probe of the card is
-// needed to know the route exists, which matters: touching the card from this code path (NCrypt -> KSP ->
-// minidriver -> WinSCard) faults inside the smart card stack while the RDP client is mid-connect.
-//
-// Patched in place rather than rebuilt, so the buffer keeps the byte layout Windows produced. A hand-built
-// equivalent carrying identical field values but a different internal layout is rejected by LSASS, which
-// evidently derives the CspData extent from the buffer rather than trusting the offsets alone. The two
-// provider names are both 41 characters, so the strings after this one do not move.
 static bool sspi_CreatePackedCertificateLogon(WCHAR* marshaledCertificateUserName,
 	WCHAR* pin, HLOCAL* phPackedCredentials, DWORD* pcbPackedCredentials)
 {
