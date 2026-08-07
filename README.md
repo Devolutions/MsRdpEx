@@ -102,20 +102,10 @@ The workaround is strictly opt-in and stays inert unless a PIN is available: wit
 credential is left untouched so the normal Windows prompt path is used. It only activates for a
 marshaled certificate credential; any other credential is passed through unchanged.
 
-When the certificate records the legacy **Microsoft Base Smart Card Crypto Provider**, the credential is
-repointed at the **Microsoft Smart Card Key Storage Provider** instead. A card minidriver is reachable
-both through the Base CSP (CAPI) and through the KSP (CNG) under the same container name, but
-[KB5066793](https://support.microsoft.com/help/5066793) stopped honouring the CAPI route for RSA smart
-card keys. A certificate still associated with the legacy CSP therefore yields a credential LSASS cannot
-service — the Kerberos certificate logon is declined locally, SPNEGO falls back to NTLM, and where NTLM
-is disabled the failure surfaces as *"Authentication failed because NTLM authentication has been
-disabled"* rather than as a smart card error. Naming the KSP reaches the same key over the path that
-remains supported.
-
-The provider name is rewritten in place, so the credential keeps the exact byte layout
-`CredPackAuthenticationBufferW` produced; the two provider names are the same length, so nothing moves.
-Certificates recording any other provider — including third-party CSPs, which do not imply a minidriver
-— are left exactly as they were.
+The credential is passed on exactly as `CredPackAuthenticationBufferW` produced it. The provider and
+container names it records come from the certificate, and the server resolves them through the redirected
+reader — so the same smart card middleware has to be installed on the remote host as on the client. A
+mismatch surfaces as *"the key container does not exist on the smart card"*.
 
 `KerbCertificateLogon` is independent of `PasswordContainsSCardPin`. The latter is the stock RDP
 setting that tells the client the password field holds a smart card PIN, so that a smart card
