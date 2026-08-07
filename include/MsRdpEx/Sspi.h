@@ -18,6 +18,11 @@ LONG MsRdpEx_DetachSspiHooks();
 void MsRdpEx_Sspi_BeginSession(GUID* sessionId);
 void MsRdpEx_Sspi_EndSession(GUID* sessionId);
 
+// Bind the calling thread to a session. The RDP core reads its own property set from the connection's
+// worker thread immediately before the SSPI calls, which is the only in-band signal that identifies which
+// connection an AcquireCredentialsHandleW belongs to.
+void MsRdpEx_Sspi_BindCurrentThreadToSession(GUID* sessionId);
+
 #ifdef __cplusplus
 }
 #endif

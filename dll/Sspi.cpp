@@ -10,6 +10,8 @@
 
 #include <intrin.h>
 #include <ntsecapi.h>
+#include <wincrypt.h>
+#include <ncrypt.h>
 
 #include <MsRdpEx/Detours.h>
 
@@ -117,11 +119,17 @@ static QUERY_CREDENTIALS_ATTRIBUTES_EX_FN_W Real_QueryCredentialsAttributesExW =
 
 static const char* MsRdpEx_GetSecurityStatusString(SECURITY_STATUS status);
 
+// One entry per scope open on the thread at once, and every tab's Connect runs on the UI thread, so this
+// has to allow as many concurrent connections as the active-session registry does.
+#define MSRDPEX_SSPI_MAX_SESSION_SCOPE_DEPTH 32
+
+// A stack, not a counter with one id. Connect and Disconnect for every tab run on the same UI thread, so
+// scopes for different sessions legitimately nest and do not necessarily unwind in order. Tracking only a
+// depth meant a nested scope kept the outer session's id, and ending one popped whichever was on top.
 typedef struct _MsRdpEx_SspiSessionContext
 {
-	bool active;
 	uint32_t depth;
-	GUID sessionId;
+	GUID sessionId[MSRDPEX_SSPI_MAX_SESSION_SCOPE_DEPTH];
 } MsRdpEx_SspiSessionContext;
 
 typedef enum _MsRdpEx_SspiSessionResolution
@@ -358,6 +366,18 @@ static MsRdpEx_SspiSessionContext* sspi_GetThreadSessionContext(bool create)
 	return ctx;
 }
 
+// Connect() runs on the UI thread, but CredSSP acquires its credential on the connection's worker thread,
+// so neither the TLS scope nor the binding taken in BeginSession ever covers the thread that matters. This
+// is the in-band correction: the worker thread touches its own property set immediately before the SSPI
+// calls, which identifies the connection exactly and removes the need to guess.
+void MsRdpEx_Sspi_BindCurrentThreadToSession(GUID* sessionId)
+{
+	if (!sessionId || MsRdpEx_GuidIsNil(sessionId))
+		return;
+
+	sspi_SetThreadBinding(GetCurrentThreadId(), sessionId);
+}
+
 void MsRdpEx_Sspi_BeginSession(GUID* sessionId)
 {
 	MsRdpEx_SspiSessionContext* ctx = NULL;
@@ -370,18 +390,15 @@ void MsRdpEx_Sspi_BeginSession(GUID* sessionId)
 
 	if (ctx)
 	{
-		if (!ctx->active || (ctx->depth == 0))
+		if (ctx->depth < MSRDPEX_SSPI_MAX_SESSION_SCOPE_DEPTH)
 		{
-			MsRdpEx_GuidCopy(&ctx->sessionId, sessionId);
-			ctx->active = true;
-			ctx->depth = 1;
+			MsRdpEx_GuidCopy(&ctx->sessionId[ctx->depth], sessionId);
+			ctx->depth++;
 		}
 		else
 		{
-			if (!MsRdpEx_GuidIsEqual(&ctx->sessionId, sessionId))
-				MsRdpEx_LogPrint(WARN, "SSPI session scope changed while nested");
-
-			ctx->depth++;
+			MsRdpEx_LogPrint(WARN, "SSPI session scope stack is full (depth=%u); this scope is untracked",
+				ctx->depth);
 		}
 	}
 
@@ -430,17 +447,43 @@ void MsRdpEx_Sspi_EndSession(GUID* sessionId)
 {
 	MsRdpEx_SspiSessionContext* ctx = sspi_GetThreadSessionContext(false);
 
-	if (ctx && ctx->active && (ctx->depth > 0))
+	if (ctx && (ctx->depth > 0) && sessionId)
 	{
-		if (sessionId && !MsRdpEx_GuidIsEqual(&ctx->sessionId, sessionId))
-			MsRdpEx_LogPrint(WARN, "SSPI session scope ended with a different session id");
+		// Pop the entry that matches, not whatever is on top: scopes sharing the UI thread do not
+		// necessarily end in the order they began.
+		uint32_t index = ctx->depth;
+		bool found = false;
 
-		ctx->depth--;
-
-		if (ctx->depth == 0)
+		while (index > 0)
 		{
-			ctx->active = false;
-			MsRdpEx_GuidSetNil(&ctx->sessionId);
+			index--;
+
+			if (MsRdpEx_GuidIsEqual(&ctx->sessionId[index], sessionId))
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if (found)
+		{
+			for (uint32_t i = index + 1; i < ctx->depth; i++)
+				MsRdpEx_GuidCopy(&ctx->sessionId[i - 1], &ctx->sessionId[i]);
+
+			ctx->depth--;
+			MsRdpEx_GuidSetNil(&ctx->sessionId[ctx->depth]);
+
+			// Nothing frees this otherwise: it is per-thread TLS with no thread-detach hook, so a process
+			// that churns threads would accumulate one of these per thread, forever.
+			if (ctx->depth == 0)
+			{
+				free(ctx);
+				TlsSetValue(g_SspiSessionTlsIndex, NULL);
+			}
+		}
+		else
+		{
+			MsRdpEx_LogPrint(WARN, "SSPI session scope end has no matching begin on this thread");
 		}
 	}
 
@@ -482,9 +525,10 @@ static bool sspi_GetCurrentSessionId(GUID* sessionId, MsRdpEx_SspiSessionResolut
 	if (resolution)
 		*resolution = MSRDPEX_SSPI_SESSION_NONE;
 
-	if (ctx && ctx->active && (ctx->depth > 0))
+	if (ctx && (ctx->depth > 0))
 	{
-		MsRdpEx_GuidCopy(sessionId, &ctx->sessionId);
+		// Innermost scope: the connection this thread is currently working on.
+		MsRdpEx_GuidCopy(sessionId, &ctx->sessionId[ctx->depth - 1]);
 
 		if (resolution)
 			*resolution = MSRDPEX_SSPI_SESSION_TLS;
@@ -525,7 +569,12 @@ static CMsRdpExtendedSettings* sspi_FindSingleActiveKerbCertificateSession(
 		MsRdpEx_GuidCopy(&candidateSessionId, &sessionIds[i]);
 	}
 
-	if (kerbCount == 1)
+	// Fail closed unless this is the only active session in the process. Measuring ambiguity over
+	// kerb-enabled sessions alone is not enough: one smart card session alongside N password sessions still
+	// leaves an unresolved CredSSP call unattributable, and answering with the smart card credential would
+	// hand it to whichever connection actually made the call. The answer is then pinned to the thread, so a
+	// wrong guess persists rather than being re-evaluated.
+	if ((kerbCount == 1) && (activeCount == 1))
 	{
 		sspi_SetThreadBinding(GetCurrentThreadId(), &candidateSessionId);
 
@@ -535,10 +584,10 @@ static CMsRdpExtendedSettings* sspi_FindSingleActiveKerbCertificateSession(
 		return candidateSettings;
 	}
 
-	if (g_SspiSmartCardDebug && (kerbCount > 1))
+	if (kerbCount > 0)
 	{
 		MsRdpEx_LogPrint(WARN,
-			"CredSSP smart-card session resolution is ambiguous: activeKerbSessions=%u activeSessions=%u",
+			"CredSSP smart-card session resolution declined as ambiguous: activeKerbSessions=%u activeSessions=%u",
 			kerbCount, activeCount);
 	}
 
@@ -827,6 +876,223 @@ static DWORD sspi_GetLocalAllocSizeAsDword(void* ptr)
 	return (DWORD)size;
 }
 
+// KERB_SMARTCARD_CSP_INFO is documented but absent from the SDK headers. Layout confirmed against what
+// CredPackAuthenticationBufferW emits: 40-byte header, bBuffer at offset 40, name offsets counted in
+// WCHARs from bBuffer, and the four names laid out as [card\0][reader\0][container\0][csp\0].
+typedef struct _MsRdpEx_KerbSmartCardCspInfo
+{
+	DWORD dwCspInfoLen;
+	DWORD MessageType;
+	union
+	{
+		PVOID ContextInformation;
+		ULONG64 SpaceHolderForWow64;
+	};
+	DWORD flags;
+	DWORD KeySpec;
+	ULONG nCardNameOffset;
+	ULONG nReaderNameOffset;
+	ULONG nContainerNameOffset;
+	ULONG nCSPNameOffset;
+	WCHAR bBuffer;
+} MsRdpEx_KerbSmartCardCspInfo;
+
+#define MSRDPEX_CSP_INFO_HEADER_SIZE (FIELD_OFFSET(MsRdpEx_KerbSmartCardCspInfo, bBuffer))
+
+// The offsets below were measured from real CredPackAuthenticationBufferW output and hold for both x64 and
+// x86 (the ULONG64 union member is what keeps the two identical). Assert them so a toolchain or SDK change
+// cannot silently shift the layout out from under the credential we hand to LSASS.
+static_assert(FIELD_OFFSET(MsRdpEx_KerbSmartCardCspInfo, dwCspInfoLen) == 0, "CspInfo layout changed");
+static_assert(FIELD_OFFSET(MsRdpEx_KerbSmartCardCspInfo, MessageType) == 4, "CspInfo layout changed");
+static_assert(FIELD_OFFSET(MsRdpEx_KerbSmartCardCspInfo, ContextInformation) == 8, "CspInfo layout changed");
+static_assert(FIELD_OFFSET(MsRdpEx_KerbSmartCardCspInfo, flags) == 16, "CspInfo layout changed");
+static_assert(FIELD_OFFSET(MsRdpEx_KerbSmartCardCspInfo, KeySpec) == 20, "CspInfo layout changed");
+static_assert(FIELD_OFFSET(MsRdpEx_KerbSmartCardCspInfo, nCardNameOffset) == 24, "CspInfo layout changed");
+static_assert(FIELD_OFFSET(MsRdpEx_KerbSmartCardCspInfo, nReaderNameOffset) == 28, "CspInfo layout changed");
+static_assert(FIELD_OFFSET(MsRdpEx_KerbSmartCardCspInfo, nContainerNameOffset) == 32, "CspInfo layout changed");
+static_assert(FIELD_OFFSET(MsRdpEx_KerbSmartCardCspInfo, nCSPNameOffset) == 36, "CspInfo layout changed");
+static_assert(MSRDPEX_CSP_INFO_HEADER_SIZE == 40, "CspInfo layout changed");
+
+// In a packed logon buffer the embedded "pointers" are byte offsets from the start of the buffer, not
+// real pointers. A live structure would hold real pointers instead, so accept both: anything below the
+// 64 KB reserved region cannot be a valid pointer and is therefore an offset.
+static void* sspi_ResolvePackedField(void* base, DWORD cbBase, void* field, DWORD cbNeeded)
+{
+	ULONG_PTR value = (ULONG_PTR)field;
+
+	if (!base || !field)
+		return NULL;
+
+	if (value < 0x10000)
+	{
+		void* resolved = (BYTE*)base + value;
+
+		if (cbBase && ((value + cbNeeded) > cbBase))
+			return NULL;
+
+		return MsRdpEx_CanReadUnsafePtr(resolved, cbNeeded) ? resolved : NULL;
+	}
+
+	return MsRdpEx_CanReadUnsafePtr(field, cbNeeded) ? field : NULL;
+}
+
+// Bounded resolution of one of the CspData names. The blob is not guaranteed to be NUL-terminated, so cap
+// the length at whatever remains in it rather than walking off the end.
+static bool sspi_GetCspInfoName(const MsRdpEx_KerbSmartCardCspInfo* cspInfo, DWORD cbCspInfo,
+	ULONG nameOffset, const WCHAR** ppName, DWORD* pChars)
+{
+	const WCHAR* names = &cspInfo->bBuffer;
+	DWORD availableChars = 0;
+	DWORD length = 0;
+
+	*ppName = NULL;
+	*pChars = 0;
+
+	if (cbCspInfo <= MSRDPEX_CSP_INFO_HEADER_SIZE)
+		return false;
+
+	availableChars = (DWORD)((cbCspInfo - MSRDPEX_CSP_INFO_HEADER_SIZE) / sizeof(WCHAR));
+
+	if (nameOffset >= availableChars)
+		return false;
+
+	while (((nameOffset + length) < availableChars) && names[nameOffset + length])
+		length++;
+
+	*ppName = &names[nameOffset];
+	*pChars = length;
+	return true;
+}
+
+static void sspi_FormatCspInfoName(const MsRdpEx_KerbSmartCardCspInfo* cspInfo, DWORD cbCspInfo,
+	ULONG nameOffset, char* buffer, size_t bufferSize)
+{
+	const WCHAR* name = NULL;
+	DWORD chars = 0;
+	char* nameA = NULL;
+
+	buffer[0] = '\0';
+
+	if (!sspi_GetCspInfoName(cspInfo, cbCspInfo, nameOffset, &name, &chars))
+	{
+		strncpy_s(buffer, bufferSize, "<out-of-bounds>", _TRUNCATE);
+		return;
+	}
+
+	if (chars < 1)
+		return;
+
+	if (MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, name, (int)chars, &nameA, 0, NULL, NULL) > 0)
+	{
+		strncpy_s(buffer, bufferSize, nameA, _TRUNCATE);
+		free(nameA);
+	}
+}
+
+// Locate the KERB_SMARTCARD_CSP_INFO inside a packed credential, rejecting anything that does not match the
+// layout this module assumes. KERB_SMARTCARD_CSP_INFO is not in the SDK, so its offsets are asserted at
+// compile time and re-checked here against real bytes: the blob repeats its own length, so a disagreement
+// with CspDataLength means this is not the structure we think it is.
+static MsRdpEx_KerbSmartCardCspInfo* sspi_TryGetCspInfo(void* pLogon, DWORD cbLogon)
+{
+	KERB_CERTIFICATE_LOGON* logon = (KERB_CERTIFICATE_LOGON*)pLogon;
+	MsRdpEx_KerbSmartCardCspInfo* cspInfo = NULL;
+
+	if (!pLogon || !MsRdpEx_CanReadUnsafePtr(pLogon, sizeof(KERB_CERTIFICATE_LOGON)))
+		return NULL;
+
+	if (logon->MessageType != KerbCertificateLogon)
+		return NULL;
+
+	if ((logon->CspDataLength < MSRDPEX_CSP_INFO_HEADER_SIZE) || !logon->CspData)
+		return NULL;
+
+	cspInfo = (MsRdpEx_KerbSmartCardCspInfo*) sspi_ResolvePackedField(pLogon, cbLogon,
+		logon->CspData, logon->CspDataLength);
+
+	if (!cspInfo || (cspInfo->dwCspInfoLen != logon->CspDataLength))
+		return NULL;
+
+	return cspInfo;
+}
+
+// Dump a KERB_CERTIFICATE_LOGON without revealing secrets: the PIN is reported as a length only, and the
+// certificate itself never appears (the credential carries a container name, not the certificate).
+static void sspi_LogKerbCertificateLogon(const char* label, void* pLogon, DWORD cbLogon)
+{
+	KERB_CERTIFICATE_LOGON* logon = NULL;
+	MsRdpEx_KerbSmartCardCspInfo* cspInfo = NULL;
+	char cardName[128] = { 0 };
+	char readerName[128] = { 0 };
+	char containerName[256] = { 0 };
+	char cspName[256] = { 0 };
+
+	// Deliberately not gated behind MSRDPEX_SSPI_SMARTCARD_DEBUG. This is secret-free by construction (the
+	// PIN appears as a length, and the credential carries a container name rather than the certificate) and
+	// only runs when KerbCertificateLogon is enabled, which is already opt-in. Requiring a second opt-in
+	// costs a round trip with the customer before their log says anything useful.
+	if (!pLogon || !MsRdpEx_CanReadUnsafePtr(pLogon, sizeof(KERB_CERTIFICATE_LOGON)))
+	{
+		MsRdpEx_LogPrint(DEBUG, "KerbCertificateLogon(%s): unreadable", label);
+		return;
+	}
+
+	logon = (KERB_CERTIFICATE_LOGON*)pLogon;
+
+	if (logon->MessageType != KerbCertificateLogon)
+	{
+		MsRdpEx_LogPrint(DEBUG, "KerbCertificateLogon(%s): messageType=%u (not a certificate logon)",
+			label, logon->MessageType);
+		return;
+	}
+
+	MsRdpEx_LogPrint(DEBUG,
+		"KerbCertificateLogon(%s): size=%u domainLen=%u userNameLen=%u pinLen=%u flags=0x%08X cspDataLen=%u",
+		label, cbLogon, logon->DomainName.Length, logon->UserName.Length, logon->Pin.Length,
+		logon->Flags, logon->CspDataLength);
+
+	if ((logon->CspDataLength < MSRDPEX_CSP_INFO_HEADER_SIZE) || !logon->CspData)
+	{
+		MsRdpEx_LogPrint(DEBUG, "KerbCertificateLogon(%s): no CspData", label);
+		return;
+	}
+
+	cspInfo = (MsRdpEx_KerbSmartCardCspInfo*) sspi_ResolvePackedField(pLogon, cbLogon,
+		logon->CspData, logon->CspDataLength);
+
+	if (!cspInfo)
+	{
+		MsRdpEx_LogPrint(DEBUG, "KerbCertificateLogon(%s): CspData unresolvable (raw=%p len=%u)",
+			label, logon->CspData, logon->CspDataLength);
+		return;
+	}
+
+	// Self-check the layout against the data: the CspInfo repeats its own length, so if the first field does
+	// not agree with CspDataLength then this is not the structure we think it is. Report and stop rather than
+	// reading the name offsets out of a misparsed header.
+	if (cspInfo->dwCspInfoLen != logon->CspDataLength)
+	{
+		MsRdpEx_LogPrint(WARN,
+			"KerbCertificateLogon(%s): unexpected CspData layout (cspInfoLen=%u cspDataLen=%u)",
+			label, cspInfo->dwCspInfoLen, logon->CspDataLength);
+		return;
+	}
+
+	sspi_FormatCspInfoName(cspInfo, logon->CspDataLength, cspInfo->nCardNameOffset, cardName, sizeof(cardName));
+	sspi_FormatCspInfoName(cspInfo, logon->CspDataLength, cspInfo->nReaderNameOffset, readerName, sizeof(readerName));
+	sspi_FormatCspInfoName(cspInfo, logon->CspDataLength, cspInfo->nContainerNameOffset, containerName, sizeof(containerName));
+	sspi_FormatCspInfoName(cspInfo, logon->CspDataLength, cspInfo->nCSPNameOffset, cspName, sizeof(cspName));
+
+	MsRdpEx_LogPrint(DEBUG,
+		"KerbCertificateLogon(%s): cspInfoLen=%u messageType=%u context=%d flags=0x%08X keySpec=%u",
+		label, cspInfo->dwCspInfoLen, cspInfo->MessageType,
+		cspInfo->ContextInformation ? 1 : 0, cspInfo->flags, cspInfo->KeySpec);
+
+	MsRdpEx_LogPrint(DEBUG,
+		"KerbCertificateLogon(%s): card=\"%s\" reader=\"%s\" container=\"%s\" csp=\"%s\"",
+		label, cardName, readerName, containerName, cspName);
+}
+
 static void sspi_LogCredSspAuthMetadata(const char* pszPackageA, void* pAuthData, void* returnAddress)
 {
 	CREDSSP_CRED* pCred = NULL;
@@ -834,10 +1100,19 @@ static void sspi_LogCredSspAuthMetadata(const char* pszPackageA, void* pAuthData
 	bool readMessageType = false;
 	char callerModule[MSRDPEX_MAX_PATH] = { 0 };
 
-	if (!g_SspiSmartCardDebug)
-		return;
-
+	// One line per CredSSP credential acquisition, secret-free (pointers, submit type, caller module). This
+	// is the line that identifies which credential shape the host handed us, so it must be present in a
+	// customer log by default rather than behind a switch they have to be told to set.
 	sspi_GetCallerModuleName(returnAddress, callerModule, sizeof(callerModule));
+
+	// A NULL pAuthData is itself the interesting datum: it tells us the host is not handing the credential
+	// over in-band, which is what makes the settings-synthesis path necessary. Do not log only when set.
+	if (!pAuthData)
+	{
+		MsRdpEx_LogPrint(DEBUG, "CredSSP auth metadata: package=%s authData=NULL caller=%s",
+			pszPackageA ? pszPackageA : "", callerModule);
+		return;
+	}
 
 	if (!sspi_TryGetCredSspCredential(pAuthData, &pCred, &pCredEx))
 	{
@@ -861,6 +1136,14 @@ static void sspi_LogCredSspAuthMetadata(const char* pszPackageA, void* pAuthData
 		readMessageType ? messageType : 0,
 		pCred->pSchannelCred,
 		callerModule);
+
+	// When the host does pass a credential in-band, its shape is the reference we want to match: this is
+	// how Windows itself builds a certificate logon (an interactive CredUI prompt, for instance).
+	if (readMessageType && (messageType == KerbCertificateLogon))
+	{
+		sspi_LogKerbCertificateLogon("incoming", pCred->pSpnegoCred,
+			sspi_GetLocalAllocSizeAsDword(pCred->pSpnegoCred));
+	}
 }
 
 static void sspi_FreeUnpackedCredentials(WCHAR* userName, WCHAR* domainName, WCHAR* password)
@@ -1000,6 +1283,20 @@ static bool sspi_IsCertificateMarshaledUserName(WCHAR* userName)
 	return result;
 }
 
+// Repoint a packed credential at the smart card KSP by overwriting, in place, the provider name that
+// CredPackAuthenticationBufferW copied from the certificate.
+//
+// The Base Smart Card Crypto Provider is the CAPI front end over a card minidriver, so a certificate that
+// records it is by definition on a minidriver card -- and every minidriver card is also reachable through the
+// Smart Card KSP, under the same container name. KB5066793 stopped honouring the CAPI route for RSA smart card
+// keys, so naming the KSP reaches the same key over the path that remains supported. No probe of the card is
+// needed to know the route exists, which matters: touching the card from this code path (NCrypt -> KSP ->
+// minidriver -> WinSCard) faults inside the smart card stack while the RDP client is mid-connect.
+//
+// Patched in place rather than rebuilt, so the buffer keeps the byte layout Windows produced. A hand-built
+// equivalent carrying identical field values but a different internal layout is rejected by LSASS, which
+// evidently derives the CspData extent from the buffer rather than trusting the offsets alone. The two
+// provider names are both 41 characters, so the strings after this one do not move.
 static bool sspi_CreatePackedCertificateLogon(WCHAR* marshaledCertificateUserName,
 	WCHAR* pin, HLOCAL* phPackedCredentials, DWORD* pcbPackedCredentials)
 {
@@ -1015,10 +1312,6 @@ static bool sspi_CreatePackedCertificateLogon(WCHAR* marshaledCertificateUserNam
 	if (!marshaledCertificateUserName || !pin)
 		return false;
 
-	// TODO: this produces a KERB_CERTIFICATE_LOGON without CspData (KERB_SMARTCARD_CSP_INFO: reader/container/CSP
-	// names). A single card/reader resolves by enumeration, but multiple readers/cards may need explicit CspData.
-	// To add it, query the CSP info for the cert (CryptAcquireCertificatePrivateKey + NCryptGetProperty) and build
-	// the KERB_CERTIFICATE_LOGON by hand instead of via CredPackAuthenticationBufferW.
 	success = CredPackAuthenticationBufferW(0, marshaledCertificateUserName, pin,
 		NULL, &cbPackedCredentials);
 
@@ -1056,6 +1349,8 @@ static bool sspi_CreatePackedCertificateLogon(WCHAR* marshaledCertificateUserNam
 		return false;
 	}
 
+	sspi_LogKerbCertificateLogon("credpack", hPackedCredentials, cbPackedCredentials);
+
 	*phPackedCredentials = hPackedCredentials;
 	*pcbPackedCredentials = cbPackedCredentials;
 	return true;
@@ -1091,8 +1386,7 @@ static bool sspi_TryBuildCertificateLogonRewrite(void* pAuthData,
 	if ((pCred->Type == CredsspCertificateCreds) && readMessageType &&
 		(messageType == KerbCertificateLogon))
 	{
-		if (g_SspiSmartCardDebug)
-			MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card credential is already KerbCertificateLogon");
+		MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card credential is already KerbCertificateLogon");
 
 		return false;
 	}
@@ -1101,8 +1395,7 @@ static bool sspi_TryBuildCertificateLogonRewrite(void* pAuthData,
 
 	if (cbSpnegoCred < sizeof(DWORD))
 	{
-		if (g_SspiSmartCardDebug)
-			MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: pSpnegoCred has no LocalAlloc size");
+		MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: pSpnegoCred has no LocalAlloc size");
 
 		return false;
 	}
@@ -1110,16 +1403,14 @@ static bool sspi_TryBuildCertificateLogonRewrite(void* pAuthData,
 	if (!sspi_UnpackSmartCardPinCredential(pCred->pSpnegoCred, cbSpnegoCred,
 		&userName, &domainName, &password))
 	{
-		if (g_SspiSmartCardDebug)
-			MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: cannot unpack authentication buffer");
+		MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: cannot unpack authentication buffer");
 
 		return false;
 	}
 
 	if (!sspi_IsCertificateMarshaledUserName(userName))
 	{
-		if (g_SspiSmartCardDebug)
-			MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: username is not a marshaled certificate credential");
+		MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: username is not a marshaled certificate credential");
 
 		sspi_FreeUnpackedCredentials(userName, domainName, password);
 		return false;
@@ -1132,7 +1423,9 @@ static bool sspi_TryBuildCertificateLogonRewrite(void* pAuthData,
 	}
 
 	rewrite->cred = *pCred;
-	rewrite->cred.Type = CredsspCertificateCreds;
+	// See sspi_TryBuildCertificateLogonFromSettings: CredsspCertificateCreds with the caller's pSchannelCred
+	// still attached is rejected with SEC_E_INVALID_TOKEN.
+	rewrite->cred.Type = CredsspSubmitBufferBoth;
 	rewrite->cred.pSpnegoCred = hPackedCredentials;
 	rewrite->packedCredentials = hPackedCredentials;
 	rewrite->cbPackedCredentials = cbPackedCredentials;
@@ -1159,13 +1452,19 @@ static bool sspi_TryBuildCertificateLogonRewrite(void* pAuthData,
 // The embedded in-process ActiveX control does not pass the smart card credential through AcquireCredentialsHandleW
 // (pAuthData is NULL), so there is nothing to reshape. Instead synthesize the KERB_CERTIFICATE_LOGON directly from the
 // session's marshaled certificate UserName + PIN, which are available on the extended settings core property set.
-static bool sspi_TryBuildCertificateLogonFromSettings(CMsRdpExtendedSettings* extendedSettings,
-	SspiCertificateLogonRewrite* rewrite)
+//
+// pAuthData is still taken because the caller may in fact have supplied one (RDM does). Discarding it throws away
+// the caller's pSchannelCred, which the credential mstscax itself builds for a certificate logon keeps.
+static bool sspi_TryBuildCertificateLogonFromSettings(void* pAuthData,
+	CMsRdpExtendedSettings* extendedSettings, SspiCertificateLogonRewrite* rewrite)
 {
 	WCHAR* userName = NULL;
 	WCHAR* pin = NULL;
 	HLOCAL hPackedCredentials = NULL;
 	DWORD cbPackedCredentials = 0;
+	CREDSSP_CRED* pCred = NULL;
+	CREDSSP_CRED_EX* pCredEx = NULL;
+	bool inherited = false;
 	bool result = false;
 
 	ZeroMemory(rewrite, sizeof(SspiCertificateLogonRewrite));
@@ -1178,8 +1477,7 @@ static bool sspi_TryBuildCertificateLogonFromSettings(CMsRdpExtendedSettings* ex
 
 	if (!userName || !pin)
 	{
-		if (g_SspiSmartCardDebug)
-			MsRdpEx_LogPrint(WARN, "CredSSP smart-card synth skipped: UserName or PIN unavailable (userName=%p pin=%p)",
+		MsRdpEx_LogPrint(WARN, "CredSSP smart-card synth skipped: UserName or PIN unavailable (userName=%p pin=%p)",
 				userName, pin);
 
 		goto cleanup;
@@ -1187,8 +1485,7 @@ static bool sspi_TryBuildCertificateLogonFromSettings(CMsRdpExtendedSettings* ex
 
 	if (!sspi_IsCertificateMarshaledUserName(userName))
 	{
-		if (g_SspiSmartCardDebug)
-			MsRdpEx_LogPrint(WARN, "CredSSP smart-card synth skipped: UserName is not a marshaled certificate credential");
+		MsRdpEx_LogPrint(WARN, "CredSSP smart-card synth skipped: UserName is not a marshaled certificate credential");
 
 		goto cleanup;
 	}
@@ -1196,18 +1493,50 @@ static bool sspi_TryBuildCertificateLogonFromSettings(CMsRdpExtendedSettings* ex
 	if (!sspi_CreatePackedCertificateLogon(userName, pin, &hPackedCredentials, &cbPackedCredentials))
 		goto cleanup;
 
-	ZeroMemory(&rewrite->cred, sizeof(CREDSSP_CRED));
-	rewrite->cred.Type = CredsspCertificateCreds;
-	rewrite->cred.pSchannelCred = NULL;
+	// Keep the caller's CREDSSP_CRED (notably pSchannelCred, and the CredEx wrapper) and swap only the
+	// SPNEGO credential. Building the struct from nothing is what broke this: with pSchannelCred NULL the
+	// server never attempts a logon, and the connection is refused as "user not authorized for remote logon".
+	// The pairing matters — CredsspCertificateCreds alongside a preserved pSchannelCred is rejected outright
+	// with SEC_E_INVALID_TOKEN. CredsspSubmitBufferBoth is what mstscax's own certificate logon uses.
+	if (pAuthData && sspi_TryGetCredSspCredential(pAuthData, &pCred, &pCredEx))
+	{
+		rewrite->cred = *pCred;
+		rewrite->cred.Type = CredsspSubmitBufferBoth;
+		inherited = true;
+	}
+	else
+	{
+		// No incoming credential to inherit from, so there is no schannel credential to keep and the pairing
+		// above does not apply. Untested in practice: every observed caller supplies pAuthData.
+		MsRdpEx_LogPrint(WARN, "CredSSP smart-card synth has no incoming credential to inherit from; "
+			"falling back to a certificate-only CREDSSP_CRED");
+
+		ZeroMemory(&rewrite->cred, sizeof(CREDSSP_CRED));
+		rewrite->cred.Type = CredsspCertificateCreds;
+		rewrite->cred.pSchannelCred = NULL;
+	}
+
 	rewrite->cred.pSpnegoCred = hPackedCredentials;
 	rewrite->packedCredentials = hPackedCredentials;
 	rewrite->cbPackedCredentials = cbPackedCredentials;
-	rewrite->pAuthData = &rewrite->cred;
+
+	if (inherited && pCredEx)
+	{
+		rewrite->credEx = *pCredEx;
+		rewrite->credEx.Cred = rewrite->cred;
+		rewrite->pAuthData = &rewrite->credEx;
+	}
+	else
+	{
+		rewrite->pAuthData = &rewrite->cred;
+	}
+
 	rewrite->active = true;
 	result = true;
 
-	MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card credential synthesized as KerbCertificateLogon from settings (size=%u)",
-		cbPackedCredentials);
+	MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card credential synthesized as KerbCertificateLogon from settings "
+		"(size=%u type=%u schannel=%p inherited=%d)",
+		cbPackedCredentials, (unsigned) rewrite->cred.Type, rewrite->cred.pSchannelCred, inherited ? 1 : 0);
 
 cleanup:
 	if (userName)
@@ -1271,6 +1600,11 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 	SspiCertificateLogonRewrite rewrite = { 0 };
 	void* pEffectiveAuthData = pAuthData;
 
+	// The environment-backed switches below are read here rather than left to MsRdpEx_GetPcapFile, which only
+	// runs once messages start flowing — that is after this call, so the first connection in a process would
+	// otherwise see them unset.
+	MsRdpEx_PcapEnvInit();
+
 	if (pszPrincipal)
 		MsRdpEx_ConvertFromUnicode(CP_UTF8, 0, pszPrincipal, -1, &pszPrincipalA, 0, NULL, NULL);
 
@@ -1284,8 +1618,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 			//sspi_DumpCredSspAuthData(pAuthData);
 		}
 
-		if (pAuthData)
-			sspi_LogCredSspAuthMetadata(pszPackageA, pAuthData, returnAddress);
+		sspi_LogCredSspAuthMetadata(pszPackageA, pAuthData, returnAddress);
 
 		MsRdpEx_SspiSessionResolution resolution = MSRDPEX_SSPI_SESSION_NONE;
 		CMsRdpExtendedSettings* extendedSettings = sspi_GetCurrentExtendedSettings(&resolution);
@@ -1296,7 +1629,7 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 
 			// Preferred: synthesize from the session's marshaled certificate UserName + captured PIN. This is the
 			// embedded in-process ActiveX path and does not touch the incoming pAuthData/pSpnegoCred at all.
-			built = sspi_TryBuildCertificateLogonFromSettings(extendedSettings, &rewrite) && rewrite.active;
+			built = sspi_TryBuildCertificateLogonFromSettings(pAuthData, extendedSettings, &rewrite) && rewrite.active;
 			builderName = built ? "settings" : "";
 
 			// Fallback: out-of-process mstsc.exe passes a marshaled certificate credential in-band; reshape it.
@@ -1307,11 +1640,8 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 			}
 
 			if (built) {
-				if (g_SspiSmartCardDebug)
-				{
 					MsRdpEx_LogPrint(DEBUG, "CredSSP KerbCertificateLogon rewrite using %s builder and %s session resolution",
 						builderName, sspi_GetSessionResolutionName(resolution));
-				}
 
 				pEffectiveAuthData = rewrite.pAuthData;
 			}
