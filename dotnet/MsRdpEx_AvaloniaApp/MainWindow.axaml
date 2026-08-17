@@ -1,0 +1,13 @@
+<Window
+    x:Class="MsRdpEx_AvaloniaApp.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:rdp="using:Devolutions.MsRdpEx.Avalonia"
+    Title="MsRdpEx Avalonia RDP"
+    Width="1280"
+    Height="820"
+    MinWidth="800"
+    MinHeight="520"
+    Background="Black">
+  <rdp:RdpClientView x:Name="RdpHost" />
+</Window>

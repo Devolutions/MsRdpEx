@@ -26,3 +26,9 @@ EXPORTS
     MsRdpEx_GetArgumentVector
     MsRdpEx_FreeArgumentVector
     MsRdpEx_WinMain
+    MsRdpEx_RdpOleHost_Attach
+    MsRdpEx_RdpOleHost_SetBounds
+    MsRdpEx_RdpOleHost_SetActive
+    MsRdpEx_RdpOleHost_TranslateAccelerator
+    MsRdpEx_RdpOleHost_Release
+    MsRdpEx_OutputMirror_GetFrameVersion

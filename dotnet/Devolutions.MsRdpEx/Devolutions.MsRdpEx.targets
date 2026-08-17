@@ -1,10 +1,13 @@
 <?xml version="1.0"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <MsRdpExAvalonia Condition="'$(MsRdpExAvalonia)' == ''">false</MsRdpExAvalonia>
+    <MsRdpExComInterop Condition="'$(MsRdpExComInterop)' == '' And '$(MsRdpExAvalonia)' == 'true'">Generated</MsRdpExComInterop>
     <MsRdpExComInterop Condition="'$(MsRdpExComInterop)' == ''">Legacy</MsRdpExComInterop>
     <MsRdpExGeneratedInteropSupported>true</MsRdpExGeneratedInteropSupported>
     <MsRdpExGeneratedWinFormsInteropSupported>true</MsRdpExGeneratedWinFormsInteropSupported>
     <MsRdpExGeneratedWinFormsHostSupported>true</MsRdpExGeneratedWinFormsHostSupported>
+    <MsRdpExAvaloniaSupported>true</MsRdpExAvaloniaSupported>
     <MsRdpExGeneratedWinForms Condition="'$(MsRdpExGeneratedWinForms)' == ''">false</MsRdpExGeneratedWinForms>
     <_MsRdpExPackageRoot>$(MSBuildThisFileDirectory)..\</_MsRdpExPackageRoot>
     <_MsRdpExLegacyInteropPath>$(_MsRdpExPackageRoot)interop\legacy\Interop.MSTSCLib.dll</_MsRdpExLegacyInteropPath>
@@ -13,6 +16,7 @@
     <_MsRdpExGeneratedInteropPath>$(_MsRdpExPackageRoot)interop\generated\Interop.MSTSCLib.Generated.dll</_MsRdpExGeneratedInteropPath>
     <_MsRdpExGeneratedWinFormsInteropPath>$(_MsRdpExPackageRoot)interop\generated-winforms\AxInterop.MSTSCLib.dll</_MsRdpExGeneratedWinFormsInteropPath>
     <_MsRdpExGeneratedWinFormsHostPath>$(_MsRdpExPackageRoot)interop\generated-winforms\Interop.MSTSCLib.Generated.WinForms.dll</_MsRdpExGeneratedWinFormsHostPath>
+    <_MsRdpExAvaloniaPath>$(_MsRdpExPackageRoot)avalonia\net8.0-windows\Devolutions.MsRdpEx.Avalonia.dll</_MsRdpExAvaloniaPath>
     <_MsRdpExNativeArchitecture Condition="'$(RuntimeIdentifier)' == '' And ('$(PlatformTarget)' == 'x86' Or '$(Platform)' == 'Win32' Or '$(Platform)' == 'x86')">x86</_MsRdpExNativeArchitecture>
     <_MsRdpExNativeArchitecture Condition="'$(RuntimeIdentifier)' == '' And ('$(PlatformTarget)' == 'x64' Or '$(Platform)' == 'x64')">x64</_MsRdpExNativeArchitecture>
     <_MsRdpExNativeArchitecture Condition="'$(RuntimeIdentifier)' == '' And ('$(PlatformTarget)' == 'arm64' Or '$(Platform)' == 'ARM64' Or '$(Platform)' == 'arm64')">arm64</_MsRdpExNativeArchitecture>
@@ -24,6 +28,8 @@
            Text="Unsupported MsRdpExComInterop value '$(MsRdpExComInterop)'. Use 'Legacy', 'Generated', 'GeneratedWinForms', or 'None'." />
     <Error Condition="'$(MsRdpExGeneratedWinForms)' != 'true' And '$(MsRdpExGeneratedWinForms)' != 'false'"
            Text="MsRdpExGeneratedWinForms must be 'true' or 'false'." />
+    <Error Condition="'$(MsRdpExAvalonia)' != 'true' And '$(MsRdpExAvalonia)' != 'false'"
+           Text="MsRdpExAvalonia must be 'true' or 'false'." />
     <Error Condition="'$(MsRdpExGeneratedWinForms)' == 'true' And '$(MsRdpExComInterop)' != 'Generated'"
            Text="MsRdpExGeneratedWinForms=true requires MsRdpExComInterop=Generated." />
     <Error Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework' And ('$(MsRdpExComInterop)' == 'Generated' Or '$(MsRdpExComInterop)' == 'GeneratedWinForms')"
@@ -34,6 +40,12 @@
            Text="MsRdpExGeneratedWinForms=true requires '$(_MsRdpExGeneratedWinFormsHostPath)', but the selected Devolutions.MsRdpEx package does not contain it. Select a package with MsRdpExGeneratedWinFormsHostSupported=true or disable WinForms hosting." />
     <Error Condition="'$(MsRdpExGeneratedWinForms)' == 'true' And '$(UseWindowsForms)' != 'true'"
            Text="MsRdpExGeneratedWinForms=true requires UseWindowsForms=true." />
+    <Error Condition="'$(MsRdpExAvalonia)' == 'true' And '$(MsRdpExComInterop)' != 'Generated'"
+           Text="MsRdpExAvalonia=true requires MsRdpExComInterop=Generated." />
+    <Error Condition="'$(MsRdpExAvalonia)' == 'true' And '$(TargetFrameworkIdentifier)' != '.NETCoreApp'"
+           Text="MsRdpExAvalonia=true requires a modern Windows .NET target such as net8.0-windows." />
+    <Error Condition="'$(MsRdpExAvalonia)' == 'true' And !Exists('$(_MsRdpExAvaloniaPath)')"
+           Text="MsRdpExAvalonia=true requires '$(_MsRdpExAvaloniaPath)', but the selected Devolutions.MsRdpEx package does not contain it. Select a package with MsRdpExAvaloniaSupported=true or disable the Avalonia view." />
     <Error Condition="'$(MsRdpExComInterop)' == 'Legacy' And (!Exists('$(_MsRdpExLegacyInteropPath)') Or !Exists('$(_MsRdpExLegacyAxInteropPath)'))"
            Text="MsRdpExComInterop=Legacy requires '$(_MsRdpExLegacyInteropPath)' and '$(_MsRdpExLegacyAxInteropPath)', but the selected Devolutions.MsRdpEx package does not contain its legacy interop assets." />
     <Error Condition="'$(MsRdpExComInterop)' == 'GeneratedWinForms' And (!Exists('$(_MsRdpExGeneratedInteropPath)') Or !Exists('$(_MsRdpExGeneratedWinFormsInteropPath)'))"
@@ -64,6 +76,14 @@
   <ItemGroup Condition="'$(MsRdpExComInterop)' == 'Generated' And '$(MsRdpExGeneratedWinForms)' == 'true'">
     <Reference Include="Interop.MSTSCLib.Generated.WinForms">
       <HintPath>$(_MsRdpExGeneratedWinFormsHostPath)</HintPath>
+      <Private>true</Private>
+      <SpecificVersion>false</SpecificVersion>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MsRdpExAvalonia)' == 'true'">
+    <Reference Include="Devolutions.MsRdpEx.Avalonia">
+      <HintPath>$(_MsRdpExAvaloniaPath)</HintPath>
       <Private>true</Private>
       <SpecificVersion>false</SpecificVersion>
     </Reference>

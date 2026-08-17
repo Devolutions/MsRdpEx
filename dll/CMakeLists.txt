@@ -30,6 +30,7 @@ set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/RdpCoreApi.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpProcess.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpInstance.h"
+    "${MSRDPEX_INCLUDE_DIR}/RdpOleHost.h"
     "${MSRDPEX_INCLUDE_DIR}/RdpSettings.h"
     "${MSRDPEX_INCLUDE_DIR}/OutputMirror.h"
     "${MSRDPEX_INCLUDE_DIR}/VideoRecorder.h"
@@ -90,6 +91,7 @@ set(MSRDPEX_AXHOST_SOURCES
     "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpEventSink.h"
     "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpOleSite.cpp"
     "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpOleSite.h"
+    "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpOleHost.cpp"
     "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpComBase.h"
     "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpWinMain.cpp"
     "${MSRDPEX_AXHOST_SOURCE_DIR}/RdpWinMain.h")
@@ -112,7 +114,8 @@ set(MSRDPEX_LIBS
     credui.lib
     advapi32.lib
     crypt32.lib
-    comctl32.lib)
+    comctl32.lib
+    ole32.lib)
 
 target_compile_options(MsRdpEx_Dll PRIVATE /W4)
 
