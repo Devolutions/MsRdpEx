@@ -32,3 +32,9 @@ EXPORTS
     MsRdpEx_RdpOleHost_TranslateAccelerator
     MsRdpEx_RdpOleHost_Release
     MsRdpEx_OutputMirror_GetFrameVersion
+    MsRdpEx_OutputMirrorCapture_Create
+    MsRdpEx_OutputMirrorCapture_GetFrameVersion
+    MsRdpEx_OutputMirrorCapture_GetShadowBitmap
+    MsRdpEx_OutputMirrorCapture_Lock
+    MsRdpEx_OutputMirrorCapture_Unlock
+    MsRdpEx_OutputMirrorCapture_Release

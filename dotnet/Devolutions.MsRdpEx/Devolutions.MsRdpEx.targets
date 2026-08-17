@@ -42,8 +42,8 @@
            Text="MsRdpExGeneratedWinForms=true requires UseWindowsForms=true." />
     <Error Condition="'$(MsRdpExAvalonia)' == 'true' And '$(MsRdpExComInterop)' != 'Generated'"
            Text="MsRdpExAvalonia=true requires MsRdpExComInterop=Generated." />
-    <Error Condition="'$(MsRdpExAvalonia)' == 'true' And '$(TargetFrameworkIdentifier)' != '.NETCoreApp'"
-           Text="MsRdpExAvalonia=true requires a modern Windows .NET target such as net8.0-windows." />
+    <Error Condition="'$(MsRdpExAvalonia)' == 'true' And ('$(TargetFrameworkIdentifier)' != '.NETCoreApp' Or '$(TargetPlatformIdentifier)' != 'Windows' Or $([MSBuild]::VersionLessThan('$(TargetFrameworkVersion)', '8.0')))"
+           Text="MsRdpExAvalonia=true requires net8.0-windows or a later Windows target framework." />
     <Error Condition="'$(MsRdpExAvalonia)' == 'true' And !Exists('$(_MsRdpExAvaloniaPath)')"
            Text="MsRdpExAvalonia=true requires '$(_MsRdpExAvaloniaPath)', but the selected Devolutions.MsRdpEx package does not contain it. Select a package with MsRdpExAvaloniaSupported=true or disable the Avalonia view." />
     <Error Condition="'$(MsRdpExComInterop)' == 'Legacy' And (!Exists('$(_MsRdpExLegacyInteropPath)') Or !Exists('$(_MsRdpExLegacyAxInteropPath)'))"

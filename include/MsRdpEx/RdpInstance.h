@@ -53,6 +53,40 @@ extern "C" {
 #endif
 
 typedef struct _MsRdpEx_InstanceManager MsRdpEx_InstanceManager;
+typedef struct _MsRdpEx_OutputMirrorCapture MsRdpEx_OutputMirrorCapture;
+
+/*
+ * Creates a capture-only native view of an IMsRdpExInstance. Create and
+ * Release must run on the COM apartment/thread that owns pInstance. The
+ * GetFrameVersion, GetShadowBitmap, Lock, and Unlock operations are explicitly
+ * safe to call from one background capture thread while the handle remains
+ * alive. A successful GetShadowBitmap must precede Lock; after Lock, call it
+ * again to obtain the current DIB and always pair the lock with Unlock.
+ */
+HRESULT STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_Create(
+    IUnknown* pInstance,
+    MsRdpEx_OutputMirrorCapture** ppCapture);
+
+uint32_t STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_GetFrameVersion(
+    MsRdpEx_OutputMirrorCapture* pCapture);
+
+bool STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_GetShadowBitmap(
+    MsRdpEx_OutputMirrorCapture* pCapture,
+    HDC* phDC,
+    HBITMAP* phBitmap,
+    uint8_t** pBitmapData,
+    uint32_t* pBitmapWidth,
+    uint32_t* pBitmapHeight,
+    uint32_t* pBitmapStep);
+
+void STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_Lock(
+    MsRdpEx_OutputMirrorCapture* pCapture);
+
+void STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_Unlock(
+    MsRdpEx_OutputMirrorCapture* pCapture);
+
+void STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_Release(
+    MsRdpEx_OutputMirrorCapture* pCapture);
 
 bool MsRdpEx_InstanceManager_Add(CMsRdpExInstance* instance);
 bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance);

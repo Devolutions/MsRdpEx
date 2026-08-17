@@ -15,7 +15,10 @@ typedef struct _MsRdpEx_RdpOleHost MsRdpEx_RdpOleHost;
  * Activates an OLE control in-place in hWnd and owns the OLE client-site and
  * in-place-site lifetime. The caller retains ownership of pControl and hWnd.
  * Release the returned opaque host with MsRdpEx_RdpOleHost_Release before the
- * window is destroyed.
+ * window is destroyed. The caller must initialize OLE on the calling thread
+ * before Attach. The returned host, its HWND, and every host operation are
+ * apartment-bound: call SetBounds, SetActive, TranslateAccelerator, and Release
+ * only from the same thread that called Attach.
  */
 HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_Attach(
     IUnknown* pControl,

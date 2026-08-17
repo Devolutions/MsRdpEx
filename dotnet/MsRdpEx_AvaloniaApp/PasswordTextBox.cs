@@ -1,4 +1,5 @@
 using Avalonia.Automation.Peers;
+using Avalonia.Automation.Provider;
 using Avalonia.Controls;
 
 namespace MsRdpEx_AvaloniaApp;
@@ -13,6 +14,32 @@ public sealed class PasswordTextBox : TextBox
 
     protected override AutomationPeer OnCreateAutomationPeer()
     {
-        return new NoneAutomationPeer(this);
+        return new PasswordTextBoxAutomationPeer(this);
+    }
+
+    private sealed class PasswordTextBoxAutomationPeer(PasswordTextBox owner)
+        : ControlAutomationPeer(owner), IValueProvider
+    {
+        bool IValueProvider.IsReadOnly => owner.IsReadOnly;
+
+        string IValueProvider.Value => string.Empty;
+
+        void IValueProvider.SetValue(string value)
+        {
+            if (owner.IsReadOnly)
+                throw new InvalidOperationException("The password field is read-only.");
+
+            owner.Text = value;
+        }
+
+        protected override AutomationControlType GetAutomationControlTypeCore()
+        {
+            return AutomationControlType.Edit;
+        }
+
+        protected override string GetClassNameCore()
+        {
+            return nameof(TextBox);
+        }
     }
 }

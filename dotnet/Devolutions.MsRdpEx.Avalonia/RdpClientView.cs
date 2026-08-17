@@ -38,6 +38,7 @@ public class RdpClientView : UserControl, IDisposable
     private readonly object frameLock = new();
     private readonly DispatcherTimer mouseDragTimer;
     private readonly DispatcherTimer resizeTimer;
+    private readonly DispatcherTimer staCaptureTimer;
     private readonly LowLevelKeyboardProc keyboardHookProc;
     private RdpActiveXSession? session;
     private WriteableBitmap? frameBitmap;
@@ -54,6 +55,7 @@ public class RdpClientView : UserControl, IDisposable
     private TopLevel? topLevel;
     private nint keyboardHook;
     private CancellationTokenSource? captureCancellation;
+    private Task? captureTask;
     private int captureGeneration;
     private int invalidateQueued;
     private int captureFailureReported;
@@ -65,6 +67,8 @@ public class RdpClientView : UserControl, IDisposable
     private bool isViewOnly;
     private bool viewportChangedQueued;
     private PixelSize viewportPixelSize;
+    private uint staFrameVersion;
+    private bool staHasFrameVersion;
     private bool disposed;
 
     public RdpClientView()
@@ -84,6 +88,12 @@ public class RdpClientView : UserControl, IDisposable
             Interval = TimeSpan.FromMilliseconds(250)
         };
         resizeTimer.Tick += OnResizeTimerTick;
+
+        staCaptureTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(33)
+        };
+        staCaptureTimer.Tick += OnStaCaptureTimerTick;
         GotFocus += OnControlGotFocus;
         LostFocus += OnControlLostFocus;
         DragDrop.SetAllowDrop(this, true);
@@ -837,19 +847,44 @@ public class RdpClientView : UserControl, IDisposable
     private void StartCaptureWorker()
     {
         StopCaptureWorker();
+        staFrameVersion = 0;
+        staHasFrameVersion = false;
+        Interlocked.Exchange(ref captureFailureReported, 0);
+
+        // Older MsRdpEx builds do not expose the capture-only native handle.
+        // Keep their apartment-bound instance calls on the Avalonia STA.
+        if (session?.CanCaptureOffThread != true)
+        {
+            staCaptureTimer.Start();
+            return;
+        }
+
         int generation = Interlocked.Increment(ref captureGeneration);
         CancellationTokenSource cancellation = new();
         captureCancellation = cancellation;
-        Interlocked.Exchange(ref captureFailureReported, 0);
-        _ = Task.Run(() => RunCaptureWorkerAsync(generation, cancellation));
+        captureTask = Task.Run(() => RunCaptureWorkerAsync(generation, cancellation));
     }
 
     private void StopCaptureWorker()
     {
+        staCaptureTimer.Stop();
         CancellationTokenSource? cancellation = captureCancellation;
         captureCancellation = null;
         Interlocked.Increment(ref captureGeneration);
         cancellation?.Cancel();
+
+        Task? task = captureTask;
+        captureTask = null;
+        if (task is not null)
+        {
+            try
+            {
+                task.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException) when (cancellation?.IsCancellationRequested == true)
+            {
+            }
+        }
     }
 
     private async Task RunCaptureWorkerAsync(
@@ -865,23 +900,7 @@ public class RdpClientView : UserControl, IDisposable
             while (!cancellationToken.IsCancellationRequested &&
                    generation == Volatile.Read(ref captureGeneration) && !disposed)
             {
-                uint frameVersion = 0;
-                // The export is optional so applications can still load an older
-                // MsRdpEx.dll; those DLLs retain the historical 30 fps copy path.
-                bool versionAvailable = session?.TryGetShadowBitmapFrameVersion(out frameVersion) == true;
-                bool frameChanged = !versionAvailable || !hasFrameVersion || frameVersion != lastFrameVersion;
-
-                if (frameChanged && CaptureFrame())
-                {
-                    if (versionAvailable)
-                    {
-                        lastFrameVersion = frameVersion;
-                        hasFrameVersion = true;
-                    }
-
-                    Interlocked.Exchange(ref captureFailureReported, 0);
-                    QueueInvalidate();
-                }
+                TryCaptureChangedFrame(ref lastFrameVersion, ref hasFrameVersion);
 
                 await Task.Delay(33, cancellationToken).ConfigureAwait(false);
             }
@@ -894,6 +913,32 @@ public class RdpClientView : UserControl, IDisposable
             Interlocked.CompareExchange(ref captureCancellation, null, cancellation);
             cancellation.Dispose();
         }
+    }
+
+    private void OnStaCaptureTimerTick(object? sender, EventArgs e)
+    {
+        TryCaptureChangedFrame(ref staFrameVersion, ref staHasFrameVersion);
+    }
+
+    private void TryCaptureChangedFrame(ref uint lastFrameVersion, ref bool hasFrameVersion)
+    {
+        uint frameVersion = 0;
+        // The frame-version export is optional for the STA compatibility path;
+        // without it, retain the historical 30 fps copy behavior.
+        bool versionAvailable = session?.TryGetShadowBitmapFrameVersion(out frameVersion) == true;
+        bool frameChanged = !versionAvailable || !hasFrameVersion || frameVersion != lastFrameVersion;
+
+        if (!frameChanged || !CaptureFrame())
+            return;
+
+        if (versionAvailable)
+        {
+            lastFrameVersion = frameVersion;
+            hasFrameVersion = true;
+        }
+
+        Interlocked.Exchange(ref captureFailureReported, 0);
+        QueueInvalidate();
     }
 
     private unsafe bool CaptureFrame()

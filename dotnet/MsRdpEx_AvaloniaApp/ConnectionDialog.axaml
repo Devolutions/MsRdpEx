@@ -82,7 +82,6 @@
                     Grid.Row="2"
                     Grid.Column="1"
                     AutomationProperties.AutomationId="HostNameTextBox"
-                    Text="it-help-dc"
                     PlaceholderText="server.example.com" />
 
                 <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="User name:" />
@@ -98,6 +97,8 @@
                     x:Name="PasswordTextBox"
                     Grid.Row="4"
                     Grid.Column="1"
+                    AutomationProperties.AutomationId="PasswordTextBox"
+                    AutomationProperties.Name="Password"
                     PasswordChar="●"
                     PlaceholderText="password" />
 

@@ -1,6 +1,8 @@
 
 #include <MsRdpEx/RdpInstance.h>
 
+#include <new>
+
 #include <MsRdpEx/Memory.h>
 #include <MsRdpEx/ArrayList.h>
 #include <MsRdpEx/Environment.h>
@@ -34,9 +36,10 @@ public:
             m_CursorOverlay = NULL;
         }
 
-        if (m_OutputMirror) {
-            MsRdpEx_OutputMirror_Free(m_OutputMirror);
-            m_OutputMirror = NULL;
+        MsRdpEx_OutputMirror* outputMirror = (MsRdpEx_OutputMirror*)
+            InterlockedExchangePointer((PVOID*)&m_OutputMirror, NULL);
+        if (outputMirror) {
+            MsRdpEx_OutputMirror_Free(outputMirror);
         }
 
         if (m_pMsRdpExtendedSettings) {
@@ -119,13 +122,13 @@ public:
 
     HRESULT STDMETHODCALLTYPE GetOutputMirrorObject(LPVOID* ppvObject)
     {
-        *ppvObject = m_OutputMirror;
+        *ppvObject = GetOutputMirror();
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE SetOutputMirrorObject(LPVOID pvObject)
     {
-        m_OutputMirror = (MsRdpEx_OutputMirror*) pvObject;
+        InterlockedExchangePointer((PVOID*)&m_OutputMirror, pvObject);
         return S_OK;
     }
 
@@ -259,7 +262,7 @@ public:
     bool STDMETHODCALLTYPE GetShadowBitmap(HDC* phDC, HBITMAP* phBitmap, uint8_t** pBitmapData,
         uint32_t* pBitmapWidth, uint32_t* pBitmapHeight, uint32_t* pBitmapStep)
     {
-        MsRdpEx_OutputMirror* outputMirror = m_OutputMirror;
+        MsRdpEx_OutputMirror* outputMirror = GetOutputMirror();
 
         if (!outputMirror)
             return false;
@@ -270,7 +273,7 @@ public:
 
     void STDMETHODCALLTYPE LockShadowBitmap()
     {
-        MsRdpEx_OutputMirror* outputMirror = m_OutputMirror;
+        MsRdpEx_OutputMirror* outputMirror = GetOutputMirror();
 
         if (!outputMirror)
             return;
@@ -285,7 +288,7 @@ public:
 
     void STDMETHODCALLTYPE UnlockShadowBitmap()
     {
-        MsRdpEx_OutputMirror* outputMirror = m_OutputMirror;
+        MsRdpEx_OutputMirror* outputMirror = GetOutputMirror();
 
         if (!outputMirror)
             return;
@@ -340,18 +343,25 @@ public:
 
     void STDMETHODCALLTYPE DumpFrameWithCursor()
     {
-        if (!m_OutputMirror)
+        MsRdpEx_OutputMirror* outputMirror = GetOutputMirror();
+        if (!outputMirror)
             return;
 
         if (m_CursorOverlay && IsCursorOverlayEnabled())
             MsRdpEx_CursorOverlay_DumpFrame(
-                m_CursorOverlay, m_OutputMirror,
+                m_CursorOverlay, outputMirror,
                 m_hInputCaptureWnd, m_hOutputPresenterWnd);
         else
-            MsRdpEx_OutputMirror_DumpFrame(m_OutputMirror);
+            MsRdpEx_OutputMirror_DumpFrame(outputMirror);
     }
 
 private:
+    MsRdpEx_OutputMirror* GetOutputMirror()
+    {
+        return (MsRdpEx_OutputMirror*)InterlockedCompareExchangePointer(
+            (PVOID*)&m_OutputMirror, NULL, NULL);
+    }
+
     bool IsCursorOverlayEnabled()
     {
         return m_pMsRdpExtendedSettings && m_pMsRdpExtendedSettings->GetVideoRecordingCursor();
@@ -359,18 +369,19 @@ private:
 
     void EmitCursorFrame()
     {
-        if (!m_OutputMirror || !IsCursorOverlayEnabled())
+        MsRdpEx_OutputMirror* outputMirror = GetOutputMirror();
+        if (!outputMirror || !IsCursorOverlayEnabled())
             return;
 
         bool outputMirrorEnabled = false;
         if (FAILED(GetOutputMirrorEnabled(&outputMirrorEnabled)) || !outputMirrorEnabled)
             return;
 
-        MsRdpEx_OutputMirror_Lock(m_OutputMirror);
+        MsRdpEx_OutputMirror_Lock(outputMirror);
         MsRdpEx_CursorOverlay_DumpFrame(
-            m_CursorOverlay, m_OutputMirror,
+            m_CursorOverlay, outputMirror,
             m_hInputCaptureWnd, m_hOutputPresenterWnd);
-        MsRdpEx_OutputMirror_Unlock(m_OutputMirror);
+        MsRdpEx_OutputMirror_Unlock(outputMirror);
     }
 
 public:
@@ -406,6 +417,103 @@ CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient)
 {
     CMsRdpExInstance* instance = new CMsRdpExInstance(pMsRdpClient);
     return instance;
+}
+
+struct _MsRdpEx_OutputMirrorCapture
+{
+    IMsRdpExInstance* instance;
+    DWORD ownerThreadId;
+};
+
+HRESULT STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_Create(
+    IUnknown* pInstance,
+    MsRdpEx_OutputMirrorCapture** ppCapture)
+{
+    if (!pInstance || !ppCapture)
+        return E_INVALIDARG;
+
+    *ppCapture = NULL;
+
+    IMsRdpExInstance* instance = NULL;
+    HRESULT hr = pInstance->QueryInterface(
+        IID_IMsRdpExInstance, (void**)&instance);
+    if (FAILED(hr))
+        return hr;
+
+    MsRdpEx_OutputMirrorCapture* capture =
+        new (std::nothrow) MsRdpEx_OutputMirrorCapture();
+    if (!capture)
+    {
+        instance->Release();
+        return E_OUTOFMEMORY;
+    }
+
+    capture->instance = instance;
+    capture->ownerThreadId = GetCurrentThreadId();
+    *ppCapture = capture;
+    return S_OK;
+}
+
+uint32_t STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_GetFrameVersion(
+    MsRdpEx_OutputMirrorCapture* pCapture)
+{
+    if (!pCapture || !pCapture->instance)
+        return 0;
+
+    MsRdpEx_OutputMirror* outputMirror = NULL;
+    if (FAILED(pCapture->instance->GetOutputMirrorObject(
+        (LPVOID*)&outputMirror)) || !outputMirror)
+    {
+        return 0;
+    }
+
+    return MsRdpEx_OutputMirror_GetFrameVersion(outputMirror);
+}
+
+bool STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_GetShadowBitmap(
+    MsRdpEx_OutputMirrorCapture* pCapture,
+    HDC* phDC,
+    HBITMAP* phBitmap,
+    uint8_t** pBitmapData,
+    uint32_t* pBitmapWidth,
+    uint32_t* pBitmapHeight,
+    uint32_t* pBitmapStep)
+{
+    return pCapture && pCapture->instance &&
+        pCapture->instance->GetShadowBitmap(
+            phDC, phBitmap, pBitmapData,
+            pBitmapWidth, pBitmapHeight, pBitmapStep);
+}
+
+void STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_Lock(
+    MsRdpEx_OutputMirrorCapture* pCapture)
+{
+    if (pCapture && pCapture->instance)
+        pCapture->instance->LockShadowBitmap();
+}
+
+void STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_Unlock(
+    MsRdpEx_OutputMirrorCapture* pCapture)
+{
+    if (pCapture && pCapture->instance)
+        pCapture->instance->UnlockShadowBitmap();
+}
+
+void STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_Release(
+    MsRdpEx_OutputMirrorCapture* pCapture)
+{
+    if (!pCapture)
+        return;
+
+    if (pCapture->ownerThreadId != GetCurrentThreadId())
+    {
+        MsRdpEx_LogPrint(ERROR,
+            "MsRdpEx_OutputMirrorCapture_Release must run on its creating thread");
+    }
+
+    if (pCapture->instance)
+        pCapture->instance->Release();
+    delete pCapture;
 }
 
 void MsRdpEx_RdpInstance_Free(CMsRdpExInstance* instance)

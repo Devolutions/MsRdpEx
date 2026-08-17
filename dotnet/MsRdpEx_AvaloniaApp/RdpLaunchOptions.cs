@@ -17,6 +17,21 @@ internal sealed record RdpLaunchOptions(
 {
     public static RdpLaunchOptions Parse(IReadOnlyList<string> arguments)
     {
+        return Parse(
+            arguments,
+            Environment.GetEnvironmentVariable,
+            File.ReadAllText);
+    }
+
+    internal static RdpLaunchOptions Parse(
+        IReadOnlyList<string> arguments,
+        Func<string, string?> getEnvironmentVariable,
+        Func<string, string> readFile)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        ArgumentNullException.ThrowIfNull(getEnvironmentVariable);
+        ArgumentNullException.ThrowIfNull(readFile);
+
         Dictionary<string, string> commandLine = new(StringComparer.OrdinalIgnoreCase);
         string? rdpFileName = null;
         string? error = null;
@@ -39,7 +54,8 @@ internal sealed record RdpLaunchOptions(
             string normalizedName = NormalizeOptionName(name);
             if (value is null)
             {
-                if (++index >= arguments.Count)
+                if (++index >= arguments.Count ||
+                    TrySplitOption(arguments[index], out _, out _))
                 {
                     error = $"Missing value for command-line option: {argument}";
                     break;
@@ -57,17 +73,17 @@ internal sealed record RdpLaunchOptions(
             commandLine[normalizedName] = value;
         }
 
-        string environmentHost = Environment.GetEnvironmentVariable("RDP_HOSTNAME") ?? string.Empty;
-        string environmentUser = Environment.GetEnvironmentVariable("RDP_USERNAME") ?? string.Empty;
-        string environmentPassword = Environment.GetEnvironmentVariable("RDP_PASSWORD") ?? string.Empty;
-        string environmentDomain = Environment.GetEnvironmentVariable("RDP_DOMAIN") ?? string.Empty;
+        string environmentHost = getEnvironmentVariable("RDP_HOSTNAME") ?? string.Empty;
+        string environmentUser = getEnvironmentVariable("RDP_USERNAME") ?? string.Empty;
+        string environmentPassword = getEnvironmentVariable("RDP_PASSWORD") ?? string.Empty;
+        string environmentDomain = getEnvironmentVariable("RDP_DOMAIN") ?? string.Empty;
         string? configuredClassId = GetOption(commandLine, "class-id")
-            ?? Environment.GetEnvironmentVariable("RDP_CLASS_ID");
+            ?? getEnvironmentVariable("RDP_CLASS_ID");
         string axName = GetOption(commandLine, "ax-name")
-            ?? Environment.GetEnvironmentVariable("RDP_AXNAME")
+            ?? getEnvironmentVariable("RDP_AXNAME")
             ?? "mstsc";
         string? rdpExDll = GetOption(commandLine, "rdpex-dll")
-            ?? Environment.GetEnvironmentVariable("MSRDPEX_DLL");
+            ?? getEnvironmentVariable("MSRDPEX_DLL");
 
         Guid classId = RdpClientView.DefaultClassId;
         if (!string.IsNullOrWhiteSpace(configuredClassId) &&
@@ -78,7 +94,7 @@ internal sealed record RdpLaunchOptions(
         }
 
         rdpFileName = GetOption(commandLine, "filename")
-            ?? Environment.GetEnvironmentVariable("RDP_FILENAME")
+            ?? getEnvironmentVariable("RDP_FILENAME")
             ?? rdpFileName;
 
         RdpFileValues rdpFile = RdpFileValues.Empty;
@@ -86,7 +102,7 @@ internal sealed record RdpLaunchOptions(
         {
             try
             {
-                rdpFile = ReadRdpFile(rdpFileName);
+                rdpFile = ReadRdpFile(rdpFileName, readFile);
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
@@ -168,9 +184,11 @@ internal sealed record RdpLaunchOptions(
         return options.TryGetValue(name, out string? value) ? value : null;
     }
 
-    private static RdpFileValues ReadRdpFile(string fileName)
+    private static RdpFileValues ReadRdpFile(
+        string fileName,
+        Func<string, string> readFile)
     {
-        string contents = File.ReadAllText(fileName);
+        string contents = readFile(fileName);
         string? hostName = null;
         string? userName = null;
         string? domain = null;

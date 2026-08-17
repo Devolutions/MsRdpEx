@@ -64,6 +64,7 @@ internal sealed class RdpActiveXSession : IDisposable
     private static RdpOleHostSetBounds? rdpOleHostSetBounds;
     private static RdpOleHostTranslateAccelerator? rdpOleHostTranslateAccelerator;
     private static RdpOleHostRelease? rdpOleHostRelease;
+    private static MsRdpExInstanceHandle.OutputMirrorCaptureApi? outputMirrorCaptureApi;
     private static MsRdpExInstanceHandle.OutputMirrorGetFrameVersion? outputMirrorGetFrameVersion;
     private static readonly UIntPtr InputWindowSubclassId = new(1);
 
@@ -175,7 +176,10 @@ internal sealed class RdpActiveXSession : IDisposable
                     client = ProxyObject.Pack<IMsRdpClient10>(rawClient)
                         ?? throw new InvalidOperationException("The hosted control does not implement IMsRdpClient10.");
 
-                    instance = new MsRdpExInstanceHandle(control, outputMirrorGetFrameVersion);
+                    instance = new MsRdpExInstanceHandle(
+                        control,
+                        outputMirrorCaptureApi,
+                        outputMirrorGetFrameVersion);
                 }
                 finally
                 {
@@ -377,6 +381,8 @@ internal sealed class RdpActiveXSession : IDisposable
     {
         return instance?.WithShadowBitmap(action) == true;
     }
+
+    public bool CanCaptureOffThread => instance?.CanCaptureOffThread == true;
 
     public bool TryGetShadowBitmapFrameVersion(out uint version)
     {
@@ -580,6 +586,29 @@ internal sealed class RdpActiveXSession : IDisposable
             outputMirrorGetFrameVersion =
                 Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorGetFrameVersion>(export);
         }
+
+        outputMirrorCaptureApi ??= TryLoadOutputMirrorCaptureApi(library);
+    }
+
+    private static MsRdpExInstanceHandle.OutputMirrorCaptureApi? TryLoadOutputMirrorCaptureApi(nint library)
+    {
+        if (!NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_Create", out nint create) ||
+            !NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_GetFrameVersion", out nint getFrameVersion) ||
+            !NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_GetShadowBitmap", out nint getShadowBitmap) ||
+            !NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_Lock", out nint lockCapture) ||
+            !NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_Unlock", out nint unlockCapture) ||
+            !NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_Release", out nint release))
+        {
+            return null;
+        }
+
+        return new MsRdpExInstanceHandle.OutputMirrorCaptureApi(
+            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureCreate>(create),
+            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureGetFrameVersion>(getFrameVersion),
+            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureGetShadowBitmap>(getShadowBitmap),
+            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureLock>(lockCapture),
+            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureUnlock>(unlockCapture),
+            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureRelease>(release));
     }
 
     private static string ResolveLibraryPath(string? configuredPath)
