@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <AssemblyName>Devolutions.MsRdpEx.Avalonia</AssemblyName>
+    <RootNamespace>Devolutions.MsRdpEx.Avalonia</RootNamespace>
+    <Description>A pure Avalonia RDP client view backed by the MsRdpEx output mirror.</Description>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>false</IsPackable>
+    <OutputPath Condition="'$(CMakeOutputPath)' != ''">$(CMakeOutputPath)</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Interop.MSTSCLib.Generated\Interop.MSTSCLib.Generated.csproj" />
+  </ItemGroup>
+</Project>

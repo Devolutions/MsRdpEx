@@ -16,6 +16,9 @@ HDC MsRdpEx_OutputMirror_GetShadowDC(MsRdpEx_OutputMirror* ctx);
 
 void MsRdpEx_OutputMirror_SetFrameSize(MsRdpEx_OutputMirror* ctx, uint32_t frameWidth, uint32_t frameHeight);
 void MsRdpEx_OutputMirror_GetFrameSize(MsRdpEx_OutputMirror* ctx, uint32_t* frameWidth, uint32_t* frameHeight);
+// Monotonically changes after a completed shadow-bitmap update. Consumers can
+// avoid copying the full DIB while the remote desktop is unchanged.
+uint32_t MsRdpEx_OutputMirror_GetFrameVersion(MsRdpEx_OutputMirror* ctx);
 
 bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx);
 

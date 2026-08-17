@@ -98,12 +98,15 @@ public:
             SafeRelease(m_eventSink);
         }
 
+        if (m_pOleInPlaceSiteEx)
+            m_pOleInPlaceSiteEx->SetInPlaceObject(NULL);
+
         SafeRelease(m_pOleInPlaceActiveObject);
         SafeRelease(m_pOleObject);
         SafeRelease(m_rdpClient);
+        SafeRelease(m_pOleInPlaceObject);
         SafeRelease(m_pOleInPlaceSiteEx);
         SafeRelease(m_pOleClientSite);
-        SafeRelease(m_pOleInPlaceObject);
 
         return S_OK;
     }
@@ -390,6 +393,8 @@ public:
         if (FAILED(hr)) {
             return hr;
         }
+
+        m_pOleInPlaceSiteEx->SetInPlaceObject(m_pOleInPlaceObject);
 
         hr = m_pOleObject->SetClientSite(m_pOleClientSite);
 

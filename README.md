@@ -56,6 +56,33 @@ The generated assets deliberately do not provide legacy COM coclasses (such as `
 
 The legacy and generated assets define overlapping `MSTSCLib` type names and cannot be referenced by the same application. Select exactly one `MsRdpExComInterop` mode per project.
 
+### Avalonia RDP view
+
+Avalonia 12 applications can enable the reusable, bitmap-backed
+`Devolutions.MsRdpEx.Avalonia.RdpClientView` from the same NuGet package:
+
+```xml
+<PropertyGroup>
+  <MsRdpExAvalonia>true</MsRdpExAvalonia>
+</PropertyGroup>
+
+<ItemGroup>
+  <PackageReference Include="Avalonia" Version="12.1.1" />
+  <PackageReference Include="Devolutions.MsRdpEx" Version="..." />
+</ItemGroup>
+```
+
+`MsRdpExAvalonia=true` selects the generated COM projection and references the
+packaged `Devolutions.MsRdpEx.Avalonia.dll`. The consuming application keeps
+its normal Avalonia package references, so Avalonia is not imposed on existing
+WinForms or .NET Framework consumers. `RdpClientView` is an Avalonia
+`UserControl`; it renders the MsRdpEx shadow bitmap and does not use
+`NativeControlHost`, Windows Forms `AxHost`, or ATL hosting helpers. MsRdpEx
+directly provides the OLE client-site and in-place-site contract required by
+the ActiveX control, while the required HWND remains off-screen. Use
+`Connect(RdpConnectionSettings)` for the convenience API, or `GetClient<T>()`
+after `ClientReady` for direct generated MSTSCLib configuration.
+
 ## Extended .RDP File Options
 
 MsRdpEx processes additional .RDP file options that are not normally supported by mstsc.exe:

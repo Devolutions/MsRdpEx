@@ -1,0 +1,182 @@
+<Window
+    x:Class="MsRdpEx_AvaloniaApp.ConnectionDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:MsRdpEx_AvaloniaApp"
+    Title="Remote Desktop Connection"
+    Width="630"
+    Height="650"
+    CanResize="False"
+    WindowStartupLocation="CenterScreen">
+  <Grid RowDefinitions="112,*,Auto" Background="#F5F5F5">
+    <Border
+        BorderBrush="#B8C7D9"
+        BorderThickness="0,0,0,1"
+        Background="#EEF5FD">
+      <Grid Margin="28,12,24,12" ColumnDefinitions="76,*">
+        <Grid Width="62" Height="66" VerticalAlignment="Center">
+          <Border
+              Width="52"
+              Height="38"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top"
+              BorderBrush="#4F6380"
+              BorderThickness="2"
+              CornerRadius="2"
+              Background="#BFD8F4">
+            <Border Margin="4" Background="#EAF4FF" />
+          </Border>
+          <Border
+              Width="24"
+              Height="24"
+              Margin="0,0,1,5"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Bottom"
+              BorderBrush="White"
+              BorderThickness="2"
+              CornerRadius="12"
+              Background="#63B746">
+            <TextBlock
+                Margin="0,-3,0,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontSize="20"
+                FontWeight="Bold"
+                Foreground="White"
+                Text="›" />
+          </Border>
+        </Grid>
+
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="-3">
+          <TextBlock FontSize="25" Foreground="#003399" Text="Remote Desktop" />
+          <TextBlock FontSize="31" FontWeight="Bold" Foreground="#003399" Text="Connection" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <TabControl Grid.Row="1" Margin="10,8,10,0">
+      <TabItem Header="General">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="10,14,10,8" Spacing="18">
+            <Border BorderBrush="#C9C9C9" BorderThickness="1" Padding="18,16">
+              <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="92,*" RowSpacing="12">
+                <TextBlock
+                    Grid.ColumnSpan="2"
+                    Margin="-8,-27,0,4"
+                    Padding="5,0"
+                    HorizontalAlignment="Left"
+                    Background="#F5F5F5"
+                    FontSize="14"
+                    Text="Logon settings" />
+
+                <TextBlock
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    Margin="0,0,0,2"
+                    FontSize="15"
+                    Text="Enter the name of the remote computer." />
+
+                <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Computer:" />
+                <TextBox
+                    x:Name="HostNameTextBox"
+                    Grid.Row="2"
+                    Grid.Column="1"
+                    AutomationProperties.AutomationId="HostNameTextBox"
+                    PlaceholderText="server.example.com" />
+
+                <TextBlock Grid.Row="3" VerticalAlignment="Center" Text="User name:" />
+                <TextBox
+                    x:Name="UserNameTextBox"
+                    Grid.Row="3"
+                    Grid.Column="1"
+                    AutomationProperties.AutomationId="UserNameTextBox"
+                    PlaceholderText="username" />
+
+                <TextBlock Grid.Row="4" VerticalAlignment="Center" Text="Password:" />
+                <local:PasswordTextBox
+                    x:Name="PasswordTextBox"
+                    Grid.Row="4"
+                    Grid.Column="1"
+                    AutomationProperties.AutomationId="PasswordTextBox"
+                    AutomationProperties.Name="Password"
+                    PasswordChar="●"
+                    PlaceholderText="password" />
+
+                <TextBlock Grid.Row="5" VerticalAlignment="Center" Text="Domain:" />
+                <TextBox
+                    x:Name="DomainTextBox"
+                    Grid.Row="5"
+                    Grid.Column="1"
+                    AutomationProperties.AutomationId="DomainTextBox"
+                    PlaceholderText="optional" />
+              </Grid>
+            </Border>
+
+            <Border BorderBrush="#C9C9C9" BorderThickness="1" Padding="18,16">
+              <StackPanel Spacing="8">
+                <TextBlock
+                    Margin="-8,-27,0,4"
+                    Padding="5,0"
+                    HorizontalAlignment="Left"
+                    Background="#F5F5F5"
+                    FontSize="14"
+                    Text="Connection settings" />
+                <TextBlock
+                    Text="These settings are kept in memory for this connection only. The password is cleared from the dialog immediately after Connect is selected."
+                    TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Display">
+        <StackPanel Margin="22,22" Spacing="12">
+          <TextBlock FontSize="16" FontWeight="SemiBold" Text="Display configuration" />
+          <TextBlock
+              Text="Choose the remote desktop resolution. The session is scaled to fit the Avalonia window."
+              TextWrapping="Wrap" />
+          <TextBlock Margin="0,10,0,0" Text="Remote desktop size:" />
+          <ComboBox
+              x:Name="ResolutionComboBox"
+              AutomationProperties.AutomationId="ResolutionComboBox"
+              SelectedIndex="0">
+            <ComboBoxItem Content="Fit the session window" />
+            <ComboBoxItem Content="1024 × 768" />
+            <ComboBoxItem Content="1280 × 720" />
+            <ComboBoxItem Content="1600 × 900" />
+            <ComboBoxItem Content="1920 × 1080" />
+          </ComboBox>
+          <TextBlock
+              Margin="0,10,0,0"
+              Foreground="#666666"
+              Text="Color depth: Highest quality (32 bit)"
+              TextWrapping="Wrap" />
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+
+    <Grid Grid.Row="2" Margin="20,16" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+      <TextBlock
+          x:Name="ValidationTextBlock"
+          VerticalAlignment="Center"
+          AutomationProperties.AutomationId="ValidationTextBlock"
+          Foreground="#B00020"
+          TextWrapping="Wrap" />
+      <Button
+          x:Name="ConnectButton"
+          Grid.Column="1"
+          MinWidth="110"
+          AutomationProperties.AutomationId="ConnectButton"
+          Click="OnConnectClicked"
+          Content="Connect"
+          IsDefault="True" />
+      <Button
+          Grid.Column="2"
+          MinWidth="90"
+          Click="OnCancelClicked"
+          Content="Cancel"
+          IsCancel="True" />
+    </Grid>
+  </Grid>
+</Window>

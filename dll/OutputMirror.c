@@ -19,7 +19,7 @@ struct _MsRdpEx_OutputMirror
 	HDC hShadowDC;
 	HBITMAP hShadowBitmap;
 	HGDIOBJ hShadowObject;
-	uint32_t captureIndex;
+	volatile LONG captureIndex;
 	uint64_t captureBaseTime;
 	int64_t startTime;
 	int videoRecordingCount;
@@ -77,6 +77,14 @@ void MsRdpEx_OutputMirror_GetFrameSize(MsRdpEx_OutputMirror* ctx, uint32_t* fram
 	*frameHeight = ctx->bitmapHeight;
 }
 
+uint32_t MsRdpEx_OutputMirror_GetFrameVersion(MsRdpEx_OutputMirror* ctx)
+{
+	if (!ctx)
+		return 0;
+
+	return (uint32_t)InterlockedCompareExchange(&ctx->captureIndex, 0, 0);
+}
+
 bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 {
 	uint64_t captureTime;
@@ -104,7 +112,7 @@ bool MsRdpEx_OutputMirror_DumpFrame(MsRdpEx_OutputMirror* ctx)
 		fwrite(metadata, 1, strlen(metadata), ctx->frameMetadataFile);
 	}
 
-	ctx->captureIndex++;
+	InterlockedIncrement(&ctx->captureIndex);
 	return true;
 }
 
