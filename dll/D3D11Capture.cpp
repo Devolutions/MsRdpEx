@@ -28,6 +28,21 @@ typedef HRESULT(STDMETHODCALLTYPE* CreateCompositionSwapChainFn)(
     IDXGIOutput* restrictToOutput,
     IDXGISwapChain1** swapChain);
 
+typedef HRESULT(STDMETHODCALLTYPE* CreateSwapChainFn)(
+    IDXGIFactory* factory,
+    IUnknown* device,
+    DXGI_SWAP_CHAIN_DESC* description,
+    IDXGISwapChain** swapChain);
+
+typedef HRESULT(STDMETHODCALLTYPE* CreateSwapChainForHwndFn)(
+    IDXGIFactory2* factory,
+    IUnknown* device,
+    HWND window,
+    const DXGI_SWAP_CHAIN_DESC1* description,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* fullscreenDescription,
+    IDXGIOutput* restrictToOutput,
+    IDXGISwapChain1** swapChain);
+
 typedef HRESULT(STDMETHODCALLTYPE* SwapChainPresentFn)(
     IDXGISwapChain* swapChain,
     UINT syncInterval,
@@ -62,13 +77,19 @@ static std::vector<MsRdpEx_D3D11CaptureSwapChain> g_SwapChains;
 
 static D3D11CreateDeviceFn Real_D3D11CreateDevice = D3D11CreateDevice;
 static CreateCompositionSwapChainFn Real_CreateCompositionSwapChain = NULL;
+static CreateSwapChainFn Real_CreateSwapChain = NULL;
+static CreateSwapChainForHwndFn Real_CreateSwapChainForHwnd = NULL;
 static SwapChainPresentFn Real_SwapChainPresent = NULL;
 static SwapChainReleaseFn Real_SwapChainRelease = NULL;
 
 static bool g_CreateCompositionSwapChainHookAttached = false;
+static bool g_CreateSwapChainHookAttached = false;
+static bool g_CreateSwapChainForHwndHookAttached = false;
 static bool g_SwapChainPresentHookAttached = false;
 static bool g_SwapChainReleaseHookAttached = false;
 static PVOID g_CreateCompositionSwapChainTarget = NULL;
+static PVOID g_CreateSwapChainTarget = NULL;
+static PVOID g_CreateSwapChainForHwndTarget = NULL;
 static PVOID g_SwapChainPresentTarget = NULL;
 static PVOID g_SwapChainReleaseTarget = NULL;
 static thread_local LONG g_D3D11CaptureDepth = 0;
@@ -77,6 +98,19 @@ static HRESULT STDMETHODCALLTYPE Hook_CreateCompositionSwapChain(
     IDXGIFactory2* factory,
     IUnknown* device,
     const DXGI_SWAP_CHAIN_DESC1* description,
+    IDXGIOutput* restrictToOutput,
+    IDXGISwapChain1** swapChain);
+static HRESULT STDMETHODCALLTYPE Hook_CreateSwapChain(
+    IDXGIFactory* factory,
+    IUnknown* device,
+    DXGI_SWAP_CHAIN_DESC* description,
+    IDXGISwapChain** swapChain);
+static HRESULT STDMETHODCALLTYPE Hook_CreateSwapChainForHwnd(
+    IDXGIFactory2* factory,
+    IUnknown* device,
+    HWND window,
+    const DXGI_SWAP_CHAIN_DESC1* description,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* fullscreenDescription,
     IDXGIOutput* restrictToOutput,
     IDXGISwapChain1** swapChain);
 
@@ -234,9 +268,33 @@ static bool MsRdpEx_D3D11Capture_AttachSwapChainHooks(IDXGISwapChain* swapChain)
     return true;
 }
 
+static bool MsRdpEx_D3D11Capture_AttachFactoryHook(
+    void** vtable,
+    size_t slot,
+    PVOID* realFunction,
+    PVOID hookFunction,
+    bool* attached,
+    PVOID* target)
+{
+    if (*attached)
+        return vtable[slot] == *target;
+
+    *realFunction = vtable[slot];
+    *target = *realFunction;
+    if (MsRdpEx_D3D11Capture_AttachDynamicHook(
+            realFunction, hookFunction, attached))
+    {
+        return true;
+    }
+
+    *realFunction = NULL;
+    *target = NULL;
+    return false;
+}
+
 static void MsRdpEx_D3D11Capture_TrackSwapChain(
     IUnknown* device,
-    IDXGISwapChain1* swapChain)
+    IDXGISwapChain* swapChain)
 {
     IMsRdpExInstance* instance = MsRdpEx_D3D11Capture_FindInstanceForDevice(device);
     if (!instance)
@@ -245,7 +303,7 @@ static void MsRdpEx_D3D11Capture_TrackSwapChain(
         if (instance)
         {
             MsRdpEx_D3D11Capture_DisableHardwareMode(
-                instance, "attribute composition swap chain to RDP device", E_FAIL);
+                instance, "attribute DXGI swap chain to RDP device", E_FAIL);
             instance->Release();
         }
         return;
@@ -258,7 +316,7 @@ static void MsRdpEx_D3D11Capture_TrackSwapChain(
     if (FAILED(hr))
     {
         MsRdpEx_D3D11Capture_DisableHardwareMode(
-            instance, "query composition swap-chain device", hr);
+            instance, "query DXGI swap-chain device", hr);
         instance->Release();
         return;
     }
@@ -267,7 +325,7 @@ static void MsRdpEx_D3D11Capture_TrackSwapChain(
     if (!context || !MsRdpEx_D3D11Capture_AttachSwapChainHooks(swapChain))
     {
         MsRdpEx_D3D11Capture_DisableHardwareMode(
-            instance, "hook RDP composition swap chain", E_FAIL);
+            instance, "hook RDP DXGI swap chain", E_FAIL);
         if (context)
             context->Release();
         d3dDevice->Release();
@@ -286,7 +344,7 @@ static void MsRdpEx_D3D11Capture_TrackSwapChain(
     ReleaseSRWLockExclusive(&g_D3D11CaptureLock);
 
     MsRdpEx_LogPrint(DEBUG,
-        "D3D11 capture tracking RDP composition swap chain: %p", swapChain);
+        "D3D11 capture tracking RDP DXGI swap chain: %p", swapChain);
 
     if (!MsRdpEx_Instance_ArmHardwareCaptureWatchdog(instance))
     {
@@ -435,6 +493,39 @@ static HRESULT STDMETHODCALLTYPE Hook_CreateCompositionSwapChain(
     return hr;
 }
 
+static HRESULT STDMETHODCALLTYPE Hook_CreateSwapChain(
+    IDXGIFactory* factory,
+    IUnknown* device,
+    DXGI_SWAP_CHAIN_DESC* description,
+    IDXGISwapChain** swapChain)
+{
+    HRESULT hr = Real_CreateSwapChain(factory, device, description, swapChain);
+
+    if (SUCCEEDED(hr) && swapChain && *swapChain)
+        MsRdpEx_D3D11Capture_TrackSwapChain(device, *swapChain);
+
+    return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE Hook_CreateSwapChainForHwnd(
+    IDXGIFactory2* factory,
+    IUnknown* device,
+    HWND window,
+    const DXGI_SWAP_CHAIN_DESC1* description,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* fullscreenDescription,
+    IDXGIOutput* restrictToOutput,
+    IDXGISwapChain1** swapChain)
+{
+    HRESULT hr = Real_CreateSwapChainForHwnd(
+        factory, device, window, description, fullscreenDescription,
+        restrictToOutput, swapChain);
+
+    if (SUCCEEDED(hr) && swapChain && *swapChain)
+        MsRdpEx_D3D11Capture_TrackSwapChain(device, *swapChain);
+
+    return hr;
+}
+
 static HRESULT STDMETHODCALLTYPE Hook_SwapChainPresent(
     IDXGISwapChain* swapChain,
     UINT syncInterval,
@@ -567,26 +658,28 @@ static void MsRdpEx_D3D11Capture_TrackDevice(ID3D11Device* device)
         void** vtable = *(void***)factory;
 
         AcquireSRWLockExclusive(&g_D3D11CaptureLock);
-        if (!g_CreateCompositionSwapChainHookAttached)
-        {
-            Real_CreateCompositionSwapChain = (CreateCompositionSwapChainFn)vtable[24];
-            g_CreateCompositionSwapChainTarget = (PVOID)Real_CreateCompositionSwapChain;
-            if (!MsRdpEx_D3D11Capture_AttachDynamicHook(
-                (PVOID*)&Real_CreateCompositionSwapChain,
-                (PVOID)Hook_CreateCompositionSwapChain,
-                &g_CreateCompositionSwapChainHookAttached))
-            {
-                Real_CreateCompositionSwapChain = NULL;
-                MsRdpEx_D3D11Capture_DisableHardwareMode(
-                    instance, "hook IDXGIFactory2::CreateSwapChainForComposition", E_FAIL);
-            }
-        }
-        else if (vtable[24] != g_CreateCompositionSwapChainTarget)
+        const bool compositionHooked = MsRdpEx_D3D11Capture_AttachFactoryHook(
+            vtable, 24, (PVOID*)&Real_CreateCompositionSwapChain,
+            (PVOID)Hook_CreateCompositionSwapChain,
+            &g_CreateCompositionSwapChainHookAttached,
+            &g_CreateCompositionSwapChainTarget);
+        const bool legacyHooked = MsRdpEx_D3D11Capture_AttachFactoryHook(
+            vtable, 10, (PVOID*)&Real_CreateSwapChain,
+            (PVOID)Hook_CreateSwapChain,
+            &g_CreateSwapChainHookAttached,
+            &g_CreateSwapChainTarget);
+        const bool hwndHooked = MsRdpEx_D3D11Capture_AttachFactoryHook(
+            vtable, 15, (PVOID*)&Real_CreateSwapChainForHwnd,
+            (PVOID)Hook_CreateSwapChainForHwnd,
+            &g_CreateSwapChainForHwndHookAttached,
+            &g_CreateSwapChainForHwndTarget);
+        ReleaseSRWLockExclusive(&g_D3D11CaptureLock);
+
+        if (!compositionHooked && !legacyHooked && !hwndHooked)
         {
             MsRdpEx_D3D11Capture_DisableHardwareMode(
-                instance, "unsupported IDXGIFactory2 implementation", E_NOTIMPL);
+                instance, "hook RDP DXGI factory swap-chain methods", E_FAIL);
         }
-        ReleaseSRWLockExclusive(&g_D3D11CaptureLock);
     }
     else
     {
@@ -732,6 +825,8 @@ void MsRdpEx_D3D11Capture_DetachHooks()
 {
     MSRDPEX_DETOUR_DETACH(Real_D3D11CreateDevice, Hook_D3D11CreateDevice);
     MSRDPEX_DETOUR_DETACH(Real_CreateCompositionSwapChain, Hook_CreateCompositionSwapChain);
+    MSRDPEX_DETOUR_DETACH(Real_CreateSwapChain, Hook_CreateSwapChain);
+    MSRDPEX_DETOUR_DETACH(Real_CreateSwapChainForHwnd, Hook_CreateSwapChainForHwnd);
     MSRDPEX_DETOUR_DETACH(Real_SwapChainPresent, Hook_SwapChainPresent);
     MSRDPEX_DETOUR_DETACH(Real_SwapChainRelease, Hook_SwapChainRelease);
 }
@@ -759,12 +854,18 @@ void MsRdpEx_D3D11Capture_Shutdown()
     g_PendingInstances.clear();
 
     g_CreateCompositionSwapChainHookAttached = false;
+    g_CreateSwapChainHookAttached = false;
+    g_CreateSwapChainForHwndHookAttached = false;
     g_SwapChainPresentHookAttached = false;
     g_SwapChainReleaseHookAttached = false;
     g_CreateCompositionSwapChainTarget = NULL;
+    g_CreateSwapChainTarget = NULL;
+    g_CreateSwapChainForHwndTarget = NULL;
     g_SwapChainPresentTarget = NULL;
     g_SwapChainReleaseTarget = NULL;
     Real_CreateCompositionSwapChain = NULL;
+    Real_CreateSwapChain = NULL;
+    Real_CreateSwapChainForHwnd = NULL;
     Real_SwapChainPresent = NULL;
     Real_SwapChainRelease = NULL;
 
