@@ -179,9 +179,26 @@ bool MsRdpEx_OutputMirror_GetShadowBitmap(MsRdpEx_OutputMirror* ctx,
 bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 {
 	ctx->hShadowDC = CreateCompatibleDC(ctx->hSourceDC);
+	if (!ctx->hShadowDC)
+		return false;
+
 	ctx->hShadowBitmap = MsRdpEx_CreateDIBSection(ctx->hSourceDC,
 		ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitsPerPixel, &ctx->bitmapData);
+	if (!ctx->hShadowBitmap) {
+		DeleteDC(ctx->hShadowDC);
+		ctx->hShadowDC = NULL;
+		return false;
+	}
+
 	ctx->hShadowObject = SelectObject(ctx->hShadowDC, ctx->hShadowBitmap);
+	if (!ctx->hShadowObject || ctx->hShadowObject == HGDI_ERROR) {
+		DeleteObject(ctx->hShadowBitmap);
+		DeleteDC(ctx->hShadowDC);
+		ctx->hShadowBitmap = NULL;
+		ctx->hShadowDC = NULL;
+		ctx->bitmapData = NULL;
+		return false;
+	}
 
 	ctx->captureBaseTime = GetTickCount64();
 
@@ -260,6 +277,7 @@ bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx)
 		DeleteObject(ctx->hShadowBitmap);
 		ctx->hShadowObject = NULL;
 		ctx->hShadowBitmap = NULL;
+		ctx->bitmapData = NULL;
 	}
 
 	if (ctx->hShadowDC)

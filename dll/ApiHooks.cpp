@@ -1,5 +1,7 @@
 
 #include "MsRdpEx.h"
+#include "D3D11Capture.h"
+#include "OutputMirrorCapture.h"
 #include "RdpInstanceInternal.h"
 
 #include <MsRdpEx/MsRdpEx.h>
@@ -430,10 +432,6 @@ bool WINAPI MsRdpEx_CaptureBlt(
     uint32_t frameHeight = 0;
     bool captured = false;
     bool outputMirrorEnabled = false;
-    bool videoRecordingEnabled = false;
-    uint32_t videoRecordingQuality = 5;
-    uint32_t videoRecordingFrameRate = 0;
-    bool dumpBitmapUpdates = false;
     IMsRdpExInstance* instance = NULL;
     MsRdpEx_OutputMirror* outputMirror = NULL;
     CMsRdpExtendedSettings* pExtendedSettings = NULL;
@@ -457,10 +455,6 @@ bool WINAPI MsRdpEx_CaptureBlt(
     MsRdpEx_LogPrint(TRACE, "CaptureBlt: hWnd: %p instance: %p", hWnd, instance);
 
     outputMirrorEnabled = pExtendedSettings->GetOutputMirrorEnabled();
-    videoRecordingEnabled = pExtendedSettings->GetVideoRecordingEnabled();
-    videoRecordingQuality = pExtendedSettings->GetVideoRecordingQuality();
-    videoRecordingFrameRate = pExtendedSettings->GetVideoRecordingFrameRate();
-    dumpBitmapUpdates = pExtendedSettings->GetDumpBitmapUpdates();
 
     if (!outputMirrorEnabled)
         goto end;
@@ -471,36 +465,9 @@ bool WINAPI MsRdpEx_CaptureBlt(
     LONG bitmapWidth = MsRdpEx_GetRectWidth(&rect);
     LONG bitmapHeight = MsRdpEx_GetRectHeight(&rect);
 
-    instance->GetOutputMirrorObject((LPVOID*) &outputMirror);
-
-    if (!outputMirror) 
-    {
-        outputMirror = MsRdpEx_OutputMirror_New();
-        MsRdpEx_OutputMirror_SetDumpBitmapUpdates(outputMirror, dumpBitmapUpdates);
-        MsRdpEx_OutputMirror_SetVideoRecordingEnabled(outputMirror, videoRecordingEnabled);
-        MsRdpEx_OutputMirror_SetVideoQualityLevel(outputMirror, videoRecordingQuality);
-        MsRdpEx_OutputMirror_SetVideoFrameRate(outputMirror, videoRecordingFrameRate);
-
-        char* recordingPath = pExtendedSettings->GetRecordingPath();
-        if (recordingPath) {
-            MsRdpEx_OutputMirror_SetRecordingPath(outputMirror, recordingPath);
-            free(recordingPath);
-        }
-
-        char* recordingPipeName = pExtendedSettings->GetRecordingPipeName();
-        if (recordingPipeName) {
-            MsRdpEx_OutputMirror_SetRecordingPipeName(outputMirror, recordingPipeName);
-            free(recordingPipeName);
-        }
-
-		const char* sessionId = pExtendedSettings->GetRecordingSessionId();
-        if (!sessionId) {
-            sessionId = pExtendedSettings->GetSessionId();
-        }
-        MsRdpEx_OutputMirror_SetSessionId(outputMirror, sessionId);
-
-        instance->SetOutputMirrorObject((LPVOID) outputMirror);
-    }
+    outputMirror = MsRdpEx_OutputMirror_GetOrCreate(instance, pExtendedSettings);
+    if (!outputMirror)
+        goto end;
 
     MsRdpEx_OutputMirror_GetFrameSize(outputMirror, &frameWidth, &frameHeight);
 
@@ -511,16 +478,27 @@ bool WINAPI MsRdpEx_CaptureBlt(
         MsRdpEx_OutputMirror_Uninit(outputMirror);
         MsRdpEx_OutputMirror_SetSourceDC(outputMirror, hdcSrc);
         MsRdpEx_OutputMirror_SetFrameSize(outputMirror, bitmapWidth, bitmapHeight);
-        MsRdpEx_OutputMirror_Init(outputMirror);
+        if (!MsRdpEx_OutputMirror_Init(outputMirror))
+        {
+            MsRdpEx_OutputMirror_Unlock(outputMirror);
+            goto end;
+        }
     }
 
     HDC hShadowDC = MsRdpEx_OutputMirror_GetShadowDC(outputMirror);
+    if (!hShadowDC)
+    {
+        MsRdpEx_OutputMirror_Unlock(outputMirror);
+        goto end;
+    }
+
     BitBlt(hShadowDC, dstX, dstY, width, height, hdcSrc, srcX, srcY, SRCCOPY);
 
     instance->DumpFrameWithCursor();
     MsRdpEx_OutputMirror_Unlock(outputMirror);
 
     captured = true;
+    MsRdpEx_Instance_NotifyOutputFrame(instance);
 end:
     if (instance)
         instance->Release();
@@ -700,6 +678,18 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             }
         }
 	}
+	else if (uMsg == MsRdpEx_Instance_GetGdiReconnectMessage())
+	{
+	    IMsRdpExInstance* reconnectInstance = (IMsRdpExInstance*)
+	        MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
+	    MsRdpEx_Instance_ReconnectUsingGdi(reconnectInstance);
+	}
+    else if (uMsg == WM_TIMER && wParam == MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId())
+    {
+        IMsRdpExInstance* watchdogInstance = (IMsRdpExInstance*)
+            MsRdpEx_InstanceManager_FindByOutputPresenterHwnd(hWnd);
+        MsRdpEx_Instance_HandleHardwareCaptureWatchdog(watchdogInstance);
+    }
 
 	free(lpWindowNameA);
 
@@ -1662,6 +1652,7 @@ LONG MsRdpEx_AttachHooks()
     //MSRDPEX_DETOUR_ATTACH(Real_RegCloseKey, Hook_RegCloseKey);
 
     MSRDPEX_DETOUR_ATTACH(Real_DeleteMenu, Hook_DeleteMenu);
+    MsRdpEx_D3D11Capture_AttachHooks();
     
     MsRdpEx_AttachSspiHooks();
     error = DetourTransactionCommit();
@@ -1721,6 +1712,7 @@ LONG MsRdpEx_DetachHooks()
     //MSRDPEX_DETOUR_DETACH(Real_RegCloseKey, Hook_RegCloseKey);
 
     MSRDPEX_DETOUR_DETACH(Real_DeleteMenu, Hook_DeleteMenu);
+    MsRdpEx_D3D11Capture_DetachHooks();
     
     MsRdpEx_DetachSspiHooks();
     error = DetourTransactionCommit();
@@ -1730,6 +1722,7 @@ LONG MsRdpEx_DetachHooks()
         g_IsHooked = false;
     }
 
+    MsRdpEx_D3D11Capture_Shutdown();
     MsRdpEx_GlobalUninit();
     return error;
 }

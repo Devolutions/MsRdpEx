@@ -1,5 +1,6 @@
 
 #include "MsRdpClient.h"
+#include "D3D11Capture.h"
 
 #include <MsRdpEx/MsRdpEx.h>
 
@@ -184,6 +185,8 @@ public:
     ~CMsRdpClient()
     {
         EndSspiSessionScope("destroy");
+        MsRdpEx_D3D11Capture_ReleaseInstance(
+            (IMsRdpExInstance*)m_pMsRdpExInstance);
 
         m_pUnknown->Release();
         if (m_pDispatch) m_pDispatch->Release();
@@ -511,8 +514,11 @@ public:
         BeginSspiSessionScope("connect");
         hr = m_pMsTscAx->raw_Connect();
 
-        if (FAILED(hr))
+        if (FAILED(hr)) {
+            MsRdpEx_D3D11Capture_ReleaseInstance(
+                (IMsRdpExInstance*)m_pMsRdpExInstance);
             EndSspiSessionScope("connect-failed");
+        }
 
         return hr;
     }
@@ -521,6 +527,8 @@ public:
         HRESULT hr;
         MsRdpEx_LogPrint(DEBUG, "CMsRdpClient::Disconnect");
 
+        MsRdpEx_D3D11Capture_ReleaseInstance(
+            (IMsRdpExInstance*)m_pMsRdpExInstance);
         hr = m_pMsTscAx->raw_Disconnect();
         EndSspiSessionScope("disconnect");
 
@@ -895,6 +903,18 @@ private:
     IClassFactory* m_pDelegate;
     ULONG m_refCount;
 };
+
+HRESULT MsRdpEx_CMsRdpClient_ReconnectInGdiMode(CMsRdpClient* rdpClient)
+{
+    if (!rdpClient)
+        return E_INVALIDARG;
+
+    HRESULT hr = rdpClient->raw_Disconnect();
+    if (FAILED(hr))
+        return hr;
+
+    return rdpClient->raw_Connect();
+}
 
 void* CDECL MsRdpEx_CClassFactory_New(REFCLSID rclsid, IClassFactory* pDelegate)
 {
