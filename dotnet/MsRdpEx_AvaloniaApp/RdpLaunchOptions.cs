@@ -15,6 +15,27 @@ internal sealed record RdpLaunchOptions(
     string AxName,
     string? RdpExDll)
 {
+    public bool CanAutoConnect =>
+        string.IsNullOrEmpty(Error) &&
+        !string.IsNullOrWhiteSpace(HostName) &&
+        !string.IsNullOrWhiteSpace(UserName) &&
+        !string.IsNullOrEmpty(Password);
+
+    public RdpConnectionSettings CreateConnectionSettings()
+    {
+        if (!CanAutoConnect)
+            throw new InvalidOperationException("Complete RDP credentials are required for automatic connection.");
+
+        return new RdpConnectionSettings(
+            HostName.Trim(),
+            UserName.Trim(),
+            Password,
+            Domain.Trim(),
+            DesktopWidth,
+            DesktopHeight,
+            RdpFileContents);
+    }
+
     public static RdpLaunchOptions Parse(IReadOnlyList<string> arguments)
     {
         return Parse(

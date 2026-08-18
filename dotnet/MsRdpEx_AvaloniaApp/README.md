@@ -58,6 +58,11 @@ and `--filename`; their `--RDP_*` forms are accepted as well. Supplying a
 password on a command line can expose it through process inspection, so the
 password field or `RDP_PASSWORD` should be preferred.
 
+When the resolved host, user, and password values are all present (including
+through `RDP_HOSTNAME`, `RDP_USERNAME`, and `RDP_PASSWORD`), the sample opens
+the RDP session directly without displaying the connection dialog. The password
+is passed in memory to the control and is not written to disk.
+
 ## Notes
 
 - The sample targets x64 Windows and Avalonia 12.1.1.
