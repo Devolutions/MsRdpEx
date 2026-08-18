@@ -359,6 +359,10 @@ public class RdpClientView : UserControl, IDisposable
         {
             Initialize();
             UpdateOleFrameState();
+            // The hidden ActiveX input HWND can own foreground while the view is
+            // first displayed. Enable its background-input path before the first
+            // pointer event so the initial click can be forwarded to the session.
+            session?.SetUiActive(true);
             StartCaptureWorker();
         }
         catch (Exception exception)
