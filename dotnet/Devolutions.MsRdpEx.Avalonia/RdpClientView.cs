@@ -14,6 +14,18 @@ using static Devolutions.MsRdpEx.Avalonia.RdpActiveXSession;
 namespace Devolutions.MsRdpEx.Avalonia;
 
 /// <summary>
+/// Decides whether a key about to be forwarded to the remote session is
+/// claimed by the hosting application instead. Return true to keep the key
+/// local: it passes through to normal application processing (accelerators,
+/// menu shortcuts) and is not sent remotely. Implementations should answer
+/// consistently for a key press and its matching release.
+/// </summary>
+/// <param name="virtualKey">The Win32 virtual-key code.</param>
+/// <param name="keyUp">True for the key release, false for the key press.</param>
+/// <param name="systemKey">True when the key is a system (Alt) key message.</param>
+public delegate bool RdpLocalKeyFilter(int virtualKey, bool keyUp, bool systemKey);
+
+/// <summary>
 /// A pure Avalonia RDP surface. Pixels are copied from MsRdpEx's shadow DIB
 /// into a WriteableBitmap; no native HWND participates in the Avalonia visual
 /// tree.
@@ -47,6 +59,7 @@ public class RdpClientView : UserControl, IDisposable
     private NativeMouseButtons pressedButtons;
     private readonly Dictionary<int, ForwardedKey> forwardedKeys = [];
     private readonly HashSet<int> localShortcutKeys = [];
+    private readonly HashSet<int> claimedLocalKeys = [];
     private int lastRemoteX;
     private int lastRemoteY;
     private bool dynamicResolutionEnabled;
@@ -54,6 +67,7 @@ public class RdpClientView : UserControl, IDisposable
     private double pendingRenderScaling = 1.0;
     private TopLevel? topLevel;
     private nint keyboardHook;
+    private bool sessionDisconnectedFired;
     private CancellationTokenSource? captureCancellation;
     private Task? captureTask;
     private int captureGeneration;
@@ -137,6 +151,16 @@ public class RdpClientView : UserControl, IDisposable
     public bool AllowFileDrop { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets an optional filter that lets the hosting application claim
+    /// keys before they are forwarded to the remote session. While the view is
+    /// focused, the low-level keyboard hook forwards every key remotely; set
+    /// this filter to keep the host's own accelerators (for example menu
+    /// shortcuts) working. Claimed keys pass through to normal local
+    /// processing and are never sent to the remote session.
+    /// </summary>
+    public RdpLocalKeyFilter? LocalKeyFilter { get; set; }
+
+    /// <summary>
     /// Gets or sets whether pointer and keyboard input is suppressed while the
     /// remote desktop remains visible.
     /// </summary>
@@ -182,6 +206,14 @@ public class RdpClientView : UserControl, IDisposable
         activeSession.RemoteDesktopSizeChanged += OnSessionRemoteDesktopSizeChanged;
         activeSession.FocusReleased += OnSessionFocusReleased;
         activeSession.StatusChanged += OnSessionStatusChanged;
+        activeSession.Disconnected += OnSessionDisconnected;
+
+        // When this view is re-created after a previous view, the previous
+        // session may own the OLE initialization while the new session got
+        // S_FALSE (Avalonia already initialized OLE on this thread). Hand the
+        // balance to the older session so disposing the new one never tears
+        // down OLE underneath the survivor.
+        session?.MarkOleUninitializePending();
         session = activeSession;
 
         try
@@ -196,6 +228,7 @@ public class RdpClientView : UserControl, IDisposable
             activeSession.RemoteDesktopSizeChanged -= OnSessionRemoteDesktopSizeChanged;
             activeSession.FocusReleased -= OnSessionFocusReleased;
             activeSession.StatusChanged -= OnSessionStatusChanged;
+            activeSession.Disconnected -= OnSessionDisconnected;
             activeSession.Dispose();
             session = null;
             throw;
@@ -316,9 +349,16 @@ public class RdpClientView : UserControl, IDisposable
         ObjectDisposedException.ThrowIf(disposed, this);
         topLevel = TopLevel.GetTopLevel(this);
 
+        if (topLevel is Window window)
+        {
+            window.Activated += OnWindowActivated;
+            window.Deactivated += OnWindowDeactivated;
+        }
+
         try
         {
             Initialize();
+            UpdateOleFrameState();
             StartCaptureWorker();
         }
         catch (Exception exception)
@@ -329,15 +369,40 @@ public class RdpClientView : UserControl, IDisposable
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        if (topLevel is Window window)
+        {
+            window.Activated -= OnWindowActivated;
+            window.Deactivated -= OnWindowDeactivated;
+        }
+
         StopCaptureWorker();
         UninstallKeyboardHook();
         mouseDragTimer.Stop();
         resizeTimer.Stop();
         ReleaseForwardedKeys();
         ReleaseMouseButtons();
+        // Deactivate the frame before dropping its window so the control is
+        // not left believing a detached frame is still active.
+        session?.SetFrameActive(false);
+        session?.SetFrameWindow(0);
         topLevel = null;
 
         base.OnDetachedFromVisualTree(e);
+    }
+
+    // Reports the real top-level window to the OLE host so control-owned
+    // dialogs (certificate warnings, credential prompts) are parented to a
+    // visible window, and pushes the current frame/focus activation state.
+    private void UpdateOleFrameState()
+    {
+        if (session is null)
+            return;
+
+        if (topLevel?.TryGetPlatformHandle() is { } platformHandle)
+            session.SetFrameWindow(platformHandle.Handle);
+
+        if (topLevel is Window window)
+            session.SetFrameActive(window.IsActive);
     }
 
     /// <summary>
@@ -352,6 +417,13 @@ public class RdpClientView : UserControl, IDisposable
 
         VerifyAccess();
         disposed = true;
+
+        if (topLevel is Window window)
+        {
+            window.Activated -= OnWindowActivated;
+            window.Deactivated -= OnWindowDeactivated;
+        }
+
         StopCaptureWorker();
         UninstallKeyboardHook();
         mouseDragTimer.Stop();
@@ -366,6 +438,7 @@ public class RdpClientView : UserControl, IDisposable
             session.RemoteDesktopSizeChanged -= OnSessionRemoteDesktopSizeChanged;
             session.FocusReleased -= OnSessionFocusReleased;
             session.StatusChanged -= OnSessionStatusChanged;
+            session.Disconnected -= OnSessionDisconnected;
             session.Dispose();
             session = null;
         }
@@ -557,12 +630,20 @@ public class RdpClientView : UserControl, IDisposable
     {
         base.OnKeyDown(e);
 
-        if (IsViewOnly)
+        if (IsViewOnly || !IsConnectionActive)
             return;
 
+        // When the low-level hook is installed it already consulted
+        // LocalKeyFilter for this event; only the fallback path evaluates it.
         if (TryGetVirtualKey(e.Key, out int virtualKey, out bool extended))
         {
             bool systemKey = IsSystemKey(e);
+            if (keyboardHook == 0 && LocalKeyFilter is not null &&
+                LocalKeyFilter(virtualKey, false, systemKey))
+            {
+                return;
+            }
+
             session?.SendKey(virtualKey, false, extended, systemKey);
             forwardedKeys[virtualKey] = new ForwardedKey(0, extended, systemKey);
             e.Handled = true;
@@ -573,11 +654,17 @@ public class RdpClientView : UserControl, IDisposable
     {
         base.OnKeyUp(e);
 
-        if (IsViewOnly)
+        if (IsViewOnly || !IsConnectionActive)
             return;
 
         if (TryGetVirtualKey(e.Key, out int virtualKey, out bool extended))
         {
+            if (keyboardHook == 0 && LocalKeyFilter is not null &&
+                LocalKeyFilter(virtualKey, true, IsSystemKey(e)))
+            {
+                return;
+            }
+
             bool systemKey = forwardedKeys.TryGetValue(virtualKey, out ForwardedKey forwarded)
                 ? forwarded.SystemKey
                 : IsSystemKey(e);
@@ -607,6 +694,29 @@ public class RdpClientView : UserControl, IDisposable
         InstallKeyboardHook();
     }
 
+    private void OnWindowActivated(object? sender, EventArgs e)
+    {
+        session?.SetFrameActive(true);
+        if (IsKeyboardFocusWithin)
+            InstallKeyboardHook();
+    }
+
+    private void OnWindowDeactivated(object? sender, EventArgs e)
+    {
+        // Remove the process-wide hook immediately. Avalonia's IsActive and
+        // logical-focus state can lag a native foreground-window transition;
+        // leaving the hook installed during that interval can swallow input
+        // intended for another local application.
+        UninstallKeyboardHook();
+        session?.SetFrameActive(false);
+
+        // Avalonia retains logical keyboard focus while its window is
+        // deactivated, so LostFocus never fires. Release forwarded input here
+        // or keys and mouse buttons stay pressed in the remote session.
+        ReleaseForwardedKeys();
+        ReleaseMouseButtons();
+    }
+
     private void InstallKeyboardHook()
     {
         if (keyboardHook != 0 || disposed)
@@ -625,10 +735,35 @@ public class RdpClientView : UserControl, IDisposable
             UnhookWindowsHookEx(hook);
     }
 
+    // Keys are trapped and forwarded only while the view is focused in an
+    // active window with a live connection. A focused but disconnected view
+    // must let keys pass through so Tab and focus traversal keep working in
+    // the host application.
+    internal static bool ShouldForwardKeys(
+        bool isViewOnly,
+        bool focusWithin,
+        bool windowActive,
+        bool connectionActive,
+        bool foregroundWindowMatches)
+    {
+        return !isViewOnly && focusWithin && windowActive && connectionActive && foregroundWindowMatches;
+    }
+
+    private bool IsTopLevelForegroundWindow()
+    {
+        nint topLevelWindow = topLevel?.TryGetPlatformHandle()?.Handle ?? 0;
+        return topLevelWindow != 0 && GetForegroundWindow() == topLevelWindow;
+    }
+
     private nint KeyboardHookProc(int code, nint wParam, nint lParam)
     {
-        if (code < 0 || keyboardHook == 0 || IsViewOnly || !IsKeyboardFocusWithin ||
-            topLevel is Window { IsActive: false })
+        if (code < 0 || keyboardHook == 0 ||
+            !ShouldForwardKeys(
+                IsViewOnly,
+                IsKeyboardFocusWithin,
+                topLevel is not Window window || window.IsActive,
+                session?.IsConnectionActive == true,
+                IsTopLevelForegroundWindow()))
         {
             return CallNextHookEx(keyboardHook, code, wParam, lParam);
         }
@@ -641,8 +776,24 @@ public class RdpClientView : UserControl, IDisposable
 
         KeyboardHookData keyData = Marshal.PtrToStructure<KeyboardHookData>(lParam);
         int virtualKey = checked((int)keyData.VirtualKey);
+        bool extended = (keyData.Flags & LlkhfExtended) != 0;
+        bool systemKey = message is WmSystemKeyDown or WmSystemKeyUp;
+
         if (ShouldHandleShortcutLocally(virtualKey, keyDown, keyUp))
             return CallNextHookEx(keyboardHook, code, wParam, lParam);
+
+        // The hosting application can claim its own accelerators before the
+        // key is swallowed and forwarded to the remote session. Claimed keys
+        // are tracked so a stateful filter does not run twice (the claim is
+        // decisive for the press and its release).
+        if (keyUp && claimedLocalKeys.Remove(virtualKey))
+            return CallNextHookEx(keyboardHook, code, wParam, lParam);
+
+        if (keyDown && LocalKeyFilter is not null && LocalKeyFilter(virtualKey, keyUp, systemKey))
+        {
+            claimedLocalKeys.Add(virtualKey);
+            return CallNextHookEx(keyboardHook, code, wParam, lParam);
+        }
 
         // VK_PACKET carries the UTF-16 code unit in scanCode. This is the path
         // used by Windows Unicode input injection and by RDM's IME bridge.
@@ -652,8 +803,6 @@ public class RdpClientView : UserControl, IDisposable
             return 1;
         }
 
-        bool extended = (keyData.Flags & LlkhfExtended) != 0;
-        bool systemKey = message is WmSystemKeyDown or WmSystemKeyUp;
         session?.SendKey(virtualKey, keyData.ScanCode, keyUp, extended, systemKey);
 
         if (keyDown)
@@ -1301,6 +1450,20 @@ public class RdpClientView : UserControl, IDisposable
         FocusReleased?.Invoke(this, e);
     }
 
+    private void OnSessionDisconnected(object? sender, EventArgs e)
+    {
+        // The remote session is gone: drop the forwarded/claimed key state so
+        // a stale modifier does not distort shortcut routing after a reconnect
+        // and no orphaned release is sent to the next session.
+        if (sessionDisconnectedFired)
+            return;
+
+        sessionDisconnectedFired = true;
+        forwardedKeys.Clear();
+        claimedLocalKeys.Clear();
+        localShortcutKeys.Clear();
+    }
+
     private void OnSessionStatusChanged(object? sender, RdpStatusChangedEventArgs e)
     {
         PublishStatus(e.Message);
@@ -1448,6 +1611,9 @@ public class RdpClientView : UserControl, IDisposable
 
     [DllImport("user32.dll", ExactSpelling = true)]
     private static extern nint CallNextHookEx(nint hook, int code, nint wParam, nint lParam);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern nint GetForegroundWindow();
 
     [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
     private static extern nint GlobalAlloc(uint flags, nuint bytes);

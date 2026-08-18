@@ -11,7 +11,7 @@ class CRdpOleHost : public IUnknown
 public:
     CRdpOleHost()
         : m_refCount(1), m_hWnd(NULL), m_contained(false), m_clientSiteSet(false),
-          m_miscStatus(0),
+          m_uiActive(false), m_miscStatus(0),
           m_pOleClientSite(NULL), m_pOleInPlaceSiteEx(NULL), m_pOleObject(NULL),
           m_pOleInPlaceObject(NULL), m_pOleInPlaceActiveObject(NULL)
     {
@@ -219,21 +219,40 @@ public:
         if (!m_pOleInPlaceActiveObject || !m_pOleObject)
             return OLE_E_NOT_INPLACEACTIVE;
 
-        if (active)
-        {
-            HRESULT hr = m_pOleObject->DoVerb(
-                OLEIVERB_UIACTIVATE, NULL, m_pOleClientSite, 0, m_hWnd, &m_bounds);
-            if (FAILED(hr))
-                return hr;
-        }
+        // Do not issue OLEIVERB_UIACTIVATE here. This host presents the
+        // control through the off-screen output mirror and feeds it synthetic
+        // input (allowBackgroundInput=1); a real UIACTIVATE makes mstscax call
+        // SetFocus on its own window and change the active window, hijacking
+        // keyboard focus from the Avalonia surface and breaking later input
+        // and teardown. Frame/doc activation notifications give the control
+        // the activation state it needs (FocusReleased, focus tracking)
+        // without the focus grab.
+        if (m_uiActive == (active != FALSE))
+            return S_OK;
+        m_uiActive = active != FALSE;
 
         HRESULT frameHr = m_pOleInPlaceActiveObject->OnFrameWindowActivate(active);
         HRESULT docHr = m_pOleInPlaceActiveObject->OnDocWindowActivate(active);
 
-        if (!active && m_pOleInPlaceObject)
-            m_pOleInPlaceObject->UIDeactivate();
-
         return FAILED(frameHr) ? frameHr : docHr;
+    }
+
+    HRESULT SetFrameActive(BOOL active)
+    {
+        // Forwards top-level window activation only. Unlike SetActive this
+        // never changes the UI-active state: Avalonia retains logical focus
+        // when its window deactivates, so the control must stay UI-active.
+        return m_pOleInPlaceActiveObject
+            ? m_pOleInPlaceActiveObject->OnFrameWindowActivate(active)
+            : OLE_E_NOT_INPLACEACTIVE;
+    }
+
+    HRESULT SetFrameWindow(HWND hWndFrame)
+    {
+        if (!m_pOleInPlaceSiteEx)
+            return OLE_E_NOT_INPLACEACTIVE;
+
+        return m_pOleInPlaceSiteEx->SetFrameWindow(hWndFrame);
     }
 
     HRESULT TranslateAccelerator(LPMSG pMsg)
@@ -280,6 +299,7 @@ public:
         SafeRelease(m_pOleClientSite);
 
         m_hWnd = NULL;
+        m_uiActive = false;
         m_miscStatus = 0;
         SetRectEmpty(&m_bounds);
     }
@@ -292,6 +312,7 @@ private:
     RECT m_bounds;
     bool m_contained;
     bool m_clientSiteSet;
+    bool m_uiActive;
     DWORD m_miscStatus;
     CRdpOleClientSite* m_pOleClientSite;
     CRdpOleInPlaceSiteEx* m_pOleInPlaceSiteEx;
@@ -347,6 +368,26 @@ HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetActive(
         return E_POINTER;
 
     return reinterpret_cast<CRdpOleHost*>(pHost)->SetActive(active);
+}
+
+HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetFrameActive(
+    MsRdpEx_RdpOleHost* pHost,
+    BOOL active)
+{
+    if (!pHost)
+        return E_POINTER;
+
+    return reinterpret_cast<CRdpOleHost*>(pHost)->SetFrameActive(active);
+}
+
+HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetFrameWindow(
+    MsRdpEx_RdpOleHost* pHost,
+    HWND hWndFrame)
+{
+    if (!pHost)
+        return E_POINTER;
+
+    return reinterpret_cast<CRdpOleHost*>(pHost)->SetFrameWindow(hWndFrame);
 }
 
 HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_TranslateAccelerator(

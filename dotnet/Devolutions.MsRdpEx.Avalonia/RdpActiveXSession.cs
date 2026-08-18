@@ -60,10 +60,16 @@ internal sealed class RdpActiveXSession : IDisposable
     private static nint msRdpExModule;
     private static string? loadedLibraryPath;
     private static readonly object NativeActivationLock = new();
+    private static readonly object OleInitLock = new();
+    private static int oleSessionCount;
     private static RdpOleHostAttach? rdpOleHostAttach;
     private static RdpOleHostSetBounds? rdpOleHostSetBounds;
+    private static RdpOleHostSetActive? rdpOleHostSetActive;
+    private static RdpOleHostSetFrameActive? rdpOleHostSetFrameActive;
+    private static RdpOleHostSetFrameWindow? rdpOleHostSetFrameWindow;
     private static RdpOleHostTranslateAccelerator? rdpOleHostTranslateAccelerator;
     private static RdpOleHostRelease? rdpOleHostRelease;
+    private static MsRdpExInstanceHandle.InstanceApi? instanceApi;
     private static MsRdpExInstanceHandle.OutputMirrorCaptureApi? outputMirrorCaptureApi;
     private static MsRdpExInstanceHandle.OutputMirrorGetFrameVersion? outputMirrorGetFrameVersion;
     private static readonly UIntPtr InputWindowSubclassId = new(1);
@@ -75,7 +81,10 @@ internal sealed class RdpActiveXSession : IDisposable
     private nint hostWindow;
     private nint oleHost;
     private nint inputWindowSubclassHandle;
-    private bool oleInitialized;
+    private bool oleScopeEntered;
+    private bool oleInitializedByUs;
+    private bool oleUninitializePending;
+    private bool oleUiActive;
     private bool disposed;
     private bool remoteMouseDragActive;
     private int sessionDesktopWidth;
@@ -92,6 +101,7 @@ internal sealed class RdpActiveXSession : IDisposable
     public event EventHandler<RdpRemoteDesktopSizeChangedEventArgs>? RemoteDesktopSizeChanged;
     public event EventHandler<RdpFocusReleasedEventArgs>? FocusReleased;
     public event EventHandler<RdpStatusChangedEventArgs>? StatusChanged;
+    public event EventHandler? Disconnected;
 
     public RdpActiveXSession()
     {
@@ -114,9 +124,17 @@ internal sealed class RdpActiveXSession : IDisposable
 
         try
         {
+            // Every successful OleInitialize (S_OK or S_FALSE) increments the
+            // thread's OLE initialization count and must be balanced once.
+            // OleUninitialize is deferred when other sessions remain and, when
+            // this call got S_FALSE, deferred to a later S_OK-initialized
+            // session so OLE initialized by the hosting application (Avalonia's
+            // OleContext never uninitializes) is not torn down underneath it.
             int oleResult = OleInitialize(0);
             Marshal.ThrowExceptionForHR(oleResult);
-            oleInitialized = true;
+            oleInitializedByUs = oleResult == 0; // S_OK
+            EnterOleScope();
+            oleScopeEntered = true;
 
             int surfaceWidth = ClampDesktopDimension(width);
             int surfaceHeight = ClampDesktopDimension(height);
@@ -151,11 +169,13 @@ internal sealed class RdpActiveXSession : IDisposable
                         "All views in one process must use the same native library.");
                 }
 
-                Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", axName.Trim());
-                msRdpExModule = msRdpExModule == 0 ? NativeLibrary.Load(normalizedPath) : msRdpExModule;
-                loadedLibraryPath ??= normalizedPath;
-                EnsureOleHostExports(msRdpExModule);
-                control = CreateComInstance(msRdpExModule, classId);
+                control = WithAxNameEnvironment(axName.Trim(), () =>
+                {
+                    msRdpExModule = msRdpExModule == 0 ? NativeLibrary.Load(normalizedPath) : msRdpExModule;
+                    loadedLibraryPath ??= normalizedPath;
+                    EnsureOleHostExports(msRdpExModule);
+                    return CreateComInstance(msRdpExModule, classId);
+                });
             }
 
             unsafe
@@ -178,6 +198,7 @@ internal sealed class RdpActiveXSession : IDisposable
 
                     instance = new MsRdpExInstanceHandle(
                         control,
+                        instanceApi,
                         outputMirrorCaptureApi,
                         outputMirrorGetFrameVersion);
                 }
@@ -285,6 +306,62 @@ internal sealed class RdpActiveXSession : IDisposable
             PublishStatus("Disconnecting...");
             client.Disconnect();
         }
+    }
+
+    /// <summary>
+    /// Pushes focus-driven OLE activation state (OnFrameWindowActivate /
+    /// OnDocWindowActivate) from view focus changes. The control is not
+    /// UI-activated with OLEIVERB_UIACTIVATE: in this hosting model that makes
+    /// mstscax grab keyboard focus and change the active window, hijacking
+    /// input from the Avalonia surface. Redundant transitions are suppressed
+    /// both here and in the native host.
+    /// </summary>
+    public void SetUiActive(bool active)
+    {
+        if (disposed || oleHost == 0 || rdpOleHostSetActive is null || oleUiActive == active)
+            return;
+
+        // Commit the managed state only after the native transition succeeds
+        // so a failed UIACTIVATE can be retried on the next focus change.
+        int hr = rdpOleHostSetActive(oleHost, active ? 1 : 0);
+        if (hr < 0)
+        {
+            PublishStatus($"RDP OLE activation failed: 0x{hr:X8}");
+            return;
+        }
+
+        oleUiActive = active;
+    }
+
+    /// <summary>
+    /// Forwards top-level window activation to the OLE frame
+    /// (OnFrameWindowActivate) without touching the UI-active state: Avalonia
+    /// retains logical focus while its window is deactivated.
+    /// </summary>
+    public void SetFrameActive(bool active)
+    {
+        if (disposed || oleHost == 0 || rdpOleHostSetFrameActive is null)
+            return;
+
+        int hr = rdpOleHostSetFrameActive(oleHost, active ? 1 : 0);
+        if (hr < 0)
+            PublishStatus($"RDP OLE frame activation failed: 0x{hr:X8}");
+    }
+
+    /// <summary>
+    /// Reports the real top-level window as the OLE frame window so that
+    /// control-owned dialogs (certificate warnings, credential prompts) are
+    /// parented to a visible window. Pass 0 to fall back to the off-screen
+    /// host window.
+    /// </summary>
+    public void SetFrameWindow(nint frameWindow)
+    {
+        if (disposed || oleHost == 0 || rdpOleHostSetFrameWindow is null)
+            return;
+
+        int hr = rdpOleHostSetFrameWindow(oleHost, frameWindow);
+        if (hr < 0)
+            PublishStatus($"RDP OLE frame window update failed: 0x{hr:X8}");
     }
 
     public bool ResizeDisplay(int width, int height, double renderScaling)
@@ -426,6 +503,17 @@ internal sealed class RdpActiveXSession : IDisposable
 
         nuint wParam = (nuint)((uint)buttons | ((uint)xButton << 16));
         SendMessageW(inputWindow, message, wParam, MakeLParam(x, y));
+
+        // mstscax can call SetCapture for its hidden input HWND on button-down.
+        // The visible Avalonia surface must own the physical pointer stream;
+        // otherwise the hidden HWND receives the real button-up and keeps all
+        // subsequent local clicks captive. The subclass above suppresses the
+        // resulting WM_CAPTURECHANGED so the remote drag remains active, and
+        // RdpClientView acquires Avalonia pointer capture immediately after
+        // this method returns.
+        if (buttonDown && GetCapture() == inputWindow)
+            ReleaseCapture();
+
         SynchronizeCursor(inputWindow);
     }
 
@@ -575,10 +663,28 @@ internal sealed class RdpActiveXSession : IDisposable
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_Attach"));
         rdpOleHostSetBounds ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostSetBounds>(
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_SetBounds"));
+        rdpOleHostSetActive ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostSetActive>(
+            NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_SetActive"));
         rdpOleHostTranslateAccelerator ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostTranslateAccelerator>(
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_TranslateAccelerator"));
         rdpOleHostRelease ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostRelease>(
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_Release"));
+
+        if (rdpOleHostSetFrameActive is null &&
+            NativeLibrary.TryGetExport(library, "MsRdpEx_RdpOleHost_SetFrameActive", out nint setFrameActive))
+        {
+            rdpOleHostSetFrameActive =
+                Marshal.GetDelegateForFunctionPointer<RdpOleHostSetFrameActive>(setFrameActive);
+        }
+
+        if (rdpOleHostSetFrameWindow is null &&
+            NativeLibrary.TryGetExport(library, "MsRdpEx_RdpOleHost_SetFrameWindow", out nint setFrameWindow))
+        {
+            rdpOleHostSetFrameWindow =
+                Marshal.GetDelegateForFunctionPointer<RdpOleHostSetFrameWindow>(setFrameWindow);
+        }
+
+        instanceApi ??= TryLoadInstanceApi(library);
 
         if (outputMirrorGetFrameVersion is null &&
             NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirror_GetFrameVersion", out nint export))
@@ -588,6 +694,82 @@ internal sealed class RdpActiveXSession : IDisposable
         }
 
         outputMirrorCaptureApi ??= TryLoadOutputMirrorCaptureApi(library);
+    }
+
+    // MSRDPEX_AXNAME is a process-global read by MsRdpEx's DllGetClassObject.
+    // Scope it to the activation call and restore the previous value so that
+    // other in-process RDP activators never observe a stale name. Callers must
+    // hold NativeActivationLock; components activating RDP controls outside
+    // this lock must set and restore the variable themselves.
+    internal static T WithAxNameEnvironment<T>(string axName, Func<T> action)
+    {
+        string? previousAxName = Environment.GetEnvironmentVariable("MSRDPEX_AXNAME");
+        Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", axName);
+        try
+        {
+            return action();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MSRDPEX_AXNAME", previousAxName);
+        }
+    }
+
+    internal static void EnterOleScope()
+    {
+        lock (OleInitLock)
+        {
+            oleSessionCount++;
+        }
+    }
+
+    // Test-only: resets the process-wide session count so the OLE scope rules
+    // can be exercised deterministically in randomized test order.
+    internal static void ResetOleScopeForTesting()
+    {
+        lock (OleInitLock)
+        {
+            oleSessionCount = 0;
+        }
+    }
+
+    // Returns true when the caller must balance its OleInitialize now: when
+    // it is the last remaining session and either it performed the S_OK
+    // initialization itself or it is inheriting a balance deferred by an
+    // earlier session that got S_FALSE (which must not run while Avalonia may
+    // still own OLE). Sessions are assumed to live on the same (UI) thread,
+    // matching OleInitialize's per-thread semantics.
+    internal static bool ExitOleScope(bool initializedByUs)
+    {
+        lock (OleInitLock)
+        {
+            oleSessionCount--;
+            return oleSessionCount == 0 && initializedByUs;
+        }
+    }
+
+    // Hands this session's OleInitialize balance to an existing older session
+    // that got S_FALSE, so that session's dispose performs the balancing
+    // OleUninitialize instead of this one. Called when a new session that owns
+    // the OLE initialization is created while foreign-initialized sessions are
+    // still alive; without it the new session's dispose would tear down OLE
+    // underneath the surviving sessions.
+    internal void MarkOleUninitializePending()
+    {
+        oleUninitializePending = true;
+    }
+
+    private static MsRdpExInstanceHandle.InstanceApi? TryLoadInstanceApi(nint library)
+    {
+        if (!NativeLibrary.TryGetExport(library, "MsRdpEx_Instance_SetOutputMirrorEnabled", out nint setEnabled) ||
+            !NativeLibrary.TryGetExport(library, "MsRdpEx_Instance_GetInputWindow", out nint getInputWindow))
+        {
+            return null;
+        }
+
+        return new MsRdpExInstanceHandle.InstanceApi(
+            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.InstanceSetOutputMirrorEnabled>(setEnabled),
+            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.InstanceGetInputWindow>(getInputWindow));
     }
 
     private static MsRdpExInstanceHandle.OutputMirrorCaptureApi? TryLoadOutputMirrorCaptureApi(nint library)
@@ -769,6 +951,7 @@ internal sealed class RdpActiveXSession : IDisposable
         {
             IsConnectionActive = false;
             IsLoginCompleted = false;
+            Disconnected?.Invoke(this, EventArgs.Empty);
             string detail = string.IsNullOrWhiteSpace(args.DisconnectErrorMessage)
                 ? $"reason {args.DisconnectReason}"
                 : args.DisconnectErrorMessage;
@@ -805,6 +988,8 @@ internal sealed class RdpActiveXSession : IDisposable
         instance?.Dispose();
         instance = null;
 
+        // The OLE host closes, deactivates, and de-sites the control on this
+        // (UI) thread before any managed wrapper is released.
         if (oleHost != 0)
         {
             nint host = oleHost;
@@ -812,9 +997,21 @@ internal sealed class RdpActiveXSession : IDisposable
             rdpOleHostRelease?.Invoke(host);
         }
 
+        oleUiActive = false;
+
+        // Release the managed COM wrapper deterministically where the runtime
+        // supports it. The generated interop wraps the control through
+        // ComInterfaceMarshaller (StrategyBasedComWrappers), which offers no
+        // deterministic release; because the OLE host above has already closed
+        // and de-sited the control, that wrapper's final GC release is inert.
+        // A built-in RCW (legacy interop path) is released explicitly here.
+        object? rawClient = client is not null ? ProxyObject.Unpack(client) : null;
         client = null;
         IsConnectionActive = false;
         IsLoginCompleted = false;
+
+        if (rawClient is not null && Marshal.IsComObject(rawClient))
+            Marshal.FinalReleaseComObject(rawClient);
 
         if (hostWindow != 0)
         {
@@ -822,10 +1019,24 @@ internal sealed class RdpActiveXSession : IDisposable
             hostWindow = 0;
         }
 
-        if (oleInitialized)
+        if (oleScopeEntered)
         {
-            OleUninitialize();
-            oleInitialized = false;
+            oleScopeEntered = false;
+            if (oleUninitializePending)
+            {
+                // This session inherited the OleInitialize balance deferred by
+                // an earlier session that got S_FALSE and is now the last one.
+                oleUninitializePending = false;
+                ExitOleScope(true);
+                OleUninitialize();
+            }
+            else
+            {
+                bool initializedByUs = oleInitializedByUs;
+                oleInitializedByUs = false;
+                if (ExitOleScope(initializedByUs))
+                    OleUninitialize();
+            }
         }
     }
 
@@ -953,6 +1164,15 @@ internal sealed class RdpActiveXSession : IDisposable
     private delegate int RdpOleHostSetBounds(nint host, ref NativeRect bounds);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int RdpOleHostSetActive(nint host, int active);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int RdpOleHostSetFrameActive(nint host, int active);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int RdpOleHostSetFrameWindow(nint host, nint frameWindow);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate int RdpOleHostTranslateAccelerator(nint host, ref NativeMessage message);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
@@ -1001,6 +1221,13 @@ internal sealed class RdpActiveXSession : IDisposable
 
     [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
     private static extern nint SendMessageW(nint window, uint message, nuint wParam, nint lParam);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern nint GetCapture();
+
+    [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ReleaseCapture();
 
     [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -30,9 +30,37 @@ HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetBounds(
     MsRdpEx_RdpOleHost* pHost,
     LPCRECT pBounds);
 
+/*
+ * Pushes focus-driven activation state (OnFrameWindowActivate /
+ * OnDocWindowActivate) to the control. This deliberately does not issue
+ * OLEIVERB_UIACTIVATE: in the output-mirror hosting model the control is fed
+ * synthetic input (allowBackgroundInput=1), and a real UI-activate makes
+ * mstscax grab keyboard focus and change the active window, hijacking input
+ * from the host surface.
+ */
 HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetActive(
     MsRdpEx_RdpOleHost* pHost,
     BOOL active);
+
+/*
+ * Forwards top-level window activation (OnFrameWindowActivate) without
+ * changing the control's UI-active state. Use this for window
+ * Activated/Deactivated notifications; use SetActive for focus changes.
+ */
+HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetFrameActive(
+    MsRdpEx_RdpOleHost* pHost,
+    BOOL active);
+
+/*
+ * Sets the real top-level window reported as the OLE frame window
+ * (OLEINPLACEFRAMEINFO::hwndFrame) so control-owned dialogs such as
+ * certificate and credential prompts are parented to a visible window.
+ * The control stays parented to the HWND passed to Attach. Pass NULL to
+ * fall back to the Attach HWND.
+ */
+HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetFrameWindow(
+    MsRdpEx_RdpOleHost* pHost,
+    HWND hWndFrame);
 
 HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_TranslateAccelerator(
     MsRdpEx_RdpOleHost* pHost,
