@@ -83,6 +83,7 @@ internal sealed class RdpActiveXSession : IDisposable
     private nint inputWindowSubclassHandle;
     private bool oleScopeEntered;
     private bool oleInitializedByUs;
+    private bool oleUninitializePending;
     private bool oleUiActive;
     private bool disposed;
     private bool remoteMouseDragActive;
@@ -100,6 +101,7 @@ internal sealed class RdpActiveXSession : IDisposable
     public event EventHandler<RdpRemoteDesktopSizeChangedEventArgs>? RemoteDesktopSizeChanged;
     public event EventHandler<RdpFocusReleasedEventArgs>? FocusReleased;
     public event EventHandler<RdpStatusChangedEventArgs>? StatusChanged;
+    public event EventHandler? Disconnected;
 
     public RdpActiveXSession()
     {
@@ -122,10 +124,12 @@ internal sealed class RdpActiveXSession : IDisposable
 
         try
         {
-            // Only an S_OK result means this call initialized OLE; S_FALSE means
-            // another component on this thread already owns it (for example
-            // Avalonia's OleContext, which never uninitializes). Ownership is
-            // tracked so Dispose never tears down OLE it did not initialize.
+            // Every successful OleInitialize (S_OK or S_FALSE) increments the
+            // thread's OLE initialization count and must be balanced once.
+            // OleUninitialize is deferred when other sessions remain and, when
+            // this call got S_FALSE, deferred to a later S_OK-initialized
+            // session so OLE initialized by the hosting application (Avalonia's
+            // OleContext never uninitializes) is not torn down underneath it.
             int oleResult = OleInitialize(0);
             Marshal.ThrowExceptionForHR(oleResult);
             oleInitializedByUs = oleResult == 0; // S_OK
@@ -314,10 +318,16 @@ internal sealed class RdpActiveXSession : IDisposable
         if (disposed || oleHost == 0 || rdpOleHostSetActive is null || oleUiActive == active)
             return;
 
-        oleUiActive = active;
+        // Commit the managed state only after the native transition succeeds
+        // so a failed UIACTIVATE can be retried on the next focus change.
         int hr = rdpOleHostSetActive(oleHost, active ? 1 : 0);
         if (hr < 0)
+        {
             PublishStatus($"RDP OLE activation failed: 0x{hr:X8}");
+            return;
+        }
+
+        oleUiActive = active;
     }
 
     /// <summary>
@@ -699,21 +709,40 @@ internal sealed class RdpActiveXSession : IDisposable
         }
     }
 
-    // Returns true when the caller must balance its own S_OK OleInitialize:
-    // only when it performed the initialization itself and no other session
-    // remains. When the owning session is disposed before later sessions, OLE
-    // intentionally stays initialized for the process lifetime rather than
-    // risking tearing down OLE underneath the hosting application (Avalonia's
-    // OleContext never balances its own OleInitialize). Sessions are assumed
-    // to live on the same (UI) thread, matching OleInitialize's per-thread
-    // semantics.
+    // Test-only: resets the process-wide session count so the OLE scope rules
+    // can be exercised deterministically in randomized test order.
+    internal static void ResetOleScopeForTesting()
+    {
+        lock (OleInitLock)
+        {
+            oleSessionCount = 0;
+        }
+    }
+
+    // Returns true when the caller must balance its OleInitialize now: when
+    // it is the last remaining session and either it performed the S_OK
+    // initialization itself or it is inheriting a balance deferred by an
+    // earlier session that got S_FALSE (which must not run while Avalonia may
+    // still own OLE). Sessions are assumed to live on the same (UI) thread,
+    // matching OleInitialize's per-thread semantics.
     internal static bool ExitOleScope(bool initializedByUs)
     {
         lock (OleInitLock)
         {
             oleSessionCount--;
-            return initializedByUs && oleSessionCount == 0;
+            return oleSessionCount == 0 && initializedByUs;
         }
+    }
+
+    // Hands this session's OleInitialize balance to an existing older session
+    // that got S_FALSE, so that session's dispose performs the balancing
+    // OleUninitialize instead of this one. Called when a new session that owns
+    // the OLE initialization is created while foreign-initialized sessions are
+    // still alive; without it the new session's dispose would tear down OLE
+    // underneath the surviving sessions.
+    internal void MarkOleUninitializePending()
+    {
+        oleUninitializePending = true;
     }
 
     private static MsRdpExInstanceHandle.InstanceApi? TryLoadInstanceApi(nint library)
@@ -908,6 +937,7 @@ internal sealed class RdpActiveXSession : IDisposable
         {
             IsConnectionActive = false;
             IsLoginCompleted = false;
+            Disconnected?.Invoke(this, EventArgs.Empty);
             string detail = string.IsNullOrWhiteSpace(args.DisconnectErrorMessage)
                 ? $"reason {args.DisconnectReason}"
                 : args.DisconnectErrorMessage;
@@ -978,10 +1008,21 @@ internal sealed class RdpActiveXSession : IDisposable
         if (oleScopeEntered)
         {
             oleScopeEntered = false;
-            bool initializedByUs = oleInitializedByUs;
-            oleInitializedByUs = false;
-            if (ExitOleScope(initializedByUs))
+            if (oleUninitializePending)
+            {
+                // This session inherited the OleInitialize balance deferred by
+                // an earlier session that got S_FALSE and is now the last one.
+                oleUninitializePending = false;
+                ExitOleScope(true);
                 OleUninitialize();
+            }
+            else
+            {
+                bool initializedByUs = oleInitializedByUs;
+                oleInitializedByUs = false;
+                if (ExitOleScope(initializedByUs))
+                    OleUninitialize();
+            }
         }
     }
 

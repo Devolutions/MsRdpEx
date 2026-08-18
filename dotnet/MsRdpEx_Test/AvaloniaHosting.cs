@@ -71,9 +71,14 @@ namespace MsRdpEx.Tests
                 RdpClientView.ShouldForwardKeys(isViewOnly, focusWithin, windowActive, connectionActive));
         }
 
+        // The OLE scope state is process-global, and xunit runs these tests in
+        // a random order, so each case resets the counter and asserts absolute
+        // rules: a non-owner never uninitializes, and an owner uninitializes
+        // only when it leaves last.
         [Fact]
         public void OleScopeUninitializesOnlyOwnedLastSession()
         {
+            RdpActiveXSession.ResetOleScopeForTesting();
             RdpActiveXSession.EnterOleScope(); // session A, owns its S_OK initialization
             RdpActiveXSession.EnterOleScope(); // session B, got S_FALSE
 
@@ -84,23 +89,44 @@ namespace MsRdpEx.Tests
         [Fact]
         public void OleScopeNeverUninitializesForeignOle()
         {
+            RdpActiveXSession.ResetOleScopeForTesting();
             RdpActiveXSession.EnterOleScope();
 
             // S_FALSE path: OLE was initialized by another component (for
-            // example Avalonia's OleContext) and must never be torn down here.
+            // example Avalonia's OleContext) and must never be torn down here,
+            // not even when the session leaves last.
             Assert.False(RdpActiveXSession.ExitOleScope(false));
         }
 
         [Fact]
         public void OleScopeKeepsOleWhenOwnerDisposedEarly()
         {
+            RdpActiveXSession.ResetOleScopeForTesting();
             RdpActiveXSession.EnterOleScope(); // owner
             RdpActiveXSession.EnterOleScope(); // non-owner
 
-            // The owning session leaves while another session remains, so OLE
-            // intentionally stays initialized for the process lifetime.
+            // The owning session leaves while another session remains, so the
+            // uninitialize is deferred to the last surviving session.
             Assert.False(RdpActiveXSession.ExitOleScope(true));
             Assert.False(RdpActiveXSession.ExitOleScope(false));
+        }
+
+        [Fact]
+        public void OleScopeDefersOwnerUninitializeWhileSessionsRemain()
+        {
+            // The deferral used when a session hands its balance to an older
+            // S_FALSE session: the owner leaving first must not uninitialize,
+            // and the last surviving session must.
+            RdpActiveXSession.ResetOleScopeForTesting();
+            RdpActiveXSession.EnterOleScope(); // A, got S_FALSE
+            RdpActiveXSession.EnterOleScope(); // B, got S_OK and hands its balance to A
+
+            Assert.False(RdpActiveXSession.ExitOleScope(true)); // B leaves first, no uninitialize
+            Assert.False(RdpActiveXSession.ExitOleScope(false)); // A defers its own S_FALSE balance
+
+            // A now runs the inherited balance as the last session.
+            RdpActiveXSession.EnterOleScope();
+            Assert.True(RdpActiveXSession.ExitOleScope(true));
         }
     }
 }

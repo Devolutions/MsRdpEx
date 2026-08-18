@@ -71,8 +71,9 @@ for docking and tab reparenting. Owners **must** call `Dispose()` on final
 close, on the Avalonia UI thread (`VerifyAccess` throws otherwise): final
 teardown of the OLE host, the keyboard hook, and COM wrappers happens there.
 OLE is uninitialized only when this library performed the initialization
-itself and no other `RdpClientView` session remains; OLE initialized by the
-hosting application is never torn down.
+itself and no other `RdpClientView` session remains; a balancing uninitialize
+deferred because OLE was already initialized by the hosting application is
+carried forward to the last surviving session instead.
 
 ## Known limitations
 

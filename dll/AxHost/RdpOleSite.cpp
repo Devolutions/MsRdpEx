@@ -3,6 +3,7 @@
 
 #include <new>
 
+
 CRdpOleClientSite::CRdpOleClientSite(IUnknown* pUnkOuter)
 {
     m_refCount = 1;
@@ -464,6 +465,139 @@ STDMETHODIMP CRdpOleClientSite::OnRequestEdit(DISPID dispID)
     return S_OK;
 }
 
+// Tear-off wrappers for the in-place site. CRdpOleInPlaceSiteEx implements
+// both IOleInPlaceSiteEx and IOleInPlaceFrame, which share IOleWindow; these
+// wrappers give the site and frame roles distinct GetWindow behavior. The
+// wrappers own the site reference, so outer-host teardown releases the site
+// only after the control has released every tear-off it cached.
+class CRdpInPlaceSiteWindow : public IOleInPlaceSiteEx
+{
+public:
+    CRdpInPlaceSiteWindow(CRdpOleInPlaceSiteEx* pSite) : m_refCount(1), m_pSite(pSite)
+    {
+        m_pSite->AddRef();
+    }
+
+    STDMETHOD(QueryInterface)(REFIID riid, void** ppv) override
+    {
+        if (riid == IID_IUnknown || riid == IID_IOleWindow ||
+            riid == IID_IOleInPlaceSite || riid == IID_IOleInPlaceSiteEx)
+        {
+            *ppv = static_cast<IOleInPlaceSiteEx*>(this);
+            AddRef();
+            return S_OK;
+        }
+        return m_pSite->QueryInterface(riid, ppv);
+    }
+
+    STDMETHOD_(ULONG, AddRef)() override
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+
+    STDMETHOD_(ULONG, Release)() override
+    {
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+        if (refCount == 0)
+            delete this;
+        return refCount;
+    }
+
+    STDMETHOD(GetWindow)(HWND* phwnd) override { return m_pSite->GetSiteWindow(phwnd); }
+    STDMETHOD(ContextSensitiveHelp)(BOOL f) override { return m_pSite->ContextSensitiveHelp(f); }
+    STDMETHOD(CanInPlaceActivate)() override { return m_pSite->CanInPlaceActivate(); }
+    STDMETHOD(OnInPlaceActivate)() override { return m_pSite->OnInPlaceActivate(); }
+    STDMETHOD(OnUIActivate)() override { return m_pSite->OnUIActivate(); }
+    STDMETHOD(GetWindowContext)(IOleInPlaceFrame** ppFrame, IOleInPlaceUIWindow** ppDoc,
+        LPRECT lprcPosRect, LPRECT lprcClipRect, LPOLEINPLACEFRAMEINFO lpFrameInfo) override
+    {
+        return m_pSite->GetWindowContext(ppFrame, ppDoc, lprcPosRect, lprcClipRect, lpFrameInfo);
+    }
+    STDMETHOD(Scroll)(SIZE s) override { return m_pSite->Scroll(s); }
+    STDMETHOD(OnUIDeactivate)(BOOL f) override { return m_pSite->OnUIDeactivate(f); }
+    STDMETHOD(OnInPlaceDeactivate)() override { return m_pSite->OnInPlaceDeactivate(); }
+    STDMETHOD(DiscardUndoState)() override { return m_pSite->DiscardUndoState(); }
+    STDMETHOD(DeactivateAndUndo)() override { return m_pSite->DeactivateAndUndo(); }
+    STDMETHOD(OnPosRectChange)(LPCRECT r) override { return m_pSite->OnPosRectChange(r); }
+    STDMETHOD(OnInPlaceActivateEx)(BOOL* pfNoRedraw, DWORD dwFlags) override
+    {
+        return m_pSite->OnInPlaceActivateEx(pfNoRedraw, dwFlags);
+    }
+    STDMETHOD(OnInPlaceDeactivateEx)(BOOL fNoRedraw) override
+    {
+        return m_pSite->OnInPlaceDeactivateEx(fNoRedraw);
+    }
+    STDMETHOD(RequestUIActivate)() override { return m_pSite->RequestUIActivate(); }
+
+private:
+    ~CRdpInPlaceSiteWindow() { SafeRelease(m_pSite); }
+
+    LONG m_refCount;
+    CRdpOleInPlaceSiteEx* m_pSite;
+};
+
+class CRdpInPlaceFrameWindow : public IOleInPlaceFrame
+{
+public:
+    CRdpInPlaceFrameWindow(CRdpOleInPlaceSiteEx* pSite) : m_refCount(1), m_pSite(pSite)
+    {
+        m_pSite->AddRef();
+    }
+
+    STDMETHOD(QueryInterface)(REFIID riid, void** ppv) override
+    {
+        if (riid == IID_IUnknown || riid == IID_IOleWindow ||
+            riid == IID_IOleInPlaceUIWindow || riid == IID_IOleInPlaceFrame)
+        {
+            *ppv = static_cast<IOleInPlaceFrame*>(this);
+            AddRef();
+            return S_OK;
+        }
+        return m_pSite->QueryInterface(riid, ppv);
+    }
+
+    STDMETHOD_(ULONG, AddRef)() override
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+
+    STDMETHOD_(ULONG, Release)() override
+    {
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+        if (refCount == 0)
+            delete this;
+        return refCount;
+    }
+
+    STDMETHOD(GetWindow)(HWND* phwnd) override { return m_pSite->GetFrameWindow(phwnd); }
+    STDMETHOD(ContextSensitiveHelp)(BOOL f) override { return m_pSite->ContextSensitiveHelp(f); }
+    STDMETHOD(GetBorder)(LPRECT r) override { return m_pSite->GetBorder(r); }
+    STDMETHOD(RequestBorderSpace)(LPCBORDERWIDTHS b) override { return m_pSite->RequestBorderSpace(b); }
+    STDMETHOD(SetBorderSpace)(LPCBORDERWIDTHS b) override { return m_pSite->SetBorderSpace(b); }
+    STDMETHOD(SetActiveObject)(IOleInPlaceActiveObject* p, LPCOLESTR s) override
+    {
+        return m_pSite->SetActiveObject(p, s);
+    }
+    STDMETHOD(InsertMenus)(HMENU h, LPOLEMENUGROUPWIDTHS m) override
+    {
+        return m_pSite->InsertMenus(h, m);
+    }
+    STDMETHOD(SetMenu)(HMENU h, HOLEMENU o, HWND w) override { return m_pSite->SetMenu(h, o, w); }
+    STDMETHOD(RemoveMenus)(HMENU h) override { return m_pSite->RemoveMenus(h); }
+    STDMETHOD(SetStatusText)(LPCOLESTR s) override { return m_pSite->SetStatusText(s); }
+    STDMETHOD(EnableModeless)(BOOL f) override { return m_pSite->EnableModeless(f); }
+    STDMETHOD(TranslateAccelerator)(LPMSG m, WORD w) override
+    {
+        return m_pSite->TranslateAccelerator(m, w);
+    }
+
+private:
+    ~CRdpInPlaceFrameWindow() { SafeRelease(m_pSite); }
+
+    LONG m_refCount;
+    CRdpOleInPlaceSiteEx* m_pSite;
+};
+
 CRdpOleInPlaceSiteEx::CRdpOleInPlaceSiteEx(IUnknown* pUnkOuter)
     : m_refCount(1), m_hWnd(0), m_hWndFrame(0), m_pOleInPlaceObject(NULL)
 {
@@ -488,11 +622,22 @@ STDMETHODIMP CRdpOleInPlaceSiteEx::QueryInterface(REFIID riid, void** ppv)
     if (riid == IID_IUnknown && m_pUnkOuter) {
         return m_pUnkOuter->QueryInterface(riid, ppv);
     }
-    else if (riid == IID_IOleWindow || riid == IID_IOleInPlaceSite || riid == IID_IOleInPlaceSiteEx) {
+    else if (riid == IID_IOleWindow) {
+        // Ambiguous: IOleWindow is shared by the site and frame tear-offs.
+        // Resolve it to the in-place site, matching the historical behavior.
         *ppv = static_cast<IOleInPlaceSiteEx*>(this);
     }
+    else if (riid == IID_IOleInPlaceSite || riid == IID_IOleInPlaceSiteEx) {
+        *ppv = new (std::nothrow) CRdpInPlaceSiteWindow(this);
+        if (!*ppv)
+            return E_OUTOFMEMORY;
+        return S_OK;
+    }
     else if (riid == IID_IOleInPlaceUIWindow || riid == IID_IOleInPlaceFrame) {
-        *ppv = static_cast<IOleInPlaceFrame*>(this);
+        *ppv = new (std::nothrow) CRdpInPlaceFrameWindow(this);
+        if (!*ppv)
+            return E_OUTOFMEMORY;
+        return S_OK;
     }
     else if (m_pUnkOuter) {
         return m_pUnkOuter->QueryInterface(riid, ppv);
@@ -522,14 +667,31 @@ STDMETHODIMP_(ULONG) CRdpOleInPlaceSiteEx::Release()
     return refCount;
 }
 
-// IOleWindow methods
+// IOleWindow methods. The virtual override is never called through the
+// site's own vtable: QueryInterface hands out the tear-off wrappers below so
+// that IOleInPlaceSite::GetWindow reports the off-screen host window while
+// IOleInPlaceFrame::GetWindow reports the real top-level frame window.
 STDMETHODIMP CRdpOleInPlaceSiteEx::GetWindow(HWND* phwnd)
+{
+    return GetSiteWindow(phwnd);
+}
+
+STDMETHODIMP CRdpOleInPlaceSiteEx::GetSiteWindow(HWND* phwnd)
 {
     if (!phwnd)
         return E_POINTER;
 
     *phwnd = m_hWnd;
     return m_hWnd ? S_OK : E_FAIL;
+}
+
+STDMETHODIMP CRdpOleInPlaceSiteEx::GetFrameWindow(HWND* phwnd)
+{
+    if (!phwnd)
+        return E_POINTER;
+
+    *phwnd = m_hWndFrame ? m_hWndFrame : m_hWnd;
+    return *phwnd ? S_OK : E_FAIL;
 }
 
 STDMETHODIMP CRdpOleInPlaceSiteEx::ContextSensitiveHelp(BOOL fEnterMode)
@@ -741,3 +903,4 @@ STDMETHODIMP CRdpOleInPlaceSiteEx::TranslateAccelerator(LPMSG lpmsg, WORD wID)
     UNREFERENCED_PARAMETER(wID);
     return lpmsg ? S_FALSE : E_POINTER;
 }
+
