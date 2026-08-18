@@ -120,11 +120,13 @@ public:
 
     // Additional methods specific to your implementation
     STDMETHOD(SetWindow)(HWND hWnd);
+    STDMETHOD(SetFrameWindow)(HWND hWndFrame);
     STDMETHOD(SetInPlaceObject)(IOleInPlaceObject* pOleInPlaceObject);
 
 private:
     ULONG m_refCount;
     HWND m_hWnd;
+    HWND m_hWndFrame; // real top-level window for OLE frame identity; falls back to m_hWnd
     IOleInPlaceObject* m_pOleInPlaceObject; // weak; owned by the outer host
     IUnknown* m_pUnkOuter;
 };

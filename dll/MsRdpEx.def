@@ -29,8 +29,12 @@ EXPORTS
     MsRdpEx_RdpOleHost_Attach
     MsRdpEx_RdpOleHost_SetBounds
     MsRdpEx_RdpOleHost_SetActive
+    MsRdpEx_RdpOleHost_SetFrameActive
+    MsRdpEx_RdpOleHost_SetFrameWindow
     MsRdpEx_RdpOleHost_TranslateAccelerator
     MsRdpEx_RdpOleHost_Release
+    MsRdpEx_Instance_SetOutputMirrorEnabled
+    MsRdpEx_Instance_GetInputWindow
     MsRdpEx_OutputMirror_GetFrameVersion
     MsRdpEx_OutputMirrorCapture_Create
     MsRdpEx_OutputMirrorCapture_GetFrameVersion

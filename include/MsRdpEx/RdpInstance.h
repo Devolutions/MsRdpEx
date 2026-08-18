@@ -88,6 +88,19 @@ void STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_Unlock(
 void STDAPICALLTYPE MsRdpEx_OutputMirrorCapture_Release(
     MsRdpEx_OutputMirrorCapture* pCapture);
 
+/*
+ * C-export wrappers around IMsRdpExInstance methods so that managed hosts do
+ * not need to depend on raw vtable offsets. Both are apartment-bound: call
+ * them on the COM thread that owns pInstance.
+ */
+HRESULT STDAPICALLTYPE MsRdpEx_Instance_SetOutputMirrorEnabled(
+    IUnknown* pInstance,
+    bool outputMirrorEnabled);
+
+HRESULT STDAPICALLTYPE MsRdpEx_Instance_GetInputWindow(
+    IUnknown* pInstance,
+    HWND* phInputCaptureWnd);
+
 bool MsRdpEx_InstanceManager_Add(CMsRdpExInstance* instance);
 bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance);
 

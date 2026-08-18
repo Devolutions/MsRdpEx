@@ -10,6 +10,7 @@ internal sealed unsafe class MsRdpExInstanceHandle : IDisposable
 {
     private static readonly Guid InterfaceId = new("94CDA65A-EFDF-4453-B8B2-2493A12D31C7");
     private readonly object syncRoot = new();
+    private readonly InstanceApi? instanceApi;
     private readonly OutputMirrorCaptureApi? captureApi;
     private readonly OutputMirrorGetFrameVersion? getFrameVersion;
     private nint capture;
@@ -17,9 +18,11 @@ internal sealed unsafe class MsRdpExInstanceHandle : IDisposable
 
     public MsRdpExInstanceHandle(
         nint rdpControl,
+        InstanceApi? instanceApi,
         OutputMirrorCaptureApi? captureApi,
         OutputMirrorGetFrameVersion? getFrameVersion)
     {
+        this.instanceApi = instanceApi;
         this.captureApi = captureApi;
         this.getFrameVersion = getFrameVersion;
         Guid interfaceId = InterfaceId;
@@ -49,6 +52,16 @@ internal sealed unsafe class MsRdpExInstanceHandle : IDisposable
         lock (syncRoot)
         {
             ObjectDisposedException.ThrowIf(instance == 0, this);
+
+            if (instanceApi is not null)
+            {
+                Marshal.ThrowExceptionForHR(
+                    instanceApi.SetOutputMirrorEnabled(instance, enabled ? (byte)1 : (byte)0));
+                return;
+            }
+
+            // Legacy fallback for MsRdpEx builds without the instance exports:
+            // vtable slot 8 (3 IUnknown + 5 methods) of IMsRdpExInstance.
             nint* vtable = *(nint**)instance;
             var setEnabled = (delegate* unmanaged[Stdcall]<nint, byte, int>)vtable[8];
             int hr = setEnabled(instance, enabled ? (byte)1 : (byte)0);
@@ -61,6 +74,14 @@ internal sealed unsafe class MsRdpExInstanceHandle : IDisposable
         lock (syncRoot)
         {
             ObjectDisposedException.ThrowIf(instance == 0, this);
+
+            if (instanceApi is not null)
+            {
+                Marshal.ThrowExceptionForHR(instanceApi.GetInputWindow(instance, out nint inputWindow));
+                return inputWindow;
+            }
+
+            // Legacy fallback: vtable slot 16 of IMsRdpExInstance.
             nint* vtable = *(nint**)instance;
             var getInputWindow = (delegate* unmanaged[Stdcall]<nint, nint*, int>)vtable[16];
             nint window;
@@ -87,6 +108,8 @@ internal sealed unsafe class MsRdpExInstanceHandle : IDisposable
             if (getFrameVersion is null)
                 return false;
 
+            // Legacy fallback: vtable slot 5 (GetOutputMirrorObject) of
+            // IMsRdpExInstance. Newer MsRdpEx builds take the capture path above.
             nint* vtable = *(nint**)instance;
             var getOutputMirror = (delegate* unmanaged[Stdcall]<nint, nint*, int>)vtable[5];
             nint outputMirror;
@@ -110,6 +133,8 @@ internal sealed unsafe class MsRdpExInstanceHandle : IDisposable
             if (capture != 0 && captureApi is not null)
                 return WithNativeCapture(action, captureApi);
 
+            // Legacy STA fallback for MsRdpEx builds without the capture API:
+            // vtable slots 23-25 (GetShadowBitmap/Lock/UnlockShadowBitmap).
             nint* vtable = *(nint**)instance;
             var getShadowBitmap = (delegate* unmanaged[Stdcall]<nint, nint*, nint*, nint*, uint*, uint*, uint*, byte>)vtable[23];
             var lockShadowBitmap = (delegate* unmanaged[Stdcall]<nint, void>)vtable[24];
@@ -209,6 +234,16 @@ internal sealed unsafe class MsRdpExInstanceHandle : IDisposable
             api.Unlock(capture);
         }
     }
+
+    internal sealed record InstanceApi(
+        InstanceSetOutputMirrorEnabled SetOutputMirrorEnabled,
+        InstanceGetInputWindow GetInputWindow);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    internal delegate int InstanceSetOutputMirrorEnabled(nint instance, byte enabled);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    internal delegate int InstanceGetInputWindow(nint instance, out nint inputWindow);
 
     internal sealed record OutputMirrorCaptureApi(
         OutputMirrorCaptureCreate Create,

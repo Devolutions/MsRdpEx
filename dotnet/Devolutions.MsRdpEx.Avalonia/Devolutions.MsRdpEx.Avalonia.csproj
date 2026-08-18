@@ -17,6 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="MsRdpEx_Test" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Interop.MSTSCLib.Generated\Interop.MSTSCLib.Generated.csproj" />
   </ItemGroup>
 </Project>

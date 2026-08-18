@@ -521,6 +521,44 @@ void MsRdpEx_RdpInstance_Free(CMsRdpExInstance* instance)
     instance->Release();
 }
 
+HRESULT STDAPICALLTYPE MsRdpEx_Instance_SetOutputMirrorEnabled(
+    IUnknown* pInstance,
+    bool outputMirrorEnabled)
+{
+    if (!pInstance)
+        return E_INVALIDARG;
+
+    IMsRdpExInstance* instance = NULL;
+    HRESULT hr = pInstance->QueryInterface(
+        IID_IMsRdpExInstance, (void**)&instance);
+    if (FAILED(hr))
+        return hr;
+
+    hr = instance->SetOutputMirrorEnabled(outputMirrorEnabled);
+    instance->Release();
+    return hr;
+}
+
+HRESULT STDAPICALLTYPE MsRdpEx_Instance_GetInputWindow(
+    IUnknown* pInstance,
+    HWND* phInputCaptureWnd)
+{
+    if (!pInstance || !phInputCaptureWnd)
+        return E_INVALIDARG;
+
+    *phInputCaptureWnd = NULL;
+
+    IMsRdpExInstance* instance = NULL;
+    HRESULT hr = pInstance->QueryInterface(
+        IID_IMsRdpExInstance, (void**)&instance);
+    if (FAILED(hr))
+        return hr;
+
+    hr = instance->GetInputWindow(phInputCaptureWnd);
+    instance->Release();
+    return hr;
+}
+
 typedef struct _MsRdpEx_InstanceManager MsRdpEx_InstanceManager;
 
 struct _MsRdpEx_InstanceManager

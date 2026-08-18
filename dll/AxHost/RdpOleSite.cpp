@@ -1,6 +1,8 @@
 
 #include "RdpOleSite.h"
 
+#include <new>
+
 CRdpOleClientSite::CRdpOleClientSite(IUnknown* pUnkOuter)
 {
     m_refCount = 1;
@@ -132,13 +134,87 @@ STDMETHODIMP CRdpOleClientSite::ParseDisplayName(
     return E_NOTIMPL;
 }
 
+// AxHost answers EnumObjects with an empty enumerator. A control that
+// enumerates sibling embeddings gets a clean "no objects" answer instead of
+// E_NOTIMPL.
+class CRdpEmptyEnumUnknown : public IEnumUnknown
+{
+public:
+    CRdpEmptyEnumUnknown() : m_refCount(1) { }
+
+    STDMETHOD(QueryInterface)(REFIID riid, void** ppv) override
+    {
+        if (!ppv)
+            return E_POINTER;
+
+        if (riid == IID_IUnknown || riid == IID_IEnumUnknown)
+        {
+            *ppv = static_cast<IEnumUnknown*>(this);
+            AddRef();
+            return S_OK;
+        }
+
+        *ppv = NULL;
+        return E_NOINTERFACE;
+    }
+
+    STDMETHOD_(ULONG, AddRef)() override
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+
+    STDMETHOD_(ULONG, Release)() override
+    {
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+        if (refCount == 0)
+            delete this;
+        return refCount;
+    }
+
+    STDMETHOD(Next)(ULONG celt, IUnknown** rgelt, ULONG* pceltFetched) override
+    {
+        if (!rgelt || (celt > 1 && !pceltFetched))
+            return E_POINTER;
+
+        for (ULONG i = 0; i < celt; i++)
+            rgelt[i] = NULL;
+        if (pceltFetched)
+            *pceltFetched = 0;
+        return S_FALSE;
+    }
+
+    STDMETHOD(Skip)(ULONG celt) override
+    {
+        UNREFERENCED_PARAMETER(celt);
+        return S_FALSE;
+    }
+
+    STDMETHOD(Reset)() override
+    {
+        return S_OK;
+    }
+
+    STDMETHOD(Clone)(IEnumUnknown** ppenum) override
+    {
+        if (!ppenum)
+            return E_POINTER;
+
+        *ppenum = new (std::nothrow) CRdpEmptyEnumUnknown();
+        return *ppenum ? S_OK : E_OUTOFMEMORY;
+    }
+
+private:
+    LONG m_refCount;
+};
+
 STDMETHODIMP CRdpOleClientSite::EnumObjects(DWORD grfFlags, IEnumUnknown** ppenum)
 {
     UNREFERENCED_PARAMETER(grfFlags);
     if (!ppenum)
         return E_POINTER;
-    *ppenum = NULL;
-    return E_NOTIMPL;
+
+    *ppenum = new (std::nothrow) CRdpEmptyEnumUnknown();
+    return *ppenum ? S_OK : E_OUTOFMEMORY;
 }
 
 STDMETHODIMP CRdpOleClientSite::LockContainer(BOOL fLock)
@@ -389,7 +465,7 @@ STDMETHODIMP CRdpOleClientSite::OnRequestEdit(DISPID dispID)
 }
 
 CRdpOleInPlaceSiteEx::CRdpOleInPlaceSiteEx(IUnknown* pUnkOuter)
-    : m_refCount(1), m_hWnd(0), m_pOleInPlaceObject(NULL)
+    : m_refCount(1), m_hWnd(0), m_hWndFrame(0), m_pOleInPlaceObject(NULL)
 {
     m_pUnkOuter = pUnkOuter;
     m_pUnkOuter->AddRef();
@@ -494,7 +570,11 @@ STDMETHODIMP CRdpOleInPlaceSiteEx::GetWindowContext(IOleInPlaceFrame** ppFrame, 
     {
         lpFrameInfo->cb = sizeof(OLEINPLACEFRAMEINFO);
         lpFrameInfo->fMDIApp = FALSE;
-        lpFrameInfo->hwndFrame = m_hWnd;
+        // Report the real top-level window as the OLE frame so that
+        // control-owned dialogs (certificate warnings, credential prompts)
+        // are parented to a visible window instead of the hidden off-screen
+        // surface. The control itself stays parented to m_hWnd.
+        lpFrameInfo->hwndFrame = m_hWndFrame ? m_hWndFrame : m_hWnd;
         lpFrameInfo->haccel = NULL;
         lpFrameInfo->cAccelEntries = 0;
     }
@@ -574,6 +654,12 @@ STDMETHODIMP CRdpOleInPlaceSiteEx::RequestUIActivate()
 STDMETHODIMP CRdpOleInPlaceSiteEx::SetWindow(HWND hWnd)
 {
     m_hWnd = hWnd;
+    return S_OK;
+}
+
+STDMETHODIMP CRdpOleInPlaceSiteEx::SetFrameWindow(HWND hWndFrame)
+{
+    m_hWndFrame = hWndFrame;
     return S_OK;
 }
 
