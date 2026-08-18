@@ -381,7 +381,6 @@ public class RdpClientView : UserControl, IDisposable
         resizeTimer.Stop();
         ReleaseForwardedKeys();
         ReleaseMouseButtons();
-        session?.SetUiActive(false);
         // Deactivate the frame before dropping its window so the control is
         // not left believing a detached frame is still active.
         session?.SetFrameActive(false);
@@ -404,9 +403,6 @@ public class RdpClientView : UserControl, IDisposable
 
         if (topLevel is Window window)
             session.SetFrameActive(window.IsActive);
-
-        if (IsKeyboardFocusWithin)
-            session.SetUiActive(true);
     }
 
     /// <summary>
@@ -688,7 +684,6 @@ public class RdpClientView : UserControl, IDisposable
     private void OnControlLostFocus(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
         UninstallKeyboardHook();
-        session?.SetUiActive(false);
         ReleaseForwardedKeys();
         if (!ContinuePhysicalMouseDrag())
             ReleaseMouseButtons();
@@ -696,17 +691,23 @@ public class RdpClientView : UserControl, IDisposable
 
     private void OnControlGotFocus(object? sender, FocusChangedEventArgs e)
     {
-        session?.SetUiActive(true);
         InstallKeyboardHook();
     }
 
     private void OnWindowActivated(object? sender, EventArgs e)
     {
         session?.SetFrameActive(true);
+        if (IsKeyboardFocusWithin)
+            InstallKeyboardHook();
     }
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
     {
+        // Remove the process-wide hook immediately. Avalonia's IsActive and
+        // logical-focus state can lag a native foreground-window transition;
+        // leaving the hook installed during that interval can swallow input
+        // intended for another local application.
+        UninstallKeyboardHook();
         session?.SetFrameActive(false);
 
         // Avalonia retains logical keyboard focus while its window is
@@ -739,9 +740,19 @@ public class RdpClientView : UserControl, IDisposable
     // must let keys pass through so Tab and focus traversal keep working in
     // the host application.
     internal static bool ShouldForwardKeys(
-        bool isViewOnly, bool focusWithin, bool windowActive, bool connectionActive)
+        bool isViewOnly,
+        bool focusWithin,
+        bool windowActive,
+        bool connectionActive,
+        bool foregroundWindowMatches)
     {
-        return !isViewOnly && focusWithin && windowActive && connectionActive;
+        return !isViewOnly && focusWithin && windowActive && connectionActive && foregroundWindowMatches;
+    }
+
+    private bool IsTopLevelForegroundWindow()
+    {
+        nint topLevelWindow = topLevel?.TryGetPlatformHandle()?.Handle ?? 0;
+        return topLevelWindow != 0 && GetForegroundWindow() == topLevelWindow;
     }
 
     private nint KeyboardHookProc(int code, nint wParam, nint lParam)
@@ -751,7 +762,8 @@ public class RdpClientView : UserControl, IDisposable
                 IsViewOnly,
                 IsKeyboardFocusWithin,
                 topLevel is not Window window || window.IsActive,
-                session?.IsConnectionActive == true))
+                session?.IsConnectionActive == true,
+                IsTopLevelForegroundWindow()))
         {
             return CallNextHookEx(keyboardHook, code, wParam, lParam);
         }
@@ -1599,6 +1611,9 @@ public class RdpClientView : UserControl, IDisposable
 
     [DllImport("user32.dll", ExactSpelling = true)]
     private static extern nint CallNextHookEx(nint hook, int code, nint wParam, nint lParam);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern nint GetForegroundWindow();
 
     [DllImport("kernel32.dll", SetLastError = true, ExactSpelling = true)]
     private static extern nint GlobalAlloc(uint flags, nuint bytes);

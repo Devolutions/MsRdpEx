@@ -43,17 +43,18 @@ not impose Avalonia on its WinForms and .NET Framework consumers.
 
 ## Focus, activation, and keyboard routing
 
-The view drives OLE frame/document activation from Avalonia focus and
-forwards top-level window `Activated`/`Deactivated` to the OLE frame. The
-control is deliberately *not* UI-activated with `OLEIVERB_UIACTIVATE`: this
-hosting model feeds the off-screen control synthetic input
-(`allowBackgroundInput=1`), and a real UI-activate makes mstscax grab
-keyboard focus and change the active window, hijacking input from the
-Avalonia surface. Window deactivation releases any forwarded keys and mouse
-buttons so they never stay pressed remotely. While the view is focused, a
-low-level keyboard hook forwards keys to the remote session; keys pass
-through untouched when the window is inactive or no connection is live, so
-Tab and focus traversal keep working.
+The view forwards top-level window `Activated`/`Deactivated` to the OLE
+frame, but deliberately does not drive OLE UI/document activation from
+Avalonia focus. This hosting model feeds the off-screen control synthetic
+input (`allowBackgroundInput=1`); activating mstscax's hidden window lets it
+take native mouse capture and keyboard focus away from the Avalonia surface.
+After each synthetic button-down the view also releases any capture taken by
+the hidden input HWND before Avalonia acquires pointer capture. Window
+deactivation removes the keyboard hook and releases any forwarded keys and
+mouse buttons so they never stay pressed remotely. While the view is focused,
+a low-level keyboard hook forwards keys only when the containing native window
+is also the foreground window; keys pass through untouched when another local
+application is active or no connection is live.
 
 Set `LocalKeyFilter` to let the hosting application claim keys (menu
 accelerators, global shortcuts) before they are forwarded remotely:

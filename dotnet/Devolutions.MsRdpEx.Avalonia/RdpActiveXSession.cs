@@ -503,6 +503,17 @@ internal sealed class RdpActiveXSession : IDisposable
 
         nuint wParam = (nuint)((uint)buttons | ((uint)xButton << 16));
         SendMessageW(inputWindow, message, wParam, MakeLParam(x, y));
+
+        // mstscax can call SetCapture for its hidden input HWND on button-down.
+        // The visible Avalonia surface must own the physical pointer stream;
+        // otherwise the hidden HWND receives the real button-up and keeps all
+        // subsequent local clicks captive. The subclass above suppresses the
+        // resulting WM_CAPTURECHANGED so the remote drag remains active, and
+        // RdpClientView acquires Avalonia pointer capture immediately after
+        // this method returns.
+        if (buttonDown && GetCapture() == inputWindow)
+            ReleaseCapture();
+
         SynchronizeCursor(inputWindow);
     }
 
@@ -1210,6 +1221,13 @@ internal sealed class RdpActiveXSession : IDisposable
 
     [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
     private static extern nint SendMessageW(nint window, uint message, nuint wParam, nint lParam);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern nint GetCapture();
+
+    [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ReleaseCapture();
 
     [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
