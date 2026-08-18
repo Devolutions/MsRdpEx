@@ -52,6 +52,7 @@ struct MsRdpEx_D3D11CaptureSwapChain
     UINT height;
     DXGI_FORMAT format;
     bool unavailable;
+    bool captureStarted;
 };
 
 static SRWLOCK g_D3D11CaptureLock = SRWLOCK_INIT;
@@ -283,6 +284,16 @@ static void MsRdpEx_D3D11Capture_TrackSwapChain(
     AcquireSRWLockExclusive(&g_D3D11CaptureLock);
     g_SwapChains.push_back(entry);
     ReleaseSRWLockExclusive(&g_D3D11CaptureLock);
+
+    MsRdpEx_LogPrint(DEBUG,
+        "D3D11 capture tracking RDP composition swap chain: %p", swapChain);
+
+    if (!MsRdpEx_Instance_ArmHardwareCaptureWatchdog(instance))
+    {
+        MsRdpEx_D3D11Capture_DisableHardwareMode(
+            instance, "arm hardware capture watchdog",
+            HRESULT_FROM_WIN32(GetLastError()));
+    }
 }
 
 static void MsRdpEx_D3D11Capture_DisableHardwareMode(
@@ -414,8 +425,9 @@ static HRESULT STDMETHODCALLTYPE Hook_CreateCompositionSwapChain(
     HRESULT hr = Real_CreateCompositionSwapChain(
         factory, device, description, restrictToOutput, swapChain);
 
-    if (SUCCEEDED(hr) && swapChain && *swapChain &&
-        MsRdpEx_IsAddressInRdpAxModule(_ReturnAddress()))
+    // DirectComposition can invoke the factory from outside mstscax.dll.
+    // Device attribution below keeps this limited to an RDP-owned device.
+    if (SUCCEEDED(hr) && swapChain && *swapChain)
     {
         MsRdpEx_D3D11Capture_TrackSwapChain(device, *swapChain);
     }
@@ -437,7 +449,7 @@ static HRESULT STDMETHODCALLTYPE Hook_SwapChainPresent(
         UINT height = 0;
         bool copied = false;
 
-        AcquireSRWLockShared(&g_D3D11CaptureLock);
+        AcquireSRWLockExclusive(&g_D3D11CaptureLock);
         for (MsRdpEx_D3D11CaptureSwapChain& entry : g_SwapChains)
         {
             if (entry.swapChain == swapChain)
@@ -449,7 +461,7 @@ static HRESULT STDMETHODCALLTYPE Hook_SwapChainPresent(
                 break;
             }
         }
-        ReleaseSRWLockShared(&g_D3D11CaptureLock);
+        ReleaseSRWLockExclusive(&g_D3D11CaptureLock);
 
         if (copied)
         {
@@ -462,6 +474,24 @@ static HRESULT STDMETHODCALLTYPE Hook_SwapChainPresent(
 
             if (captured)
             {
+                bool firstCapture = false;
+                AcquireSRWLockExclusive(&g_D3D11CaptureLock);
+                for (MsRdpEx_D3D11CaptureSwapChain& entry : g_SwapChains)
+                {
+                    if (entry.swapChain == swapChain && !entry.captureStarted)
+                    {
+                        entry.captureStarted = true;
+                        firstCapture = true;
+                        break;
+                    }
+                }
+                ReleaseSRWLockExclusive(&g_D3D11CaptureLock);
+
+                if (firstCapture)
+                {
+                    MsRdpEx_LogPrint(DEBUG,
+                        "D3D11 capture received the first hardware frame");
+                }
                 MsRdpEx_Instance_NotifyOutputFrame(instance);
             }
             else if (SUCCEEDED(enabledHr) && outputMirrorEnabled)
@@ -519,6 +549,8 @@ static void MsRdpEx_D3D11Capture_TrackDevice(ID3D11Device* device)
     instance->AddRef();
     g_Devices.push_back({ device, instance });
     ReleaseSRWLockExclusive(&g_D3D11CaptureLock);
+
+    MsRdpEx_LogPrint(DEBUG, "D3D11 capture tracking RDP device: %p", device);
 
     IDXGIDevice* dxgiDevice = NULL;
     IDXGIAdapter* adapter = NULL;
@@ -590,6 +622,8 @@ static HRESULT WINAPI Hook_D3D11CreateDevice(
     if (SUCCEEDED(hr) && device && *device &&
         MsRdpEx_IsAddressInRdpAxModule(_ReturnAddress()))
     {
+        MsRdpEx_LogPrint(DEBUG,
+            "D3D11CreateDevice returned for RDP ActiveX: %p", *device);
         MsRdpEx_D3D11Capture_TrackDevice(*device);
     }
 
@@ -633,12 +667,10 @@ void MsRdpEx_D3D11Capture_RegisterPendingInstance(IMsRdpExInstance* instance)
         }
     }
 
-    bool registered = false;
     if (!anotherInstanceIsTracked)
     {
         instance->AddRef();
         g_PendingInstances.push_back(instance);
-        registered = true;
     }
     ReleaseSRWLockExclusive(&g_D3D11CaptureLock);
 
@@ -646,11 +678,6 @@ void MsRdpEx_D3D11Capture_RegisterPendingInstance(IMsRdpExInstance* instance)
     {
         MsRdpEx_D3D11Capture_DisableHardwareMode(
             instance, "multiple simultaneous hardware capture sessions", E_NOTIMPL);
-    }
-    else if (registered && !MsRdpEx_Instance_ArmHardwareCaptureWatchdog(instance))
-    {
-        MsRdpEx_D3D11Capture_DisableHardwareMode(
-            instance, "arm hardware capture watchdog", HRESULT_FROM_WIN32(GetLastError()));
     }
 }
 
@@ -725,7 +752,10 @@ void MsRdpEx_D3D11Capture_Shutdown()
     g_Devices.clear();
 
     for (IMsRdpExInstance* instance : g_PendingInstances)
+    {
+        MsRdpEx_Instance_DisarmHardwareCaptureWatchdog(instance);
         instance->Release();
+    }
     g_PendingInstances.clear();
 
     g_CreateCompositionSwapChainHookAttached = false;

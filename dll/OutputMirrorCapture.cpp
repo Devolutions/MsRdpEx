@@ -98,6 +98,7 @@ bool MsRdpEx_OutputMirror_CapturePixels(
         MsRdpEx_OutputMirror_SetFrameSize(outputMirror, width, height);
         if (!MsRdpEx_OutputMirror_Init(outputMirror))
         {
+            MsRdpEx_OutputMirror_SetFrameSize(outputMirror, 0, 0);
             MsRdpEx_OutputMirror_Unlock(outputMirror);
             return false;
         }

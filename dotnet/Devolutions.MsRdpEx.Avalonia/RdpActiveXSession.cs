@@ -634,7 +634,7 @@ internal sealed class RdpActiveXSession : IDisposable
         IMsRdpExtendedSettings extendedSettings = ProxyObject.Pack<IMsRdpExtendedSettings>(rawClient)
             ?? throw new InvalidOperationException("The RDP control does not expose MsRdpEx extended settings.");
         extendedSettings.SetProperty(new BinaryString("OutputMirrorEnabled"), true);
-        extendedSettings.SetProperty(new BinaryString("EnableHardwareMode"), false);
+        extendedSettings.SetProperty(new BinaryString("EnableHardwareMode"), true);
         instance?.SetOutputMirrorEnabled(true);
     }
 

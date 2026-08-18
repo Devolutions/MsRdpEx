@@ -480,6 +480,7 @@ bool WINAPI MsRdpEx_CaptureBlt(
         MsRdpEx_OutputMirror_SetFrameSize(outputMirror, bitmapWidth, bitmapHeight);
         if (!MsRdpEx_OutputMirror_Init(outputMirror))
         {
+            MsRdpEx_OutputMirror_SetFrameSize(outputMirror, 0, 0);
             MsRdpEx_OutputMirror_Unlock(outputMirror);
             goto end;
         }
@@ -1720,9 +1721,9 @@ LONG MsRdpEx_DetachHooks()
     if (error == NO_ERROR)
     {
         g_IsHooked = false;
+        MsRdpEx_D3D11Capture_Shutdown();
     }
 
-    MsRdpEx_D3D11Capture_Shutdown();
     MsRdpEx_GlobalUninit();
     return error;
 }
