@@ -30,6 +30,14 @@ HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetBounds(
     MsRdpEx_RdpOleHost* pHost,
     LPCRECT pBounds);
 
+/*
+ * Pushes focus-driven activation state (OnFrameWindowActivate /
+ * OnDocWindowActivate) to the control. This deliberately does not issue
+ * OLEIVERB_UIACTIVATE: in the output-mirror hosting model the control is fed
+ * synthetic input (allowBackgroundInput=1), and a real UI-activate makes
+ * mstscax grab keyboard focus and change the active window, hijacking input
+ * from the host surface.
+ */
 HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetActive(
     MsRdpEx_RdpOleHost* pHost,
     BOOL active);

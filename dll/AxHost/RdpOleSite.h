@@ -80,11 +80,8 @@ public:
     STDMETHOD_(ULONG, AddRef)() override;
     STDMETHOD_(ULONG, Release)() override;
 
-    // IOleWindow methods. The site tear-off reports the off-screen host
-    // window, while the frame tear-off reports the real top-level window.
+    // IOleWindow methods
     STDMETHOD(GetWindow)(HWND* phwnd) override;
-    STDMETHOD(GetSiteWindow)(HWND* phwnd);
-    STDMETHOD(GetFrameWindow)(HWND* phwnd);
     STDMETHOD(ContextSensitiveHelp)(BOOL fEnterMode) override;
 
     // IOleInPlaceSite methods

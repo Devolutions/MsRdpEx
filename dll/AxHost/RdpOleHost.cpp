@@ -219,31 +219,20 @@ public:
         if (!m_pOleInPlaceActiveObject || !m_pOleObject)
             return OLE_E_NOT_INPLACEACTIVE;
 
-        // Track the UI-active state so repeated focus events do not issue
-        // redundant UIACTIVATE verbs or UIDeactivate calls.
-        if (active)
-        {
-            if (m_uiActive)
-                return S_OK;
-
-            HRESULT hr = m_pOleObject->DoVerb(
-                OLEIVERB_UIACTIVATE, NULL, m_pOleClientSite, 0, m_hWnd, &m_bounds);
-            if (FAILED(hr))
-                return hr;
-            m_uiActive = true;
-        }
-        else
-        {
-            if (!m_uiActive)
-                return S_OK;
-            m_uiActive = false;
-        }
+        // Do not issue OLEIVERB_UIACTIVATE here. This host presents the
+        // control through the off-screen output mirror and feeds it synthetic
+        // input (allowBackgroundInput=1); a real UIACTIVATE makes mstscax call
+        // SetFocus on its own window and change the active window, hijacking
+        // keyboard focus from the Avalonia surface and breaking later input
+        // and teardown. Frame/doc activation notifications give the control
+        // the activation state it needs (FocusReleased, focus tracking)
+        // without the focus grab.
+        if (m_uiActive == (active != FALSE))
+            return S_OK;
+        m_uiActive = active != FALSE;
 
         HRESULT frameHr = m_pOleInPlaceActiveObject->OnFrameWindowActivate(active);
         HRESULT docHr = m_pOleInPlaceActiveObject->OnDocWindowActivate(active);
-
-        if (!active && m_pOleInPlaceObject)
-            m_pOleInPlaceObject->UIDeactivate();
 
         return FAILED(frameHr) ? frameHr : docHr;
     }

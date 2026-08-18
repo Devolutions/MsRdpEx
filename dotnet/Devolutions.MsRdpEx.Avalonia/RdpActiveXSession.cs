@@ -309,9 +309,12 @@ internal sealed class RdpActiveXSession : IDisposable
     }
 
     /// <summary>
-    /// Drives OLE UI activation (OLEIVERB_UIACTIVATE / UIDeactivate plus
-    /// OnDocWindowActivate) from view focus changes. Redundant transitions are
-    /// suppressed both here and in the native host.
+    /// Pushes focus-driven OLE activation state (OnFrameWindowActivate /
+    /// OnDocWindowActivate) from view focus changes. The control is not
+    /// UI-activated with OLEIVERB_UIACTIVATE: in this hosting model that makes
+    /// mstscax grab keyboard focus and change the active window, hijacking
+    /// input from the Avalonia surface. Redundant transitions are suppressed
+    /// both here and in the native host.
     /// </summary>
     public void SetUiActive(bool active)
     {
