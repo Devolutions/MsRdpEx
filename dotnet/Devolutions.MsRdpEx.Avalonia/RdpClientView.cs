@@ -353,6 +353,12 @@ public class RdpClientView : UserControl, IDisposable
         {
             window.Activated += OnWindowActivated;
             window.Deactivated += OnWindowDeactivated;
+            if (window.IsActive)
+            {
+                // Register before the first pointer press so a fast initial
+                // keystroke cannot arrive before GotFocus installs the hook.
+                InstallKeyboardHook();
+            }
         }
 
         try
@@ -700,8 +706,7 @@ public class RdpClientView : UserControl, IDisposable
     private void OnWindowActivated(object? sender, EventArgs e)
     {
         session?.SetFrameActive(true);
-        if (IsKeyboardFocusWithin)
-            InstallKeyboardHook();
+        InstallKeyboardHook();
     }
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
