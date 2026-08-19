@@ -64,7 +64,6 @@ internal sealed class RdpActiveXSession : IDisposable
     private static int oleSessionCount;
     private static RdpOleHostAttach? rdpOleHostAttach;
     private static RdpOleHostSetBounds? rdpOleHostSetBounds;
-    private static RdpOleHostSetFrameActive? rdpOleHostSetFrameActive;
     private static RdpOleHostSetFrameWindow? rdpOleHostSetFrameWindow;
     private static RdpOleHostTranslateAccelerator? rdpOleHostTranslateAccelerator;
     private static RdpOleHostRelease? rdpOleHostRelease;
@@ -304,21 +303,6 @@ internal sealed class RdpActiveXSession : IDisposable
             PublishStatus("Disconnecting...");
             client.Disconnect();
         }
-    }
-
-    /// <summary>
-    /// Forwards top-level window activation to the OLE frame
-    /// (OnFrameWindowActivate) without touching the UI-active state: Avalonia
-    /// retains logical focus while its window is deactivated.
-    /// </summary>
-    public void SetFrameActive(bool active)
-    {
-        if (disposed || oleHost == 0 || rdpOleHostSetFrameActive is null)
-            return;
-
-        int hr = rdpOleHostSetFrameActive(oleHost, active ? 1 : 0);
-        if (hr < 0)
-            PublishStatus($"RDP OLE frame activation failed: 0x{hr:X8}");
     }
 
     /// <summary>
@@ -640,13 +624,6 @@ internal sealed class RdpActiveXSession : IDisposable
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_TranslateAccelerator"));
         rdpOleHostRelease ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostRelease>(
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_Release"));
-
-        if (rdpOleHostSetFrameActive is null &&
-            NativeLibrary.TryGetExport(library, "MsRdpEx_RdpOleHost_SetFrameActive", out nint setFrameActive))
-        {
-            rdpOleHostSetFrameActive =
-                Marshal.GetDelegateForFunctionPointer<RdpOleHostSetFrameActive>(setFrameActive);
-        }
 
         if (rdpOleHostSetFrameWindow is null &&
             NativeLibrary.TryGetExport(library, "MsRdpEx_RdpOleHost_SetFrameWindow", out nint setFrameWindow))
@@ -1131,9 +1108,6 @@ internal sealed class RdpActiveXSession : IDisposable
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate int RdpOleHostSetBounds(nint host, ref NativeRect bounds);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    private delegate int RdpOleHostSetFrameActive(nint host, int active);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate int RdpOleHostSetFrameWindow(nint host, nint frameWindow);
