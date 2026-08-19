@@ -79,6 +79,44 @@ public sealed class RdpLaunchOptionsTests
     }
 
     [Fact]
+    public void CompleteEnvironmentCredentialsEnableAutomaticConnection()
+    {
+        Dictionary<string, string> environment = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["RDP_HOSTNAME"] = "environment-host",
+            ["RDP_USERNAME"] = "environment-user",
+            ["RDP_PASSWORD"] = "environment-password",
+            ["RDP_DOMAIN"] = "ENVIRONMENT-DOMAIN"
+        };
+
+        RdpLaunchOptions options = RdpLaunchOptions.Parse(
+            [], name => environment.GetValueOrDefault(name), _ => string.Empty);
+
+        Assert.True(options.CanAutoConnect);
+        var settings = options.CreateConnectionSettings();
+        Assert.Equal("environment-host", settings.HostName);
+        Assert.Equal("environment-user", settings.UserName);
+        Assert.Equal("environment-password", settings.Password);
+        Assert.Equal("ENVIRONMENT-DOMAIN", settings.Domain);
+    }
+
+    [Fact]
+    public void MissingPasswordKeepsTheConnectionDialog()
+    {
+        Dictionary<string, string> environment = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["RDP_HOSTNAME"] = "environment-host",
+            ["RDP_USERNAME"] = "environment-user"
+        };
+
+        RdpLaunchOptions options = RdpLaunchOptions.Parse(
+            [], name => environment.GetValueOrDefault(name), _ => string.Empty);
+
+        Assert.False(options.CanAutoConnect);
+        Assert.Throws<InvalidOperationException>(() => options.CreateConnectionSettings());
+    }
+
+    [Fact]
     public void ExplicitRdpFileOverridesEnvironmentAndPositionalFiles()
     {
         Dictionary<string, string> environment = new(StringComparer.OrdinalIgnoreCase)

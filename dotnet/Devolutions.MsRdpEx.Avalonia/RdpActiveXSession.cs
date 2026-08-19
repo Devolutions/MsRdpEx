@@ -64,8 +64,6 @@ internal sealed class RdpActiveXSession : IDisposable
     private static int oleSessionCount;
     private static RdpOleHostAttach? rdpOleHostAttach;
     private static RdpOleHostSetBounds? rdpOleHostSetBounds;
-    private static RdpOleHostSetActive? rdpOleHostSetActive;
-    private static RdpOleHostSetFrameActive? rdpOleHostSetFrameActive;
     private static RdpOleHostSetFrameWindow? rdpOleHostSetFrameWindow;
     private static RdpOleHostTranslateAccelerator? rdpOleHostTranslateAccelerator;
     private static RdpOleHostRelease? rdpOleHostRelease;
@@ -84,7 +82,6 @@ internal sealed class RdpActiveXSession : IDisposable
     private bool oleScopeEntered;
     private bool oleInitializedByUs;
     private bool oleUninitializePending;
-    private bool oleUiActive;
     private bool disposed;
     private bool remoteMouseDragActive;
     private int sessionDesktopWidth;
@@ -306,46 +303,6 @@ internal sealed class RdpActiveXSession : IDisposable
             PublishStatus("Disconnecting...");
             client.Disconnect();
         }
-    }
-
-    /// <summary>
-    /// Pushes focus-driven OLE activation state (OnFrameWindowActivate /
-    /// OnDocWindowActivate) from view focus changes. The control is not
-    /// UI-activated with OLEIVERB_UIACTIVATE: in this hosting model that makes
-    /// mstscax grab keyboard focus and change the active window, hijacking
-    /// input from the Avalonia surface. Redundant transitions are suppressed
-    /// both here and in the native host.
-    /// </summary>
-    public void SetUiActive(bool active)
-    {
-        if (disposed || oleHost == 0 || rdpOleHostSetActive is null || oleUiActive == active)
-            return;
-
-        // Commit the managed state only after the native transition succeeds
-        // so a failed UIACTIVATE can be retried on the next focus change.
-        int hr = rdpOleHostSetActive(oleHost, active ? 1 : 0);
-        if (hr < 0)
-        {
-            PublishStatus($"RDP OLE activation failed: 0x{hr:X8}");
-            return;
-        }
-
-        oleUiActive = active;
-    }
-
-    /// <summary>
-    /// Forwards top-level window activation to the OLE frame
-    /// (OnFrameWindowActivate) without touching the UI-active state: Avalonia
-    /// retains logical focus while its window is deactivated.
-    /// </summary>
-    public void SetFrameActive(bool active)
-    {
-        if (disposed || oleHost == 0 || rdpOleHostSetFrameActive is null)
-            return;
-
-        int hr = rdpOleHostSetFrameActive(oleHost, active ? 1 : 0);
-        if (hr < 0)
-            PublishStatus($"RDP OLE frame activation failed: 0x{hr:X8}");
     }
 
     /// <summary>
@@ -634,7 +591,7 @@ internal sealed class RdpActiveXSession : IDisposable
         IMsRdpExtendedSettings extendedSettings = ProxyObject.Pack<IMsRdpExtendedSettings>(rawClient)
             ?? throw new InvalidOperationException("The RDP control does not expose MsRdpEx extended settings.");
         extendedSettings.SetProperty(new BinaryString("OutputMirrorEnabled"), true);
-        extendedSettings.SetProperty(new BinaryString("EnableHardwareMode"), false);
+        extendedSettings.SetProperty(new BinaryString("EnableHardwareMode"), true);
         instance?.SetOutputMirrorEnabled(true);
     }
 
@@ -663,19 +620,10 @@ internal sealed class RdpActiveXSession : IDisposable
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_Attach"));
         rdpOleHostSetBounds ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostSetBounds>(
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_SetBounds"));
-        rdpOleHostSetActive ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostSetActive>(
-            NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_SetActive"));
         rdpOleHostTranslateAccelerator ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostTranslateAccelerator>(
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_TranslateAccelerator"));
         rdpOleHostRelease ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostRelease>(
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_Release"));
-
-        if (rdpOleHostSetFrameActive is null &&
-            NativeLibrary.TryGetExport(library, "MsRdpEx_RdpOleHost_SetFrameActive", out nint setFrameActive))
-        {
-            rdpOleHostSetFrameActive =
-                Marshal.GetDelegateForFunctionPointer<RdpOleHostSetFrameActive>(setFrameActive);
-        }
 
         if (rdpOleHostSetFrameWindow is null &&
             NativeLibrary.TryGetExport(library, "MsRdpEx_RdpOleHost_SetFrameWindow", out nint setFrameWindow))
@@ -997,8 +945,6 @@ internal sealed class RdpActiveXSession : IDisposable
             rdpOleHostRelease?.Invoke(host);
         }
 
-        oleUiActive = false;
-
         // Release the managed COM wrapper deterministically where the runtime
         // supports it. The generated interop wraps the control through
         // ComInterfaceMarshaller (StrategyBasedComWrappers), which offers no
@@ -1162,12 +1108,6 @@ internal sealed class RdpActiveXSession : IDisposable
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate int RdpOleHostSetBounds(nint host, ref NativeRect bounds);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    private delegate int RdpOleHostSetActive(nint host, int active);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    private delegate int RdpOleHostSetFrameActive(nint host, int active);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate int RdpOleHostSetFrameWindow(nint host, nint frameWindow);

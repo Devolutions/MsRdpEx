@@ -14,6 +14,7 @@
 #include <wincred.h>
 
 #include "MsRdpEx.h"
+#include "D3D11Capture.h"
 #include "TSObjects.h"
 #include "ComHelpers.h"
 
@@ -1003,6 +1004,18 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         }
 
         hr = m_pMsRdpExtendedSettings->put_Property(bstrPropertyName, pValue);
+
+        if (SUCCEEDED(hr) &&
+            MsRdpEx_StringEquals(propName, "EnableHardwareMode") &&
+            pValue->vt == VT_BOOL &&
+            pValue->boolVal == VARIANT_TRUE &&
+            m_OutputMirrorEnabled)
+        {
+            IMsRdpExInstance* instance = (IMsRdpExInstance*)
+                MsRdpEx_InstanceManager_FindBySessionId(&m_sessionId);
+            if (instance)
+                MsRdpEx_D3D11Capture_RegisterPendingInstance(instance);
+        }
     }
 
 end:
@@ -1706,8 +1719,16 @@ HRESULT CMsRdpExtendedSettings::PrepareVideoRecorder()
     if (outputMirrorEnabled) {
         VARIANT enableHardwareMode;
         bstr_t enableHardwareModeName = _com_util::ConvertStringToBSTR("EnableHardwareMode");
-        VariantInitBool(&enableHardwareMode, false);
-        this->put_Property(enableHardwareModeName, &enableHardwareMode);
+        VariantInit(&enableHardwareMode);
+
+        if (SUCCEEDED(this->get_Property(enableHardwareModeName, &enableHardwareMode)) &&
+            enableHardwareMode.vt == VT_BOOL &&
+            enableHardwareMode.boolVal == VARIANT_TRUE)
+        {
+            MsRdpEx_D3D11Capture_RegisterPendingInstance(instance);
+        }
+
+        VariantClear(&enableHardwareMode);
     }
 
     return hr;

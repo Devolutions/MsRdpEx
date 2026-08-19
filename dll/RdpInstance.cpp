@@ -10,6 +10,7 @@
 #include "TSObjects.h"
 #include "ComHelpers.h"
 #include "CursorOverlay.h"
+#include "MsRdpClient.h"
 #include "RdpInstanceInternal.h"
 
 extern "C" const GUID IID_IMsRdpExInstance;
@@ -31,6 +32,9 @@ public:
 
     ~CMsRdpExInstance()
     {
+        if (m_hOutputPresenterWnd)
+            KillTimer(m_hOutputPresenterWnd, MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId());
+
         if (m_CursorOverlay) {
             MsRdpEx_CursorOverlay_Free(m_CursorOverlay);
             m_CursorOverlay = NULL;
@@ -225,6 +229,20 @@ public:
     HRESULT STDMETHODCALLTYPE AttachOutputWindow(HWND hOutputWnd, void* pUserData)
     {
         m_hOutputPresenterWnd = hOutputWnd;
+        if (m_GdiReconnectPending != 0 &&
+            !PostMessage(hOutputWnd, MsRdpEx_Instance_GetGdiReconnectMessage(), 0, 0))
+        {
+            InterlockedExchange(&m_GdiReconnectPending, 0);
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+
+        if (m_HardwareCaptureWatchdogPending != 0 &&
+            !SetTimer(hOutputWnd, MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId(), 5000, NULL))
+        {
+            InterlockedExchange(&m_HardwareCaptureWatchdogPending, 0);
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+
         return S_OK;
     }
 
@@ -355,6 +373,132 @@ public:
             MsRdpEx_OutputMirror_DumpFrame(outputMirror);
     }
 
+    bool RequestGdiReconnect()
+    {
+        if (InterlockedCompareExchange(&m_GdiReconnectPending, 1, 0) != 0)
+            return true;
+
+        const UINT message = MsRdpEx_Instance_GetGdiReconnectMessage();
+        if (!message)
+        {
+            InterlockedExchange(&m_GdiReconnectPending, 0);
+            return false;
+        }
+
+        if (!m_hOutputPresenterWnd)
+            return true;
+
+        if (!PostMessage(m_hOutputPresenterWnd, message, 0, 0))
+        {
+            InterlockedExchange(&m_GdiReconnectPending, 0);
+            return false;
+        }
+
+        return true;
+    }
+
+    bool ArmHardwareCaptureWatchdog()
+    {
+        InterlockedExchange(&m_HardwareCaptureFrameReceived, 0);
+        InterlockedExchange(&m_GdiReconnectAttempts, 0);
+
+        if (InterlockedCompareExchange(&m_HardwareCaptureWatchdogPending, 1, 0) != 0)
+            return true;
+
+        if (!m_hOutputPresenterWnd)
+            return true;
+
+        if (!SetTimer(m_hOutputPresenterWnd,
+                MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId(), 5000, NULL))
+        {
+            InterlockedExchange(&m_HardwareCaptureWatchdogPending, 0);
+            return false;
+        }
+
+        return true;
+    }
+
+    void HandleHardwareCaptureWatchdog()
+    {
+        if (m_hOutputPresenterWnd)
+            KillTimer(m_hOutputPresenterWnd, MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId());
+
+        if (InterlockedExchange(&m_HardwareCaptureWatchdogPending, 0) == 0 ||
+            InterlockedCompareExchange(&m_HardwareCaptureFrameReceived, 0, 0) != 0)
+        {
+            return;
+        }
+
+        MsRdpEx_LogPrint(ERROR,
+            "D3D11 capture did not produce a frame within the watchdog interval");
+        RequestGdiReconnect();
+    }
+
+    void DisarmHardwareCaptureWatchdog()
+    {
+        if (m_hOutputPresenterWnd)
+            KillTimer(m_hOutputPresenterWnd,
+                MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId());
+
+        InterlockedExchange(&m_HardwareCaptureWatchdogPending, 0);
+        InterlockedExchange(&m_HardwareCaptureFrameReceived, 0);
+        InterlockedExchange(&m_GdiReconnectPending, 0);
+    }
+
+    void NotifyOutputFrame()
+    {
+        InterlockedExchange(&m_HardwareCaptureFrameReceived, 1);
+
+        if (InterlockedExchange(&m_HardwareCaptureWatchdogPending, 0) != 0 &&
+            m_hOutputPresenterWnd)
+        {
+            KillTimer(m_hOutputPresenterWnd,
+                MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId());
+        }
+    }
+
+    void ReconnectUsingGdi()
+    {
+        if (InterlockedExchange(&m_GdiReconnectPending, 0) == 0 ||
+            !m_pMsRdpClient || !m_pMsRdpExtendedSettings)
+        {
+            return;
+        }
+
+        if (InterlockedCompareExchange(&m_GdiReconnectAttempts, 1, 0) != 0)
+        {
+            MsRdpEx_LogPrint(ERROR,
+                "Skipping repeated DirectX capture fallback reconnect");
+            return;
+        }
+
+        VARIANT enableHardwareMode;
+        bstr_t enableHardwareModeName =
+            _com_util::ConvertStringToBSTR("EnableHardwareMode");
+        VariantInit(&enableHardwareMode);
+        enableHardwareMode.vt = VT_BOOL;
+        enableHardwareMode.boolVal = VARIANT_FALSE;
+        HRESULT hr = m_pMsRdpExtendedSettings->put_Property(
+            enableHardwareModeName, &enableHardwareMode);
+        VariantClear(&enableHardwareMode);
+
+        if (FAILED(hr))
+        {
+            MsRdpEx_LogPrint(ERROR,
+                "Could not disable hardware presentation for DirectX capture fallback: 0x%08X",
+                hr);
+            return;
+        }
+
+        hr = MsRdpEx_CMsRdpClient_ReconnectInGdiMode(m_pMsRdpClient);
+        if (FAILED(hr))
+        {
+            MsRdpEx_LogPrint(ERROR,
+                "Could not reconnect with GDI presentation after DirectX capture failure: 0x%08X",
+                hr);
+        }
+    }
+
 private:
     MsRdpEx_OutputMirror* GetOutputMirror()
     {
@@ -411,12 +555,62 @@ public:
     int32_t m_LastMousePosX = 0;
     int32_t m_LastMousePosY = 0;
     IUnknown* m_WTSPlugin = NULL;
+    LONG m_GdiReconnectPending = 0;
+    LONG m_GdiReconnectAttempts = 0;
+    LONG m_HardwareCaptureFrameReceived = 0;
+    LONG m_HardwareCaptureWatchdogPending = 0;
 };
 
 CMsRdpExInstance* CMsRdpExInstance_New(CMsRdpClient* pMsRdpClient)
 {
     CMsRdpExInstance* instance = new CMsRdpExInstance(pMsRdpClient);
     return instance;
+}
+
+UINT MsRdpEx_Instance_GetGdiReconnectMessage()
+{
+    static const UINT message = RegisterWindowMessageW(
+        L"MsRdpEx.GdiReconnect.7E14CFC3-4C24-466B-AC8A-7C1A45D4F5AB");
+    return message;
+}
+
+UINT_PTR MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId()
+{
+    return 0x7E14;
+}
+
+bool MsRdpEx_Instance_RequestGdiReconnect(IMsRdpExInstance* instance)
+{
+    return instance && ((CMsRdpExInstance*)instance)->RequestGdiReconnect();
+}
+
+bool MsRdpEx_Instance_ArmHardwareCaptureWatchdog(IMsRdpExInstance* instance)
+{
+    return instance && ((CMsRdpExInstance*)instance)->ArmHardwareCaptureWatchdog();
+}
+
+void MsRdpEx_Instance_DisarmHardwareCaptureWatchdog(IMsRdpExInstance* instance)
+{
+    if (instance)
+        ((CMsRdpExInstance*)instance)->DisarmHardwareCaptureWatchdog();
+}
+
+void MsRdpEx_Instance_HandleHardwareCaptureWatchdog(IMsRdpExInstance* instance)
+{
+    if (instance)
+        ((CMsRdpExInstance*)instance)->HandleHardwareCaptureWatchdog();
+}
+
+void MsRdpEx_Instance_NotifyOutputFrame(IMsRdpExInstance* instance)
+{
+    if (instance)
+        ((CMsRdpExInstance*)instance)->NotifyOutputFrame();
+}
+
+void MsRdpEx_Instance_ReconnectUsingGdi(IMsRdpExInstance* instance)
+{
+    if (instance)
+        ((CMsRdpExInstance*)instance)->ReconnectUsingGdi();
 }
 
 struct _MsRdpEx_OutputMirrorCapture

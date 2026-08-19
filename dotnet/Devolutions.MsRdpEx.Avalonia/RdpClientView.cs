@@ -83,6 +83,7 @@ public class RdpClientView : UserControl, IDisposable
     private PixelSize viewportPixelSize;
     private uint staFrameVersion;
     private bool staHasFrameVersion;
+    private bool remoteInputActive;
     private bool disposed;
 
     public RdpClientView()
@@ -353,6 +354,12 @@ public class RdpClientView : UserControl, IDisposable
         {
             window.Activated += OnWindowActivated;
             window.Deactivated += OnWindowDeactivated;
+            if (window.IsActive)
+            {
+                // Register before the first pointer press so a fast initial
+                // keystroke cannot arrive before GotFocus installs the hook.
+                InstallKeyboardHook();
+            }
         }
 
         try
@@ -381,9 +388,6 @@ public class RdpClientView : UserControl, IDisposable
         resizeTimer.Stop();
         ReleaseForwardedKeys();
         ReleaseMouseButtons();
-        // Deactivate the frame before dropping its window so the control is
-        // not left believing a detached frame is still active.
-        session?.SetFrameActive(false);
         session?.SetFrameWindow(0);
         topLevel = null;
 
@@ -392,7 +396,9 @@ public class RdpClientView : UserControl, IDisposable
 
     // Reports the real top-level window to the OLE host so control-owned
     // dialogs (certificate warnings, credential prompts) are parented to a
-    // visible window, and pushes the current frame/focus activation state.
+    // visible window. Activation notifications are intentionally omitted:
+    // mstscax transfers foreground to its hidden input HWND in response to
+    // either frame or document activation.
     private void UpdateOleFrameState()
     {
         if (session is null)
@@ -401,8 +407,6 @@ public class RdpClientView : UserControl, IDisposable
         if (topLevel?.TryGetPlatformHandle() is { } platformHandle)
             session.SetFrameWindow(platformHandle.Handle);
 
-        if (topLevel is Window window)
-            session.SetFrameActive(window.IsActive);
     }
 
     /// <summary>
@@ -484,7 +488,6 @@ public class RdpClientView : UserControl, IDisposable
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        Focus();
 
         if (IsViewOnly)
             return;
@@ -492,6 +495,7 @@ public class RdpClientView : UserControl, IDisposable
         if (!TryMapToRemote(e.GetPosition(this), out int x, out int y))
             return;
 
+        remoteInputActive = true;
         PointerUpdateKind kind = e.GetCurrentPoint(this).Properties.PointerUpdateKind;
         uint message;
 
@@ -683,6 +687,7 @@ public class RdpClientView : UserControl, IDisposable
 
     private void OnControlLostFocus(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
+        remoteInputActive = false;
         UninstallKeyboardHook();
         ReleaseForwardedKeys();
         if (!ContinuePhysicalMouseDrag())
@@ -696,9 +701,7 @@ public class RdpClientView : UserControl, IDisposable
 
     private void OnWindowActivated(object? sender, EventArgs e)
     {
-        session?.SetFrameActive(true);
-        if (IsKeyboardFocusWithin)
-            InstallKeyboardHook();
+        InstallKeyboardHook();
     }
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
@@ -708,7 +711,7 @@ public class RdpClientView : UserControl, IDisposable
         // leaving the hook installed during that interval can swallow input
         // intended for another local application.
         UninstallKeyboardHook();
-        session?.SetFrameActive(false);
+        remoteInputActive = false;
 
         // Avalonia retains logical keyboard focus while its window is
         // deactivated, so LostFocus never fires. Release forwarded input here
@@ -760,7 +763,7 @@ public class RdpClientView : UserControl, IDisposable
         if (code < 0 || keyboardHook == 0 ||
             !ShouldForwardKeys(
                 IsViewOnly,
-                IsKeyboardFocusWithin,
+                IsKeyboardFocusWithin || remoteInputActive,
                 topLevel is not Window window || window.IsActive,
                 session?.IsConnectionActive == true,
                 IsTopLevelForegroundWindow()))
@@ -881,7 +884,7 @@ public class RdpClientView : UserControl, IDisposable
             return;
         }
 
-        Focus();
+        remoteInputActive = true;
         await Task.Delay(200);
         SendPasteShortcut();
         e.DragEffects = DragDropEffects.Copy;
@@ -1446,6 +1449,7 @@ public class RdpClientView : UserControl, IDisposable
 
     private void OnSessionFocusReleased(object? sender, RdpFocusReleasedEventArgs e)
     {
+        remoteInputActive = false;
         ReleaseForwardedKeys();
         FocusReleased?.Invoke(this, e);
     }

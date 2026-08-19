@@ -16,15 +16,24 @@ public sealed class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             RdpLaunchOptions launchOptions = RdpLaunchOptions.Parse(desktop.Args ?? []);
-            ConnectionDialog connectionDialog = new(launchOptions);
-            connectionDialog.ConnectionRequested += settings =>
+            if (launchOptions.CanAutoConnect)
             {
-                MainWindow sessionWindow = new(settings, launchOptions);
-                desktop.MainWindow = sessionWindow;
-                sessionWindow.Show();
-                connectionDialog.Close();
-            };
-            desktop.MainWindow = connectionDialog;
+                desktop.MainWindow = new MainWindow(
+                    launchOptions.CreateConnectionSettings(),
+                    launchOptions);
+            }
+            else
+            {
+                ConnectionDialog connectionDialog = new(launchOptions);
+                connectionDialog.ConnectionRequested += settings =>
+                {
+                    MainWindow sessionWindow = new(settings, launchOptions);
+                    desktop.MainWindow = sessionWindow;
+                    sessionWindow.Show();
+                    connectionDialog.Close();
+                };
+                desktop.MainWindow = connectionDialog;
+            }
         }
 
         base.OnFrameworkInitializationCompleted();

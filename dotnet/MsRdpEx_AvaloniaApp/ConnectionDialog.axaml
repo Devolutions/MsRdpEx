@@ -7,6 +7,7 @@
     Width="630"
     Height="650"
     CanResize="False"
+    RequestedThemeVariant="Light"
     WindowStartupLocation="CenterScreen">
   <Grid RowDefinitions="112,*,Auto" Background="#F5F5F5">
     <Border

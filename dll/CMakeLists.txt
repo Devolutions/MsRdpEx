@@ -58,9 +58,13 @@ set(MSRDPEX_SOURCES
     MsRdpClient.cpp
     MsRdpClient.h
     ApiHooks.cpp
+    D3D11Capture.cpp
+    D3D11Capture.h
     CursorOverlay.c
     CursorOverlay.h
     OutputMirror.c
+    OutputMirrorCapture.cpp
+    OutputMirrorCapture.h
     VideoRecorder.c
     RecordingManifest.c
     NamedPipe.c
@@ -115,7 +119,9 @@ set(MSRDPEX_LIBS
     advapi32.lib
     crypt32.lib
     comctl32.lib
-    ole32.lib)
+    ole32.lib
+    d3d11.lib
+    dxgi.lib)
 
 target_compile_options(MsRdpEx_Dll PRIVATE /W4)
 
