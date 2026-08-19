@@ -24,6 +24,7 @@ internal sealed class RdpActiveXSession : IDisposable
     private static readonly object NativeActivationLock = new();
     private static readonly object OleInitLock = new();
     private static int oleSessionCount;
+    private static readonly List<RdpActiveXSession> activeSessions = [];
     private static RdpOleHostAttach? rdpOleHostAttach;
     private static RdpOleHostSetBounds? rdpOleHostSetBounds;
     private static RdpOleHostSetUiActive? rdpOleHostSetUiActive;
@@ -95,6 +96,10 @@ internal sealed class RdpActiveXSession : IDisposable
             oleInitializedByUs = oleResult == 0; // S_OK
             EnterOleScope();
             oleScopeEntered = true;
+            lock (OleInitLock)
+            {
+                activeSessions.Add(this);
+            }
 
             int surfaceWidth = ClampDesktopDimension(width);
             int surfaceHeight = ClampDesktopDimension(height);
@@ -676,6 +681,11 @@ internal sealed class RdpActiveXSession : IDisposable
         if (oleScopeEntered)
         {
             oleScopeEntered = false;
+            lock (OleInitLock)
+            {
+                activeSessions.Remove(this);
+            }
+
             if (oleUninitializePending)
             {
                 // This session inherited the OleInitialize balance deferred by
@@ -690,6 +700,27 @@ internal sealed class RdpActiveXSession : IDisposable
                 oleInitializedByUs = false;
                 if (ExitOleScope(initializedByUs))
                     OleUninitialize();
+                else if (initializedByUs)
+                    TransferOleBalance();
+            }
+        }
+    }
+
+    // This session performed the S_OK OleInitialize but is leaving while
+    // foreign-initialized (S_FALSE) sessions remain: hand the balance to a
+    // survivor so its dispose performs the balancing OleUninitialize instead
+    // of leaking the initialization for the rest of the thread's lifetime.
+    private void TransferOleBalance()
+    {
+        lock (OleInitLock)
+        {
+            foreach (RdpActiveXSession survivor in activeSessions)
+            {
+                if (!ReferenceEquals(survivor, this) && !survivor.disposed)
+                {
+                    survivor.MarkOleUninitializePending();
+                    return;
+                }
             }
         }
     }

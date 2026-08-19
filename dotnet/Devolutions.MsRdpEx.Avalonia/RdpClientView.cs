@@ -235,11 +235,23 @@ public class RdpClientView : NativeControlHost, IDisposable
         }
 
         base.OnAttachedToVisualTree(e);
+
+        // Reparenting to a new top level reuses the live session without
+        // re-running StartSession, so re-apply the frame window and the
+        // activation state on every attach, not just at session creation.
+        UpdateOleFrameState();
+        if (topLevel is Window attachedWindow)
+            session?.SetFrameActive(attachedWindow.IsActive);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         resizeTimer.Stop();
+
+        // The frame window belongs to the top level we are leaving; clear it so
+        // a session surviving a reparent never reports a stale (or destroyed)
+        // window to the OLE host.
+        session?.SetFrameWindow(0);
 
         if (topLevel is Window window)
         {
@@ -332,10 +344,6 @@ public class RdpClientView : NativeControlHost, IDisposable
         {
             PixelSize desktopSize = GetDesktopPixelSize();
             activeSession.Start(hostWindow, desktopSize.Width, desktopSize.Height, ClassId, AxName, RdpExDll);
-            UpdateOleFrameState();
-
-            if (topLevel is Window window)
-                activeSession.SetFrameActive(window.IsActive);
 
             if (isViewOnly)
                 EnableWindow(hostWindow, false);
@@ -468,11 +476,16 @@ public class RdpClientView : NativeControlHost, IDisposable
         // The control released keyboard focus at an edge of its tab order
         // (the user pressed Tab or Shift+Tab out of the remote session).
         // Move Avalonia focus so focus traversal continues in the hosting
-        // application.
+        // application. Anchor the search at the view itself: clicks into the
+        // native child window never update Avalonia's focused element, so the
+        // default anchor would be stale.
         NavigationDirection direction = e.Direction >= 0
             ? NavigationDirection.Next
             : NavigationDirection.Previous;
-        TopLevel.GetTopLevel(this)?.FocusManager?.TryMoveFocus(direction);
+        IInputElement? next = TopLevel.GetTopLevel(this)?.FocusManager?.FindNextElement(
+            direction,
+            new FindNextElementOptions { FocusedElement = this });
+        next?.Focus(NavigationMethod.Tab);
     }
 
     private void OnSessionDisconnected(object? sender, EventArgs e)
