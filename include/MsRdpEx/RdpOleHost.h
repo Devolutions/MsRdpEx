@@ -43,21 +43,24 @@ HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetActive(
     BOOL active);
 
 /*
- * Forwards top-level window activation (OnFrameWindowActivate) without
- * changing the control's UI-active state. Use this for window
- * Activated/Deactivated notifications; use SetActive for focus changes.
- */
-/*
  * Issues OLEIVERB_UIACTIVATE / UIDeactivate so the control becomes a fully
  * UI-active, visible in-place control that owns native focus and keyboard
  * handling. Use this when hosting the control in a real on-screen HWND (for
  * example under an Avalonia NativeControlHost), where native input should
  * flow through the control's own window instead of synthetic input.
+ * Distinct from SetActive, which only pushes frame/doc activation and is
+ * used by the output-mirror host that must not take native focus.
  */
 HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetUiActive(
     MsRdpEx_RdpOleHost* pHost,
     BOOL active);
 
+/*
+ * Forwards top-level window activation (OnFrameWindowActivate) without
+ * changing the control's UI-active state. Use this for window
+ * Activated/Deactivated notifications; use SetActive for focus changes
+ * in the output-mirror host, or SetUiActive for native HWND hosting.
+ */
 HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetFrameActive(
     MsRdpEx_RdpOleHost* pHost,
     BOOL active);

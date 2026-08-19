@@ -274,7 +274,6 @@ internal sealed class RdpActiveXSession : IDisposable
 
         int desktopWidth = ClampDesktopDimension(width);
         int desktopHeight = ClampDesktopDimension(height);
-        ResizeSurface(desktopWidth, desktopHeight);
         sessionDesktopWidth = desktopWidth;
         sessionDesktopHeight = desktopHeight;
 
@@ -324,9 +323,9 @@ internal sealed class RdpActiveXSession : IDisposable
 
         int desktopWidth = ClampDesktopDimension(width);
         int desktopHeight = ClampDesktopDimension(height);
-        ResizeSurface(desktopWidth, desktopHeight);
         sessionDesktopWidth = desktopWidth;
         sessionDesktopHeight = desktopHeight;
+        rdpClient.SecuredSettings3.KeyboardHookMode = UseRemoteKeyboardShortcuts ? 1 : 0;
 
         // Enable the fullscreen connection bar using the configured server
         // name; Connect() does the same from its settings parameter.
@@ -483,7 +482,6 @@ internal sealed class RdpActiveXSession : IDisposable
 
         int hostWidth = MakeEven(ClampDesktopDimension(checked((int)desktopWidth)));
         int hostHeight = MakeEven(ClampDesktopDimension(checked((int)desktopHeight)));
-        ResizeSurface(hostWidth, hostHeight);
 
         if (!IsLoginCompleted || rdpClient.Connected == 0)
             return false;
