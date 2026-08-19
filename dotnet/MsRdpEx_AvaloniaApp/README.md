@@ -1,16 +1,16 @@
 # MsRdpEx Avalonia sample
 
-This Windows-only sample renders an RDP session into an Avalonia 12 control
-without placing a native HWND in the Avalonia visual tree and without using
-Windows Forms or WPF.
+This Windows-only sample hosts an RDP session inside an Avalonia 12 window
+using a real, visible Win32 child window — without using Windows Forms or WPF.
 
 `RdpClientView` comes from the reusable `Devolutions.MsRdpEx.Avalonia` project
-and is a regular Avalonia `UserControl`. MsRdpEx activates the Microsoft RDP
-ActiveX control through its own OLE client site and in-place site in an
-off-screen HWND; it does not use Windows Forms `AxHost` or ATL's ActiveX host.
-MsRdpEx mirrors the session output into a top-down 32-bit DIB, and the control
-copies that backing buffer into an Avalonia `WriteableBitmap`. Pointer, wheel,
-and keyboard input are mapped back to the RDP input window.
+and is an Avalonia `NativeControlHost`. MsRdpEx activates the Microsoft RDP
+ActiveX control through its own OLE client site and in-place site inside the
+hosted child HWND; it does not use Windows Forms `AxHost` or ATL's ActiveX
+host. The control renders directly to the screen (including its hardware
+DirectX path) and receives native keyboard and mouse input with normal Win32
+focus semantics — there is no off-screen HWND, no framebuffer copy, and no
+synthetic input forwarding.
 
 `build-x64/Release/MsRdpEx.dll` is required and is copied beside the sample
 executable automatically when the project builds.
@@ -27,17 +27,38 @@ dotnet run --project .\dotnet\MsRdpEx_AvaloniaApp\MsRdpEx_AvaloniaApp.csproj
 The app opens with a connection-settings dialog modeled after the Microsoft
 Remote Desktop Connection dialog. Enter the destination host, user name,
 password, and optional domain, choose an optional desktop resolution, then
-select **Connect**. A separate native Avalonia session window opens and renders
-the RDP backing bitmap. The password is passed directly to the RDP control,
+select **Connect**. A separate native Avalonia session window opens and hosts
+the RDP control. The password is passed directly to the RDP control,
 cleared from the dialog, and never written to disk by the sample.
 
-The session window contains only the edge-to-edge RDP surface. Use the standard
-window Close button to disconnect and close the session.
+The session window uses a custom Avalonia title bar above the native RDP
+surface (the hosted HWND always draws above Avalonia content, so a native
+title bar would swallow the mstsc-style menu). Right-click the title bar to
+open the session context menu. Use the title-bar Close button to disconnect
+and close the session.
 
-The default **Fit the session window** display mode uses the Avalonia canvas's
+### Fullscreen and display modes
+
+The session window follows mstsc conventions. Right-click the **title bar**
+(not the remote desktop — that click belongs to the native HWND) to open the
+context menu:
+
+- **Fullscreen** — choose **Full screen**, or press **Ctrl+Alt+Break** in the
+  session. The custom title bar hides, the window covers the screen, and the
+  control's floating connection bar (labeled with the server name) auto-hides
+  at the top edge, with pin, minimize, restore, and close buttons. Exit with
+  Ctrl+Alt+Break or the connection bar's restore button.
+- **Smart sizing** — the context menu's checkable **Smart sizing** item scales
+  the remote desktop to the window size client-side instead of renegotiating
+  the session resolution (the control shows scrollbars when the desktop is
+  larger than the window).
+- **Zoom** — the context menu's **Zoom** submenu (25%–400%) presents the
+  desktop at a fixed scale. 100% returns to the default fit-to-window mode.
+
+The default **Fit the session window** display mode uses the hosted window's
 physical pixel size for the initial desktop. Resizing the window sends a
-debounced dynamic-resolution update after login. Explicit resolutions selected
-on the Display tab remain fixed and are only scaled for presentation.
+single debounced dynamic-resolution update once the size settles. Explicit
+resolutions selected on the Display tab remain fixed.
 
 ## Command line and environment
 
@@ -68,9 +89,7 @@ is passed in memory to the control and is not written to disk.
 - The sample targets x64 Windows and Avalonia 12.1.1.
 - The sample references the reusable `Devolutions.MsRdpEx.Avalonia` project;
   other Avalonia applications can embed the same `RdpClientView` control.
-- The visible surface is fully Avalonia-rendered, so Avalonia overlays and
-  transforms can compose with it normally.
-- The sample polls the MsRdpEx shadow bitmap at approximately 30 frames per
-  second. A production control may want dirty-region signaling instead.
+- The hosted HWND always draws above Avalonia content (airspace), so Avalonia
+  overlays cannot compose on top of the RDP view.
 - Server certificate and credential prompts are owned by the Microsoft RDP
   control and may appear as separate native dialogs.

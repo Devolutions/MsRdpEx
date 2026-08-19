@@ -7,83 +7,39 @@ using BinaryString = MsRdpEx.Interop.BinaryString;
 namespace Devolutions.MsRdpEx.Avalonia;
 
 /// <summary>
-/// Runs the Microsoft RDP ActiveX control in an off-screen HWND with a direct
-/// OLE client site and in-place site. The window is only the RDP session engine;
-/// presentation and input belong to the Avalonia control.
+/// Runs the Microsoft RDP ActiveX control in a caller-owned, visible HWND with a
+/// direct OLE client site and in-place site. The control renders natively into
+/// that window and receives native keyboard and mouse input; there is no
+/// off-screen window, output mirror, or synthetic input forwarding.
 /// </summary>
 internal sealed class RdpActiveXSession : IDisposable
 {
-    private const string StaticWindowClass = "STATIC";
     private static readonly Guid IidIUnknown = new("00000000-0000-0000-C000-000000000046");
     private static readonly Guid IidIClassFactory = new("00000001-0000-0000-C000-000000000046");
 
-    private const uint WsPopup = 0x80000000;
-    private const uint WsVisible = 0x10000000;
-    private const uint WsClipSiblings = 0x04000000;
-    private const uint WsClipChildren = 0x02000000;
-    private const uint WsTabStop = 0x00010000;
-    private const uint WsExToolWindow = 0x00000080;
-    private const uint WsExNoActivate = 0x08000000;
-
-    private const uint SwpNoActivate = 0x0010;
-    private const uint SwpShowWindow = 0x0040;
-
-    private const uint WmMouseMove = 0x0200;
-    private const uint WmLeftButtonDown = 0x0201;
-    private const uint WmLeftButtonUp = 0x0202;
-    private const uint WmRightButtonDown = 0x0204;
-    private const uint WmRightButtonUp = 0x0205;
-    private const uint WmMiddleButtonDown = 0x0207;
-    private const uint WmMiddleButtonUp = 0x0208;
-    private const uint WmMouseWheel = 0x020A;
-    private const uint WmXButtonDown = 0x020B;
-    private const uint WmXButtonUp = 0x020C;
-    private const uint WmMouseHorizontalWheel = 0x020E;
-    private const uint WmMouseLeave = 0x02A3;
-    private const uint WmSetCursor = 0x0020;
-    private const uint WmKeyDown = 0x0100;
-    private const uint WmKeyUp = 0x0101;
-    private const uint WmChar = 0x0102;
-    private const uint WmSystemKeyDown = 0x0104;
-    private const uint WmSystemKeyUp = 0x0105;
-    private const uint WmCaptureChanged = 0x0215;
-    private const uint WmNcDestroy = 0x0082;
-
-    private const uint MapvkVkToVsc = 0;
-    private const int HtClient = 1;
-    private const NativeMouseButtons MouseButtonMask = NativeMouseButtons.Left |
-                                                        NativeMouseButtons.Right |
-                                                        NativeMouseButtons.Middle |
-                                                        NativeMouseButtons.XButton1 |
-                                                        NativeMouseButtons.XButton2;
+    private const int GwChild = 5;
 
     private static nint msRdpExModule;
     private static string? loadedLibraryPath;
     private static readonly object NativeActivationLock = new();
     private static readonly object OleInitLock = new();
     private static int oleSessionCount;
+    private static readonly List<RdpActiveXSession> activeSessions = [];
     private static RdpOleHostAttach? rdpOleHostAttach;
     private static RdpOleHostSetBounds? rdpOleHostSetBounds;
+    private static RdpOleHostSetUiActive? rdpOleHostSetUiActive;
+    private static RdpOleHostSetFrameActive? rdpOleHostSetFrameActive;
     private static RdpOleHostSetFrameWindow? rdpOleHostSetFrameWindow;
-    private static RdpOleHostTranslateAccelerator? rdpOleHostTranslateAccelerator;
     private static RdpOleHostRelease? rdpOleHostRelease;
-    private static MsRdpExInstanceHandle.InstanceApi? instanceApi;
-    private static MsRdpExInstanceHandle.OutputMirrorCaptureApi? outputMirrorCaptureApi;
-    private static MsRdpExInstanceHandle.OutputMirrorGetFrameVersion? outputMirrorGetFrameVersion;
-    private static readonly UIntPtr InputWindowSubclassId = new(1);
 
     private IMsRdpClient10? client;
     private RdpClientEventSubscription? eventSubscription;
-    private readonly SubclassProc inputWindowSubclassProc;
-    private MsRdpExInstanceHandle? instance;
     private nint hostWindow;
     private nint oleHost;
-    private nint inputWindowSubclassHandle;
     private bool oleScopeEntered;
     private bool oleInitializedByUs;
     private bool oleUninitializePending;
     private bool disposed;
-    private bool remoteMouseDragActive;
     private int sessionDesktopWidth;
     private int sessionDesktopHeight;
 
@@ -91,7 +47,88 @@ internal sealed class RdpActiveXSession : IDisposable
     public bool IsConnectionActive { get; private set; }
     public bool IsLoginCompleted { get; private set; }
     public nint HostWindowHandle => hostWindow;
-    public nint InputWindowHandle => GetInputWindow();
+
+    /// <summary>
+    /// Gets or sets smart sizing: when true the control scales the remote
+    /// desktop to the window size client-side (and shows scrollbars when the
+    /// desktop is larger) instead of renegotiating the session resolution.
+    /// </summary>
+    public bool SmartSizing
+    {
+        get
+        {
+            try
+            {
+                return client?.AdvancedSettings9.SmartSizing == true;
+            }
+            catch (COMException)
+            {
+                return false;
+            }
+        }
+        set
+        {
+            IMsRdpClient10? rdpClient = client;
+            if (rdpClient is null || disposed)
+                return;
+
+            try
+            {
+                IMsRdpClientAdvancedSettings8 advancedSettings = rdpClient.AdvancedSettings9;
+                if (advancedSettings.SmartSizing == value)
+                    return;
+
+                advancedSettings.SmartSizing = value;
+            }
+            catch (Exception)
+            {
+                // mstscax sometimes rejects the VARIANT_BOOL write with
+                // "oldValue has incorrect type" after a ZoomLevel change.
+                // The visual mode is already applied via desktop size / zoom.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets the Microsoft RDP control's native zoom percentage. ZoomLevel is
+    /// VT_UI4 and mutually exclusive with SmartSizing. Returns false when the
+    /// control rejects the write (some hosts return E_FAIL); the caller can
+    /// then keep a presentation fallback.
+    /// </summary>
+    public bool TrySetZoomLevel(int value)
+    {
+        IMsRdpClient10? rdpClient = client;
+        if (rdpClient is null || disposed)
+            return false;
+
+        try
+        {
+            object? rawClient = ProxyObject.Unpack(rdpClient);
+            IMsRdpExtendedSettings? extendedSettings =
+                ProxyObject.Pack<IMsRdpExtendedSettings>(rawClient);
+            if (extendedSettings is null)
+                return false;
+
+            // Official type is VT_UI4. Catch every failure: ProxyObject.Pack can
+            // throw InvalidCastException, and mstscax often returns E_FAIL when
+            // ZoomLevel is unavailable (dynamic resolution / hardware path).
+            object zoom = (uint)value;
+            extendedSettings.SetProperty(new BinaryString("ZoomLevel"), zoom);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets whether Windows/system shortcuts (Alt+Tab, Windows keys) are
+    /// sent to the remote session while the control has focus. Mapped to the
+    /// control's own KeyboardHookMode, so keyboard handling stays entirely
+    /// native. Applied when connecting; set before <see cref="Connect"/>.
+    /// </summary>
+    public bool UseRemoteKeyboardShortcuts { get; set; } = true;
 
     public event EventHandler? Ready;
     public event EventHandler? LoginCompleted;
@@ -100,18 +137,30 @@ internal sealed class RdpActiveXSession : IDisposable
     public event EventHandler<RdpStatusChangedEventArgs>? StatusChanged;
     public event EventHandler? Disconnected;
 
-    public RdpActiveXSession()
-    {
-        inputWindowSubclassProc = InputWindowSubclassProc;
-    }
+    // Fullscreen is container-driven: the hosting window goes fullscreen and
+    // the control is then switched with SetFullScreen so it renders at screen
+    // resolution and shows its floating connection bar. These events forward
+    // the control's requests (Ctrl+Alt+Break, connection-bar buttons) to the
+    // container, which performs the actual window-state transition.
+    public event EventHandler? FullScreenRequested;
+    public event EventHandler? LeaveFullScreenRequested;
+    public event EventHandler? EnteredFullScreen;
+    public event EventHandler? LeftFullScreen;
+    public event EventHandler? ContainerMinimizeRequested;
 
-    public void Start(int width, int height, Guid classId, string axName, string? rdpExDll)
+    /// <summary>
+    /// Activates the RDP ActiveX in-place in <paramref name="hostWindow"/>. The
+    /// caller owns the window and must keep it alive until <see cref="Dispose"/>.
+    /// </summary>
+    public void Start(nint hostWindow, int width, int height, Guid classId, string axName, string? rdpExDll)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
         if (client is not null)
             return;
 
+        if (hostWindow == 0 || !IsWindow(hostWindow))
+            throw new ArgumentException("A valid host window handle is required.", nameof(hostWindow));
         if (classId == Guid.Empty)
             throw new ArgumentException("An RDP ActiveX class identifier is required.", nameof(classId));
         if (string.IsNullOrWhiteSpace(axName))
@@ -132,27 +181,13 @@ internal sealed class RdpActiveXSession : IDisposable
             oleInitializedByUs = oleResult == 0; // S_OK
             EnterOleScope();
             oleScopeEntered = true;
+            lock (OleInitLock)
+            {
+                activeSessions.Add(this);
+            }
 
             int surfaceWidth = ClampDesktopDimension(width);
             int surfaceHeight = ClampDesktopDimension(height);
-            nint executable = GetModuleHandleW(null);
-
-            hostWindow = CreateWindowExW(
-                WsExToolWindow | WsExNoActivate,
-                StaticWindowClass,
-                null,
-                WsPopup | WsVisible | WsClipSiblings | WsClipChildren | WsTabStop,
-                -32000,
-                -32000,
-                surfaceWidth,
-                surfaceHeight,
-                0,
-                0,
-                executable,
-                0);
-
-            if (hostWindow == 0)
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "The off-screen RDP host window could not be created.");
 
             nint control;
             lock (NativeActivationLock)
@@ -175,6 +210,8 @@ internal sealed class RdpActiveXSession : IDisposable
                 });
             }
 
+            this.hostWindow = hostWindow;
+
             unsafe
             {
                 try
@@ -192,12 +229,6 @@ internal sealed class RdpActiveXSession : IDisposable
 
                     client = ProxyObject.Pack<IMsRdpClient10>(rawClient)
                         ?? throw new InvalidOperationException("The hosted control does not implement IMsRdpClient10.");
-
-                    instance = new MsRdpExInstanceHandle(
-                        control,
-                        instanceApi,
-                        outputMirrorCaptureApi,
-                        outputMirrorGetFrameVersion);
                 }
                 finally
                 {
@@ -205,8 +236,19 @@ internal sealed class RdpActiveXSession : IDisposable
                 }
             }
 
+            // The control is hosted in a real on-screen window: UI-activate it so
+            // it owns native focus and keyboard handling like any windowed RDP
+            // client. Skipped gracefully when the loaded MsRdpEx.dll predates the
+            // SetUiActive export; in-place activation still renders content.
+            if (rdpOleHostSetUiActive is not null)
+            {
+                int hr = rdpOleHostSetUiActive(oleHost, 1);
+                if (hr < 0)
+                    PublishStatus($"RDP UI activation failed: 0x{hr:X8}");
+            }
+
             SubscribeToClientEvents(client);
-            PublishStatus("RDP bitmap surface ready (MsRdpEx output mirror)." );
+            PublishStatus("RDP native surface ready.");
             Ready?.Invoke(this, EventArgs.Empty);
         }
         catch
@@ -222,7 +264,7 @@ internal sealed class RdpActiveXSession : IDisposable
         ObjectDisposedException.ThrowIf(disposed, this);
 
         IMsRdpClient10 rdpClient = client
-            ?? throw new InvalidOperationException("The off-screen RDP session is not ready yet.");
+            ?? throw new InvalidOperationException("The RDP session is not ready yet.");
 
         if (string.IsNullOrWhiteSpace(settings.HostName))
             throw new ArgumentException("A host name is required.", nameof(settings));
@@ -232,7 +274,6 @@ internal sealed class RdpActiveXSession : IDisposable
 
         int desktopWidth = ClampDesktopDimension(width);
         int desktopHeight = ClampDesktopDimension(height);
-        ResizeHost(desktopWidth, desktopHeight);
         sessionDesktopWidth = desktopWidth;
         sessionDesktopHeight = desktopHeight;
 
@@ -249,15 +290,19 @@ internal sealed class RdpActiveXSession : IDisposable
         IMsRdpClientAdvancedSettings8 advancedSettings = rdpClient.AdvancedSettings9;
         advancedSettings.EnableCredSspSupport = true;
         advancedSettings.SmartSizing = false;
-        advancedSettings.GrabFocusOnConnect = false;
-        advancedSettings.allowBackgroundInput = 1;
         advancedSettings.RedirectClipboard = settings.RedirectClipboard;
+        advancedSettings.DisplayConnectionBar = true;
+
+        IMsRdpClientSecuredSettings2 securedSettings = rdpClient.SecuredSettings3;
+        securedSettings.KeyboardHookMode = UseRemoteKeyboardShortcuts ? 1 : 0;
 
         object? rawClient = ProxyObject.Unpack(rdpClient);
         IMsTscNonScriptable nonScriptable = ProxyObject.Pack<IMsTscNonScriptable>(rawClient)
             ?? throw new InvalidOperationException("The RDP control does not expose its credential interface.");
 
-        EnableOutputMirror(rdpClient);
+        IMsRdpClientNonScriptable3? nonScriptable3 = ProxyObject.Pack<IMsRdpClientNonScriptable3>(rawClient);
+        if (nonScriptable3 is not null)
+            nonScriptable3.ConnectionBarText = new BinaryString(settings.HostName.Trim());
 
         if (string.IsNullOrEmpty(settings.Password))
             nonScriptable.ResetPassword();
@@ -272,16 +317,34 @@ internal sealed class RdpActiveXSession : IDisposable
         ObjectDisposedException.ThrowIf(disposed, this);
 
         IMsRdpClient10 rdpClient = client
-            ?? throw new InvalidOperationException("The off-screen RDP session is not ready yet.");
+            ?? throw new InvalidOperationException("The RDP session is not ready yet.");
         if (rdpClient.Connected != 0)
             throw new InvalidOperationException("Disconnect the current session before connecting again.");
 
         int desktopWidth = ClampDesktopDimension(width);
         int desktopHeight = ClampDesktopDimension(height);
-        ResizeHost(desktopWidth, desktopHeight);
         sessionDesktopWidth = desktopWidth;
         sessionDesktopHeight = desktopHeight;
-        EnableOutputMirror(rdpClient);
+        rdpClient.SecuredSettings3.KeyboardHookMode = UseRemoteKeyboardShortcuts ? 1 : 0;
+
+        // Enable the fullscreen connection bar using the configured server
+        // name; Connect() does the same from its settings parameter.
+        try
+        {
+            IMsRdpClientAdvancedSettings8 advancedSettings = rdpClient.AdvancedSettings9;
+            advancedSettings.DisplayConnectionBar = true;
+
+            object? rawClient = ProxyObject.Unpack(rdpClient);
+            IMsRdpClientNonScriptable3? nonScriptable3 = ProxyObject.Pack<IMsRdpClientNonScriptable3>(rawClient);
+            string? server = rdpClient.Server;
+            if (nonScriptable3 is not null && !string.IsNullOrWhiteSpace(server))
+                nonScriptable3.ConnectionBarText = new BinaryString(server.Trim());
+        }
+        catch (COMException)
+        {
+            // The connection bar is cosmetic; never block a configured connect.
+        }
+
         ConnectClient(rdpClient, null);
     }
 
@@ -290,7 +353,7 @@ internal sealed class RdpActiveXSession : IDisposable
         ObjectDisposedException.ThrowIf(disposed, this);
 
         IMsRdpClient10 rdpClient = client
-            ?? throw new InvalidOperationException("The off-screen RDP session is not ready yet.");
+            ?? throw new InvalidOperationException("The RDP session is not ready yet.");
         object? rawClient = ProxyObject.Unpack(rdpClient);
         return ProxyObject.Pack<T>(rawClient)
             ?? throw new InvalidCastException($"The hosted RDP control does not implement {typeof(T).FullName}.");
@@ -306,10 +369,45 @@ internal sealed class RdpActiveXSession : IDisposable
     }
 
     /// <summary>
+    /// Gets or sets the control's fullscreen mode. The container window must
+    /// already cover the screen when this is set to true; in fullscreen the
+    /// control renders at the screen resolution and shows its floating
+    /// connection bar (enabled at connect time).
+    /// </summary>
+    public bool FullScreen
+    {
+        get
+        {
+            try
+            {
+                return client?.FullScreen == true;
+            }
+            catch (COMException)
+            {
+                return false;
+            }
+        }
+        set
+        {
+            IMsRdpClient10? rdpClient = client;
+            if (rdpClient is null || disposed)
+                return;
+
+            try
+            {
+                rdpClient.FullScreen = value;
+            }
+            catch (COMException exception)
+            {
+                PublishStatus($"Fullscreen switch failed: {exception.Message}");
+            }
+        }
+    }
+
+    /// <summary>
     /// Reports the real top-level window as the OLE frame window so that
     /// control-owned dialogs (certificate warnings, credential prompts) are
-    /// parented to a visible window. Pass 0 to fall back to the off-screen
-    /// host window.
+    /// parented to a visible window.
     /// </summary>
     public void SetFrameWindow(nint frameWindow)
     {
@@ -321,7 +419,98 @@ internal sealed class RdpActiveXSession : IDisposable
             PublishStatus($"RDP OLE frame window update failed: 0x{hr:X8}");
     }
 
-    public bool ResizeDisplay(int width, int height, double renderScaling)
+    /// <summary>
+    /// Forwards top-level window activation to the control, matching standard
+    /// OLE in-place hosting (AxHost) behavior.
+    /// </summary>
+    public void SetFrameActive(bool active)
+    {
+        if (disposed || oleHost == 0 || rdpOleHostSetFrameActive is null)
+            return;
+
+        int hr = rdpOleHostSetFrameActive(oleHost, active ? 1 : 0);
+        if (hr < 0)
+            PublishStatus($"RDP OLE frame activation failed: 0x{hr:X8}");
+    }
+
+    /// <summary>
+    /// Moves the control's in-place rectangle to match the host window's client
+    /// area. This only repositions the control; use
+    /// <see cref="UpdateSessionDisplaySettings"/> to renegotiate the remote
+    /// desktop size.
+    /// </summary>
+    public bool ResizeSurface(int width, int height)
+    {
+        if (disposed || oleHost == 0)
+            return false;
+
+        int surfaceWidth = Math.Max(width, 1);
+        int surfaceHeight = Math.Max(height, 1);
+        NativeRect bounds = new()
+        {
+            Right = surfaceWidth,
+            Bottom = surfaceHeight
+        };
+
+        if (rdpOleHostSetBounds is null)
+            return false;
+
+        int hr = rdpOleHostSetBounds(oleHost, ref bounds);
+        if (hr < 0)
+        {
+            PublishStatus($"RDP OLE host resize failed: 0x{hr:X8}");
+            return false;
+        }
+
+        return true;
+    }
+
+    public bool UpdateSessionDisplaySettings(
+        uint desktopWidth,
+        uint desktopHeight,
+        uint physicalWidth,
+        uint physicalHeight,
+        uint orientation,
+        uint desktopScaleFactor,
+        uint deviceScaleFactor)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+
+        IMsRdpClient10? rdpClient = client;
+        if (rdpClient is null)
+            return false;
+
+        int hostWidth = MakeEven(ClampDesktopDimension(checked((int)desktopWidth)));
+        int hostHeight = MakeEven(ClampDesktopDimension(checked((int)desktopHeight)));
+
+        if (!IsLoginCompleted || rdpClient.Connected == 0)
+            return false;
+
+        try
+        {
+            rdpClient.UpdateSessionDisplaySettings(
+                (uint)hostWidth,
+                (uint)hostHeight,
+                physicalWidth,
+                physicalHeight,
+                orientation,
+                desktopScaleFactor,
+                deviceScaleFactor);
+            sessionDesktopWidth = hostWidth;
+            sessionDesktopHeight = hostHeight;
+            return true;
+        }
+        catch (COMException exception)
+        {
+            PublishStatus($"Dynamic resolution update failed: {exception.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Applies a debounced dynamic-resolution update for the current host size.
+    /// </summary>
+    public bool ResizeDisplay(int width, int height, double renderScaling, bool force = false)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -331,12 +520,11 @@ internal sealed class RdpActiveXSession : IDisposable
 
         int desktopWidth = MakeEven(ClampDesktopDimension(width));
         int desktopHeight = MakeEven(ClampDesktopDimension(height));
-        ResizeHost(desktopWidth, desktopHeight);
 
         if (!IsLoginCompleted || rdpClient.Connected == 0)
             return false;
 
-        if (desktopWidth == sessionDesktopWidth && desktopHeight == sessionDesktopHeight)
+        if (!force && desktopWidth == sessionDesktopWidth && desktopHeight == sessionDesktopHeight)
             return true;
 
         uint desktopScaleFactor = GetDesktopScaleFactor(renderScaling);
@@ -368,182 +556,19 @@ internal sealed class RdpActiveXSession : IDisposable
         }
     }
 
-    public bool UpdateSessionDisplaySettings(
-        uint desktopWidth,
-        uint desktopHeight,
-        uint physicalWidth,
-        uint physicalHeight,
-        uint orientation,
-        uint desktopScaleFactor,
-        uint deviceScaleFactor)
+    /// <summary>
+    /// Moves native keyboard focus to the hosted RDP control.
+    /// </summary>
+    public void FocusSession()
     {
-        ObjectDisposedException.ThrowIf(disposed, this);
-
-        IMsRdpClient10? rdpClient = client;
-        if (rdpClient is null)
-            return false;
-
-        int hostWidth = MakeEven(ClampDesktopDimension(checked((int)desktopWidth)));
-        int hostHeight = MakeEven(ClampDesktopDimension(checked((int)desktopHeight)));
-        ResizeHost(hostWidth, hostHeight);
-
-        if (!IsLoginCompleted || rdpClient.Connected == 0)
-            return false;
-
-        try
-        {
-            rdpClient.UpdateSessionDisplaySettings(
-                (uint)hostWidth,
-                (uint)hostHeight,
-                physicalWidth,
-                physicalHeight,
-                orientation,
-                desktopScaleFactor,
-                deviceScaleFactor);
-            sessionDesktopWidth = hostWidth;
-            sessionDesktopHeight = hostHeight;
-            return true;
-        }
-        catch (COMException exception)
-        {
-            PublishStatus($"Dynamic resolution update failed: {exception.Message}");
-            return false;
-        }
-    }
-
-    public bool WithShadowBitmap(Action<nint, int, int, int> action)
-    {
-        return instance?.WithShadowBitmap(action) == true;
-    }
-
-    public bool CanCaptureOffThread => instance?.CanCaptureOffThread == true;
-
-    public bool TryGetShadowBitmapFrameVersion(out uint version)
-    {
-        if (instance is not null)
-            return instance.TryGetShadowBitmapFrameVersion(out version);
-
-        version = 0;
-        return false;
-    }
-
-    public void SendMouseMove(int x, int y, NativeMouseButtons buttons)
-    {
-        nint inputWindow = GetInputWindow();
-        if (inputWindow == 0)
+        if (disposed || hostWindow == 0)
             return;
 
-        SendMessageW(inputWindow, WmMouseMove, (nuint)(uint)buttons, MakeLParam(x, y));
-        SynchronizeCursor(inputWindow);
-    }
-
-    public void SendMouseButton(
-        uint message, int x, int y, NativeMouseButtons buttons, ushort xButton = 0)
-    {
-        nint inputWindow = GetInputWindow();
-        if (inputWindow == 0)
-            return;
-
-        bool buttonDown = message is WmLeftButtonDown or WmRightButtonDown or WmMiddleButtonDown or WmXButtonDown;
-        bool finalButtonUp = message is WmLeftButtonUp or WmRightButtonUp or WmMiddleButtonUp or WmXButtonUp &&
-                             (buttons & MouseButtonMask) == NativeMouseButtons.None;
-
-        if (buttonDown)
-        {
-            EnsureInputWindowSubclass(inputWindow);
-            remoteMouseDragActive = true;
-        }
-        else if (finalButtonUp)
-        {
-            remoteMouseDragActive = false;
-        }
-
-        nuint wParam = (nuint)((uint)buttons | ((uint)xButton << 16));
-        SendMessageW(inputWindow, message, wParam, MakeLParam(x, y));
-
-        // mstscax can call SetCapture for its hidden input HWND on button-down.
-        // The visible Avalonia surface must own the physical pointer stream;
-        // otherwise the hidden HWND receives the real button-up and keeps all
-        // subsequent local clicks captive. The subclass above suppresses the
-        // resulting WM_CAPTURECHANGED so the remote drag remains active, and
-        // RdpClientView acquires Avalonia pointer capture immediately after
-        // this method returns.
-        if (buttonDown && GetCapture() == inputWindow)
-            ReleaseCapture();
-
-        SynchronizeCursor(inputWindow);
-    }
-
-    public void SendMouseWheel(int x, int y, int delta, NativeMouseButtons buttons)
-    {
-        SendMouseWheelMessage(WmMouseWheel, x, y, delta, buttons);
-    }
-
-    public void SendMouseHorizontalWheel(int x, int y, int delta, NativeMouseButtons buttons)
-    {
-        SendMouseWheelMessage(WmMouseHorizontalWheel, x, y, delta, buttons);
-    }
-
-    public bool TryGetInputSize(out int width, out int height)
-    {
-        nint inputWindow = GetInputWindow();
-        if (inputWindow == 0 || !GetClientRect(inputWindow, out NativeRect bounds))
-        {
-            width = 0;
-            height = 0;
-            return false;
-        }
-
-        width = bounds.Right - bounds.Left;
-        height = bounds.Bottom - bounds.Top;
-        return width > 0 && height > 0;
-    }
-
-    public void SendMouseLeave()
-    {
-        nint inputWindow = GetInputWindow();
-        if (inputWindow != 0)
-            SendMessageW(inputWindow, WmMouseLeave, 0, 0);
-    }
-
-    public void SendKey(int virtualKey, bool keyUp, bool extended, bool systemKey)
-    {
-        uint scanCode = MapVirtualKeyW((uint)virtualKey, MapvkVkToVsc);
-        SendKey(virtualKey, scanCode, keyUp, extended, systemKey);
-    }
-
-    public void SendKey(int virtualKey, uint scanCode, bool keyUp, bool extended, bool systemKey)
-    {
-        nint inputWindow = GetInputWindow();
-        if (inputWindow == 0 || virtualKey == 0)
-            return;
-
-        nint lParam = 1 | ((nint)scanCode << 16);
-
-        if (extended)
-            lParam |= (nint)1 << 24;
-
-        if (systemKey)
-            lParam |= (nint)1 << 29;
-
-        if (keyUp)
-            lParam |= (nint)3 << 30;
-
-        uint message = systemKey
-            ? keyUp ? WmSystemKeyUp : WmSystemKeyDown
-            : keyUp ? WmKeyUp : WmKeyDown;
-
-        if (TryTranslateAccelerator(inputWindow, message, (nuint)virtualKey, lParam))
-            return;
-
-        SendMessageW(inputWindow, message, (nuint)virtualKey, lParam);
-    }
-
-    public void SendCharacter(char character)
-    {
-        nint inputWindow = GetInputWindow();
-        if (inputWindow != 0)
-            SendMessageW(inputWindow, WmChar, character, 0);
+        // The control's in-place window is the first child of the host window;
+        // focusing it lets mstscax route focus to its own input window.
+        nint controlWindow = GetWindow(hostWindow, GwChild);
+        if (controlWindow != 0)
+            SetFocus(controlWindow);
     }
 
     public void Dispose()
@@ -565,65 +590,28 @@ internal sealed class RdpActiveXSession : IDisposable
         DisposeNativeResources();
     }
 
-    private void ResizeHost(int width, int height)
-    {
-        if (hostWindow != 0)
-        {
-            SetWindowPos(hostWindow, 0, -32000, -32000, width, height, SwpNoActivate | SwpShowWindow);
-        }
-
-        if (oleHost != 0 && rdpOleHostSetBounds is not null)
-        {
-            NativeRect bounds = new()
-            {
-                Right = width,
-                Bottom = height
-            };
-            int hr = rdpOleHostSetBounds(oleHost, ref bounds);
-            if (hr < 0)
-                PublishStatus($"RDP OLE host resize failed: 0x{hr:X8}");
-        }
-    }
-
-    private void EnableOutputMirror(IMsRdpClient10 rdpClient)
-    {
-        object? rawClient = ProxyObject.Unpack(rdpClient);
-        IMsRdpExtendedSettings extendedSettings = ProxyObject.Pack<IMsRdpExtendedSettings>(rawClient)
-            ?? throw new InvalidOperationException("The RDP control does not expose MsRdpEx extended settings.");
-        extendedSettings.SetProperty(new BinaryString("OutputMirrorEnabled"), true);
-        extendedSettings.SetProperty(new BinaryString("EnableHardwareMode"), true);
-        instance?.SetOutputMirrorEnabled(true);
-    }
-
-    private void ConnectClient(IMsRdpClient10 rdpClient, string? hostName)
-    {
-        IsConnectionActive = true;
-        IsLoginCompleted = false;
-
-        try
-        {
-            PublishStatus(string.IsNullOrWhiteSpace(hostName)
-                ? "Connecting..."
-                : $"Connecting to {hostName}...");
-            rdpClient.Connect();
-        }
-        catch
-        {
-            IsConnectionActive = false;
-            throw;
-        }
-    }
-
     private static void EnsureOleHostExports(nint library)
     {
         rdpOleHostAttach ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostAttach>(
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_Attach"));
         rdpOleHostSetBounds ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostSetBounds>(
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_SetBounds"));
-        rdpOleHostTranslateAccelerator ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostTranslateAccelerator>(
-            NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_TranslateAccelerator"));
         rdpOleHostRelease ??= Marshal.GetDelegateForFunctionPointer<RdpOleHostRelease>(
             NativeLibrary.GetExport(library, "MsRdpEx_RdpOleHost_Release"));
+
+        if (rdpOleHostSetUiActive is null &&
+            NativeLibrary.TryGetExport(library, "MsRdpEx_RdpOleHost_SetUiActive", out nint setUiActive))
+        {
+            rdpOleHostSetUiActive =
+                Marshal.GetDelegateForFunctionPointer<RdpOleHostSetUiActive>(setUiActive);
+        }
+
+        if (rdpOleHostSetFrameActive is null &&
+            NativeLibrary.TryGetExport(library, "MsRdpEx_RdpOleHost_SetFrameActive", out nint setFrameActive))
+        {
+            rdpOleHostSetFrameActive =
+                Marshal.GetDelegateForFunctionPointer<RdpOleHostSetFrameActive>(setFrameActive);
+        }
 
         if (rdpOleHostSetFrameWindow is null &&
             NativeLibrary.TryGetExport(library, "MsRdpEx_RdpOleHost_SetFrameWindow", out nint setFrameWindow))
@@ -631,17 +619,6 @@ internal sealed class RdpActiveXSession : IDisposable
             rdpOleHostSetFrameWindow =
                 Marshal.GetDelegateForFunctionPointer<RdpOleHostSetFrameWindow>(setFrameWindow);
         }
-
-        instanceApi ??= TryLoadInstanceApi(library);
-
-        if (outputMirrorGetFrameVersion is null &&
-            NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirror_GetFrameVersion", out nint export))
-        {
-            outputMirrorGetFrameVersion =
-                Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorGetFrameVersion>(export);
-        }
-
-        outputMirrorCaptureApi ??= TryLoadOutputMirrorCaptureApi(library);
     }
 
     // MSRDPEX_AXNAME is a process-global read by MsRdpEx's DllGetClassObject.
@@ -707,40 +684,6 @@ internal sealed class RdpActiveXSession : IDisposable
         oleUninitializePending = true;
     }
 
-    private static MsRdpExInstanceHandle.InstanceApi? TryLoadInstanceApi(nint library)
-    {
-        if (!NativeLibrary.TryGetExport(library, "MsRdpEx_Instance_SetOutputMirrorEnabled", out nint setEnabled) ||
-            !NativeLibrary.TryGetExport(library, "MsRdpEx_Instance_GetInputWindow", out nint getInputWindow))
-        {
-            return null;
-        }
-
-        return new MsRdpExInstanceHandle.InstanceApi(
-            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.InstanceSetOutputMirrorEnabled>(setEnabled),
-            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.InstanceGetInputWindow>(getInputWindow));
-    }
-
-    private static MsRdpExInstanceHandle.OutputMirrorCaptureApi? TryLoadOutputMirrorCaptureApi(nint library)
-    {
-        if (!NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_Create", out nint create) ||
-            !NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_GetFrameVersion", out nint getFrameVersion) ||
-            !NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_GetShadowBitmap", out nint getShadowBitmap) ||
-            !NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_Lock", out nint lockCapture) ||
-            !NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_Unlock", out nint unlockCapture) ||
-            !NativeLibrary.TryGetExport(library, "MsRdpEx_OutputMirrorCapture_Release", out nint release))
-        {
-            return null;
-        }
-
-        return new MsRdpExInstanceHandle.OutputMirrorCaptureApi(
-            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureCreate>(create),
-            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureGetFrameVersion>(getFrameVersion),
-            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureGetShadowBitmap>(getShadowBitmap),
-            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureLock>(lockCapture),
-            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureUnlock>(unlockCapture),
-            Marshal.GetDelegateForFunctionPointer<MsRdpExInstanceHandle.OutputMirrorCaptureRelease>(release));
-    }
-
     private static string ResolveLibraryPath(string? configuredPath)
     {
         if (!string.IsNullOrWhiteSpace(configuredPath))
@@ -774,106 +717,8 @@ internal sealed class RdpActiveXSession : IDisposable
         }
 
         throw new FileNotFoundException(
-            $"MsRdpEx.dll is required for Avalonia bitmap rendering. Expected a {architecture} native asset beside the application or under its runtimes folder.",
+            $"MsRdpEx.dll is required to host the RDP ActiveX control. Expected a {architecture} native asset beside the application or under its runtimes folder.",
             candidates[0]);
-    }
-
-    private static void SynchronizeCursor(nint inputWindow)
-    {
-        // The off-screen input HWND never receives the WM_SETCURSOR Windows would
-        // normally send before WM_MOUSEMOVE. Ask it to select its current remote
-        // cursor explicitly so the pointer over the Avalonia surface stays in sync.
-        SendMessageW(
-            inputWindow,
-            WmSetCursor,
-            unchecked((nuint)inputWindow),
-            MakeLParam(HtClient, (int)WmMouseMove));
-    }
-
-    private bool TryTranslateAccelerator(nint inputWindow, uint message, nuint wParam, nint lParam)
-    {
-        if (oleHost == 0 || rdpOleHostTranslateAccelerator is null)
-            return false;
-
-        NativePoint point = default;
-        GetCursorPos(out point);
-        NativeMessage nativeMessage = new()
-        {
-            Window = inputWindow,
-            Message = message,
-            WParam = wParam,
-            LParam = lParam,
-            Time = unchecked((uint)GetMessageTime()),
-            Point = point
-        };
-        return rdpOleHostTranslateAccelerator(oleHost, ref nativeMessage) == 0;
-    }
-
-    private void SendMouseWheelMessage(uint message, int x, int y, int delta, NativeMouseButtons buttons)
-    {
-        nint inputWindow = GetInputWindow();
-        if (inputWindow == 0)
-            return;
-
-        NativePoint point = new(x, y);
-        ClientToScreen(inputWindow, ref point);
-        nuint wParam = (nuint)((uint)(ushort)buttons | ((uint)(ushort)delta << 16));
-        SendMessageW(inputWindow, message, wParam, MakeLParam(point.X, point.Y));
-    }
-
-    private nint GetInputWindow()
-    {
-        try
-        {
-            return instance?.GetInputWindow() ?? 0;
-        }
-        catch (COMException)
-        {
-            return 0;
-        }
-    }
-
-    private void EnsureInputWindowSubclass(nint inputWindow)
-    {
-        if (inputWindow == 0 || inputWindowSubclassHandle == inputWindow)
-            return;
-
-        RemoveInputWindowSubclass();
-        if (SetWindowSubclass(inputWindow, inputWindowSubclassProc, InputWindowSubclassId, UIntPtr.Zero))
-            inputWindowSubclassHandle = inputWindow;
-    }
-
-    private nint InputWindowSubclassProc(
-        nint window,
-        uint message,
-        nint wParam,
-        nint lParam,
-        UIntPtr subclassId,
-        UIntPtr referenceData)
-    {
-        // The RDP input HWND captures on button-down. Avalonia then takes capture so
-        // its visible bitmap surface keeps receiving pointer moves. That handoff must
-        // not be interpreted by the hidden ActiveX control as a cancelled remote drag.
-        if (message == WmCaptureChanged && remoteMouseDragActive && !disposed)
-            return 0;
-
-        if (message == WmNcDestroy && inputWindowSubclassHandle == window)
-        {
-            RemoveWindowSubclass(window, inputWindowSubclassProc, subclassId);
-            inputWindowSubclassHandle = 0;
-        }
-
-        return DefSubclassProc(window, message, wParam, lParam);
-    }
-
-    private void RemoveInputWindowSubclass()
-    {
-        nint inputWindow = inputWindowSubclassHandle;
-        if (inputWindow == 0)
-            return;
-
-        inputWindowSubclassHandle = 0;
-        RemoveWindowSubclass(inputWindow, inputWindowSubclassProc, InputWindowSubclassId);
     }
 
     private void SubscribeToClientEvents(IMsRdpClient rdpClient)
@@ -908,6 +753,11 @@ internal sealed class RdpActiveXSession : IDisposable
         eventSubscription.FatalError += errorCode => PublishStatus($"RDP fatal error: {errorCode}");
         eventSubscription.LogonError += errorCode => PublishStatus($"RDP logon error: {errorCode}");
         eventSubscription.AuthenticationWarningDisplayed += () => PublishStatus("Waiting for certificate confirmation...");
+        eventSubscription.FullScreenRequested += () => FullScreenRequested?.Invoke(this, EventArgs.Empty);
+        eventSubscription.LeaveFullScreenRequested += () => LeaveFullScreenRequested?.Invoke(this, EventArgs.Empty);
+        eventSubscription.EnteredFullScreen += () => EnteredFullScreen?.Invoke(this, EventArgs.Empty);
+        eventSubscription.LeftFullScreen += () => LeftFullScreen?.Invoke(this, EventArgs.Empty);
+        eventSubscription.ContainerMinimizeRequested += () => ContainerMinimizeRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void PublishStatus(string message)
@@ -915,11 +765,27 @@ internal sealed class RdpActiveXSession : IDisposable
         StatusChanged?.Invoke(this, new RdpStatusChangedEventArgs(message));
     }
 
+    private void ConnectClient(IMsRdpClient10 rdpClient, string? hostName)
+    {
+        IsConnectionActive = true;
+        IsLoginCompleted = false;
+
+        try
+        {
+            PublishStatus(string.IsNullOrWhiteSpace(hostName)
+                ? "Connecting..."
+                : $"Connecting to {hostName}...");
+            rdpClient.Connect();
+        }
+        catch
+        {
+            IsConnectionActive = false;
+            throw;
+        }
+    }
+
     private void DisposeNativeResources()
     {
-        remoteMouseDragActive = false;
-        RemoveInputWindowSubclass();
-
         try
         {
             eventSubscription?.Dispose();
@@ -932,9 +798,6 @@ internal sealed class RdpActiveXSession : IDisposable
         {
             eventSubscription = null;
         }
-
-        instance?.Dispose();
-        instance = null;
 
         // The OLE host closes, deactivates, and de-sites the control on this
         // (UI) thread before any managed wrapper is released.
@@ -959,15 +822,18 @@ internal sealed class RdpActiveXSession : IDisposable
         if (rawClient is not null && Marshal.IsComObject(rawClient))
             Marshal.FinalReleaseComObject(rawClient);
 
-        if (hostWindow != 0)
-        {
-            DestroyWindow(hostWindow);
-            hostWindow = 0;
-        }
+        // The host window is owned by the caller (NativeControlHost) and is
+        // destroyed by it after the OLE host is released.
+        hostWindow = 0;
 
         if (oleScopeEntered)
         {
             oleScopeEntered = false;
+            lock (OleInitLock)
+            {
+                activeSessions.Remove(this);
+            }
+
             if (oleUninitializePending)
             {
                 // This session inherited the OleInitialize balance deferred by
@@ -982,6 +848,27 @@ internal sealed class RdpActiveXSession : IDisposable
                 oleInitializedByUs = false;
                 if (ExitOleScope(initializedByUs))
                     OleUninitialize();
+                else if (initializedByUs)
+                    TransferOleBalance();
+            }
+        }
+    }
+
+    // This session performed the S_OK OleInitialize but is leaving while
+    // foreign-initialized (S_FALSE) sessions remain: hand the balance to a
+    // survivor so its dispose performs the balancing OleUninitialize instead
+    // of leaking the initialization for the rest of the thread's lifetime.
+    private void TransferOleBalance()
+    {
+        lock (OleInitLock)
+        {
+            foreach (RdpActiveXSession survivor in activeSessions)
+            {
+                if (!ReferenceEquals(survivor, this) && !survivor.disposed)
+                {
+                    survivor.MarkOleUninitializePending();
+                    return;
+                }
             }
         }
     }
@@ -1009,11 +896,6 @@ internal sealed class RdpActiveXSession : IDisposable
         {
             Marshal.Release(factory);
         }
-    }
-
-    private static nint MakeLParam(int x, int y)
-    {
-        return (nint)((uint)(ushort)x | ((uint)(ushort)y << 16));
     }
 
     private static int MakeEven(int value)
@@ -1047,38 +929,6 @@ internal sealed class RdpActiveXSession : IDisposable
         };
     }
 
-    [Flags]
-    internal enum NativeMouseButtons : uint
-    {
-        None = 0,
-        Left = 0x0001,
-        Right = 0x0002,
-        Shift = 0x0004,
-        Control = 0x0008,
-        Middle = 0x0010,
-        XButton1 = 0x0020,
-        XButton2 = 0x0040
-    }
-
-    internal static class MouseMessages
-    {
-        public const uint LeftDown = WmLeftButtonDown;
-        public const uint LeftUp = WmLeftButtonUp;
-        public const uint RightDown = WmRightButtonDown;
-        public const uint RightUp = WmRightButtonUp;
-        public const uint MiddleDown = WmMiddleButtonDown;
-        public const uint MiddleUp = WmMiddleButtonUp;
-        public const uint XDown = WmXButtonDown;
-        public const uint XUp = WmXButtonUp;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativePoint(int x, int y)
-    {
-        public int X = x;
-        public int Y = y;
-    }
-
     [StructLayout(LayoutKind.Sequential)]
     private struct NativeRect
     {
@@ -1086,18 +936,6 @@ internal sealed class RdpActiveXSession : IDisposable
         public int Top;
         public int Right;
         public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeMessage
-    {
-        public nint Window;
-        public uint Message;
-        public nuint WParam;
-        public nint LParam;
-        public uint Time;
-        public NativePoint Point;
-        public uint Private;
     }
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
@@ -1110,25 +948,16 @@ internal sealed class RdpActiveXSession : IDisposable
     private delegate int RdpOleHostSetBounds(nint host, ref NativeRect bounds);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int RdpOleHostSetUiActive(nint host, int active);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int RdpOleHostSetFrameActive(nint host, int active);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate int RdpOleHostSetFrameWindow(nint host, nint frameWindow);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    private delegate int RdpOleHostTranslateAccelerator(nint host, ref NativeMessage message);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate void RdpOleHostRelease(nint host);
-
-    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
-    private delegate nint SubclassProc(
-        nint window,
-        uint message,
-        nint wParam,
-        nint lParam,
-        UIntPtr subclassId,
-        UIntPtr referenceData);
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
-    private static extern nint GetModuleHandleW(string? moduleName);
 
     [DllImport("ole32.dll", ExactSpelling = true)]
     private static extern int OleInitialize(nint reserved);
@@ -1136,69 +965,13 @@ internal sealed class RdpActiveXSession : IDisposable
     [DllImport("ole32.dll", ExactSpelling = true)]
     private static extern void OleUninitialize();
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
-    private static extern nint CreateWindowExW(
-        uint extendedStyle,
-        string className,
-        string? windowName,
-        uint style,
-        int x,
-        int y,
-        int width,
-        int height,
-        nint parent,
-        nint menu,
-        nint module,
-        nint parameter);
-
-    [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
+    [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DestroyWindow(nint window);
-
-    [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(nint window, nint insertAfter, int x, int y, int width, int height, uint flags);
-
-    [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
-    private static extern nint SendMessageW(nint window, uint message, nuint wParam, nint lParam);
+    private static extern bool IsWindow(nint window);
 
     [DllImport("user32.dll", ExactSpelling = true)]
-    private static extern nint GetCapture();
-
-    [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ReleaseCapture();
-
-    [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ClientToScreen(nint window, ref NativePoint point);
-
-    [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetClientRect(nint window, out NativeRect bounds);
+    private static extern nint GetWindow(nint window, int command);
 
     [DllImport("user32.dll", ExactSpelling = true)]
-    private static extern uint MapVirtualKeyW(uint code, uint mapType);
-
-    [DllImport("user32.dll", ExactSpelling = true)]
-    private static extern int GetMessageTime();
-
-    [DllImport("user32.dll", SetLastError = true, ExactSpelling = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetCursorPos(out NativePoint point);
-
-    [DllImport("comctl32.dll", SetLastError = true, ExactSpelling = true)]
-    private static extern nint DefSubclassProc(nint window, uint message, nint wParam, nint lParam);
-
-    [DllImport("comctl32.dll", SetLastError = true, ExactSpelling = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowSubclass(
-        nint window,
-        SubclassProc subclassProc,
-        UIntPtr subclassId,
-        UIntPtr referenceData);
-
-    [DllImport("comctl32.dll", SetLastError = true, ExactSpelling = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RemoveWindowSubclass(nint window, SubclassProc subclassProc, UIntPtr subclassId);
+    private static extern nint SetFocus(nint window);
 }

@@ -3,7 +3,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <AssemblyName>Devolutions.MsRdpEx.Avalonia</AssemblyName>
     <RootNamespace>Devolutions.MsRdpEx.Avalonia</RootNamespace>
-    <Description>A pure Avalonia RDP client view backed by the MsRdpEx output mirror.</Description>
+    <Description>An Avalonia RDP client view hosting the Microsoft RDP ActiveX control in a native Win32 window.</Description>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
