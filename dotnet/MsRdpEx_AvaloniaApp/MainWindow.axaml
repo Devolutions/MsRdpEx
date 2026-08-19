@@ -9,9 +9,8 @@
     MinWidth="800"
     MinHeight="520"
     Background="Black"
-    WindowDecorations="None"
-    ExtendClientAreaToDecorationsHint="True"
-    ExtendClientAreaTitleBarHeightHint="32">
+    CanResize="True"
+    WindowDecorations="BorderOnly">
   <Grid RowDefinitions="Auto,*">
     <Border
         x:Name="TitleBar"

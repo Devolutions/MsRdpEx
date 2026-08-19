@@ -187,8 +187,16 @@ public sealed partial class MainWindow : Window
 
     private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && !RdpHost.FullScreen)
-            BeginMoveDrag(e);
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || RdpHost.FullScreen)
+            return;
+
+        if (e.ClickCount == 2)
+        {
+            OnMaximizeRestoreClicked(sender, e);
+            return;
+        }
+
+        BeginMoveDrag(e);
     }
 
     private void OnMinimizeClicked(object? sender, RoutedEventArgs e)
