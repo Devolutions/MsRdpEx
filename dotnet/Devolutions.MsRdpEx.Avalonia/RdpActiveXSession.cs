@@ -49,6 +49,76 @@ internal sealed class RdpActiveXSession : IDisposable
     public nint HostWindowHandle => hostWindow;
 
     /// <summary>
+    /// Gets or sets smart sizing: when true the control scales the remote
+    /// desktop to the window size client-side (and shows scrollbars when the
+    /// desktop is larger) instead of renegotiating the session resolution.
+    /// </summary>
+    public bool SmartSizing
+    {
+        get
+        {
+            try
+            {
+                return client?.AdvancedSettings9.SmartSizing == true;
+            }
+            catch (COMException)
+            {
+                return false;
+            }
+        }
+        set
+        {
+            IMsRdpClient10? rdpClient = client;
+            if (rdpClient is null || disposed)
+                return;
+
+            try
+            {
+                rdpClient.AdvancedSettings9.SmartSizing = value;
+            }
+            catch (COMException exception)
+            {
+                PublishStatus($"Smart sizing update failed: {exception.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets the Microsoft RDP control's native zoom percentage. ZoomLevel and
+    /// SmartSizing are mutually exclusive in mstscax; callers must therefore
+    /// disable SmartSizing before setting a zoom level other than 100.
+    /// </summary>
+    public void SetZoomLevel(int value)
+    {
+        IMsRdpClient10? rdpClient = client;
+        if (rdpClient is null || disposed)
+            return;
+
+        try
+        {
+            object? rawClient = ProxyObject.Unpack(rdpClient);
+            IMsRdpExtendedSettings? extendedSettings =
+                ProxyObject.Pack<IMsRdpExtendedSettings>(rawClient);
+            if (extendedSettings is null)
+                throw new InvalidOperationException(
+                    "The RDP control does not expose the extended settings interface required for ZoomLevel.");
+
+            // mstscax stores ZoomLevel as VT_I4. A uint/VT_UI4 write is rejected
+            // with "oldValue has incorrect type for this property".
+            object zoom = value;
+            extendedSettings.SetProperty(new BinaryString("ZoomLevel"), zoom);
+        }
+        catch (COMException exception)
+        {
+            PublishStatus($"Zoom update failed: {exception.Message}");
+        }
+        catch (InvalidOperationException exception)
+        {
+            PublishStatus($"Zoom is unavailable: {exception.Message}");
+        }
+    }
+
+    /// <summary>
     /// Gets or sets whether Windows/system shortcuts (Alt+Tab, Windows keys) are
     /// sent to the remote session while the control has focus. Mapped to the
     /// control's own KeyboardHookMode, so keyboard handling stays entirely
@@ -62,6 +132,17 @@ internal sealed class RdpActiveXSession : IDisposable
     public event EventHandler<RdpFocusReleasedEventArgs>? FocusReleased;
     public event EventHandler<RdpStatusChangedEventArgs>? StatusChanged;
     public event EventHandler? Disconnected;
+
+    // Fullscreen is container-driven: the hosting window goes fullscreen and
+    // the control is then switched with SetFullScreen so it renders at screen
+    // resolution and shows its floating connection bar. These events forward
+    // the control's requests (Ctrl+Alt+Break, connection-bar buttons) to the
+    // container, which performs the actual window-state transition.
+    public event EventHandler? FullScreenRequested;
+    public event EventHandler? LeaveFullScreenRequested;
+    public event EventHandler? EnteredFullScreen;
+    public event EventHandler? LeftFullScreen;
+    public event EventHandler? ContainerMinimizeRequested;
 
     /// <summary>
     /// Activates the RDP ActiveX in-place in <paramref name="hostWindow"/>. The
@@ -207,6 +288,7 @@ internal sealed class RdpActiveXSession : IDisposable
         advancedSettings.EnableCredSspSupport = true;
         advancedSettings.SmartSizing = false;
         advancedSettings.RedirectClipboard = settings.RedirectClipboard;
+        advancedSettings.DisplayConnectionBar = true;
 
         IMsRdpClientSecuredSettings2 securedSettings = rdpClient.SecuredSettings3;
         securedSettings.KeyboardHookMode = UseRemoteKeyboardShortcuts ? 1 : 0;
@@ -214,6 +296,10 @@ internal sealed class RdpActiveXSession : IDisposable
         object? rawClient = ProxyObject.Unpack(rdpClient);
         IMsTscNonScriptable nonScriptable = ProxyObject.Pack<IMsTscNonScriptable>(rawClient)
             ?? throw new InvalidOperationException("The RDP control does not expose its credential interface.");
+
+        IMsRdpClientNonScriptable3? nonScriptable3 = ProxyObject.Pack<IMsRdpClientNonScriptable3>(rawClient);
+        if (nonScriptable3 is not null)
+            nonScriptable3.ConnectionBarText = new BinaryString(settings.HostName.Trim());
 
         if (string.IsNullOrEmpty(settings.Password))
             nonScriptable.ResetPassword();
@@ -237,6 +323,25 @@ internal sealed class RdpActiveXSession : IDisposable
         ResizeSurface(desktopWidth, desktopHeight);
         sessionDesktopWidth = desktopWidth;
         sessionDesktopHeight = desktopHeight;
+
+        // Enable the fullscreen connection bar using the configured server
+        // name; Connect() does the same from its settings parameter.
+        try
+        {
+            IMsRdpClientAdvancedSettings8 advancedSettings = rdpClient.AdvancedSettings9;
+            advancedSettings.DisplayConnectionBar = true;
+
+            object? rawClient = ProxyObject.Unpack(rdpClient);
+            IMsRdpClientNonScriptable3? nonScriptable3 = ProxyObject.Pack<IMsRdpClientNonScriptable3>(rawClient);
+            string? server = rdpClient.Server;
+            if (nonScriptable3 is not null && !string.IsNullOrWhiteSpace(server))
+                nonScriptable3.ConnectionBarText = new BinaryString(server.Trim());
+        }
+        catch (COMException)
+        {
+            // The connection bar is cosmetic; never block a configured connect.
+        }
+
         ConnectClient(rdpClient, null);
     }
 
@@ -257,6 +362,42 @@ internal sealed class RdpActiveXSession : IDisposable
         {
             PublishStatus("Disconnecting...");
             client.Disconnect();
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the control's fullscreen mode. The container window must
+    /// already cover the screen when this is set to true; in fullscreen the
+    /// control renders at the screen resolution and shows its floating
+    /// connection bar (enabled at connect time).
+    /// </summary>
+    public bool FullScreen
+    {
+        get
+        {
+            try
+            {
+                return client?.FullScreen == true;
+            }
+            catch (COMException)
+            {
+                return false;
+            }
+        }
+        set
+        {
+            IMsRdpClient10? rdpClient = client;
+            if (rdpClient is null || disposed)
+                return;
+
+            try
+            {
+                rdpClient.FullScreen = value;
+            }
+            catch (COMException exception)
+            {
+                PublishStatus($"Fullscreen switch failed: {exception.Message}");
+            }
         }
     }
 
@@ -367,7 +508,7 @@ internal sealed class RdpActiveXSession : IDisposable
     /// <summary>
     /// Applies a debounced dynamic-resolution update for the current host size.
     /// </summary>
-    public bool ResizeDisplay(int width, int height, double renderScaling)
+    public bool ResizeDisplay(int width, int height, double renderScaling, bool force = false)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -381,7 +522,7 @@ internal sealed class RdpActiveXSession : IDisposable
         if (!IsLoginCompleted || rdpClient.Connected == 0)
             return false;
 
-        if (desktopWidth == sessionDesktopWidth && desktopHeight == sessionDesktopHeight)
+        if (!force && desktopWidth == sessionDesktopWidth && desktopHeight == sessionDesktopHeight)
             return true;
 
         uint desktopScaleFactor = GetDesktopScaleFactor(renderScaling);
@@ -610,6 +751,11 @@ internal sealed class RdpActiveXSession : IDisposable
         eventSubscription.FatalError += errorCode => PublishStatus($"RDP fatal error: {errorCode}");
         eventSubscription.LogonError += errorCode => PublishStatus($"RDP logon error: {errorCode}");
         eventSubscription.AuthenticationWarningDisplayed += () => PublishStatus("Waiting for certificate confirmation...");
+        eventSubscription.FullScreenRequested += () => FullScreenRequested?.Invoke(this, EventArgs.Empty);
+        eventSubscription.LeaveFullScreenRequested += () => LeaveFullScreenRequested?.Invoke(this, EventArgs.Empty);
+        eventSubscription.EnteredFullScreen += () => EnteredFullScreen?.Invoke(this, EventArgs.Empty);
+        eventSubscription.LeftFullScreen += () => LeftFullScreen?.Invoke(this, EventArgs.Empty);
+        eventSubscription.ContainerMinimizeRequested += () => ContainerMinimizeRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void PublishStatus(string message)

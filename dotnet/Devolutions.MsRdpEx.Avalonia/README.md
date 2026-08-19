@@ -63,12 +63,24 @@ hosting application's next Avalonia control.
 sent to the remote session while the control is focused; when false they stay
 local.
 
-## Resizing and dynamic resolution
+## Resizing, dynamic resolution, and fullscreen
 
 The hosted window tracks the view's layout bounds automatically. When the
 connection uses dynamic resolution, a resize applies a single
 `UpdateSessionDisplaySettings` renegotiation once the size has been stable for
 a short debounce interval, rather than one update per intermediate size.
+
+Fullscreen is container-driven: setting `FullScreen` (or pressing
+Ctrl+Alt+Break in the session) covers the screen with the containing window
+and switches the control to fullscreen rendering with its floating connection
+bar (auto-hiding, with pin/minimize/restore/close). The bar and keyboard
+requests flow back through the view, and restoring from the taskbar after a
+minimize returns to fullscreen.
+
+`DisplayMode` mirrors the mstsc system-menu display options:
+`FitToWindow` (dynamic resolution follows the viewport), `SmartSizing`
+(client-side scaling with scrollbars), and `Zoom` with `ZoomLevel` (25–400%;
+100% means fit-to-window).
 
 ## Dispose contract
 

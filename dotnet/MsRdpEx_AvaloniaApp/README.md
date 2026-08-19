@@ -31,8 +31,29 @@ select **Connect**. A separate native Avalonia session window opens and hosts
 the RDP control. The password is passed directly to the RDP control,
 cleared from the dialog, and never written to disk by the sample.
 
-The session window contains only the edge-to-edge RDP surface. Use the standard
-window Close button to disconnect and close the session.
+The session window uses a custom Avalonia title bar above the native RDP
+surface (the hosted HWND always draws above Avalonia content, so a native
+title bar would swallow the mstsc-style menu). Right-click the title bar to
+open the session context menu. Use the title-bar Close button to disconnect
+and close the session.
+
+### Fullscreen and display modes
+
+The session window follows mstsc conventions. Right-click the **title bar**
+(not the remote desktop — that click belongs to the native HWND) to open the
+context menu:
+
+- **Fullscreen** — choose **Full screen**, or press **Ctrl+Alt+Break** in the
+  session. The custom title bar hides, the window covers the screen, and the
+  control's floating connection bar (labeled with the server name) auto-hides
+  at the top edge, with pin, minimize, restore, and close buttons. Exit with
+  Ctrl+Alt+Break or the connection bar's restore button.
+- **Smart sizing** — the context menu's checkable **Smart sizing** item scales
+  the remote desktop to the window size client-side instead of renegotiating
+  the session resolution (the control shows scrollbars when the desktop is
+  larger than the window).
+- **Zoom** — the context menu's **Zoom** submenu (25%–400%) presents the
+  desktop at a fixed scale. 100% returns to the default fit-to-window mode.
 
 The default **Fit the session window** display mode uses the hosted window's
 physical pixel size for the initial desktop. Resizing the window sends a

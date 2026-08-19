@@ -11,6 +11,32 @@ using Avalonia.VisualTree;
 namespace Devolutions.MsRdpEx.Avalonia;
 
 /// <summary>
+/// How <see cref="RdpClientView"/> presents the remote desktop, mirroring the
+/// mstsc system-menu display options.
+/// </summary>
+public enum RdpDisplayMode
+{
+    /// <summary>
+    /// The session resolution follows the viewport (debounced
+    /// UpdateSessionDisplaySettings when dynamic resolution is enabled). The
+    /// remote desktop is always presented at 100%.
+    /// </summary>
+    FitToWindow,
+
+    /// <summary>
+    /// The control scales the remote desktop to the window size client-side
+    /// (SmartSizing); scrollbars appear when the desktop is larger.
+    /// </summary>
+    SmartSizing,
+
+    /// <summary>
+    /// The control presents the remote desktop at a fixed zoom percentage
+    /// (see <see cref="RdpClientView.ZoomLevel"/>).
+    /// </summary>
+    Zoom
+}
+
+/// <summary>
 /// An Avalonia RDP surface that hosts the Microsoft RDP ActiveX control in a
 /// real, visible Win32 child window (via <see cref="NativeControlHost"/>). The
 /// control renders natively into that window and owns native keyboard and mouse
@@ -42,6 +68,13 @@ public class RdpClientView : NativeControlHost, IDisposable
     private PixelSize viewportPixelSize;
     private PixelSize lastSurfaceSize;
     private bool isViewOnly;
+    private bool isFullScreen;
+    private bool pendingFullScreen;
+    private bool syncingWindowState;
+    private WindowState previousWindowState = WindowState.Normal;
+    private bool dynamicResolutionRequested;
+    private RdpDisplayMode displayMode = RdpDisplayMode.FitToWindow;
+    private int zoomLevel = 100;
     private bool disposed;
 
     public RdpClientView()
@@ -104,6 +137,28 @@ public class RdpClientView : NativeControlHost, IDisposable
         }
     }
 
+    /// <summary>
+    /// Gets or sets fullscreen mode. The containing window covers the screen
+    /// and the RDP control is switched to fullscreen rendering with its
+    /// floating connection bar (auto-hiding at the top edge, with pin,
+    /// minimize, restore, and close buttons, labeled with the server name).
+    /// The user can also toggle fullscreen from the session with
+    /// Ctrl+Alt+Break or the connection bar's restore button; both flow back
+    /// through this property. Exiting restores the window state the session
+    /// had before entering fullscreen.
+    /// </summary>
+    public bool FullScreen
+    {
+        get => isFullScreen || pendingFullScreen;
+        set
+        {
+            if (value)
+                EnterFullScreen();
+            else
+                ExitFullScreen();
+        }
+    }
+
     public event EventHandler? ClientReady;
     public event EventHandler? LoginCompleted;
     public event EventHandler<RdpRemoteDesktopSizeChangedEventArgs>? RemoteDesktopSizeChanged;
@@ -111,6 +166,101 @@ public class RdpClientView : NativeControlHost, IDisposable
     public event EventHandler<RdpStatusChangedEventArgs>? StatusChanged;
     public event EventHandler? Disconnected;
     public event EventHandler? ViewportPixelSizeChanged;
+
+    /// <summary>Raised after the control entered fullscreen rendering.</summary>
+    public event EventHandler? EnteredFullScreen;
+
+    /// <summary>Raised after the control left fullscreen rendering.</summary>
+    public event EventHandler? LeftFullScreen;
+
+    /// <summary>Raised when <see cref="DisplayMode"/> or <see cref="ZoomLevel"/> changes.</summary>
+    public event EventHandler? DisplayModeChanged;
+
+    /// <summary>
+    /// Gets or sets how the remote desktop is presented, like the display
+    /// options in the mstsc system menu. Defaults to
+    /// <see cref="RdpDisplayMode.FitToWindow"/> when connecting without an
+    /// explicit resolution (dynamic resolution).
+    /// </summary>
+    public RdpDisplayMode DisplayMode
+    {
+        get => displayMode;
+        set => SetDisplayMode(value, zoomLevel);
+    }
+
+    /// <summary>
+    /// Gets or sets the control's native zoom percentage (25–400). Only
+    /// meaningful in <see cref="RdpDisplayMode.Zoom"/>; setting a value other
+    /// than 100 switches to that mode, and setting 100 switches back to
+    /// <see cref="RdpDisplayMode.FitToWindow"/>, mirroring mstsc's Zoom menu.
+    /// </summary>
+    public int ZoomLevel
+    {
+        get => zoomLevel;
+        set => SetDisplayMode(value == 100 ? RdpDisplayMode.FitToWindow : RdpDisplayMode.Zoom, value);
+    }
+
+    /// <summary>
+    /// Applies a display-mode change, keeping the session's SmartSizing state,
+    /// the debounced dynamic-resolution path, and the fullscreen renegotiation
+    /// coherent.
+    /// </summary>
+    private void SetDisplayMode(RdpDisplayMode mode, int zoom)
+    {
+        zoom = Math.Clamp(zoom, 25, 400);
+        if (mode == displayMode && zoom == zoomLevel)
+            return;
+
+        displayMode = mode;
+        zoomLevel = zoom;
+
+        dynamicResolutionEnabled = dynamicResolutionRequested &&
+                                   mode == RdpDisplayMode.FitToWindow;
+
+        RdpActiveXSession? activeSession = session;
+        if (activeSession is not null && activeSession.IsReady)
+        {
+            ApplyDisplayMode(activeSession);
+
+            if (mode == RdpDisplayMode.FitToWindow)
+            {
+                // Re-assert the session resolution for the current viewport so
+                // a smart-sizing or zoom presentation snaps back to 100%. The
+                // forced update also covers the size-unchanged case, where the
+                // control must re-apply the resolution to drop scaling.
+                PixelSize size = GetDesktopPixelSize();
+                double scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+                activeSession.ResizeDisplay(size.Width, size.Height, scaling, force: true);
+            }
+        }
+
+        // The native child always fills the view; the scaling happens inside
+        // the control, so its window rectangle must track the new layout.
+        lastSurfaceSize = default;
+        InvalidateArrange();
+        DisplayModeChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ApplyDisplayMode(RdpActiveXSession activeSession)
+    {
+        // ZoomLevel and SmartSizing are mutually exclusive in mstscax. Only
+        // write ZoomLevel when the user actually picks a zoom; resetting it to
+        // 100 on every SmartSizing/Fit toggle hits a VARIANT type error on
+        // some mstscax builds ("oldValue has incorrect type").
+        switch (displayMode)
+        {
+            case RdpDisplayMode.SmartSizing:
+                activeSession.SmartSizing = true;
+                break;
+            case RdpDisplayMode.Zoom:
+                activeSession.SmartSizing = false;
+                activeSession.SetZoomLevel(zoomLevel);
+                break;
+            default:
+                activeSession.SmartSizing = false;
+                break;
+        }
+    }
 
     /// <summary>
     /// Gets a generated COM interface for advanced RDP client configuration.
@@ -140,11 +290,15 @@ public class RdpClientView : NativeControlHost, IDisposable
         }
 
         PixelSize viewportSize = GetDesktopPixelSize();
-        dynamicResolutionEnabled = !hasDesktopWidth;
+        dynamicResolutionRequested = !hasDesktopWidth;
+        dynamicResolutionEnabled = dynamicResolutionRequested &&
+                                   displayMode == RdpDisplayMode.FitToWindow;
         int desktopWidth = settings.DesktopWidth > 0 ? settings.DesktopWidth : viewportSize.Width;
         int desktopHeight = settings.DesktopHeight > 0 ? settings.DesktopHeight : viewportSize.Height;
         activeSession.UseRemoteKeyboardShortcuts = UseRemoteKeyboardShortcuts;
         activeSession.Connect(settings, desktopWidth, desktopHeight);
+
+        ApplyDisplayMode(activeSession);
     }
 
     /// <summary>
@@ -162,9 +316,13 @@ public class RdpClientView : NativeControlHost, IDisposable
         PixelSize viewportSize = GetDesktopPixelSize();
         int desktopWidth = client.DesktopWidth > 0 ? client.DesktopWidth : viewportSize.Width;
         int desktopHeight = client.DesktopHeight > 0 ? client.DesktopHeight : viewportSize.Height;
-        dynamicResolutionEnabled = manageDynamicResolution;
+        dynamicResolutionRequested = manageDynamicResolution;
+        dynamicResolutionEnabled = dynamicResolutionRequested &&
+                                   displayMode == RdpDisplayMode.FitToWindow;
         activeSession.UseRemoteKeyboardShortcuts = UseRemoteKeyboardShortcuts;
         activeSession.ConnectConfigured(desktopWidth, desktopHeight);
+
+        ApplyDisplayMode(activeSession);
     }
 
     public bool TryUpdateSessionDisplaySettings(
@@ -203,6 +361,127 @@ public class RdpClientView : NativeControlHost, IDisposable
         session?.FocusSession();
     }
 
+    private void EnterFullScreen()
+    {
+        if (isFullScreen)
+            return;
+
+        if (topLevel is not Window window)
+        {
+            // Not attached yet (or reparenting): apply once attached.
+            pendingFullScreen = true;
+            return;
+        }
+
+        pendingFullScreen = false;
+        previousWindowState = window.WindowState == WindowState.FullScreen
+            ? WindowState.Normal
+            : window.WindowState;
+
+        // The container covers the screen first; the control is then switched
+        // to fullscreen rendering so it picks up the final screen geometry and
+        // shows its connection bar.
+        syncingWindowState = true;
+        try
+        {
+            window.WindowState = WindowState.FullScreen;
+        }
+        finally
+        {
+            syncingWindowState = false;
+        }
+
+        isFullScreen = true;
+        if (session is not null)
+            session.FullScreen = true;
+    }
+
+    private void ExitFullScreen()
+    {
+        if (isFullScreen)
+        {
+            // Clear the flag first so OnLeaveFullScreenMode (raised by
+            // setting FullScreen=false) does not re-enter this method.
+            isFullScreen = false;
+            if (session is not null)
+                session.FullScreen = false;
+        }
+
+        if (topLevel is Window window && window.WindowState == WindowState.FullScreen)
+        {
+            syncingWindowState = true;
+            try
+            {
+                window.WindowState = previousWindowState;
+            }
+            finally
+            {
+                syncingWindowState = false;
+            }
+        }
+    }
+
+    // Keeps the control's fullscreen mode in sync when the window state
+    // changes without going through this view (taskbar restore, Win+Down,
+    // OS-driven transitions).
+    private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (syncingWindowState || e.Property != Window.WindowStateProperty)
+            return;
+
+        if (e.GetNewValue<WindowState>() == WindowState.FullScreen)
+        {
+            if (!isFullScreen)
+            {
+                isFullScreen = true;
+                if (session is not null)
+                    session.FullScreen = true;
+            }
+        }
+        else if (isFullScreen)
+        {
+            isFullScreen = false;
+            if (session is not null)
+                session.FullScreen = false;
+        }
+    }
+
+    private void OnSessionFullScreenRequested(object? sender, EventArgs e)
+    {
+        // Ctrl+Alt+Break in windowed mode.
+        EnterFullScreen();
+    }
+
+    private void OnSessionLeaveFullScreenRequested(object? sender, EventArgs e)
+    {
+        // Ctrl+Alt+Break or the connection bar's restore button in fullscreen.
+        ExitFullScreen();
+    }
+
+    private void OnSessionEnteredFullScreen(object? sender, EventArgs e)
+    {
+        if (!isFullScreen)
+            EnterFullScreen();
+        EnteredFullScreen?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnSessionLeftFullScreen(object? sender, EventArgs e)
+    {
+        // The connection-bar Restore button makes mstscax leave fullscreen
+        // itself and raises OnLeaveFullScreenMode — not always
+        // OnRequestLeaveFullScreen. Drive the container window back too.
+        if (isFullScreen)
+            ExitFullScreen();
+        LeftFullScreen?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnSessionContainerMinimizeRequested(object? sender, EventArgs e)
+    {
+        // The connection bar's minimize button.
+        if (topLevel is Window window)
+            window.WindowState = WindowState.Minimized;
+    }
+
     /// <summary>
     /// Permanently closes the hosted session and releases its native OLE resources.
     /// Visual-tree detaches alone intentionally preserve the session for docking and
@@ -217,6 +496,9 @@ public class RdpClientView : NativeControlHost, IDisposable
         VerifyAccess();
         disposed = true;
         resizeTimer.Stop();
+        // Restore the window before tearing down so a closing session never
+        // leaves a fullscreen shell behind.
+        ExitFullScreen();
         TeardownSession();
     }
 
@@ -232,6 +514,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         {
             window.Activated += OnWindowActivated;
             window.Deactivated += OnWindowDeactivated;
+            window.PropertyChanged += OnWindowPropertyChanged;
         }
 
         base.OnAttachedToVisualTree(e);
@@ -242,11 +525,22 @@ public class RdpClientView : NativeControlHost, IDisposable
         UpdateOleFrameState();
         if (topLevel is Window attachedWindow)
             session?.SetFrameActive(attachedWindow.IsActive);
+
+        if (pendingFullScreen)
+        {
+            pendingFullScreen = false;
+            EnterFullScreen();
+        }
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         resizeTimer.Stop();
+
+        // A detached (reparenting) view cannot stay fullscreen: restore the
+        // window and the control before leaving the visual tree.
+        ExitFullScreen();
+        pendingFullScreen = false;
 
         // The frame window belongs to the top level we are leaving; clear it so
         // a session surviving a reparent never reports a stale (or destroyed)
@@ -257,6 +551,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         {
             window.Activated -= OnWindowActivated;
             window.Deactivated -= OnWindowDeactivated;
+            window.PropertyChanged -= OnWindowPropertyChanged;
         }
 
         topLevel = null;
@@ -337,6 +632,11 @@ public class RdpClientView : NativeControlHost, IDisposable
         activeSession.FocusReleased += OnSessionFocusReleased;
         activeSession.StatusChanged += OnSessionStatusChanged;
         activeSession.Disconnected += OnSessionDisconnected;
+        activeSession.FullScreenRequested += OnSessionFullScreenRequested;
+        activeSession.LeaveFullScreenRequested += OnSessionLeaveFullScreenRequested;
+        activeSession.EnteredFullScreen += OnSessionEnteredFullScreen;
+        activeSession.LeftFullScreen += OnSessionLeftFullScreen;
+        activeSession.ContainerMinimizeRequested += OnSessionContainerMinimizeRequested;
 
         session = activeSession;
 
@@ -368,6 +668,11 @@ public class RdpClientView : NativeControlHost, IDisposable
         activeSession.FocusReleased -= OnSessionFocusReleased;
         activeSession.StatusChanged -= OnSessionStatusChanged;
         activeSession.Disconnected -= OnSessionDisconnected;
+        activeSession.FullScreenRequested -= OnSessionFullScreenRequested;
+        activeSession.LeaveFullScreenRequested -= OnSessionLeaveFullScreenRequested;
+        activeSession.EnteredFullScreen -= OnSessionEnteredFullScreen;
+        activeSession.LeftFullScreen -= OnSessionLeftFullScreen;
+        activeSession.ContainerMinimizeRequested -= OnSessionContainerMinimizeRequested;
         activeSession.Dispose();
     }
 
