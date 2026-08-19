@@ -359,10 +359,6 @@ public class RdpClientView : UserControl, IDisposable
         {
             Initialize();
             UpdateOleFrameState();
-            // The hidden ActiveX input HWND can own foreground while the view is
-            // first displayed. Enable its background-input path before the first
-            // pointer event so the initial click can be forwarded to the session.
-            session?.SetUiActive(true);
             StartCaptureWorker();
         }
         catch (Exception exception)
@@ -387,7 +383,6 @@ public class RdpClientView : UserControl, IDisposable
         ReleaseMouseButtons();
         // Deactivate the frame before dropping its window so the control is
         // not left believing a detached frame is still active.
-        session?.SetUiActive(false);
         session?.SetFrameActive(false);
         session?.SetFrameWindow(0);
         topLevel = null;
@@ -397,7 +392,9 @@ public class RdpClientView : UserControl, IDisposable
 
     // Reports the real top-level window to the OLE host so control-owned
     // dialogs (certificate warnings, credential prompts) are parented to a
-    // visible window, and pushes the current frame/focus activation state.
+    // visible window, and forwards only frame activation. Document activation
+    // would focus the hidden ActiveX input HWND and steal physical input from
+    // the Avalonia surface.
     private void UpdateOleFrameState()
     {
         if (session is null)
@@ -409,7 +406,6 @@ public class RdpClientView : UserControl, IDisposable
         if (topLevel is Window window)
             session.SetFrameActive(window.IsActive);
 
-        session.SetUiActive(IsKeyboardFocusWithin);
     }
 
     /// <summary>
@@ -492,7 +488,6 @@ public class RdpClientView : UserControl, IDisposable
     {
         base.OnPointerPressed(e);
         Focus();
-        session?.SetUiActive(true);
 
         if (IsViewOnly)
             return;
@@ -691,7 +686,6 @@ public class RdpClientView : UserControl, IDisposable
 
     private void OnControlLostFocus(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
-        session?.SetUiActive(false);
         UninstallKeyboardHook();
         ReleaseForwardedKeys();
         if (!ContinuePhysicalMouseDrag())
@@ -700,14 +694,12 @@ public class RdpClientView : UserControl, IDisposable
 
     private void OnControlGotFocus(object? sender, FocusChangedEventArgs e)
     {
-        session?.SetUiActive(true);
         InstallKeyboardHook();
     }
 
     private void OnWindowActivated(object? sender, EventArgs e)
     {
         session?.SetFrameActive(true);
-        session?.SetUiActive(IsKeyboardFocusWithin);
         if (IsKeyboardFocusWithin)
             InstallKeyboardHook();
     }
@@ -719,7 +711,6 @@ public class RdpClientView : UserControl, IDisposable
         // leaving the hook installed during that interval can swallow input
         // intended for another local application.
         UninstallKeyboardHook();
-        session?.SetUiActive(false);
         session?.SetFrameActive(false);
 
         // Avalonia retains logical keyboard focus while its window is
