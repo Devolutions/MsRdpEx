@@ -54,34 +54,6 @@ namespace MsRdpEx.Tests
             Assert.Null(Environment.GetEnvironmentVariable("MSRDPEX_AXNAME"));
         }
 
-        [Theory]
-        // Keys are trapped and forwarded only while the view is focused in an
-        // active window with a live connection (focused-but-disconnected must
-        // pass keys through for local focus traversal).
-        [InlineData(false, true, true, true, true, true)]
-        [InlineData(true, true, true, true, true, false)]
-        [InlineData(false, false, true, true, true, false)]
-        [InlineData(false, true, false, true, true, false)]
-        [InlineData(false, true, true, false, true, false)]
-        [InlineData(false, true, true, true, false, false)]
-        public void ShouldForwardKeysTruthTable(
-            bool isViewOnly,
-            bool focusWithin,
-            bool windowActive,
-            bool connectionActive,
-            bool foregroundWindowMatches,
-            bool expected)
-        {
-            Assert.Equal(
-                expected,
-                RdpClientView.ShouldForwardKeys(
-                    isViewOnly,
-                    focusWithin,
-                    windowActive,
-                    connectionActive,
-                    foregroundWindowMatches));
-        }
-
         // The OLE scope state is process-global, and xunit runs these tests in
         // a random order, so each case resets the counter and asserts absolute
         // rules: a non-owner never uninitializes, and an owner uninitializes

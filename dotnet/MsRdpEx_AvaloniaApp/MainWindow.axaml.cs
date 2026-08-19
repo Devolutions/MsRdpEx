@@ -6,6 +6,7 @@ namespace MsRdpEx_AvaloniaApp;
 public sealed partial class MainWindow : Window
 {
     private RdpConnectionSettings? pendingSettings;
+    private string hostName = "RDP";
 
     public MainWindow()
     {
@@ -17,6 +18,7 @@ public sealed partial class MainWindow : Window
         ArgumentNullException.ThrowIfNull(settings);
 
         pendingSettings = settings;
+        hostName = settings.HostName;
         if (launchOptions is not null)
         {
             RdpHost.ClassId = launchOptions.ClassId;
@@ -26,7 +28,13 @@ public sealed partial class MainWindow : Window
         Title = $"{settings.HostName} - MsRdpEx Avalonia RDP";
 
         RdpHost.ClientReady += OnClientReady;
+        RdpHost.StatusChanged += OnStatusChanged;
         Closing += OnWindowClosing;
+    }
+
+    private void OnStatusChanged(object? sender, RdpStatusChangedEventArgs e)
+    {
+        Title = $"{hostName} - {e.Message}";
     }
 
     private void OnClientReady(object? sender, EventArgs e)

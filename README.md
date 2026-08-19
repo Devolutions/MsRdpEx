@@ -76,10 +76,12 @@ Avalonia 12 applications can enable the reusable, bitmap-backed
 packaged `Devolutions.MsRdpEx.Avalonia.dll`. The consuming application keeps
 its normal Avalonia package references, so Avalonia is not imposed on existing
 WinForms or .NET Framework consumers. `RdpClientView` is an Avalonia
-`UserControl`; it renders the MsRdpEx shadow bitmap and does not use
-`NativeControlHost`, Windows Forms `AxHost`, or ATL hosting helpers. MsRdpEx
-directly provides the OLE client-site and in-place-site contract required by
-the ActiveX control, while the required HWND remains off-screen. Use
+`NativeControlHost`: it parents a real, visible Win32 child window inside the
+Avalonia window and activates the RDP ActiveX control in it through MsRdpEx's
+own OLE client-site and in-place-site implementation (no Windows Forms
+`AxHost` or ATL hosting helpers). The control renders directly to the screen
+and receives native keyboard and mouse input — no off-screen HWND, no
+framebuffer copy, and no synthetic input forwarding. Use
 `Connect(RdpConnectionSettings)` for the convenience API, or `GetClient<T>()`
 after `ClientReady` for direct generated MSTSCLib configuration.
 

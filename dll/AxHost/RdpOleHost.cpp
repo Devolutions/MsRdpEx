@@ -11,7 +11,7 @@ class CRdpOleHost : public IUnknown
 public:
     CRdpOleHost()
         : m_refCount(1), m_hWnd(NULL), m_contained(false), m_clientSiteSet(false),
-          m_uiActive(false), m_miscStatus(0),
+          m_uiActive(false), m_uiActivated(false), m_miscStatus(0),
           m_pOleClientSite(NULL), m_pOleInPlaceSiteEx(NULL), m_pOleObject(NULL),
           m_pOleInPlaceObject(NULL), m_pOleInPlaceActiveObject(NULL)
     {
@@ -237,6 +237,37 @@ public:
         return FAILED(frameHr) ? frameHr : docHr;
     }
 
+    HRESULT SetUiActive(BOOL active)
+    {
+        if (!m_pOleObject || !m_pOleInPlaceObject)
+            return OLE_E_NOT_INPLACEACTIVE;
+
+        if (m_uiActivated == (active != FALSE))
+            return S_OK;
+
+        HRESULT hr = S_OK;
+
+        if (active)
+        {
+            hr = m_pOleObject->DoVerb(
+                OLEIVERB_UIACTIVATE,
+                NULL,
+                m_pOleClientSite,
+                0,
+                m_hWnd,
+                &m_bounds);
+        }
+        else
+        {
+            hr = m_pOleInPlaceObject->UIDeactivate();
+        }
+
+        if (SUCCEEDED(hr))
+            m_uiActivated = active != FALSE;
+
+        return hr;
+    }
+
     HRESULT SetFrameActive(BOOL active)
     {
         // Forwards top-level window activation only. Unlike SetActive this
@@ -300,6 +331,7 @@ public:
 
         m_hWnd = NULL;
         m_uiActive = false;
+        m_uiActivated = false;
         m_miscStatus = 0;
         SetRectEmpty(&m_bounds);
     }
@@ -313,6 +345,7 @@ private:
     bool m_contained;
     bool m_clientSiteSet;
     bool m_uiActive;
+    bool m_uiActivated;
     DWORD m_miscStatus;
     CRdpOleClientSite* m_pOleClientSite;
     CRdpOleInPlaceSiteEx* m_pOleInPlaceSiteEx;
@@ -368,6 +401,16 @@ HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetActive(
         return E_POINTER;
 
     return reinterpret_cast<CRdpOleHost*>(pHost)->SetActive(active);
+}
+
+HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetUiActive(
+    MsRdpEx_RdpOleHost* pHost,
+    BOOL active)
+{
+    if (!pHost)
+        return E_POINTER;
+
+    return reinterpret_cast<CRdpOleHost*>(pHost)->SetUiActive(active);
 }
 
 HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetFrameActive(

@@ -47,6 +47,17 @@ HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetActive(
  * changing the control's UI-active state. Use this for window
  * Activated/Deactivated notifications; use SetActive for focus changes.
  */
+/*
+ * Issues OLEIVERB_UIACTIVATE / UIDeactivate so the control becomes a fully
+ * UI-active, visible in-place control that owns native focus and keyboard
+ * handling. Use this when hosting the control in a real on-screen HWND (for
+ * example under an Avalonia NativeControlHost), where native input should
+ * flow through the control's own window instead of synthetic input.
+ */
+HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetUiActive(
+    MsRdpEx_RdpOleHost* pHost,
+    BOOL active);
+
 HRESULT STDAPICALLTYPE MsRdpEx_RdpOleHost_SetFrameActive(
     MsRdpEx_RdpOleHost* pHost,
     BOOL active);
