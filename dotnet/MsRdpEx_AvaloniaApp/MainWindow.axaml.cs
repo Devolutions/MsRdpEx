@@ -115,8 +115,12 @@ public sealed partial class MainWindow : Window
             SetChecked("_Smart sizing", RdpHost.DisplayMode == RdpDisplayMode.SmartSizing);
 
             foreach (MenuItem levelItem in ZoomItems())
-                levelItem.IsChecked = RdpHost.DisplayMode == RdpDisplayMode.Zoom &&
-                                      levelItem.Tag is int level && level == RdpHost.ZoomLevel;
+            {
+                bool isHundred = levelItem.Tag is int tag && tag == 100;
+                levelItem.IsChecked = levelItem.Tag is int level && level == RdpHost.ZoomLevel &&
+                    (RdpHost.DisplayMode == RdpDisplayMode.Zoom ||
+                     (isHundred && RdpHost.DisplayMode == RdpDisplayMode.FitToWindow));
+            }
         }
         finally
         {

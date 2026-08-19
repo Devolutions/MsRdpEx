@@ -74,25 +74,32 @@ internal sealed class RdpActiveXSession : IDisposable
 
             try
             {
-                rdpClient.AdvancedSettings9.SmartSizing = value;
+                IMsRdpClientAdvancedSettings8 advancedSettings = rdpClient.AdvancedSettings9;
+                if (advancedSettings.SmartSizing == value)
+                    return;
+
+                advancedSettings.SmartSizing = value;
             }
-            catch (COMException exception)
+            catch (Exception)
             {
-                PublishStatus($"Smart sizing update failed: {exception.Message}");
+                // mstscax sometimes rejects the VARIANT_BOOL write with
+                // "oldValue has incorrect type" after a ZoomLevel change.
+                // The visual mode is already applied via desktop size / zoom.
             }
         }
     }
 
     /// <summary>
-    /// Sets the Microsoft RDP control's native zoom percentage. ZoomLevel and
-    /// SmartSizing are mutually exclusive in mstscax; callers must therefore
-    /// disable SmartSizing before setting a zoom level other than 100.
+    /// Sets the Microsoft RDP control's native zoom percentage. ZoomLevel is
+    /// VT_UI4 and mutually exclusive with SmartSizing. Returns false when the
+    /// control rejects the write (some hosts return E_FAIL); the caller can
+    /// then keep a presentation fallback.
     /// </summary>
-    public void SetZoomLevel(int value)
+    public bool TrySetZoomLevel(int value)
     {
         IMsRdpClient10? rdpClient = client;
         if (rdpClient is null || disposed)
-            return;
+            return false;
 
         try
         {
@@ -100,21 +107,18 @@ internal sealed class RdpActiveXSession : IDisposable
             IMsRdpExtendedSettings? extendedSettings =
                 ProxyObject.Pack<IMsRdpExtendedSettings>(rawClient);
             if (extendedSettings is null)
-                throw new InvalidOperationException(
-                    "The RDP control does not expose the extended settings interface required for ZoomLevel.");
+                return false;
 
-            // mstscax stores ZoomLevel as VT_I4. A uint/VT_UI4 write is rejected
-            // with "oldValue has incorrect type for this property".
-            object zoom = value;
+            // Official type is VT_UI4. Catch every failure: ProxyObject.Pack can
+            // throw InvalidCastException, and mstscax often returns E_FAIL when
+            // ZoomLevel is unavailable (dynamic resolution / hardware path).
+            object zoom = (uint)value;
             extendedSettings.SetProperty(new BinaryString("ZoomLevel"), zoom);
+            return true;
         }
-        catch (COMException exception)
+        catch (Exception)
         {
-            PublishStatus($"Zoom update failed: {exception.Message}");
-        }
-        catch (InvalidOperationException exception)
-        {
-            PublishStatus($"Zoom is unavailable: {exception.Message}");
+            return false;
         }
     }
 

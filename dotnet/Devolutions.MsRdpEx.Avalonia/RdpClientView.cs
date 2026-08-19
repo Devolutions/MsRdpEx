@@ -243,10 +243,9 @@ public class RdpClientView : NativeControlHost, IDisposable
 
     private void ApplyDisplayMode(RdpActiveXSession activeSession)
     {
-        // ZoomLevel and SmartSizing are mutually exclusive in mstscax. Only
-        // write ZoomLevel when the user actually picks a zoom; resetting it to
-        // 100 on every SmartSizing/Fit toggle hits a VARIANT type error on
-        // some mstscax builds ("oldValue has incorrect type").
+        // ZoomLevel (VT_UI4) and SmartSizing are mutually exclusive. mstscax
+        // also rejects ZoomLevel until the session is logged on, and while
+        // dynamic resolution is driving the desktop size.
         switch (displayMode)
         {
             case RdpDisplayMode.SmartSizing:
@@ -254,12 +253,32 @@ public class RdpClientView : NativeControlHost, IDisposable
                 break;
             case RdpDisplayMode.Zoom:
                 activeSession.SmartSizing = false;
-                activeSession.SetZoomLevel(zoomLevel);
+                if (activeSession.IsLoginCompleted &&
+                    !activeSession.TrySetZoomLevel(zoomLevel) &&
+                    zoomLevel != 100)
+                {
+                    ApplyZoomFallback(activeSession);
+                }
                 break;
             default:
                 activeSession.SmartSizing = false;
+                if (activeSession.IsLoginCompleted)
+                    _ = activeSession.TrySetZoomLevel(100);
                 break;
         }
+    }
+
+    // When ZoomLevel is rejected (E_FAIL on some hosts), shrink the session
+    // desktop and smart-size it back to the viewport so the remote UI appears
+    // magnified without a COM zoom write.
+    private void ApplyZoomFallback(RdpActiveXSession activeSession)
+    {
+        PixelSize view = GetDesktopPixelSize();
+        int width = Math.Max(200, view.Width * 100 / zoomLevel);
+        int height = Math.Max(200, view.Height * 100 / zoomLevel);
+        double scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+        activeSession.SmartSizing = true;
+        activeSession.ResizeDisplay(width, height, scaling, force: true);
     }
 
     /// <summary>
@@ -763,6 +782,10 @@ public class RdpClientView : NativeControlHost, IDisposable
         {
             double scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
             QueueDynamicResize(GetPixelSize(Bounds.Size, scaling), scaling);
+        }
+        else if (session is not null)
+        {
+            ApplyDisplayMode(session);
         }
 
         LoginCompleted?.Invoke(this, EventArgs.Empty);
