@@ -1,5 +1,8 @@
 using Devolutions.MsRdpEx.Avalonia;
 
+using Avalonia.Controls.Platform;
+using Avalonia.Platform;
+
 namespace MsRdpEx.Tests
 {
     public class AvaloniaHostingTests
@@ -110,6 +113,64 @@ namespace MsRdpEx.Tests
             // A now runs the inherited balance as the last session.
             RdpActiveXSession.EnterOleScope();
             Assert.True(RdpActiveXSession.ExitOleScope(true));
+        }
+
+        [Fact]
+        public void RdpClientViewReusesDetachedNativeControl()
+        {
+            using TestableRdpClientView view = new();
+            TestNativeControlHandle control = new();
+
+            view.DetachNativeControl(control);
+
+            Assert.False(control.IsDestroyed);
+            Assert.Same(control, view.AttachNativeControl(new TestPlatformHandle()));
+
+            view.Dispose();
+            view.DetachNativeControl(control);
+            Assert.True(control.IsDestroyed);
+        }
+
+        [Fact]
+        public void RdpClientViewDisposeDestroysDetachedNativeControl()
+        {
+            TestableRdpClientView view = new();
+            TestNativeControlHandle control = new();
+
+            view.DetachNativeControl(control);
+            view.Dispose();
+
+            Assert.True(control.IsDestroyed);
+        }
+
+        private sealed class TestableRdpClientView : RdpClientView
+        {
+            public IPlatformHandle AttachNativeControl(IPlatformHandle parent)
+            {
+                return base.CreateNativeControlCore(parent);
+            }
+
+            public void DetachNativeControl(IPlatformHandle control)
+            {
+                base.DestroyNativeControlCore(control);
+            }
+        }
+
+        private class TestPlatformHandle : IPlatformHandle
+        {
+            public nint Handle => 1;
+
+            public string HandleDescriptor => "TEST";
+        }
+
+        private sealed class TestNativeControlHandle : TestPlatformHandle, INativeControlHostDestroyableControlHandle
+        {
+            public bool IsDestroyed { get; private set; }
+
+            public void Destroy()
+            {
+                IsDestroyed = true;
+            }
         }
     }
 }
