@@ -76,6 +76,7 @@ public class RdpClientView : NativeControlHost, IDisposable
     private RdpDisplayMode displayMode = RdpDisplayMode.FitToWindow;
     private int zoomLevel = 100;
     private bool disposed;
+    private IPlatformHandle? detachedNativeControl;
 
     public RdpClientView()
     {
@@ -519,6 +520,16 @@ public class RdpClientView : NativeControlHost, IDisposable
         // leaves a fullscreen shell behind.
         ExitFullScreen();
         TeardownSession();
+
+        // NativeControlHost no longer tracks a control after its deferred
+        // destruction callback. If the view is still detached, release the
+        // retained HWND explicitly now that the owner has permanently closed
+        // the session.
+        if (detachedNativeControl is { } control)
+        {
+            detachedNativeControl = null;
+            base.DestroyNativeControlCore(control);
+        }
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -583,6 +594,15 @@ public class RdpClientView : NativeControlHost, IDisposable
 
     protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
     {
+        // Avalonia reparents the returned HWND into the new native host. Reuse
+        // the existing control so a docking or tab detach does not replace the
+        // connected ActiveX session with a fresh, unconfigured surface.
+        if (detachedNativeControl is { } control)
+        {
+            detachedNativeControl = null;
+            return control;
+        }
+
         nint window = CreateWindowExW(
             0,
             StaticWindowClass,
@@ -623,6 +643,16 @@ public class RdpClientView : NativeControlHost, IDisposable
 
     protected override void DestroyNativeControlCore(IPlatformHandle control)
     {
+        // NativeControlHost destroys controls that remain outside the visual
+        // tree past its short reparenting grace period. A docking tab can stay
+        // detached much longer, so retain its HWND until either it is attached
+        // again or the owning view is explicitly disposed.
+        if (!disposed)
+        {
+            detachedNativeControl = control;
+            return;
+        }
+
         // Release the OLE host while the window still exists; the base
         // implementation destroys the window itself afterwards.
         TeardownSession();
