@@ -56,6 +56,11 @@ public class RdpClientView : NativeControlHost, IDisposable
     private const uint WsVisible = 0x10000000;
     private const uint WsClipSiblings = 0x04000000;
     private const uint WsTabStop = 0x00010000;
+    private const uint RdwInvalidate = 0x0001;
+    private const uint RdwErase = 0x0004;
+    private const uint RdwAllChildren = 0x0080;
+    private const uint RdwUpdateNow = 0x0100;
+    private const uint RdwFrame = 0x0400;
 
     private static readonly TimeSpan ResizeDebounceInterval = TimeSpan.FromMilliseconds(250);
 
@@ -77,6 +82,7 @@ public class RdpClientView : NativeControlHost, IDisposable
     private int zoomLevel = 100;
     private bool disposed;
     private IPlatformHandle? detachedNativeControl;
+    private bool refreshSurfaceOnNextArrange;
 
     public RdpClientView()
     {
@@ -549,6 +555,9 @@ public class RdpClientView : NativeControlHost, IDisposable
 
         base.OnAttachedToVisualTree(e);
 
+        if (refreshSurfaceOnNextArrange)
+            InvalidateArrange();
+
         // Reparenting to a new top level reuses the live session without
         // re-running StartSession, so re-apply the frame window and the
         // activation state on every attach, not just at session creation.
@@ -600,6 +609,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         if (detachedNativeControl is { } control)
         {
             detachedNativeControl = null;
+            refreshSurfaceOnNextArrange = true;
             return control;
         }
 
@@ -662,7 +672,23 @@ public class RdpClientView : NativeControlHost, IDisposable
     protected override Size ArrangeOverride(Size finalSize)
     {
         Size arrangedSize = base.ArrangeOverride(finalSize);
+
+        bool refreshSurface = refreshSurfaceOnNextArrange;
+        refreshSurfaceOnNextArrange = false;
+        if (refreshSurface)
+            lastSurfaceSize = default;
+
         OnViewportChanged(arrangedSize);
+
+        if (refreshSurface && HostWindowHandle != 0)
+        {
+            RedrawWindow(
+                HostWindowHandle,
+                0,
+                0,
+                RdwInvalidate | RdwErase | RdwAllChildren | RdwUpdateNow | RdwFrame);
+        }
+
         return arrangedSize;
     }
 
@@ -916,4 +942,12 @@ public class RdpClientView : NativeControlHost, IDisposable
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool EnableWindow(nint window, bool enable);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RedrawWindow(
+        nint window,
+        nint updateRectangle,
+        nint updateRegion,
+        uint flags);
 }
