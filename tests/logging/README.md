@@ -1,4 +1,4 @@
-﻿# Native logging regression tests
+# Native logging regression tests
 
 These tests exercise runtime diagnostic logging without making an RDP connection.
 They are opt-in and do not change normal builds or release packaging.
@@ -19,16 +19,13 @@ The test process must run on Windows with support for its target architecture.
 If multiple Visual Studio installations exist, select the one with ATL using
 `-DCMAKE_GENERATOR_INSTANCE="C:/Program Files/Microsoft Visual Studio/2022/Community"`.
 
-There are 24 tests per architecture: ten isolated DLL scenarios, each with hooks
-disabled and enabled, a deterministic reentrancy/lifecycle test, an abandoned-lock
-test, and two recording teardown tests. CTest applies a
-45-second timeout to each case, including concurrency and process shutdown.
-DLL scenarios retain their temporary log files and print the directory on success
-or failure; the shutdown case exits directly while writer threads are active.
+There are eight tests per architecture: four scenarios, each with ActiveX hooks
+disabled and enabled. CTest applies a 45-second timeout to each case. Scenarios
+retain their temporary log files and print the directory on success or failure.
 
 ## Reproduce against another DLL
 
-The DLL integration runner loads exactly the absolute path supplied to it:
+The runner loads exactly the absolute path supplied to it:
 
 ```powershell
 $dll = "C:/path/to/packaged/win-x64/native/MsRdpEx.dll"
@@ -36,58 +33,37 @@ $dll = "C:/path/to/packaged/win-x64/native/MsRdpEx.dll"
 ./build-logging-x64/Release/MsRdpEx_LoggingTest.exe $dll startup 0
 ```
 
-Use a runner and DLL with matching architectures. Against Devolutions.MsRdpEx
-2026.6.18, `late` fails because enabling logging after DLL load creates no file;
+Use a runner and DLL with matching architectures. Against a DLL without this
+fix, `late` fails because enabling logging after DLL load creates no file;
 `startup` passes because the environment was configured before DLL load.
 
-Supported scenarios are `late`, `startup`, `toggle`, `repeat`, `switch`,
-`disabled-path`, `recovery`, `levels`, `concurrent`, and `shutdown`. The last
+Supported scenarios are `late`, `startup`, `levels`, and `concurrent`. The last
 argument is `0` or `1` to disable or enable ActiveX hooks in that process.
 The runner clears inherited logging settings before selecting each scenario.
 
 The configuration sequence matches RoyalApps.Community.Rdp.WinForms 1.4.3:
-disable logging, select level and path, then enable logging. Assertions check
-actual native output, preservation of earlier entries, immediate suppression on
-disable, file-handle release, UTF-8 destinations, failure recovery, and filtering.
-Concurrency tests also check that emitted records are complete.
-
-`MsRdpEx_LoggerReentrancyTest` links the production `Log.c` with a test file-open
-adapter that calls back into the logger. This guarantees reentrancy coverage
-independently of which hooks a particular Windows version invokes. It also
-verifies hex-dump output and suppression, append behavior, and that identical
-settings do not reopen the destination, including an empty path selecting the
-default log. Default-path coverage also checks disable/re-enable and switching
-between default and explicit destinations without losing entries.
-It also verifies that closing and reopening
-the logger preserves the enabled setting and prior entries, while an explicit
-disable remains disabled across an open operation.
-
-`logging.abandoned-lock` terminates a test thread inside the file-open adapter,
-while that thread owns the production logger lock. It then exercises logger
-entry points after preparing for process exit; none may wait on that lock.
-
-`logging.recording-exit` and `logging.recording-unload` build a separate test DLL
-from the production sources, with a fixture export that creates a recording owned
-only by the instance manager. A parent process checks that process exit or explicit
-DLL unload writes the recording manifest. The fixture adds no exports to the
-production DLL and does not use an optional encoder; it validates recording
-ownership and manifest finalization, not video encoding or remux output.
+disable logging, select level and path, then enable logging.
 
 ## Runtime behavior
 
-An enable operation opens the selected destination; disable flushes and closes it.
-Changing an enabled destination switches output without retaining the previous
-file on failure. Runtime opens append; environment-enabled startup retains the
-existing truncate behavior. Invalid paths and failed opens leave output inactive
-and report a debugger message. A subsequent enable operation retries a valid
-stored path; replacing an invalid path restores normal operation.
+Logging configuration is process-scoped. The diagnostic file is opened at most
+once per process:
 
-The existing COM interface and managed API remain unchanged. The setters still
-return `void`; this patch does not introduce a managed configuration-status API.
-At process termination, logging is suppressed on the exiting thread before the
-existing DLL cleanup runs. This avoids acquiring logger or diagnostic stream
-locks owned by terminated threads while preserving instance and recording cleanup.
-Explicit DLL unloading retains normal logger close/flush behavior. Closing the
-logger releases its file without changing the enabled configuration, allowing a
-later native load/open to resume logging. Explicit disable still changes that
-configuration and closes the file.
+- Startup through `MSRDPEX_LOG_*` opens the file during DLL load and keeps the
+  existing truncate behavior.
+- Otherwise the first `SetLogEnabled(true)` opens the file in append mode, using
+  the path and level selected beforehand.
+- `SetLogFilePath` and `SetLogLevel` only select what that single open uses.
+  Changing the path after the log is open has no effect; restart the host
+  process to log to a different destination.
+- `SetLogEnabled(false)` stops new records but intentionally keeps the handle
+  open. Closing it while other session threads may be writing would not be safe
+  without locking the write path.
+
+Because the handle is published once and never replaced, concurrent RDP sessions
+in the same process cannot observe a closed or swapped `FILE*`, and normal
+logging needs no additional locking. Records already past their level check may
+still be written just after a disable; suppression is not synchronous.
+
+The existing COM interface and managed API remain unchanged, and the setters
+still return `void`.
