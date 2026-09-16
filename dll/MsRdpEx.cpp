@@ -1,5 +1,6 @@
-
+﻿
 #include "MsRdpEx.h"
+#include "Log.h"
 
 #include <MsRdpEx/MsRdpEx.h>
 #include <MsRdpEx/Environment.h>
@@ -871,6 +872,10 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID reserved)
             break;
 
         case DLL_PROCESS_DETACH:
+            // Keep recording/instance cleanup, but avoid logger locks which
+            // may be owned by threads already stopped during process exit.
+            if (reserved)
+                MsRdpEx_LogPrepareForProcessExit();
             MsRdpEx_Unload();
             break;
 

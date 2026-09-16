@@ -1,13 +1,26 @@
-
+﻿
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/Environment.h>
+#include "Log.h"
 
 static bool g_LogInitialized = false;
+static SRWLOCK g_LogLock = SRWLOCK_INIT;
+static __declspec(thread) bool g_LogInProgress = false;
+
+void MsRdpEx_LogPrepareForProcessExit(void)
+{
+    // Suppress all logger entry points on the terminating thread, including
+    // LogClose. Do not acquire abandoned locks or touch a possibly locked FILE.
+    // This leaves the rest of DLL teardown (including recording finalization)
+    // intact. The OS reclaims the diagnostic file handle at process exit.
+    g_LogInProgress = true;
+}
 
 static FILE* g_LogFile = NULL;
 static bool g_LogEnabled = false;
 static char g_LogFilePath[MSRDPEX_MAX_PATH] = { 0 };
+static bool g_LogFilePathValid = true;
 
 static uint32_t g_LogLevel = MSRDPEX_LOG_DEBUG;
 
@@ -15,21 +28,50 @@ static uint32_t g_LogLevel = MSRDPEX_LOG_DEBUG;
 
 LPCSTR LOG_LEVELS[7] = { "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF" };
 
+// Opening a file can invoke hooks which log on the same thread. Suppress those
+// nested calls before acquiring the non-recursive lock.
+static bool MsRdpEx_LogEnter(void)
+{
+    if (g_LogInProgress)
+        return false;
+
+    g_LogInProgress = true;
+    AcquireSRWLockExclusive(&g_LogLock);
+    return true;
+}
+
+static void MsRdpEx_LogLeave(void)
+{
+    ReleaseSRWLockExclusive(&g_LogLock);
+    g_LogInProgress = false;
+}
+
+static bool MsRdpEx_LogLevelActiveLocked(uint32_t logLevel)
+{
+    return g_LogEnabled && g_LogFile && g_LogLevel < MSRDPEX_LOG_OFF &&
+        logLevel >= g_LogLevel && logLevel < MSRDPEX_LOG_OFF;
+}
+
 bool MsRdpEx_IsLogLevelActive(uint32_t logLevel)
 {
-    if (!g_LogEnabled)
+    if (!MsRdpEx_LogEnter())
         return false;
 
-    if (g_LogLevel == MSRDPEX_LOG_OFF)
-        return false;
-
-    return logLevel >= g_LogLevel;
+    bool active = MsRdpEx_LogLevelActiveLocked(logLevel);
+    MsRdpEx_LogLeave();
+    return active;
 }
 
 bool MsRdpEx_LogVA(uint32_t level, const char* format, va_list args)
 {
-    if (!g_LogFile)
+    if (!MsRdpEx_LogEnter())
         return true;
+
+    // The caller's level check may have raced with a configuration change.
+    if (!MsRdpEx_LogLevelActiveLocked(level)) {
+        MsRdpEx_LogLeave();
+        return true;
+    }
 
     SYSTEMTIME st;
     GetLocalTime(&st);
@@ -40,15 +82,16 @@ bool MsRdpEx_LogVA(uint32_t level, const char* format, va_list args)
     char message[MSRDPEX_LOG_MAX_LINE];
     vsnprintf_s(message, MSRDPEX_LOG_MAX_LINE - 1, _TRUNCATE, format, args);
 
-    fprintf(g_LogFile, "[%s] %04d-%02d-%02d %02d:%02d:%02d.%03d PID:%lu TID:%lu - %s\n",
+    int written = fprintf(g_LogFile, "[%s] %04d-%02d-%02d %02d:%02d:%02d.%03d PID:%lu TID:%lu - %s\n",
         LOG_LEVELS[level],
         st.wYear, st.wMonth, st.wDay,
         st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
         pid, tid,
         message);
-    fflush(g_LogFile); // WARNING: performance drag
+    int flushed = fflush(g_LogFile); // WARNING: performance drag
+    MsRdpEx_LogLeave();
 
-    return true;
+    return written >= 0 && flushed == 0;
 }
 
 bool MsRdpEx_Log(uint32_t level, const char* format, ...)
@@ -63,7 +106,16 @@ bool MsRdpEx_Log(uint32_t level, const char* format, ...)
 
 void MsRdpEx_LogHexDump(const uint8_t* data, size_t size)
 {
-    int i, ln, hn;
+    if (!MsRdpEx_LogEnter())
+        return;
+
+    if (!g_LogEnabled || !g_LogFile || g_LogLevel >= MSRDPEX_LOG_OFF) {
+        MsRdpEx_LogLeave();
+        return;
+    }
+
+    size_t i;
+    int ln, hn;
     const uint8_t* p = data;
     size_t width = 16;
     size_t offset = 0;
@@ -110,9 +162,64 @@ void MsRdpEx_LogHexDump(const uint8_t* data, size_t size)
         offset += chunk;
         p += chunk;
     }
+
+    fflush(g_LogFile);
+    MsRdpEx_LogLeave();
 }
 
-void MsRdpEx_LogEnvInit()
+// These helpers require g_LogLock and must not call the public logging setters.
+static void MsRdpEx_LogCloseLocked(void)
+{
+    if (g_LogFile) {
+        fclose(g_LogFile);
+        g_LogFile = NULL;
+    }
+}
+
+static bool MsRdpEx_LogSetPathLocked(const char* path)
+{
+    if (!path || strnlen(path, MSRDPEX_MAX_PATH) >= MSRDPEX_MAX_PATH) {
+        MsRdpEx_LogCloseLocked();
+        g_LogFilePathValid = false;
+        OutputDebugStringA("MsRdpEx: the diagnostic log path is null or too long.\n");
+        return false;
+    }
+
+    if (!g_LogFilePathValid || strcmp(g_LogFilePath, path) != 0) {
+        MsRdpEx_LogCloseLocked();
+        strcpy_s(g_LogFilePath, MSRDPEX_MAX_PATH, path);
+    }
+
+    g_LogFilePathValid = true;
+    return true;
+}
+
+static void MsRdpEx_LogOpenLocked(const char* mode)
+{
+    if (!g_LogEnabled || g_LogFile || !g_LogFilePathValid)
+        return;
+
+    char defaultPath[MSRDPEX_MAX_PATH];
+    const char* path = g_LogFilePath;
+    if (g_LogFilePath[0] == '\0') {
+        const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
+        if (!appDataPath || snprintf(defaultPath, MSRDPEX_MAX_PATH,
+            "%s\\MsRdpEx.log", appDataPath) >= MSRDPEX_MAX_PATH) {
+            g_LogFilePathValid = false;
+            OutputDebugStringA("MsRdpEx: the default diagnostic log path is invalid.\n");
+            return;
+        }
+        // Keep the requested empty path so identical configuration does not
+        // close and reopen an already-open default log.
+        path = defaultPath;
+    }
+
+    g_LogFile = MsRdpEx_FileOpen(path, mode);
+    if (!g_LogFile)
+        OutputDebugStringA("MsRdpEx: could not open the configured diagnostic log file.\n");
+}
+
+static void MsRdpEx_LogEnvInitLocked(void)
 {
     char* envvar;
 
@@ -123,7 +230,7 @@ void MsRdpEx_LogEnvInit()
 
     if (logEnabled) {
         // only set if true to avoid overriding current value
-        MsRdpEx_SetLogEnabled(true);
+        g_LogEnabled = true;
     }
 
     envvar = MsRdpEx_GetEnv("MSRDPEX_LOG_LEVEL");
@@ -132,31 +239,31 @@ void MsRdpEx_LogEnvInit()
 
         if (MsRdpEx_StringIEquals(envvar, "TRACE")) 
         {
-            MsRdpEx_SetLogLevel(MSRDPEX_LOG_TRACE);
+            g_LogLevel = MSRDPEX_LOG_TRACE;
         }
         else if (MsRdpEx_StringIEquals(envvar, "DEBUG")) 
         {
-            MsRdpEx_SetLogLevel(MSRDPEX_LOG_DEBUG);
+            g_LogLevel = MSRDPEX_LOG_DEBUG;
         }
         else if (MsRdpEx_StringIEquals(envvar, "INFO")) 
         {
-            MsRdpEx_SetLogLevel(MSRDPEX_LOG_INFO);
+            g_LogLevel = MSRDPEX_LOG_INFO;
         }
         else if (MsRdpEx_StringIEquals(envvar, "WARN")) 
         {
-            MsRdpEx_SetLogLevel(MSRDPEX_LOG_WARN);
+            g_LogLevel = MSRDPEX_LOG_WARN;
         }
         else if (MsRdpEx_StringIEquals(envvar, "ERROR")) 
         {
-            MsRdpEx_SetLogLevel(MSRDPEX_LOG_ERROR);
+            g_LogLevel = MSRDPEX_LOG_ERROR;
         }
         else if (MsRdpEx_StringIEquals(envvar, "FATAL")) 
         {
-            MsRdpEx_SetLogLevel(MSRDPEX_LOG_FATAL);
+            g_LogLevel = MSRDPEX_LOG_FATAL;
         }
         else if (MsRdpEx_StringIEquals(envvar, "OFF")) 
         {
-            MsRdpEx_SetLogLevel(MSRDPEX_LOG_OFF);
+            g_LogLevel = MSRDPEX_LOG_OFF;
         }
         else
         {
@@ -164,7 +271,7 @@ void MsRdpEx_LogEnvInit()
 
             if ((ival >= 0) && (ival <= 6)) 
             {
-                MsRdpEx_SetLogLevel((uint32_t)ival);
+                g_LogLevel = (uint32_t)ival;
             }
         }
     }
@@ -174,7 +281,7 @@ void MsRdpEx_LogEnvInit()
     envvar = MsRdpEx_GetEnv("MSRDPEX_LOG_FILE_PATH");
 
     if (envvar) {
-        MsRdpEx_SetLogFilePath(envvar);
+        MsRdpEx_LogSetPathLocked(envvar);
     }
 
     free(envvar);
@@ -182,40 +289,65 @@ void MsRdpEx_LogEnvInit()
     g_LogInitialized = true;
 }
 
-void MsRdpEx_LogOpen()
+void MsRdpEx_LogEnvInit()
 {
-    MsRdpEx_LogEnvInit();
-
-    if (!g_LogEnabled)
+    if (!MsRdpEx_LogEnter())
         return;
 
-    if (g_LogFilePath[0] == '\0') {
-        const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
-        sprintf_s(g_LogFilePath, MSRDPEX_MAX_PATH, "%s\\MsRdpEx.log", appDataPath);
-    }
+    MsRdpEx_LogEnvInitLocked();
+    MsRdpEx_LogLeave();
+}
 
-    g_LogFile = MsRdpEx_FileOpen(g_LogFilePath, "wb");
+void MsRdpEx_LogOpen()
+{
+    if (!MsRdpEx_LogEnter())
+        return;
+
+    bool initializing = !g_LogInitialized;
+    MsRdpEx_LogEnvInitLocked();
+    MsRdpEx_LogOpenLocked(initializing ? "wb" : "ab");
+    MsRdpEx_LogLeave();
 }
 
 void MsRdpEx_LogClose()
 {
-    if (g_LogFile) {
-        fclose(g_LogFile);
-        g_LogFile = NULL;
-    }
+    if (!MsRdpEx_LogEnter())
+        return;
+
+    MsRdpEx_LogCloseLocked();
+    MsRdpEx_LogLeave();
 }
 
 void MsRdpEx_SetLogEnabled(bool logEnabled)
 {
+    if (!MsRdpEx_LogEnter())
+        return;
+
     g_LogEnabled = logEnabled;
+    if (logEnabled)
+        MsRdpEx_LogOpenLocked("ab");
+    else
+        MsRdpEx_LogCloseLocked();
+
+    MsRdpEx_LogLeave();
 }
 
 void MsRdpEx_SetLogLevel(uint32_t logLevel)
 {
+    if (!MsRdpEx_LogEnter())
+        return;
+
     g_LogLevel = logLevel;
+    MsRdpEx_LogLeave();
 }
 
 void MsRdpEx_SetLogFilePath(const char* logFilePath)
 {
-    strcpy_s(g_LogFilePath, MSRDPEX_MAX_PATH, logFilePath);
+    if (!MsRdpEx_LogEnter())
+        return;
+
+    if (MsRdpEx_LogSetPathLocked(logFilePath))
+        MsRdpEx_LogOpenLocked("ab");
+
+    MsRdpEx_LogLeave();
 }

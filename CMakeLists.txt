@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+﻿cmake_minimum_required(VERSION 3.8)
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release")
 
@@ -111,4 +111,13 @@ endif()
 
 if(WITH_DOTNET)
     add_subdirectory(dotnet)
+endif()
+
+option(MSRDPEX_BUILD_LOGGING_TESTS "Build native logging integration tests" OFF)
+if(MSRDPEX_BUILD_LOGGING_TESTS)
+    if(NOT WITH_NATIVE)
+        message(FATAL_ERROR "Logging integration tests require WITH_NATIVE=ON")
+    endif()
+    enable_testing()
+    add_subdirectory(tests/logging)
 endif()
