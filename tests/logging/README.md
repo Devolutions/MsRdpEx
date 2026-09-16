@@ -19,7 +19,7 @@ The test process must run on Windows with support for its target architecture.
 If multiple Visual Studio installations exist, select the one with ATL using
 `-DCMAKE_GENERATOR_INSTANCE="C:/Program Files/Microsoft Visual Studio/2022/Community"`.
 
-There are eight tests per architecture: four scenarios, each with ActiveX hooks
+There are ten tests per architecture: five scenarios, each with ActiveX hooks
 disabled and enabled. CTest applies a 45-second timeout to each case. Scenarios
 retain their temporary log files and print the directory on success or failure.
 
@@ -37,8 +37,9 @@ Use a runner and DLL with matching architectures. Against a DLL without this
 fix, `late` fails because enabling logging after DLL load creates no file;
 `startup` passes because the environment was configured before DLL load.
 
-Supported scenarios are `late`, `startup`, `levels`, and `concurrent`. The last
-argument is `0` or `1` to disable or enable ActiveX hooks in that process.
+Supported scenarios are `late`, `startup`, `levels`, `concurrent`, and
+`first-open`. The last argument is `0` or `1` to disable or enable ActiveX hooks
+in that process.
 The runner clears inherited logging settings before selecting each scenario.
 
 The configuration sequence matches RoyalApps.Community.Rdp.WinForms 1.4.3:
@@ -62,8 +63,11 @@ once per process:
 
 Because the handle is published once and never replaced, concurrent RDP sessions
 in the same process cannot observe a closed or swapped `FILE*`, and normal
-logging needs no additional locking. Records already past their level check may
-still be written just after a disable; suppression is not synchronous.
+logging needs no additional application lock. Path selection and the one-time
+open share a configuration lock, so simultaneous first-use configuration cannot
+tear the path; this lock is never acquired while writing records. Records already
+past their level check may still be written just after a disable; suppression is
+not synchronous.
 
 The existing COM interface and managed API remain unchanged, and the setters
 still return `void`.

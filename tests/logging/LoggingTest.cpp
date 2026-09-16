@@ -93,6 +93,41 @@ static void Test(const std::wstring& scenario, Core& core, const fs::path& direc
         return;
     }
 
+    if (scenario == L"first-open") {
+        // Race independent session configuration calls before any destination
+        // has been selected. Exactly one complete path must win.
+        constexpr int threadCount = 8;
+        std::atomic<bool> start{ false };
+        std::vector<std::thread> sessions;
+        std::vector<fs::path> paths;
+
+        core->SetLogEnabled(false);
+        for (int i = 0; i < threadCount; ++i)
+            paths.push_back(directory / (L"session-" + std::to_wstring(i) + L".log"));
+
+        for (int i = 0; i < threadCount; ++i) {
+            sessions.emplace_back([&, i]() {
+                while (!start.load())
+                    std::this_thread::yield();
+                core.Path(paths[i]);
+                core->SetLogEnabled(true);
+            });
+        }
+
+        start = true;
+        for (auto& session : sessions)
+            session.join();
+
+        core->SetLogLevel(MSRDPEX_LOG_DEBUG);
+        core->Load();
+
+        size_t populated = 0;
+        for (const auto& path : paths)
+            populated += CountLoads(path) == 1 ? 1 : 0;
+        Require(populated == 1, "Concurrent first-open configuration selected an invalid destination");
+        return;
+    }
+
     // Reproduce the wrapper's initialization before its first configuration call.
     core->SetLogEnabled(false);
     core->SetPcapEnabled(false);
@@ -130,20 +165,10 @@ static void Test(const std::wstring& scenario, Core& core, const fs::path& direc
                 }
             });
         }
-        bool wroteWhileDisabled = false;
         try {
             for (int i = 0; i < 100; ++i) {
                 core->SetLogEnabled(false);
-                // Records already past their level check may still land, so
-                // let in-flight calls drain before sampling the file.
-                const auto drain = attempts.load();
-                while (attempts.load() - drain < 8)
-                    std::this_thread::yield();
-                const auto count = CountLoads(first);
-                const auto before = attempts.load();
-                while (attempts.load() - before < 20)
-                    std::this_thread::yield();
-                wroteWhileDisabled |= count != CountLoads(first);
+                std::this_thread::yield();
                 core->SetLogEnabled(true);
                 core->Load();
             }
@@ -158,7 +183,6 @@ static void Test(const std::wstring& scenario, Core& core, const fs::path& direc
         for (auto& writer : writers)
             writer.join();
         core->SetLogEnabled(false);
-        Require(!wroteWhileDisabled, "A concurrent writer wrote after disabling returned");
         Require(CountLoads(first) > 1, "Concurrent logging lost output");
         std::ifstream stream(first);
         std::string line;

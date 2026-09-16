@@ -6,10 +6,11 @@
 static bool g_LogInitialized = false;
 
 static FILE* volatile g_LogFile = NULL;
-static bool g_LogEnabled = false;
+static volatile LONG g_LogEnabled = false;
 static char g_LogFilePath[MSRDPEX_MAX_PATH] = { 0 };
+static SRWLOCK g_LogConfigLock = SRWLOCK_INIT;
 
-static uint32_t g_LogLevel = MSRDPEX_LOG_DEBUG;
+static volatile LONG g_LogLevel = MSRDPEX_LOG_DEBUG;
 
 #define MSRDPEX_LOG_MAX_LINE    8192
 
@@ -17,18 +18,21 @@ LPCSTR LOG_LEVELS[7] = { "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OF
 
 bool MsRdpEx_IsLogLevelActive(uint32_t logLevel)
 {
-    if (!g_LogEnabled)
+    LONG logEnabled = ReadAcquire(&g_LogEnabled);
+    LONG configuredLevel = ReadAcquire(&g_LogLevel);
+
+    if (!logEnabled)
         return false;
 
-    if (g_LogLevel == MSRDPEX_LOG_OFF)
+    if (configuredLevel == MSRDPEX_LOG_OFF)
         return false;
 
-    return logLevel >= g_LogLevel;
+    return logLevel >= (uint32_t) configuredLevel;
 }
 
 bool MsRdpEx_LogVA(uint32_t level, const char* format, va_list args)
 {
-    FILE* logFile = g_LogFile;
+    FILE* logFile = ReadPointerAcquire((PVOID volatile*) &g_LogFile);
 
     // Re-check the configuration: the caller's level test may have raced with
     // a change. In-flight records can still land just after a disable.
@@ -75,9 +79,10 @@ void MsRdpEx_LogHexDump(const uint8_t* data, size_t size)
     size_t chunk = 0;
     char line[512] = { 0 };
     char* bin2hex = "0123456789ABCDEF";
-    FILE* logFile = g_LogFile;
+    FILE* logFile = ReadPointerAcquire((PVOID volatile*) &g_LogFile);
 
-    if (!logFile || !g_LogEnabled || (g_LogLevel == MSRDPEX_LOG_OFF))
+    if (!logFile || !ReadAcquire(&g_LogEnabled) ||
+        (ReadAcquire(&g_LogLevel) == MSRDPEX_LOG_OFF))
         return;
 
     while (offset < size) {
@@ -117,6 +122,8 @@ void MsRdpEx_LogHexDump(const uint8_t* data, size_t size)
         offset += chunk;
         p += chunk;
     }
+
+    fflush(logFile);
 }
 
 // The diagnostic file is opened at most once per process. Configuration
@@ -124,17 +131,27 @@ void MsRdpEx_LogHexDump(const uint8_t* data, size_t size)
 // inside fprintf on a handle that another thread replaced or closed.
 static void MsRdpEx_LogOpenOnce(const char* mode)
 {
-    if (!g_LogEnabled || g_LogFile)
+    if (!ReadAcquire(&g_LogEnabled) ||
+        ReadPointerAcquire((PVOID volatile*) &g_LogFile))
         return;
 
     char defaultPath[MSRDPEX_MAX_PATH];
     const char* path = g_LogFilePath;
+
+    AcquireSRWLockExclusive(&g_LogConfigLock);
+
+    if (!ReadAcquire(&g_LogEnabled) ||
+        ReadPointerAcquire((PVOID volatile*) &g_LogFile)) {
+        ReleaseSRWLockExclusive(&g_LogConfigLock);
+        return;
+    }
 
     if (g_LogFilePath[0] == '\0') {
         const char* appDataPath = MsRdpEx_GetPath(MSRDPEX_APP_DATA_PATH);
 
         if (!appDataPath || sprintf_s(defaultPath, MSRDPEX_MAX_PATH,
             "%s\\MsRdpEx.log", appDataPath) < 0) {
+            ReleaseSRWLockExclusive(&g_LogConfigLock);
             OutputDebugStringA("MsRdpEx: the default diagnostic log path is invalid.\n");
             return;
         }
@@ -145,6 +162,7 @@ static void MsRdpEx_LogOpenOnce(const char* mode)
     FILE* logFile = MsRdpEx_FileOpen(path, mode);
 
     if (!logFile) {
+        ReleaseSRWLockExclusive(&g_LogConfigLock);
         OutputDebugStringA("MsRdpEx: could not open the configured diagnostic log file.\n");
         return;
     }
@@ -152,6 +170,8 @@ static void MsRdpEx_LogOpenOnce(const char* mode)
     if (InterlockedCompareExchangePointer((PVOID volatile*) &g_LogFile, logFile, NULL)) {
         fclose(logFile); // another thread published its handle first
     }
+
+    ReleaseSRWLockExclusive(&g_LogConfigLock);
 }
 
 void MsRdpEx_LogEnvInit()
@@ -165,7 +185,7 @@ void MsRdpEx_LogEnvInit()
 
     if (logEnabled) {
         // only set if true to avoid overriding current value
-        g_LogEnabled = true;
+        WriteRelease(&g_LogEnabled, true);
     }
 
     envvar = MsRdpEx_GetEnv("MSRDPEX_LOG_LEVEL");
@@ -174,31 +194,31 @@ void MsRdpEx_LogEnvInit()
 
         if (MsRdpEx_StringIEquals(envvar, "TRACE")) 
         {
-            g_LogLevel = MSRDPEX_LOG_TRACE;
+            WriteRelease(&g_LogLevel, MSRDPEX_LOG_TRACE);
         }
         else if (MsRdpEx_StringIEquals(envvar, "DEBUG")) 
         {
-            g_LogLevel = MSRDPEX_LOG_DEBUG;
+            WriteRelease(&g_LogLevel, MSRDPEX_LOG_DEBUG);
         }
         else if (MsRdpEx_StringIEquals(envvar, "INFO")) 
         {
-            g_LogLevel = MSRDPEX_LOG_INFO;
+            WriteRelease(&g_LogLevel, MSRDPEX_LOG_INFO);
         }
         else if (MsRdpEx_StringIEquals(envvar, "WARN")) 
         {
-            g_LogLevel = MSRDPEX_LOG_WARN;
+            WriteRelease(&g_LogLevel, MSRDPEX_LOG_WARN);
         }
         else if (MsRdpEx_StringIEquals(envvar, "ERROR")) 
         {
-            g_LogLevel = MSRDPEX_LOG_ERROR;
+            WriteRelease(&g_LogLevel, MSRDPEX_LOG_ERROR);
         }
         else if (MsRdpEx_StringIEquals(envvar, "FATAL")) 
         {
-            g_LogLevel = MSRDPEX_LOG_FATAL;
+            WriteRelease(&g_LogLevel, MSRDPEX_LOG_FATAL);
         }
         else if (MsRdpEx_StringIEquals(envvar, "OFF")) 
         {
-            g_LogLevel = MSRDPEX_LOG_OFF;
+            WriteRelease(&g_LogLevel, MSRDPEX_LOG_OFF);
         }
         else
         {
@@ -206,7 +226,7 @@ void MsRdpEx_LogEnvInit()
 
             if ((ival >= 0) && (ival <= 6)) 
             {
-                g_LogLevel = (uint32_t)ival;
+                WriteRelease(&g_LogLevel, ival);
             }
         }
     }
@@ -234,16 +254,14 @@ void MsRdpEx_LogOpen()
 
 void MsRdpEx_LogClose()
 {
-    FILE* logFile = InterlockedExchangePointer((PVOID volatile*) &g_LogFile, NULL);
-
-    if (logFile) {
-        fclose(logFile);
-    }
+    // The process owns the stream once it is published. Closing it here could
+    // race with writers or block on a CRT stream lock during process detach.
+    WriteRelease(&g_LogEnabled, false);
 }
 
 void MsRdpEx_SetLogEnabled(bool logEnabled)
 {
-    g_LogEnabled = logEnabled;
+    WriteRelease(&g_LogEnabled, logEnabled);
 
     // Enabling after the DLL has loaded opens the log on first use. Disabling
     // stops new records but intentionally keeps the handle: closing it while
@@ -254,7 +272,7 @@ void MsRdpEx_SetLogEnabled(bool logEnabled)
 
 void MsRdpEx_SetLogLevel(uint32_t logLevel)
 {
-    g_LogLevel = logLevel;
+    WriteRelease(&g_LogLevel, (LONG) logLevel);
 }
 
 // Only takes effect while the diagnostic log is not open yet: the destination
@@ -266,5 +284,10 @@ void MsRdpEx_SetLogFilePath(const char* logFilePath)
         return;
     }
 
-    strcpy_s(g_LogFilePath, MSRDPEX_MAX_PATH, logFilePath);
+    AcquireSRWLockExclusive(&g_LogConfigLock);
+
+    if (!ReadPointerAcquire((PVOID volatile*) &g_LogFile))
+        strcpy_s(g_LogFilePath, MSRDPEX_MAX_PATH, logFilePath);
+
+    ReleaseSRWLockExclusive(&g_LogConfigLock);
 }
