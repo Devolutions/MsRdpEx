@@ -1,4 +1,4 @@
-# Microsoft RDP Extensions (MsRdpEx)
+﻿# Microsoft RDP Extensions (MsRdpEx)
 
 ## Installation
 
@@ -168,6 +168,15 @@ $Env:MSRDPEX_LOG_FILE_PATH="C:\Windows\Temp\MsRdpEx.log"
 ```
 
 The trace log level is extremely verbose, so it should only be used when necessary. The MsRdpEx logging is very helpful in understanding the Microsoft RDP client internals.
+
+### RD Gateway isolation
+
+RPC binding isolation is enabled by default for Microsoft RDP ActiveX gateway
+connections using `ncacn_http`. It resolves a confirmed case where the second
+connection in the same process failed while the first remained connected.
+Hosts can disable it process-wide with `RdpCoreApi.GatewayIsolationEnabled = false`
+before connecting. See [gateway isolation](tests/logging/GatewayIsolation.md) for
+scope, compatibility, lifecycle and validation details. Native logging is not required.
 
 ## Public ActiveX backends
 

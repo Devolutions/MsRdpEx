@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <PlatformTarget Condition="'$(TargetFramework)' == 'net48'">x64</PlatformTarget>
+    <MsRdpExManagedRoot Condition="'$(MsRdpExManagedRoot)' == ''">$(MSBuildThisFileDirectory)../../build-gateway-managed/Release</MsRdpExManagedRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Devolutions.MsRdpEx">
+      <HintPath>$(MsRdpExManagedRoot)/$(TargetFramework)/Devolutions.MsRdpEx.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <Target Name="CheckManagedAssembly" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(MsRdpExManagedRoot)/$(TargetFramework)/Devolutions.MsRdpEx.dll')"
+           Text="Build Devolutions.MsRdpEx for both frameworks first; see the gateway-managed README." />
+  </Target>
+</Project>

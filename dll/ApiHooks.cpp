@@ -1,4 +1,4 @@
-
+﻿
 #include "MsRdpEx.h"
 #include "D3D11Capture.h"
 #include "OutputMirrorCapture.h"
@@ -7,6 +7,7 @@
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/Sspi.h>
+#include "GatewayIsolation.h"
 #include <MsRdpEx/KeyMaps.h>
 #include <MsRdpEx/NameResolver.h>
 #include <MsRdpEx/RdpInstance.h>
@@ -1656,7 +1657,9 @@ LONG MsRdpEx_AttachHooks()
     MsRdpEx_D3D11Capture_AttachHooks();
     
     MsRdpEx_AttachSspiHooks();
+    MsRdpEx_AttachGatewayIsolationHooks();
     error = DetourTransactionCommit();
+    MsRdpEx_GatewayIsolationHooksCommitted(error);
 
     if (error == NO_ERROR)
     {
@@ -1716,7 +1719,9 @@ LONG MsRdpEx_DetachHooks()
     MsRdpEx_D3D11Capture_DetachHooks();
     
     MsRdpEx_DetachSspiHooks();
+    MsRdpEx_DetachGatewayIsolationHooks();
     error = DetourTransactionCommit();
+    MsRdpEx_GatewayIsolationHooksCommitted(error);
 
     if (error == NO_ERROR)
     {
