@@ -1,4 +1,4 @@
-
+﻿
 set(MSRDPEX_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include/MsRdpEx")
 
 set(MSRDPEX_RESOURCES
@@ -48,6 +48,8 @@ set(MSRDPEX_SOURCES
     DpiHelper.cpp
     DpiHelper.h
     Sspi.cpp
+    GatewayIsolation.cpp
+    GatewayIsolation.h
     Stream.cpp
     Detours.cpp
     Memory.c

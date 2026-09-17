@@ -1,5 +1,6 @@
 ﻿
 #include "MsRdpEx.h"
+#include "GatewayIsolation.h"
 #include "Log.h"
 
 #include <MsRdpEx/MsRdpEx.h>
@@ -821,6 +822,7 @@ void MsRdpEx_Load()
 
     g_IsClientProcess = MsRdpEx_DetectClientProcess(&g_IsOOBClient);
 
+    MsRdpEx_GetGatewayIsolationEnabled(); // Capture the optional override once at DLL startup.
     axHookEnabled = MsRdpEx_GetEnvBool("MSRDPEX_HOOK_ENABLED", true);
 
     MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
@@ -872,10 +874,12 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID reserved)
             break;
 
         case DLL_PROCESS_DETACH:
-            // Keep recording/instance cleanup, but avoid logger locks which
-            // may be owned by threads already stopped during process exit.
-            if (reserved)
+            // Keep recording/instance cleanup, but avoid locks which may be
+            // owned by threads already stopped during process exit.
+            if (reserved) {
                 MsRdpEx_LogPrepareForProcessExit();
+                MsRdpEx_GatewayIsolationPrepareForProcessExit();
+            }
             MsRdpEx_Unload();
             break;
 

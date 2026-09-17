@@ -18,9 +18,10 @@ int wmain(int argc, wchar_t** argv)
 {
     fs::path directory;
     try {
-        Require(argc == 3 || argc == 4, "Usage: ShutdownTest <absolute-test-dll> <exit|unload> [child-directory]");
+        Require(argc == 3 || argc == 4, "Usage: ShutdownTest <absolute-test-dll> <exit|unload|exit-gateway-lock> [child-directory]");
         Require(fs::path(argv[1]).is_absolute(), "Select an absolute test DLL path");
-        const bool processExit = std::wstring(argv[2]) == L"exit";
+        const bool holdGatewayLock = std::wstring(argv[2]) == L"exit-gateway-lock";
+        const bool processExit = holdGatewayLock || std::wstring(argv[2]) == L"exit";
         Require(processExit || std::wstring(argv[2]) == L"unload", "Unknown shutdown scenario");
         if (argc == 4) {
             directory = argv[3];
@@ -38,6 +39,11 @@ int wmain(int argc, wchar_t** argv)
             Require(prepare && prepare(directory.u8string().c_str()), "Could not prepare a manager-owned recording");
             const auto manifest = directory / L"11111111-2222-3333-4444-555555555555" / L"recording.json";
             Require(!fs::exists(manifest), "Fixture finalized recording before DLL teardown");
+            if (holdGatewayLock) {
+                using Hold = bool(*)();
+                auto hold = reinterpret_cast<Hold>(GetProcAddress(module, "HoldGatewayBindingLock"));
+                Require(hold && hold(), "Could not hold the gateway binding lock");
+            }
             if (processExit)
                 ExitProcess(0);
             Require(FreeLibrary(module), "Explicit DLL unload failed");

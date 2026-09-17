@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -67,6 +67,23 @@ namespace MsRdpEx
         [PreserveSig]
         [return: MarshalAs(UnmanagedType.U1)]
         bool OpenInstanceForWindowHandle(IntPtr hWnd, [MarshalAs(UnmanagedType.Interface)] out object rdpInstance);
+    }
+
+#if NET8_0_OR_GREATER
+    [GeneratedComInterface]
+#else
+    [ComImport]
+#endif
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [Guid("FA68C6C8-38BF-4DEB-9CDA-7FD4F8D16009")]
+    public partial interface IMsRdpExGatewaySettings
+    {
+        [PreserveSig]
+        [return: MarshalAs(UnmanagedType.U1)]
+        bool GetGatewayIsolationEnabled();
+
+        [PreserveSig]
+        void SetGatewayIsolationEnabled([MarshalAs(UnmanagedType.U1)] bool enabled);
     }
 
 #if NET8_0_OR_GREATER
