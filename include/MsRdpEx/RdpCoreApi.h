@@ -1,4 +1,4 @@
-#ifndef MSRDPEX_CORE_API_H
+﻿#ifndef MSRDPEX_CORE_API_H
 #define MSRDPEX_CORE_API_H
 
 #include <MsRdpEx/MsRdpEx.h>
@@ -20,6 +20,15 @@ public:
     virtual void __stdcall SetAxHookEnabled(bool axHookEnabled) = 0;
     virtual bool __stdcall QueryInstanceByWindowHandle(HWND hWnd, LPVOID* ppvObject) = 0;
     virtual bool __stdcall OpenInstanceForWindowHandle(HWND hWnd, LPVOID* ppvObject) = 0;
+};
+
+// Optional extension. The original core API IID and vtable remain unchanged.
+struct __declspec(uuid("FA68C6C8-38BF-4DEB-9CDA-7FD4F8D16009")) __declspec(novtable)
+    IMsRdpExGatewaySettings : public IUnknown
+{
+public:
+    virtual bool __stdcall GetGatewayIsolationEnabled() = 0;
+    virtual void __stdcall SetGatewayIsolationEnabled(bool enabled) = 0;
 };
 
 #ifdef __cplusplus

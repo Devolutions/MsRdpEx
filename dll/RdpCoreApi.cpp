@@ -1,16 +1,17 @@
-
+﻿
 #include <MsRdpEx/RdpProcess.h>
 #include <MsRdpEx/RdpInstance.h>
 
 #include <MsRdpEx/RdpCoreApi.h>
 
 #include "MsRdpEx.h"
+#include "GatewayIsolation.h"
 
 extern "C" const GUID IID_IMsRdpExCoreApi;
 extern "C" const GUID IID_IMsRdpExInstance;
 extern "C" const GUID IID_IMsRdpExProcess;
 
-class CMsRdpExCoreApi : public IMsRdpExCoreApi
+class CMsRdpExCoreApi : public IMsRdpExCoreApi, public IMsRdpExGatewaySettings
 {
 public:
     CMsRdpExCoreApi()
@@ -31,6 +32,8 @@ public:
         LPVOID* ppvObject
     )
     {
+        if (!ppvObject) return E_POINTER;
+        *ppvObject = NULL;
         HRESULT hr = E_NOINTERFACE;
         ULONG refCount = m_refCount;
         char iid[MSRDPEX_GUID_STRING_SIZE];
@@ -38,13 +41,19 @@ public:
 
         if (riid == IID_IUnknown)
         {
-            *ppvObject = (LPVOID)((IUnknown*)this);
+            *ppvObject = (LPVOID)((IMsRdpExCoreApi*)this);
             refCount = InterlockedIncrement(&m_refCount);
             hr = S_OK;
         }
         else if (riid == IID_IMsRdpExCoreApi)
         {
-            *ppvObject = (LPVOID)((IUnknown*)this);
+            *ppvObject = (LPVOID)((IMsRdpExCoreApi*)this);
+            refCount = InterlockedIncrement(&m_refCount);
+            hr = S_OK;
+        }
+        else if (riid == __uuidof(IMsRdpExGatewaySettings))
+        {
+            *ppvObject = static_cast<IMsRdpExGatewaySettings*>(this);
             refCount = InterlockedIncrement(&m_refCount);
             hr = S_OK;
         }
@@ -125,6 +134,16 @@ public:
         MsRdpEx_SetAxHookEnabled(axHookEnabled);
     }
 
+    bool __stdcall GetGatewayIsolationEnabled()
+    {
+        return MsRdpEx_GetGatewayIsolationEnabled();
+    }
+
+    void __stdcall SetGatewayIsolationEnabled(bool enabled)
+    {
+        MsRdpEx_SetGatewayIsolationEnabled(enabled);
+    }
+
     bool __stdcall QueryInstanceByWindowHandle(HWND hWnd, LPVOID* ppvObject)
     {
         IMsRdpExInstance* instance = NULL;
@@ -170,7 +189,7 @@ private:
 HRESULT CDECL MsRdpExCoreApi_CreateInstance(LPVOID* ppvObject)
 {
     CMsRdpExCoreApi* pObj = new CMsRdpExCoreApi();
-    *ppvObject = (LPVOID) pObj;
+    *ppvObject = static_cast<IMsRdpExCoreApi*>(pObj);
     return S_OK;
 }
 

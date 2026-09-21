@@ -1,5 +1,6 @@
-
+﻿
 #include "MsRdpEx.h"
+#include "GatewayIsolation.h"
 
 #include <MsRdpEx/MsRdpEx.h>
 #include <MsRdpEx/Environment.h>
@@ -820,6 +821,7 @@ void MsRdpEx_Load()
 
     g_IsClientProcess = MsRdpEx_DetectClientProcess(&g_IsOOBClient);
 
+    MsRdpEx_GetGatewayIsolationEnabled(); // Capture the optional override once at DLL startup.
     axHookEnabled = MsRdpEx_GetEnvBool("MSRDPEX_HOOK_ENABLED", true);
 
     MsRdpEx_InitPaths(MSRDPEX_ALL_PATHS);
@@ -871,6 +873,9 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID reserved)
             break;
 
         case DLL_PROCESS_DETACH:
+            // Terminated threads may still own the gateway binding lock.
+            if (reserved)
+                MsRdpEx_GatewayIsolationPrepareForProcessExit();
             MsRdpEx_Unload();
             break;
 
