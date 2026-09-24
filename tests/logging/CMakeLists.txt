@@ -76,7 +76,7 @@ target_compile_features(MsRdpEx_DvcFactoryLifetimeTest PRIVATE cxx_std_17)
 target_compile_options(MsRdpEx_DvcFactoryLifetimeTest PRIVATE /W4 /EHsc)
 target_link_libraries(MsRdpEx_DvcFactoryLifetimeTest PRIVATE uuid.lib)
 add_dependencies(MsRdpEx_DvcFactoryLifetimeTest MsRdpEx_GatewayShutdownTestDll)
-foreach(scenario removed replacement)
+foreach(scenario removed replacement addref-reentrant release-reentrant manager-shutdown)
     add_test(NAME logging.dvc-factory.${scenario}
         COMMAND MsRdpEx_DvcFactoryLifetimeTest
             "$<TARGET_FILE:MsRdpEx_GatewayShutdownTestDll>" ${scenario})

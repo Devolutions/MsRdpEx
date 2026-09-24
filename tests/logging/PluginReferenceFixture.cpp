@@ -1,5 +1,4 @@
 #include "../../dll/RdpInstance.cpp"
-#include "../../dll/RdpDvcClient.h"
 
 extern "C" IMsRdpExInstance* CreatePluginReferenceInstance()
 {
@@ -25,5 +24,5 @@ extern "C" bool UnregisterPluginReferenceInstance(IMsRdpExInstance* instance)
 
 extern "C" HRESULT CreatePluginReferenceFactory(REFCLSID sessionId, IClassFactory** factory)
 {
-    return DllGetClassObject_DvcPlugin(sessionId, IID_IClassFactory, (void**)factory);
+    return MsRdpEx_DllGetClassObject(sessionId, IID_IClassFactory, (void**)factory);
 }

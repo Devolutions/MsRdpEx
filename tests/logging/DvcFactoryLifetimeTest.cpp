@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <tsvirtualchannels.h>
 
 static void Check(bool condition, const char* message)
@@ -18,6 +19,10 @@ public:
         if (!object) return E_POINTER;
         *object = NULL;
         if (iid != IID_IUnknown && iid != IID_IWTSPlugin) return E_NOINTERFACE;
+        if (queryEntered) {
+            SetEvent(queryEntered);
+            if (WaitForSingleObject(queryResume, 5000) != WAIT_OBJECT_0) return E_FAIL;
+        }
         if (replaceOnQuery) {
             replaceOnQuery = false;
             if (FAILED(instance->SetWTSPluginObject(replacement))) return E_FAIL;
@@ -28,8 +33,22 @@ public:
         return S_OK;
     }
 
-    ULONG STDMETHODCALLTYPE AddRef() override { return ++refs; }
-    ULONG STDMETHODCALLTYPE Release() override { return --refs; }
+    ULONG STDMETHODCALLTYPE AddRef() override
+    {
+        if (clearOnAddRef) {
+            clearOnAddRef = false;
+            instance->SetWTSPluginObject(NULL);
+        }
+        return ++refs;
+    }
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        if (clearOnRelease) {
+            clearOnRelease = false;
+            instance->SetWTSPluginObject(NULL);
+        }
+        return --refs;
+    }
     HRESULT STDMETHODCALLTYPE Initialize(IWTSVirtualChannelManager*) override { return S_OK; }
     HRESULT STDMETHODCALLTYPE Connected() override { return S_OK; }
     HRESULT STDMETHODCALLTYPE Disconnected(DWORD) override { return S_OK; }
@@ -39,7 +58,11 @@ public:
     IMsRdpExInstance* instance = NULL;
     IWTSPlugin* replacement = NULL;
     bool replaceOnQuery = false;
+    bool clearOnAddRef = false;
+    bool clearOnRelease = false;
     ULONG refsAfterReplacement = 0;
+    HANDLE queryEntered = NULL;
+    HANDLE queryResume = NULL;
 };
 
 int wmain(int argc, wchar_t** argv)
@@ -137,6 +160,63 @@ int wmain(int argc, wchar_t** argv)
             Check(instance->Release() == 0, "Instance remained alive after removal");
             Check(first.Release() == 0 && second.Release() == 0,
                 "Test plugin references not balanced");
+        } else if (scenario == L"addref-reentrant") {
+            first.instance = instance;
+            first.clearOnAddRef = true;
+            Check(SUCCEEDED(factory->CreateInstance(NULL, IID_IWTSPlugin, (void**)&returned))
+                && returned == static_cast<IWTSPlugin*>(&first),
+                "Plugin AddRef could not reenter the setter");
+            void* borrowed = &first;
+            Check(SUCCEEDED(instance->GetWTSPluginObject(&borrowed)) && !borrowed,
+                "Reentrant AddRef did not clear the registered plugin");
+            Check(returned->Release() == 1, "Reentrant AddRef leaked the plugin reference");
+            Check(unregisterInstance(instance), "Could not remove plugin instance");
+            Check(instance->Release() == 0, "Instance remained alive after removal");
+            Check(first.Release() == 0, "Test plugin reference not balanced");
+        } else if (scenario == L"release-reentrant") {
+            CountedPlugin second;
+            second.AddRef();
+            first.instance = instance;
+            first.clearOnRelease = true;
+            Check(SUCCEEDED(instance->SetWTSPluginObject(&second)),
+                "Plugin Release could not reenter the setter");
+            void* borrowed = &first;
+            Check(SUCCEEDED(instance->GetWTSPluginObject(&borrowed)) && !borrowed,
+                "Reentrant Release did not clear the replacement plugin");
+            Check(first.refs == 1 && second.refs == 1,
+                "Reentrant Release did not balance the plugin references");
+            Check(unregisterInstance(instance), "Could not remove plugin instance");
+            Check(instance->Release() == 0, "Instance remained alive after removal");
+            Check(first.Release() == 0 && second.Release() == 0,
+                "Test plugin references not balanced");
+        } else if (scenario == L"manager-shutdown") {
+            HANDLE entered = CreateEventW(NULL, TRUE, FALSE, NULL);
+            HANDLE resume = CreateEventW(NULL, TRUE, FALSE, NULL);
+            Check(entered && resume, "Could not create query synchronization events");
+            first.queryEntered = entered;
+            first.queryResume = resume;
+            HRESULT workerHr = E_FAIL;
+            std::thread worker([&]() {
+                IWTSPlugin* plugin = NULL;
+                workerHr = factory->CreateInstance(NULL, IID_IWTSPlugin, (void**)&plugin);
+                if (plugin) plugin->Release();
+            });
+            DWORD enteredResult = WaitForSingleObject(entered, 5000);
+            bool removed = unregisterInstance(instance);
+            ULONG remaining = instance->Release();
+            SetEvent(resume);
+            worker.join();
+            Check(enteredResult == WAIT_OBJECT_0, "Factory query did not start");
+            Check(removed && remaining == 0, "Could not tear down manager during factory query");
+            Check(workerHr == S_OK && first.refs == 1,
+                "In-flight factory query lost its plugin during manager teardown");
+            returned = reinterpret_cast<IWTSPlugin*>(factory);
+            Check(factory->CreateInstance(NULL, IID_IWTSPlugin, (void**)&returned)
+                == REGDB_E_CLASSNOTREG && !returned,
+                "Factory used manager after shutdown");
+            CloseHandle(entered);
+            CloseHandle(resume);
+            Check(first.Release() == 0, "Test plugin reference not balanced");
         } else {
             throw std::runtime_error("Unknown DVC factory scenario");
         }

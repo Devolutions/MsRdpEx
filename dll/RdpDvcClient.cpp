@@ -366,12 +366,12 @@ public:
         MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
         if (riid == IID_IWTSPlugin) {
-            IUnknown* wtsPlugin = NULL;
+            MsRdpEx_WTSPluginReference* wtsPlugin = NULL;
             hr = MsRdpEx_InstanceManager_AcquireWTSPluginBySessionId(&m_sessionId, &wtsPlugin);
 
             if (SUCCEEDED(hr) && wtsPlugin) {
                 MsRdpEx_LogPrint(DEBUG, "CDvcPluginClassFactory using registered WTSPlugin");
-                hr = wtsPlugin->QueryInterface(riid, ppvObject);
+                hr = wtsPlugin->Get()->QueryInterface(riid, ppvObject);
                 wtsPlugin->Release();
             }
             else if (SUCCEEDED(hr)) {
