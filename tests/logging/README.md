@@ -83,6 +83,18 @@ releases it when replaced (including by another reference to the same object),
 cleared, or destroyed. The plugin getter returns a borrowed pointer. The
 fixture export is not included in the production DLL.
 
+## DVC class factory lifetime
+
+`logging.dvc-factory.*` obtains a class factory through the production
+`DllGetClassObject` route without connecting RDP. The cases cover use after
+session removal, plugin replacement and clearing, failed plugin queries,
+reentrant plugin `AddRef`/`Release`, and manager shutdown during an in-flight
+query. A test-only allocation failure checks that the native setter leaves the
+caller's reference untouched on failure, including same-pointer replacement.
+During instance destruction, reentrant getters observe an empty slot and
+setters reject new registrations without consuming their input reference.
+The fixture-only exports and allocator override are not included in the DLL.
+
 ## Detached output-window lifetime
 
 `logging.detached-instance.lifetime` registers an output window class through

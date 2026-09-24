@@ -1,6 +1,10 @@
 ﻿EXPORTS
     PrepareGatewayShutdown
     CreatePluginReferenceInstance
+    RegisterPluginReferenceInstance
+    UnregisterPluginReferenceInstance
+    CreatePluginReferenceFactory
+    FailNextPluginHolderAllocation
     TryRegisterDetachedInstance
     TryRemoveDetachedInstance
     RegisterDetachedOutputWindowClass

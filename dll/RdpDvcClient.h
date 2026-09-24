@@ -75,6 +75,6 @@ private:
     IWTSVirtualChannel* m_pChannel = NULL;
 };
 
-HRESULT STDAPICALLTYPE DllGetClassObject_DvcPlugin(REFCLSID rclsid, REFIID riid, LPVOID* ppv, void* instance);
+HRESULT STDAPICALLTYPE DllGetClassObject_DvcPlugin(REFCLSID rclsid, REFIID riid, LPVOID* ppv);
 
 #endif /* MSRDPEX_DVC_CLIENT_H */

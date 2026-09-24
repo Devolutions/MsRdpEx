@@ -9,6 +9,7 @@
 #include <MsRdpEx/Detours.h>
 
 #include "RdpDvcClient.h"
+#include "RdpInstanceInternal.h"
 
 #include <stdarg.h>
 #include <comutil.h>
@@ -39,11 +40,12 @@ HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* p
     MsRdpEx_GuidBinToStr(pclsid, clsid, 0);
     MsRdpEx_GuidBinToStr(piid, iid, 0);
 
-    CMsRdpExInstance* instance = MsRdpEx_InstanceManager_FindBySessionId((GUID*) pclsid);
+    IMsRdpExInstance* instance = MsRdpEx_InstanceManager_AcquireBySessionId(pclsid);
 
     if (instance) {
-        hr = DllGetClassObject_DvcPlugin(rclsid, riid, ppv, (void*) instance);
+        hr = DllGetClassObject_DvcPlugin(rclsid, riid, ppv);
         MsRdpEx_LogPrint(DEBUG, "DllGetClassObject_DvcPlugin(%s, %s) with instance %p, hr = 0x%08X", clsid, iid, hr, instance);
+        instance->Release();
         return hr;
     }
 

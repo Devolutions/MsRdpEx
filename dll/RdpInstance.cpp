@@ -15,6 +15,27 @@
 
 extern "C" const GUID IID_IMsRdpExInstance;
 
+MsRdpEx_WTSPluginReference::MsRdpEx_WTSPluginReference(IUnknown* plugin) : m_plugin(plugin) {}
+
+IUnknown* MsRdpEx_WTSPluginReference::Get() const
+{
+    return m_plugin;
+}
+
+void MsRdpEx_WTSPluginReference::AddRef()
+{
+    InterlockedIncrement(&m_refCount);
+}
+
+void MsRdpEx_WTSPluginReference::Release()
+{
+    if (InterlockedDecrement(&m_refCount) == 0) {
+        IUnknown* plugin = m_plugin;
+        delete this;
+        plugin->Release();
+    }
+}
+
 class CMsRdpExInstance : public IMsRdpExInstance
 {
 public:
@@ -32,6 +53,13 @@ public:
 
     ~CMsRdpExInstance()
     {
+        // Plugin Release may call back into the getter or setter.
+        AcquireSRWLockExclusive(&m_WTSPluginLock);
+        m_WTSPluginClosing = true;
+        MsRdpEx_WTSPluginReference* plugin = m_WTSPlugin;
+        m_WTSPlugin = NULL;
+        ReleaseSRWLockExclusive(&m_WTSPluginLock);
+
         if (m_hOutputPresenterWnd)
             KillTimer(m_hOutputPresenterWnd, MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId());
 
@@ -50,9 +78,8 @@ public:
             m_pMsRdpExtendedSettings->Release();
         }
 
-        if (m_WTSPlugin) {
-            m_WTSPlugin->Release();
-        }
+        if (plugin)
+            plugin->Release();
     }
 
     // IUnknown interface
@@ -535,18 +562,43 @@ private:
 public:
     HRESULT STDMETHODCALLTYPE GetWTSPluginObject(LPVOID* ppvObject)
     {
-        *ppvObject = m_WTSPlugin;
+        AcquireSRWLockShared(&m_WTSPluginLock);
+        *ppvObject = m_WTSPlugin ? m_WTSPlugin->Get() : NULL;
+        ReleaseSRWLockShared(&m_WTSPluginLock);
         return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE SetWTSPluginObject(LPVOID pvObject)
     {
-        IUnknown* previousPlugin = m_WTSPlugin;
-        m_WTSPlugin = (IUnknown*)pvObject;
-        if (previousPlugin) {
-            previousPlugin->Release();
+        MsRdpEx_WTSPluginReference* replacement = NULL;
+        if (pvObject) {
+            replacement = new (std::nothrow) MsRdpEx_WTSPluginReference((IUnknown*)pvObject);
+            if (!replacement)
+                return E_OUTOFMEMORY;
         }
+
+        AcquireSRWLockExclusive(&m_WTSPluginLock);
+        if (m_WTSPluginClosing) {
+            ReleaseSRWLockExclusive(&m_WTSPluginLock);
+            delete replacement; // Failure leaves the incoming COM reference with the caller.
+            return E_UNEXPECTED;
+        }
+        MsRdpEx_WTSPluginReference* previous = m_WTSPlugin;
+        m_WTSPlugin = replacement;
+        ReleaseSRWLockExclusive(&m_WTSPluginLock);
+        if (previous)
+            previous->Release();
         return S_OK;
+    }
+
+    MsRdpEx_WTSPluginReference* AcquireWTSPluginObject()
+    {
+        AcquireSRWLockShared(&m_WTSPluginLock);
+        MsRdpEx_WTSPluginReference* plugin = m_WTSPlugin;
+        if (plugin)
+            plugin->AddRef();
+        ReleaseSRWLockShared(&m_WTSPluginLock);
+        return plugin;
     }
 
 public:
@@ -562,7 +614,9 @@ public:
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
     int32_t m_LastMousePosX = 0;
     int32_t m_LastMousePosY = 0;
-    IUnknown* m_WTSPlugin = NULL;
+    MsRdpEx_WTSPluginReference* m_WTSPlugin = NULL;
+    SRWLOCK m_WTSPluginLock = SRWLOCK_INIT;
+    bool m_WTSPluginClosing = false;
     LONG m_GdiReconnectPending = 0;
     LONG m_GdiReconnectAttempts = 0;
     LONG m_HardwareCaptureFrameReceived = 0;
@@ -772,6 +826,7 @@ void MsRdpEx_InstanceManager_Free(MsRdpEx_InstanceManager* ctx);
 
 static int g_RefCount = 0;
 static MsRdpEx_InstanceManager* g_InstanceManager = NULL;
+static SRWLOCK g_InstanceManagerLock = SRWLOCK_INIT;
 
 bool MsRdpEx_InstanceManager_Add(CMsRdpExInstance* instance)
 {
@@ -1109,6 +1164,68 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_FindBySessionId(GUID* sessionId)
     return found ? obj : NULL;
 }
 
+IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireBySessionId(const GUID* sessionId)
+{
+    AcquireSRWLockShared(&g_InstanceManagerLock);
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+    if (!ctx) {
+        ReleaseSRWLockShared(&g_InstanceManagerLock);
+        return NULL;
+    }
+
+    IMsRdpExInstance* instance = NULL;
+    MsRdpEx_ArrayListIt* it = MsRdpEx_ArrayList_It(ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        CMsRdpExInstance* candidate = (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+        if (MsRdpEx_GuidIsEqual(&candidate->m_sessionId, sessionId))
+        {
+            candidate->AddRef();
+            instance = candidate;
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+    ReleaseSRWLockShared(&g_InstanceManagerLock);
+    return instance;
+}
+
+HRESULT MsRdpEx_InstanceManager_AcquireWTSPluginBySessionId(
+    const GUID* sessionId, MsRdpEx_WTSPluginReference** plugin)
+{
+    if (!plugin)
+        return E_POINTER;
+    *plugin = NULL;
+    if (!sessionId)
+        return E_INVALIDARG;
+
+    AcquireSRWLockShared(&g_InstanceManagerLock);
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+    if (!ctx) {
+        ReleaseSRWLockShared(&g_InstanceManagerLock);
+        return REGDB_E_CLASSNOTREG;
+    }
+
+    bool found = false;
+    MsRdpEx_ArrayListIt* it = MsRdpEx_ArrayList_It(ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        CMsRdpExInstance* instance = (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+        if (MsRdpEx_GuidIsEqual(&instance->m_sessionId, sessionId))
+        {
+            *plugin = instance->AcquireWTSPluginObject();
+            found = true;
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+    ReleaseSRWLockShared(&g_InstanceManagerLock);
+    return found ? S_OK : REGDB_E_CLASSNOTREG;
+}
+
 CMsRdpExtendedSettings* MsRdpEx_FindExtendedSettingsBySessionId(GUID* sessionId)
 {
     CMsRdpExInstance* instance = NULL;
@@ -1194,24 +1311,31 @@ void MsRdpEx_InstanceManager_Free(MsRdpEx_InstanceManager* ctx)
 
 MsRdpEx_InstanceManager* MsRdpEx_InstanceManager_Get()
 {
+    AcquireSRWLockExclusive(&g_InstanceManagerLock);
     if (!g_InstanceManager)
         g_InstanceManager = MsRdpEx_InstanceManager_New();
 
     g_RefCount++;
 
-    return g_InstanceManager;
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+    ReleaseSRWLockExclusive(&g_InstanceManagerLock);
+    return ctx;
 }
 
 void MsRdpEx_InstanceManager_Release()
 {
+    AcquireSRWLockExclusive(&g_InstanceManagerLock);
     g_RefCount--;
 
     if (g_RefCount < 0)
         g_RefCount = 0;
 
+    MsRdpEx_InstanceManager* ctx = NULL;
     if (g_InstanceManager && (g_RefCount < 1))
     {
-        MsRdpEx_InstanceManager_Free(g_InstanceManager);
+        ctx = g_InstanceManager;
         g_InstanceManager = NULL;
     }
+    ReleaseSRWLockExclusive(&g_InstanceManagerLock);
+    MsRdpEx_InstanceManager_Free(ctx);
 }

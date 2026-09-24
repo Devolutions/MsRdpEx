@@ -7,6 +7,10 @@
 
 #include <MsRdpEx/RdpInstance.h>
 
+#include <new>
+
+#include "RdpInstanceInternal.h"
+
 //
 // CRdpDvcClient class
 //
@@ -298,24 +302,18 @@ CRdpDvcPlugin::~CRdpDvcPlugin()
 
 // CDvcPluginClassFactory class
 
-class CDvcPluginClassFactory : IClassFactory
+class CDvcPluginClassFactory : public IClassFactory
 {
 public:
-    CDvcPluginClassFactory(CMsRdpExInstance* instance)
-    {
-        m_instance = instance;
-    }
-
-    ~CDvcPluginClassFactory()
-    {
-
-    }
+    explicit CDvcPluginClassFactory(REFCLSID sessionId) : m_sessionId(sessionId) {}
 
     // IUnknown interface
 public:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, LPVOID* ppvObject)
     {
-        HRESULT hr = E_NOINTERFACE;
+        if (!ppvObject)
+            return E_POINTER;
+        *ppvObject = NULL;
 
         char iid[MSRDPEX_GUID_STRING_SIZE];
         MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
@@ -323,17 +321,16 @@ public:
         MsRdpEx_LogPrint(DEBUG, "CDvcPluginClassFactory::QueryInterface(%s)", iid);
 
         if (riid == IID_IUnknown) {
-            *ppvObject = (LPVOID)((IUnknown*)this);
-            InterlockedIncrement(&m_refCount);
-            return S_OK;
+            *ppvObject = static_cast<IUnknown*>(this);
         }
-        if (riid == IID_IClassFactory) {
-            *ppvObject = (LPVOID)((IClassFactory*)this);
-            InterlockedIncrement(&m_refCount);
-            return S_OK;
+        else if (riid == IID_IClassFactory) {
+            *ppvObject = static_cast<IClassFactory*>(this);
         }
 
-        return hr;
+        if (!*ppvObject)
+            return E_NOINTERFACE;
+        AddRef();
+        return S_OK;
     }
 
     ULONG STDMETHODCALLTYPE AddRef()
@@ -357,24 +354,35 @@ public:
 public:
     HRESULT STDMETHODCALLTYPE CreateInstance(IUnknown* pUnkOuter, REFIID riid, LPVOID* ppvObject)
     {
+        if (!ppvObject)
+            return E_POINTER;
+        *ppvObject = NULL;
+        if (pUnkOuter)
+            return CLASS_E_NOAGGREGATION;
+
         HRESULT hr = E_NOINTERFACE;
 
         char iid[MSRDPEX_GUID_STRING_SIZE];
         MsRdpEx_GuidBinToStr((GUID*)&riid, iid, 0);
 
         if (riid == IID_IWTSPlugin) {
-            IUnknown* wtsPlugin = NULL;
-            IMsRdpExInstance* rdpInstance = (IMsRdpExInstance*)m_instance;
-            rdpInstance->GetWTSPluginObject((void**)&wtsPlugin);
+            MsRdpEx_WTSPluginReference* wtsPlugin = NULL;
+            hr = MsRdpEx_InstanceManager_AcquireWTSPluginBySessionId(&m_sessionId, &wtsPlugin);
 
-            if (wtsPlugin) {
+            if (SUCCEEDED(hr) && wtsPlugin) {
                 MsRdpEx_LogPrint(DEBUG, "CDvcPluginClassFactory using registered WTSPlugin");
-                hr = wtsPlugin->QueryInterface(riid, ppvObject);
+                hr = wtsPlugin->Get()->QueryInterface(riid, ppvObject);
+                wtsPlugin->Release();
             }
-            else {
+            else if (SUCCEEDED(hr)) {
                 MsRdpEx_LogPrint(DEBUG, "CDvcPluginClassFactory using built-in WTSPlugin");
-                CRdpDvcPlugin* dvcPlugin = new CRdpDvcPlugin();
-                hr = dvcPlugin->QueryInterface(riid, ppvObject);
+                CRdpDvcPlugin* dvcPlugin = new (std::nothrow) CRdpDvcPlugin();
+                if (!dvcPlugin)
+                    hr = E_OUTOFMEMORY;
+                else {
+                    hr = dvcPlugin->QueryInterface(riid, ppvObject);
+                    dvcPlugin->Release();
+                }
             }
         }
 
@@ -390,20 +398,20 @@ public:
     }
 
 private:
-    ULONG m_refCount = 0;
-    CMsRdpExInstance* m_instance = NULL;
+    ULONG m_refCount = 1;
+    GUID m_sessionId;
 };
 
-HRESULT STDAPICALLTYPE DllGetClassObject_DvcPlugin(REFCLSID rclsid, REFIID riid, LPVOID* ppv, void* instance)
+HRESULT STDAPICALLTYPE DllGetClassObject_DvcPlugin(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
 {
-    HRESULT hr = E_NOINTERFACE;
+    if (!ppv)
+        return E_POINTER;
+    *ppv = NULL;
 
-    if (riid == (REFIID) IID_IClassFactory)
-    {
-        CDvcPluginClassFactory* classFactory = new CDvcPluginClassFactory((CMsRdpExInstance*) instance);
-        *ppv = (LPVOID) classFactory;
-        hr = S_OK;
-    }
-
+    CDvcPluginClassFactory* classFactory = new (std::nothrow) CDvcPluginClassFactory(rclsid);
+    if (!classFactory)
+        return E_OUTOFMEMORY;
+    HRESULT hr = classFactory->QueryInterface(riid, ppv);
+    classFactory->Release();
     return hr;
 }

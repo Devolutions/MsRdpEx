@@ -70,6 +70,19 @@ foreach(scenario replacement same-pointer clearing destruction)
     set_tests_properties(logging.plugin-reference.${scenario} PROPERTIES TIMEOUT 45)
 endforeach()
 
+add_executable(MsRdpEx_DvcFactoryLifetimeTest DvcFactoryLifetimeTest.cpp)
+target_include_directories(MsRdpEx_DvcFactoryLifetimeTest PRIVATE "${PROJECT_SOURCE_DIR}/dll")
+target_compile_features(MsRdpEx_DvcFactoryLifetimeTest PRIVATE cxx_std_17)
+target_compile_options(MsRdpEx_DvcFactoryLifetimeTest PRIVATE /W4 /EHsc)
+target_link_libraries(MsRdpEx_DvcFactoryLifetimeTest PRIVATE uuid.lib)
+add_dependencies(MsRdpEx_DvcFactoryLifetimeTest MsRdpEx_GatewayShutdownTestDll)
+foreach(scenario removed replacement addref-reentrant release-reentrant destructor-reentrant manager-shutdown allocation-failure query-failure)
+    add_test(NAME logging.dvc-factory.${scenario}
+        COMMAND MsRdpEx_DvcFactoryLifetimeTest
+            "$<TARGET_FILE:MsRdpEx_GatewayShutdownTestDll>" ${scenario})
+    set_tests_properties(logging.dvc-factory.${scenario} PROPERTIES TIMEOUT 45)
+endforeach()
+
 add_executable(MsRdpEx_DetachedInstanceTest DetachedInstanceTest.cpp)
 target_include_directories(MsRdpEx_DetachedInstanceTest PRIVATE "${PROJECT_SOURCE_DIR}/dll")
 target_compile_features(MsRdpEx_DetachedInstanceTest PRIVATE cxx_std_17)
