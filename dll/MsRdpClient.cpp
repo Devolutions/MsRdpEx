@@ -190,6 +190,22 @@ public:
         MsRdpEx_D3D11Capture_ReleaseInstance(
             (IMsRdpExInstance*)m_pMsRdpExInstance);
 
+        // Release our wrapper objects before the control's interfaces:
+        // they hold references to control-internal objects (TS property
+        // sets) whose lifetime is owned by the wrapped control.
+        if (m_pMsRdpExtendedSettings) {
+            IMsRdpExtendedSettings* pMsRdpExtendedSettings = (IMsRdpExtendedSettings*) m_pMsRdpExtendedSettings;
+            pMsRdpExtendedSettings->Release();
+            pMsRdpExtendedSettings = NULL;
+        }
+
+        if (m_pMsRdpExInstance) {
+            if (m_instanceRegistered)
+                MsRdpEx_InstanceManager_Remove(m_pMsRdpExInstance);
+            ((IMsRdpExInstance*)m_pMsRdpExInstance)->Release();
+            m_pMsRdpExInstance = NULL;
+        }
+
         m_pUnknown->Release();
         if (m_pDispatch) m_pDispatch->Release();
         if (m_pMsTscAx) m_pMsTscAx->Release();
@@ -203,19 +219,6 @@ public:
         if (m_pMsRdpClient8) m_pMsRdpClient8->Release();
         if (m_pMsRdpClient9) m_pMsRdpClient9->Release();
         if (m_pMsRdpClient10) m_pMsRdpClient10->Release();
-
-        if (m_pMsRdpExtendedSettings) {
-            IMsRdpExtendedSettings* pMsRdpExtendedSettings = (IMsRdpExtendedSettings*) m_pMsRdpExtendedSettings;
-            pMsRdpExtendedSettings->Release();
-            pMsRdpExtendedSettings = NULL;
-        }
-        
-        if (m_pMsRdpExInstance) {
-            if (m_instanceRegistered)
-                MsRdpEx_InstanceManager_Remove(m_pMsRdpExInstance);
-            ((IMsRdpExInstance*)m_pMsRdpExInstance)->Release();
-            m_pMsRdpExInstance = NULL;
-        }
     }
 
     // IUnknown interface
@@ -885,9 +888,14 @@ public:
                 (m_clsid == CLSID_MsRdpClient10NotSafeForScripting) ||
                 (m_clsid == CLSID_MsRdpClient11NotSafeForScripting))
             {
-                CMsRdpClient* pMsRdpClient = new CMsRdpClient((IUnknown*)*ppvObject);
+                IUnknown* pUnknown = (IUnknown*)*ppvObject;
+                CMsRdpClient* pMsRdpClient = new CMsRdpClient(pUnknown);
                 hr = pMsRdpClient->QueryInterface(riid, ppvObject);
                 pMsRdpClient->Release();
+                // Release the class factory's reference on the wrapped control:
+                // the wrapper holds its own reference from its constructor, and
+                // keeping the factory's reference would leak the control forever.
+                pUnknown->Release();
             }
         }
 
