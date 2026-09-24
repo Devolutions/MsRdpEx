@@ -1,6 +1,7 @@
-# Native logging regression tests
+# Native regression tests
 
-These tests exercise runtime diagnostic logging without making an RDP connection.
+These tests exercise runtime diagnostic logging, gateway behavior, and plugin
+reference ownership without making an RDP connection.
 They are opt-in and do not change normal builds or release packaging.
 
 ## Build and run
@@ -19,9 +20,10 @@ The test process must run on Windows with support for its target architecture.
 If multiple Visual Studio installations exist, select the one with ATL using
 `-DCMAKE_GENERATOR_INSTANCE="C:/Program Files/Microsoft Visual Studio/2022/Community"`.
 
-There are ten tests per architecture: five scenarios, each with ActiveX hooks
-disabled and enabled. CTest applies a 45-second timeout to each case. Scenarios
-retain their temporary log files and print the directory on success or failure.
+The ten logging tests cover five scenarios, each with ActiveX hooks disabled
+and enabled. CTest also runs gateway and plugin reference tests. Each case has
+a 45-second timeout. Logging scenarios retain their temporary log files and
+print the directory on success or failure.
 
 ## Reproduce against another DLL
 
@@ -71,3 +73,12 @@ not synchronous.
 
 The existing COM interface and managed API remain unchanged, and the setters
 still return `void`.
+
+## WTS plugin reference ownership
+
+The `logging.plugin-reference.*` cases use a test-only factory in the native
+fixture DLL to create a real `CMsRdpExInstance` without an RDP control. A counted
+`IUnknown` verifies that `SetWTSPluginObject` consumes an owned reference and
+releases it when replaced (including by another reference to the same object),
+cleared, or destroyed. The plugin getter returns a borrowed pointer. The
+fixture export is not included in the production DLL.

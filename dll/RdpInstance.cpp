@@ -49,6 +49,10 @@ public:
         if (m_pMsRdpExtendedSettings) {
             m_pMsRdpExtendedSettings->Release();
         }
+
+        if (m_WTSPlugin) {
+            m_WTSPlugin->Release();
+        }
     }
 
     // IUnknown interface
@@ -537,7 +541,11 @@ public:
 
     HRESULT STDMETHODCALLTYPE SetWTSPluginObject(LPVOID pvObject)
     {
+        IUnknown* previousPlugin = m_WTSPlugin;
         m_WTSPlugin = (IUnknown*)pvObject;
+        if (previousPlugin) {
+            previousPlugin->Release();
+        }
         return S_OK;
     }
 
