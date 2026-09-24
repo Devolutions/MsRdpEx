@@ -5,6 +5,8 @@
 
 IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByOutputPresenterHwnd(HWND hWnd);
 IMsRdpExInstance* MsRdpEx_InstanceManager_AcquireByInputCaptureHwnd(HWND hWnd);
+// A non-null plugin returned on S_OK owns one reference for the caller to release.
+HRESULT MsRdpEx_InstanceManager_AcquireWTSPluginBySessionId(const GUID* sessionId, IUnknown** plugin);
 UINT MsRdpEx_Instance_GetGdiReconnectMessage();
 UINT_PTR MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId();
 bool MsRdpEx_Instance_RequestGdiReconnect(IMsRdpExInstance* instance);

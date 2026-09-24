@@ -541,12 +541,24 @@ public:
 
     HRESULT STDMETHODCALLTYPE SetWTSPluginObject(LPVOID pvObject)
     {
+        AcquireSRWLockExclusive(&m_WTSPluginLock);
         IUnknown* previousPlugin = m_WTSPlugin;
         m_WTSPlugin = (IUnknown*)pvObject;
+        ReleaseSRWLockExclusive(&m_WTSPluginLock);
         if (previousPlugin) {
             previousPlugin->Release();
         }
         return S_OK;
+    }
+
+    IUnknown* AcquireWTSPluginObject()
+    {
+        AcquireSRWLockShared(&m_WTSPluginLock);
+        IUnknown* plugin = m_WTSPlugin;
+        if (plugin)
+            plugin->AddRef();
+        ReleaseSRWLockShared(&m_WTSPluginLock);
+        return plugin;
     }
 
 public:
@@ -563,6 +575,7 @@ public:
     int32_t m_LastMousePosX = 0;
     int32_t m_LastMousePosY = 0;
     IUnknown* m_WTSPlugin = NULL;
+    SRWLOCK m_WTSPluginLock = SRWLOCK_INIT;
     LONG m_GdiReconnectPending = 0;
     LONG m_GdiReconnectAttempts = 0;
     LONG m_HardwareCaptureFrameReceived = 0;
@@ -1103,6 +1116,36 @@ CMsRdpExInstance* MsRdpEx_InstanceManager_FindBySessionId(GUID* sessionId)
     MsRdpEx_ArrayListIt_Finish(it);
 
     return found ? obj : NULL;
+}
+
+HRESULT MsRdpEx_InstanceManager_AcquireWTSPluginBySessionId(const GUID* sessionId, IUnknown** plugin)
+{
+    if (!plugin)
+        return E_POINTER;
+    *plugin = NULL;
+    if (!sessionId)
+        return E_INVALIDARG;
+
+    MsRdpEx_InstanceManager* ctx = g_InstanceManager;
+    if (!ctx)
+        return REGDB_E_CLASSNOTREG;
+
+    bool found = false;
+    MsRdpEx_ArrayListIt* it = MsRdpEx_ArrayList_It(ctx->instances, MSRDPEX_ITERATOR_FLAG_EXCLUSIVE);
+
+    while (!MsRdpEx_ArrayListIt_Done(it))
+    {
+        CMsRdpExInstance* instance = (CMsRdpExInstance*)MsRdpEx_ArrayListIt_Next(it);
+        if (MsRdpEx_GuidIsEqual(&instance->m_sessionId, sessionId))
+        {
+            *plugin = instance->AcquireWTSPluginObject();
+            found = true;
+            break;
+        }
+    }
+
+    MsRdpEx_ArrayListIt_Finish(it);
+    return found ? S_OK : REGDB_E_CLASSNOTREG;
 }
 
 CMsRdpExtendedSettings* MsRdpEx_FindExtendedSettingsBySessionId(GUID* sessionId)
