@@ -45,14 +45,36 @@ int wmain(int argc, wchar_t** argv)
         using Register = ATOM(*)();
         using Acquire = IMsRdpExInstance*(*)(HWND);
         using ReleaseManager = void(*)();
+        using Create = IMsRdpExInstance*(*)();
+        using ChangeRegistration = bool(*)(IMsRdpExInstance*);
+        auto create = reinterpret_cast<Create>(
+            GetProcAddress(module, "CreatePluginReferenceInstance"));
+        auto tryRegister = reinterpret_cast<ChangeRegistration>(
+            GetProcAddress(module, "TryRegisterDetachedInstance"));
+        auto tryRemove = reinterpret_cast<ChangeRegistration>(
+            GetProcAddress(module, "TryRemoveDetachedInstance"));
         auto registerClass = reinterpret_cast<Register>(
             GetProcAddress(module, "RegisterDetachedOutputWindowClass"));
         auto acquire = reinterpret_cast<Acquire>(
             GetProcAddress(module, "AcquireDetachedOutputInstance"));
         auto releaseManager = reinterpret_cast<ReleaseManager>(
             GetProcAddress(module, "ReleaseDetachedInstanceManager"));
-        Check(registerClass && acquire && releaseManager, "Detached fixture exports missing");
+        Check(create && tryRegister && tryRemove && registerClass && acquire && releaseManager,
+            "Detached fixture exports missing");
+
+        IMsRdpExInstance* unregistered = create();
+        Check(unregistered != NULL, "Could not create unregistered instance");
+        CountedUnknown unregisteredPlugin;
+        unregisteredPlugin.AddRef();
+        Check(SUCCEEDED(unregistered->SetWTSPluginObject(&unregisteredPlugin)),
+            "Could not attach unregistered lifetime sentinel");
+        Check(!tryRegister(unregistered), "Registration succeeded without an instance manager");
         Check(registerClass() != 0, "Could not register hooked output window class");
+        Check(!tryRemove(unregistered), "Manager removed an instance it never registered");
+        Check(unregisteredPlugin.refs == 2, "Failed removal released the unregistered instance");
+        Check(unregistered->Release() == 0, "Unregistered creator reference was not preserved");
+        Check(unregisteredPlugin.refs == 1 && unregisteredPlugin.Release() == 0,
+            "Unregistered instance did not release its owned plugin");
         Check(acquire(NULL) == NULL, "NULL matched an unbound output window");
 
         HINSTANCE application = GetModuleHandleW(NULL);

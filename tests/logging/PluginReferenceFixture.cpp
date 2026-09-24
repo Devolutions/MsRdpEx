@@ -7,6 +7,16 @@ extern "C" IMsRdpExInstance* CreatePluginReferenceInstance()
     return CMsRdpExInstance_New(NULL);
 }
 
+extern "C" bool TryRegisterDetachedInstance(IMsRdpExInstance* instance)
+{
+    return MsRdpEx_InstanceManager_Add((CMsRdpExInstance*)instance);
+}
+
+extern "C" bool TryRemoveDetachedInstance(IMsRdpExInstance* instance)
+{
+    return MsRdpEx_InstanceManager_Remove((CMsRdpExInstance*)instance);
+}
+
 extern "C" ATOM RegisterDetachedOutputWindowClass()
 {
     if (!MsRdpEx_InstanceManager_Get())

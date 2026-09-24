@@ -796,7 +796,8 @@ bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance)
     if (!ctx || !instance)
         return false;
 
-    MsRdpEx_ArrayList_Remove(ctx->instances, instance, false);
+    if (!MsRdpEx_ArrayList_Remove(ctx->instances, instance, false))
+        return false;
     instance->Release();
 
     return true;

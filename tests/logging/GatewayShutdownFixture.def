@@ -1,6 +1,8 @@
 ﻿EXPORTS
     PrepareGatewayShutdown
     CreatePluginReferenceInstance
+    TryRegisterDetachedInstance
+    TryRemoveDetachedInstance
     RegisterDetachedOutputWindowClass
     AcquireDetachedOutputInstance
     ReleaseDetachedInstanceManager

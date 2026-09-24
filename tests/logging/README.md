@@ -92,3 +92,5 @@ handle, that NULL matches neither instance, and that destroying one window
 removes only its matching instance. A counted plugin and the final `Release`
 verify that window destruction drops the manager's reference and leaves no
 creator reference behind. The fixture exports are not shipped.
+The same test also verifies that failed registration and subsequent removal of
+an unregistered instance leave its creator reference intact.
