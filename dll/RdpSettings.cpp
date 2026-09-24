@@ -463,6 +463,7 @@ public:
     {
         m_refCount = 1;
         m_pUnknown = pUnknown;
+        pUnknown->AddRef(); // balances m_pUnknown->Release() in the destructor
         pUnknown->QueryInterface(IID_ITSPropertySet, (LPVOID*)&m_pTSPropertySet);
 
         if (m_pTSPropertySet)
