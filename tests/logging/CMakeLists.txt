@@ -69,3 +69,12 @@ foreach(scenario replacement same-pointer clearing destruction)
             "$<TARGET_FILE:MsRdpEx_GatewayShutdownTestDll>" ${scenario})
     set_tests_properties(logging.plugin-reference.${scenario} PROPERTIES TIMEOUT 45)
 endforeach()
+
+add_executable(MsRdpEx_DetachedInstanceTest DetachedInstanceTest.cpp)
+target_include_directories(MsRdpEx_DetachedInstanceTest PRIVATE "${PROJECT_SOURCE_DIR}/dll")
+target_compile_features(MsRdpEx_DetachedInstanceTest PRIVATE cxx_std_17)
+target_compile_options(MsRdpEx_DetachedInstanceTest PRIVATE /W4 /EHsc)
+add_dependencies(MsRdpEx_DetachedInstanceTest MsRdpEx_GatewayShutdownTestDll)
+add_test(NAME logging.detached-instance.lifetime
+    COMMAND MsRdpEx_DetachedInstanceTest "$<TARGET_FILE:MsRdpEx_GatewayShutdownTestDll>")
+set_tests_properties(logging.detached-instance.lifetime PROPERTIES TIMEOUT 45)

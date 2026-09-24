@@ -661,10 +661,13 @@ LRESULT CALLBACK Hook_OPWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
         instance = MsRdpEx_InstanceManager_AttachOutputWindow(hWnd, pUserData);
 
         if (!instance) {
-            IMsRdpExInstance* instance = (IMsRdpExInstance*) CMsRdpExInstance_New(NULL);
-            MsRdpEx_LogPrint(DEBUG, "Creating detached RDP instance: %p hWnd: %p", instance, hWnd);
-            instance->AttachOutputWindow(hWnd, pUserData);
-            MsRdpEx_InstanceManager_Add((CMsRdpExInstance*) instance);
+            IMsRdpExInstance* detachedInstance = (IMsRdpExInstance*) CMsRdpExInstance_New(NULL);
+            MsRdpEx_LogPrint(DEBUG, "Creating detached RDP instance: %p hWnd: %p", detachedInstance, hWnd);
+            detachedInstance->AttachOutputWindow(hWnd, pUserData);
+            if (!MsRdpEx_InstanceManager_Add((CMsRdpExInstance*) detachedInstance)) {
+                MsRdpEx_LogPrint(ERROR, "Could not register detached RDP instance for hWnd: %p", hWnd);
+            }
+            detachedInstance->Release();
         }
 	}
 	else if (uMsg == WM_NCDESTROY)
