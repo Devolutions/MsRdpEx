@@ -5,3 +5,8 @@
     UnregisterPluginReferenceInstance
     CreatePluginReferenceFactory
     FailNextPluginHolderAllocation
+    TryRegisterDetachedInstance
+    TryRemoveDetachedInstance
+    RegisterDetachedOutputWindowClass
+    AcquireDetachedOutputInstance
+    ReleaseDetachedInstanceManager

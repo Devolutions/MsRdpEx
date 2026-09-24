@@ -82,3 +82,27 @@ fixture DLL to create a real `CMsRdpExInstance` without an RDP control. A counte
 releases it when replaced (including by another reference to the same object),
 cleared, or destroyed. The plugin getter returns a borrowed pointer. The
 fixture export is not included in the production DLL.
+
+## DVC class factory lifetime
+
+`logging.dvc-factory.*` obtains a class factory through the production
+`DllGetClassObject` route without connecting RDP. The cases cover use after
+session removal, plugin replacement and clearing, failed plugin queries,
+reentrant plugin `AddRef`/`Release`, and manager shutdown during an in-flight
+query. A test-only allocation failure checks that the native setter leaves the
+caller's reference untouched on failure, including same-pointer replacement.
+During instance destruction, reentrant getters observe an empty slot and
+setters reject new registrations without consuming their input reference.
+The fixture-only exports and allocator override are not included in the DLL.
+
+## Detached output-window lifetime
+
+`logging.detached-instance.lifetime` registers an output window class through
+the real output-window hook in the test-only fixture DLL. It creates two windows
+without RDP controls and checks that each is registered by its non-NULL window
+handle, that NULL matches neither instance, and that destroying one window
+removes only its matching instance. A counted plugin and the final `Release`
+verify that window destruction drops the manager's reference and leaves no
+creator reference behind. The fixture exports are not shipped.
+The same test also verifies that failed registration and subsequent removal of
+an unregistered instance leave its creator reference intact.

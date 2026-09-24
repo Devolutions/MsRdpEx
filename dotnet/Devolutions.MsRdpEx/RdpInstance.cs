@@ -53,7 +53,22 @@ namespace MsRdpEx
 
         public object WTSPlugin
         {
-            set { iface.SetWTSPluginObject(Marshal.GetIUnknownForObject(value)); }
+            set
+            {
+                IntPtr plugin = Marshal.GetIUnknownForObject(value);
+                // The native setter takes ownership only when the call succeeds.
+                bool transferred = false;
+                try
+                {
+                    iface.SetWTSPluginObject(plugin);
+                    transferred = true;
+                }
+                finally
+                {
+                    if (!transferred)
+                        Marshal.Release(plugin);
+                }
+            }
         }
     }
 }
