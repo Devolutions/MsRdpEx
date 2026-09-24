@@ -33,7 +33,7 @@ endforeach()
 # a completion signal after DllMain returns. No test exports enter the shipped DLL.
 get_target_property(gateway_shutdown_sources MsRdpEx_Dll SOURCES)
 list(FILTER gateway_shutdown_sources INCLUDE REGEX "\\.(c|cpp)$")
-list(FILTER gateway_shutdown_sources EXCLUDE REGEX "(^|/)(GatewayIsolation|MsRdpEx)[.]cpp$")
+list(FILTER gateway_shutdown_sources EXCLUDE REGEX "(^|/)(GatewayIsolation|MsRdpEx|RdpInstance)[.]cpp$")
 set(gateway_shutdown_absolute_sources)
 foreach(source IN LISTS gateway_shutdown_sources)
     if(NOT IS_ABSOLUTE "${source}")
@@ -43,7 +43,8 @@ foreach(source IN LISTS gateway_shutdown_sources)
 endforeach()
 get_target_property(gateway_shutdown_libraries MsRdpEx_Dll LINK_LIBRARIES)
 add_library(MsRdpEx_GatewayShutdownTestDll SHARED ${gateway_shutdown_absolute_sources}
-    GatewayShutdownFixture.cpp GatewayShutdownDllMain.cpp GatewayShutdownFixture.def)
+    GatewayShutdownFixture.cpp GatewayShutdownDllMain.cpp GatewayShutdownFixture.def
+    PluginReferenceFixture.cpp)
 target_include_directories(MsRdpEx_GatewayShutdownTestDll PRIVATE "${PROJECT_SOURCE_DIR}/dll")
 target_link_libraries(MsRdpEx_GatewayShutdownTestDll PRIVATE ${gateway_shutdown_libraries})
 target_compile_options(MsRdpEx_GatewayShutdownTestDll PRIVATE /W4)
@@ -55,4 +56,16 @@ foreach(mode exit unload exit-held-lock)
     add_test(NAME logging.gateway-shutdown.${mode}
         COMMAND MsRdpEx_GatewayShutdownTest "$<TARGET_FILE:MsRdpEx_GatewayShutdownTestDll>" ${mode})
     set_tests_properties(logging.gateway-shutdown.${mode} PROPERTIES TIMEOUT 45)
+endforeach()
+
+add_executable(MsRdpEx_PluginReferenceTest PluginReferenceTest.cpp)
+target_include_directories(MsRdpEx_PluginReferenceTest PRIVATE "${PROJECT_SOURCE_DIR}/dll")
+target_compile_features(MsRdpEx_PluginReferenceTest PRIVATE cxx_std_17)
+target_compile_options(MsRdpEx_PluginReferenceTest PRIVATE /W4 /EHsc)
+add_dependencies(MsRdpEx_PluginReferenceTest MsRdpEx_GatewayShutdownTestDll)
+foreach(scenario replacement same-pointer clearing destruction)
+    add_test(NAME logging.plugin-reference.${scenario}
+        COMMAND MsRdpEx_PluginReferenceTest
+            "$<TARGET_FILE:MsRdpEx_GatewayShutdownTestDll>" ${scenario})
+    set_tests_properties(logging.plugin-reference.${scenario} PROPERTIES TIMEOUT 45)
 endforeach()
