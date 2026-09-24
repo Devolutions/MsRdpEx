@@ -781,7 +781,10 @@ bool MsRdpEx_InstanceManager_Add(CMsRdpExInstance* instance)
         return false;
 
     instance->AddRef();
-    MsRdpEx_ArrayList_Add(ctx->instances, instance);
+    if (MsRdpEx_ArrayList_Add(ctx->instances, instance) < 0) {
+        instance->Release();
+        return false;
+    }
 
     return true;
 }
@@ -793,7 +796,8 @@ bool MsRdpEx_InstanceManager_Remove(CMsRdpExInstance* instance)
     if (!ctx || !instance)
         return false;
 
-    MsRdpEx_ArrayList_Remove(ctx->instances, instance, false);
+    if (!MsRdpEx_ArrayList_Remove(ctx->instances, instance, false))
+        return false;
     instance->Release();
 
     return true;

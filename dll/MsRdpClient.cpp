@@ -172,7 +172,9 @@ public:
         m_pMsRdpExInstance = CMsRdpExInstance_New(this);
         IMsRdpExInstance* pMsRdpExInstance = (IMsRdpExInstance*)m_pMsRdpExInstance;
         pMsRdpExInstance->GetSessionId(&m_sessionId);
-        MsRdpEx_InstanceManager_Add(m_pMsRdpExInstance);
+        m_instanceRegistered = MsRdpEx_InstanceManager_Add(m_pMsRdpExInstance);
+        if (!m_instanceRegistered)
+            MsRdpEx_LogPrint(ERROR, "Could not register RDP client instance: %p", m_pMsRdpExInstance);
 
         m_pMsRdpExtendedSettings = CMsRdpExtendedSettings_New(pUnknown, (IUnknown*)m_pMsTscAx, &m_sessionId);
         pMsRdpExInstance->AttachExtendedSettings(m_pMsRdpExtendedSettings);
@@ -209,7 +211,8 @@ public:
         }
         
         if (m_pMsRdpExInstance) {
-            MsRdpEx_InstanceManager_Remove(m_pMsRdpExInstance);
+            if (m_instanceRegistered)
+                MsRdpEx_InstanceManager_Remove(m_pMsRdpExInstance);
             ((IMsRdpExInstance*)m_pMsRdpExInstance)->Release();
             m_pMsRdpExInstance = NULL;
         }
@@ -786,6 +789,7 @@ private:
     IMsRdpClient9* m_pMsRdpClient9 = NULL;
     IMsRdpClient10* m_pMsRdpClient10 = NULL;
     CMsRdpExInstance* m_pMsRdpExInstance = NULL;
+    bool m_instanceRegistered = false;
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
     bool m_sspiSessionActive = false;
 };
