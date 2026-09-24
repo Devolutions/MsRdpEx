@@ -53,6 +53,13 @@ public:
 
     ~CMsRdpExInstance()
     {
+        // Plugin Release may call back into the getter or setter.
+        AcquireSRWLockExclusive(&m_WTSPluginLock);
+        m_WTSPluginClosing = true;
+        MsRdpEx_WTSPluginReference* plugin = m_WTSPlugin;
+        m_WTSPlugin = NULL;
+        ReleaseSRWLockExclusive(&m_WTSPluginLock);
+
         if (m_hOutputPresenterWnd)
             KillTimer(m_hOutputPresenterWnd, MsRdpEx_Instance_GetHardwareCaptureWatchdogTimerId());
 
@@ -71,8 +78,8 @@ public:
             m_pMsRdpExtendedSettings->Release();
         }
 
-        if (m_WTSPlugin)
-            m_WTSPlugin->Release();
+        if (plugin)
+            plugin->Release();
     }
 
     // IUnknown interface
@@ -571,6 +578,11 @@ public:
         }
 
         AcquireSRWLockExclusive(&m_WTSPluginLock);
+        if (m_WTSPluginClosing) {
+            ReleaseSRWLockExclusive(&m_WTSPluginLock);
+            delete replacement; // Failure leaves the incoming COM reference with the caller.
+            return E_UNEXPECTED;
+        }
         MsRdpEx_WTSPluginReference* previous = m_WTSPlugin;
         m_WTSPlugin = replacement;
         ReleaseSRWLockExclusive(&m_WTSPluginLock);
@@ -604,6 +616,7 @@ public:
     int32_t m_LastMousePosY = 0;
     MsRdpEx_WTSPluginReference* m_WTSPlugin = NULL;
     SRWLOCK m_WTSPluginLock = SRWLOCK_INIT;
+    bool m_WTSPluginClosing = false;
     LONG m_GdiReconnectPending = 0;
     LONG m_GdiReconnectAttempts = 0;
     LONG m_HardwareCaptureFrameReceived = 0;

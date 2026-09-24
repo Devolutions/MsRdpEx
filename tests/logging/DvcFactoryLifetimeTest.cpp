@@ -46,7 +46,10 @@ public:
     {
         if (clearOnRelease) {
             clearOnRelease = false;
-            instance->SetWTSPluginObject(NULL);
+            releaseSetterHr = instance->SetWTSPluginObject(replacement);
+            if (replacement)
+                releaseClearHr = instance->SetWTSPluginObject(NULL);
+            releaseGetterHr = instance->GetWTSPluginObject(&borrowedAfterRelease);
         }
         return --refs;
     }
@@ -62,6 +65,10 @@ public:
     bool clearOnAddRef = false;
     bool clearOnRelease = false;
     bool failQuery = false;
+    HRESULT releaseSetterHr = E_FAIL;
+    HRESULT releaseClearHr = E_FAIL;
+    HRESULT releaseGetterHr = E_FAIL;
+    void* borrowedAfterRelease = reinterpret_cast<void*>(1);
     ULONG refsAfterReplacement = 0;
     HANDLE queryEntered = NULL;
     HANDLE queryResume = NULL;
@@ -190,8 +197,27 @@ int wmain(int argc, wchar_t** argv)
                 "Reentrant Release did not clear the replacement plugin");
             Check(first.refs == 1 && second.refs == 1,
                 "Reentrant Release did not balance the plugin references");
+            Check(first.releaseSetterHr == S_OK && first.releaseGetterHr == S_OK
+                && !first.borrowedAfterRelease,
+                "Replacement callback could not access the cleared plugin slot");
             Check(unregisterInstance(instance), "Could not remove plugin instance");
             Check(instance->Release() == 0, "Instance remained alive after removal");
+            Check(first.Release() == 0 && second.Release() == 0,
+                "Test plugin references not balanced");
+        } else if (scenario == L"destructor-reentrant") {
+            CountedPlugin second;
+            second.AddRef();
+            first.instance = instance;
+            first.replacement = &second;
+            first.clearOnRelease = true;
+            Check(unregisterInstance(instance), "Could not remove plugin instance");
+            Check(instance->Release() == 0, "Instance remained alive after removal");
+            Check(first.releaseSetterHr == E_UNEXPECTED && first.releaseClearHr == E_UNEXPECTED
+                && first.releaseGetterHr == S_OK && !first.borrowedAfterRelease,
+                "Destructor callback accessed or replaced the detached plugin slot");
+            Check(first.refs == 1 && second.refs == 2,
+                "Destructor callback consumed or leaked a plugin reference");
+            Check(second.Release() == 1, "Caller could not release rejected replacement");
             Check(first.Release() == 0 && second.Release() == 0,
                 "Test plugin references not balanced");
         } else if (scenario == L"manager-shutdown") {
