@@ -23,6 +23,7 @@ public:
             SetEvent(queryEntered);
             if (WaitForSingleObject(queryResume, 5000) != WAIT_OBJECT_0) return E_FAIL;
         }
+        if (failQuery) return E_NOINTERFACE;
         if (replaceOnQuery) {
             replaceOnQuery = false;
             if (FAILED(instance->SetWTSPluginObject(replacement))) return E_FAIL;
@@ -60,6 +61,7 @@ public:
     bool replaceOnQuery = false;
     bool clearOnAddRef = false;
     bool clearOnRelease = false;
+    bool failQuery = false;
     ULONG refsAfterReplacement = 0;
     HANDLE queryEntered = NULL;
     HANDLE queryResume = NULL;
@@ -87,7 +89,10 @@ int wmain(int argc, wchar_t** argv)
             GetProcAddress(module, "UnregisterPluginReferenceInstance"));
         auto createFactory = reinterpret_cast<Factory>(
             GetProcAddress(module, "CreatePluginReferenceFactory"));
-        Check(create && registerInstance && unregisterInstance && createFactory,
+        using FailAllocation = void(*)();
+        auto failAllocation = reinterpret_cast<FailAllocation>(
+            GetProcAddress(module, "FailNextPluginHolderAllocation"));
+        Check(create && registerInstance && unregisterInstance && createFactory && failAllocation,
             "DVC factory fixture exports missing");
 
         IMsRdpExInstance* instance = create();
@@ -216,6 +221,41 @@ int wmain(int argc, wchar_t** argv)
                 "Factory used manager after shutdown");
             CloseHandle(entered);
             CloseHandle(resume);
+            Check(first.Release() == 0, "Test plugin reference not balanced");
+        } else if (scenario == L"allocation-failure") {
+            CountedPlugin second;
+            second.AddRef();
+            failAllocation();
+            Check(instance->SetWTSPluginObject(&second) == E_OUTOFMEMORY,
+                "Plugin holder allocation failure was not returned");
+            void* borrowed = NULL;
+            Check(SUCCEEDED(instance->GetWTSPluginObject(&borrowed)) && borrowed == &first,
+                "Failed setter replaced the registered plugin");
+            Check(first.refs == 2 && second.refs == 2,
+                "Failed setter consumed or leaked a caller-owned reference");
+            Check(second.Release() == 1, "Caller could not release the failed setter's reference");
+            first.AddRef();
+            failAllocation();
+            Check(instance->SetWTSPluginObject(&first) == E_OUTOFMEMORY && first.refs == 3,
+                "Failed same-pointer setter consumed the caller's reference");
+            Check(first.Release() == 2, "Caller could not release failed same-pointer reference");
+            Check(SUCCEEDED(factory->CreateInstance(NULL, IID_IWTSPlugin, (void**)&returned))
+                && returned == static_cast<IWTSPlugin*>(&first),
+                "Failed same-pointer setter invalidated the registered plugin");
+            Check(returned->Release() == 2, "Factory leaked a plugin reference after setter failure");
+            Check(unregisterInstance(instance), "Could not remove plugin instance");
+            Check(instance->Release() == 0, "Instance remained alive after removal");
+            Check(first.Release() == 0 && second.Release() == 0,
+                "Test plugin references not balanced");
+        } else if (scenario == L"query-failure") {
+            first.failQuery = true;
+            returned = reinterpret_cast<IWTSPlugin*>(factory);
+            Check(factory->CreateInstance(NULL, IID_IWTSPlugin, (void**)&returned)
+                == E_NOINTERFACE && !returned,
+                "Failed plugin QueryInterface did not clear output and propagate the error");
+            Check(first.refs == 2, "Failed plugin QueryInterface leaked its holder reference");
+            Check(unregisterInstance(instance), "Could not remove plugin instance");
+            Check(instance->Release() == 0, "Instance remained alive after removal");
             Check(first.Release() == 0, "Test plugin reference not balanced");
         } else {
             throw std::runtime_error("Unknown DVC factory scenario");

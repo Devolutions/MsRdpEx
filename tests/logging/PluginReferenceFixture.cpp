@@ -1,5 +1,23 @@
 #include "../../dll/RdpInstance.cpp"
 
+#include <cstdlib>
+
+static thread_local bool g_FailNextPluginHolderAllocation = false;
+
+void* __cdecl operator new(size_t size, const std::nothrow_t&) noexcept
+{
+    if (g_FailNextPluginHolderAllocation && size == sizeof(MsRdpEx_WTSPluginReference)) {
+        g_FailNextPluginHolderAllocation = false;
+        return nullptr;
+    }
+    return std::malloc(size ? size : 1);
+}
+
+extern "C" void FailNextPluginHolderAllocation()
+{
+    g_FailNextPluginHolderAllocation = true;
+}
+
 extern "C" IMsRdpExInstance* CreatePluginReferenceInstance()
 {
     return CMsRdpExInstance_New(NULL);

@@ -4,3 +4,4 @@
     RegisterPluginReferenceInstance
     UnregisterPluginReferenceInstance
     CreatePluginReferenceFactory
+    FailNextPluginHolderAllocation

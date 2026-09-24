@@ -566,10 +566,8 @@ public:
         MsRdpEx_WTSPluginReference* replacement = NULL;
         if (pvObject) {
             replacement = new (std::nothrow) MsRdpEx_WTSPluginReference((IUnknown*)pvObject);
-            if (!replacement) {
-                ((IUnknown*)pvObject)->Release();
+            if (!replacement)
                 return E_OUTOFMEMORY;
-            }
         }
 
         AcquireSRWLockExclusive(&m_WTSPluginLock);
