@@ -84,6 +84,8 @@ public class RdpClientView : NativeControlHost, IDisposable
     private IPlatformHandle? detachedNativeControl;
     private bool surfaceRefreshQueued;
     private bool surfaceRefreshRequested;
+    private bool wasEffectivelyVisible;
+    private readonly List<IDisposable> visibilitySubscriptions = [];
 
     public RdpClientView()
     {
@@ -92,7 +94,7 @@ public class RdpClientView : NativeControlHost, IDisposable
             Interval = ResizeDebounceInterval
         };
         resizeTimer.Tick += OnResizeTimerTick;
-        ((INotifyPropertyChanged)this).PropertyChanged += OnPropertyChanged;
+        wasEffectivelyVisible = IsEffectivelyVisible;
     }
 
     public bool IsClientReady => session?.IsReady == true;
@@ -530,7 +532,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         VerifyAccess();
         disposed = true;
         resizeTimer.Stop();
-        ((INotifyPropertyChanged)this).PropertyChanged -= OnPropertyChanged;
+        ClearVisibilitySubscriptions();
         // Restore the window before tearing down so a closing session never
         // leaves a fullscreen shell behind.
         ExitFullScreen();
@@ -563,6 +565,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         }
 
         base.OnAttachedToVisualTree(e);
+        SubscribeToVisibilityChanges();
 
         // Reparenting to a new top level reuses the live session without
         // re-running StartSession, so re-apply the frame window and the
@@ -600,6 +603,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         }
 
         topLevel = null;
+        ClearVisibilitySubscriptions();
 
         // NativeControlHost keeps the native control alive across reparenting
         // and destroys it (via DestroyNativeControlCore) only when the view is
@@ -682,10 +686,47 @@ public class RdpClientView : NativeControlHost, IDisposable
         return arrangedSize;
     }
 
-    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void SubscribeToVisibilityChanges()
     {
-        if (e.PropertyName == nameof(IsEffectivelyVisible) && IsEffectivelyVisible)
+        ClearVisibilitySubscriptions();
+        wasEffectivelyVisible = IsEffectivelyVisible;
+
+        for (Visual? visual = this; visual is not null; visual = visual.Parent as Visual)
+        {
+            visibilitySubscriptions.Add(
+                visual.GetObservable(Visual.IsVisibleProperty).Subscribe(
+                    new ActionObserver<bool>(_ => OnVisibilityChanged())));
+        }
+    }
+
+    private void ClearVisibilitySubscriptions()
+    {
+        foreach (IDisposable subscription in visibilitySubscriptions)
+            subscription.Dispose();
+
+        visibilitySubscriptions.Clear();
+    }
+
+    private void OnVisibilityChanged()
+    {
+        bool isEffectivelyVisible = IsEffectivelyVisible;
+        if (isEffectivelyVisible && !wasEffectivelyVisible)
             RequestSurfaceRefresh();
+
+        wasEffectivelyVisible = isEffectivelyVisible;
+    }
+
+    private sealed class ActionObserver<T>(Action<T> onNext) : IObserver<T>
+    {
+        public void OnCompleted()
+        {
+        }
+
+        public void OnError(Exception error)
+        {
+        }
+
+        public void OnNext(T value) => onNext(value);
     }
 
     private void RequestSurfaceRefresh()
@@ -709,8 +750,13 @@ public class RdpClientView : NativeControlHost, IDisposable
         if (!surfaceRefreshRequested)
             return;
 
-        surfaceRefreshRequested = false;
-        if (disposed || !IsEffectivelyVisible || session is null || HostWindowHandle == 0)
+        if (disposed)
+        {
+            surfaceRefreshRequested = false;
+            return;
+        }
+
+        if (!IsEffectivelyVisible || session is null || HostWindowHandle == 0)
             return;
 
         PixelSize pixelSize = GetViewportPixelSize();
@@ -721,7 +767,13 @@ public class RdpClientView : NativeControlHost, IDisposable
         // by this post-render callback. Reapply the exact OLE bounds before
         // invalidating the complete child hierarchy so the retained RDP frame
         // is presented.
-        session.ResizeSurface(pixelSize.Width, pixelSize.Height);
+        if (!session.ResizeSurface(pixelSize.Width, pixelSize.Height))
+        {
+            lastSurfaceSize = default;
+            return;
+        }
+
+        surfaceRefreshRequested = false;
         lastSurfaceSize = pixelSize;
         RedrawWindow(
             HostWindowHandle,
