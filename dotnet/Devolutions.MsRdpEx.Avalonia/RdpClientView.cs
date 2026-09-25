@@ -82,7 +82,10 @@ public class RdpClientView : NativeControlHost, IDisposable
     private int zoomLevel = 100;
     private bool disposed;
     private IPlatformHandle? detachedNativeControl;
-    private bool refreshSurfaceOnNextArrange;
+    private bool surfaceRefreshQueued;
+    private bool surfaceRefreshRequested;
+    private bool wasEffectivelyVisible;
+    private readonly List<IDisposable> visibilitySubscriptions = [];
 
     public RdpClientView()
     {
@@ -91,6 +94,7 @@ public class RdpClientView : NativeControlHost, IDisposable
             Interval = ResizeDebounceInterval
         };
         resizeTimer.Tick += OnResizeTimerTick;
+        wasEffectivelyVisible = IsEffectivelyVisible;
     }
 
     public bool IsClientReady => session?.IsReady == true;
@@ -98,6 +102,14 @@ public class RdpClientView : NativeControlHost, IDisposable
     public bool IsLoginCompleted => session?.IsLoginCompleted == true;
     public nint HostWindowHandle => session?.HostWindowHandle ?? 0;
     public PixelSize ViewportPixelSize => GetViewportPixelSize();
+
+    internal bool IsSurfaceRefreshQueuedForTesting => surfaceRefreshQueued;
+
+    internal Action<Action>? SurfaceRefreshPostForTesting { get; set; }
+
+    internal void RequestSurfaceRefreshForTesting() => RequestSurfaceRefresh();
+
+    internal void RunSurfaceRefreshForTesting() => RefreshSurfaceAfterRender();
 
     /// <summary>
     /// Gets or sets the RDP ActiveX class identifier. Set this before the view is attached.
@@ -522,6 +534,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         VerifyAccess();
         disposed = true;
         resizeTimer.Stop();
+        ClearVisibilitySubscriptions();
         // Restore the window before tearing down so a closing session never
         // leaves a fullscreen shell behind.
         ExitFullScreen();
@@ -554,9 +567,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         }
 
         base.OnAttachedToVisualTree(e);
-
-        if (refreshSurfaceOnNextArrange)
-            InvalidateArrange();
+        SubscribeToVisibilityChanges();
 
         // Reparenting to a new top level reuses the live session without
         // re-running StartSession, so re-apply the frame window and the
@@ -594,6 +605,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         }
 
         topLevel = null;
+        ClearVisibilitySubscriptions();
 
         // NativeControlHost keeps the native control alive across reparenting
         // and destroys it (via DestroyNativeControlCore) only when the view is
@@ -609,7 +621,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         if (detachedNativeControl is { } control)
         {
             detachedNativeControl = null;
-            refreshSurfaceOnNextArrange = true;
+            RequestSurfaceRefresh();
             return control;
         }
 
@@ -672,24 +684,107 @@ public class RdpClientView : NativeControlHost, IDisposable
     protected override Size ArrangeOverride(Size finalSize)
     {
         Size arrangedSize = base.ArrangeOverride(finalSize);
-
-        bool refreshSurface = refreshSurfaceOnNextArrange;
-        refreshSurfaceOnNextArrange = false;
-        if (refreshSurface)
-            lastSurfaceSize = default;
-
         OnViewportChanged(arrangedSize);
+        return arrangedSize;
+    }
 
-        if (refreshSurface && HostWindowHandle != 0)
+    private void SubscribeToVisibilityChanges()
+    {
+        ClearVisibilitySubscriptions();
+        wasEffectivelyVisible = IsEffectivelyVisible;
+
+        for (Visual? visual = this; visual is not null; visual = visual.Parent as Visual)
         {
-            RedrawWindow(
-                HostWindowHandle,
-                0,
-                0,
-                RdwInvalidate | RdwErase | RdwAllChildren | RdwUpdateNow | RdwFrame);
+            visibilitySubscriptions.Add(
+                visual.GetObservable(Visual.IsVisibleProperty).Subscribe(
+                    new ActionObserver<bool>(_ => OnVisibilityChanged())));
+        }
+    }
+
+    private void ClearVisibilitySubscriptions()
+    {
+        foreach (IDisposable subscription in visibilitySubscriptions)
+            subscription.Dispose();
+
+        visibilitySubscriptions.Clear();
+    }
+
+    private void OnVisibilityChanged()
+    {
+        bool isEffectivelyVisible = IsEffectivelyVisible;
+        if (isEffectivelyVisible && !wasEffectivelyVisible)
+            RequestSurfaceRefresh();
+
+        wasEffectivelyVisible = isEffectivelyVisible;
+    }
+
+    private sealed class ActionObserver<T>(Action<T> onNext) : IObserver<T>
+    {
+        public void OnCompleted()
+        {
         }
 
-        return arrangedSize;
+        public void OnError(Exception error)
+        {
+        }
+
+        public void OnNext(T value) => onNext(value);
+    }
+
+    private void RequestSurfaceRefresh()
+    {
+        if (disposed)
+            return;
+
+        surfaceRefreshRequested = true;
+        if (surfaceRefreshQueued)
+            return;
+
+        surfaceRefreshQueued = true;
+        // Avalonia 12 has no AfterRender priority. Background runs after the
+        // render/layout queue, including NativeControlHost HWND synchronization.
+        if (SurfaceRefreshPostForTesting is { } post)
+            post(RefreshSurfaceAfterRender);
+        else
+            Dispatcher.UIThread.Post(RefreshSurfaceAfterRender, DispatcherPriority.Background);
+    }
+
+    private void RefreshSurfaceAfterRender()
+    {
+        surfaceRefreshQueued = false;
+        if (!surfaceRefreshRequested)
+            return;
+
+        if (disposed)
+        {
+            surfaceRefreshRequested = false;
+            return;
+        }
+
+        if (!IsEffectivelyVisible || session is null || HostWindowHandle == 0)
+            return;
+
+        PixelSize pixelSize = GetViewportPixelSize();
+        if (pixelSize.Width <= 0 || pixelSize.Height <= 0)
+            return;
+
+        // NativeControlHost has completed its arrange and HWND synchronization
+        // by this post-render callback. Reapply the exact OLE bounds before
+        // invalidating the complete child hierarchy so the retained RDP frame
+        // is presented.
+        if (!session.ResizeSurface(pixelSize.Width, pixelSize.Height))
+        {
+            lastSurfaceSize = default;
+            return;
+        }
+
+        surfaceRefreshRequested = false;
+        lastSurfaceSize = pixelSize;
+        RedrawWindow(
+            HostWindowHandle,
+            0,
+            0,
+            RdwInvalidate | RdwErase | RdwAllChildren | RdwUpdateNow | RdwFrame);
     }
 
     private void StartSession(nint hostWindow)
