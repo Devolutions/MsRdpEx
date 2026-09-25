@@ -125,6 +125,7 @@ namespace MsRdpEx.Tests
 
             Assert.False(control.IsDestroyed);
             Assert.Same(control, view.AttachNativeControl(new TestPlatformHandle()));
+            Assert.True(view.IsSurfaceRefreshQueuedForTesting);
 
             view.Dispose();
             view.DetachNativeControl(control);
@@ -141,6 +142,34 @@ namespace MsRdpEx.Tests
             view.Dispose();
 
             Assert.True(control.IsDestroyed);
+        }
+
+        [Fact]
+        public void RdpClientViewCoalescesSurfaceRefreshRequests()
+        {
+            using TestableRdpClientView view = new();
+
+            view.RequestSurfaceRefreshForTesting();
+            view.RequestSurfaceRefreshForTesting();
+
+            Assert.True(view.IsSurfaceRefreshQueuedForTesting);
+
+            view.RunSurfaceRefreshForTesting();
+
+            Assert.False(view.IsSurfaceRefreshQueuedForTesting);
+        }
+
+        [Fact]
+        public void RdpClientViewQueuedSurfaceRefreshIsSafeAfterDispose()
+        {
+            TestableRdpClientView view = new();
+
+            view.RequestSurfaceRefreshForTesting();
+            view.Dispose();
+
+            view.RunSurfaceRefreshForTesting();
+
+            Assert.False(view.IsSurfaceRefreshQueuedForTesting);
         }
 
         private sealed class TestableRdpClientView : RdpClientView

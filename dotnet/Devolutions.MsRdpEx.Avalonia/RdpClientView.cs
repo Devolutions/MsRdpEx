@@ -82,7 +82,8 @@ public class RdpClientView : NativeControlHost, IDisposable
     private int zoomLevel = 100;
     private bool disposed;
     private IPlatformHandle? detachedNativeControl;
-    private bool refreshSurfaceOnNextArrange;
+    private bool surfaceRefreshQueued;
+    private bool surfaceRefreshRequested;
 
     public RdpClientView()
     {
@@ -91,6 +92,7 @@ public class RdpClientView : NativeControlHost, IDisposable
             Interval = ResizeDebounceInterval
         };
         resizeTimer.Tick += OnResizeTimerTick;
+        ((INotifyPropertyChanged)this).PropertyChanged += OnPropertyChanged;
     }
 
     public bool IsClientReady => session?.IsReady == true;
@@ -98,6 +100,12 @@ public class RdpClientView : NativeControlHost, IDisposable
     public bool IsLoginCompleted => session?.IsLoginCompleted == true;
     public nint HostWindowHandle => session?.HostWindowHandle ?? 0;
     public PixelSize ViewportPixelSize => GetViewportPixelSize();
+
+    internal bool IsSurfaceRefreshQueuedForTesting => surfaceRefreshQueued;
+
+    internal void RequestSurfaceRefreshForTesting() => RequestSurfaceRefresh();
+
+    internal void RunSurfaceRefreshForTesting() => RefreshSurfaceAfterRender();
 
     /// <summary>
     /// Gets or sets the RDP ActiveX class identifier. Set this before the view is attached.
@@ -522,6 +530,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         VerifyAccess();
         disposed = true;
         resizeTimer.Stop();
+        ((INotifyPropertyChanged)this).PropertyChanged -= OnPropertyChanged;
         // Restore the window before tearing down so a closing session never
         // leaves a fullscreen shell behind.
         ExitFullScreen();
@@ -554,9 +563,6 @@ public class RdpClientView : NativeControlHost, IDisposable
         }
 
         base.OnAttachedToVisualTree(e);
-
-        if (refreshSurfaceOnNextArrange)
-            InvalidateArrange();
 
         // Reparenting to a new top level reuses the live session without
         // re-running StartSession, so re-apply the frame window and the
@@ -609,7 +615,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         if (detachedNativeControl is { } control)
         {
             detachedNativeControl = null;
-            refreshSurfaceOnNextArrange = true;
+            RequestSurfaceRefresh();
             return control;
         }
 
@@ -672,24 +678,56 @@ public class RdpClientView : NativeControlHost, IDisposable
     protected override Size ArrangeOverride(Size finalSize)
     {
         Size arrangedSize = base.ArrangeOverride(finalSize);
-
-        bool refreshSurface = refreshSurfaceOnNextArrange;
-        refreshSurfaceOnNextArrange = false;
-        if (refreshSurface)
-            lastSurfaceSize = default;
-
         OnViewportChanged(arrangedSize);
-
-        if (refreshSurface && HostWindowHandle != 0)
-        {
-            RedrawWindow(
-                HostWindowHandle,
-                0,
-                0,
-                RdwInvalidate | RdwErase | RdwAllChildren | RdwUpdateNow | RdwFrame);
-        }
-
         return arrangedSize;
+    }
+
+    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(IsEffectivelyVisible) && IsEffectivelyVisible)
+            RequestSurfaceRefresh();
+    }
+
+    private void RequestSurfaceRefresh()
+    {
+        if (disposed)
+            return;
+
+        surfaceRefreshRequested = true;
+        if (surfaceRefreshQueued)
+            return;
+
+        surfaceRefreshQueued = true;
+        // Avalonia 12 has no AfterRender priority. Background runs after the
+        // render/layout queue, including NativeControlHost HWND synchronization.
+        Dispatcher.UIThread.Post(RefreshSurfaceAfterRender, DispatcherPriority.Background);
+    }
+
+    private void RefreshSurfaceAfterRender()
+    {
+        surfaceRefreshQueued = false;
+        if (!surfaceRefreshRequested)
+            return;
+
+        surfaceRefreshRequested = false;
+        if (disposed || !IsEffectivelyVisible || session is null || HostWindowHandle == 0)
+            return;
+
+        PixelSize pixelSize = GetViewportPixelSize();
+        if (pixelSize.Width <= 0 || pixelSize.Height <= 0)
+            return;
+
+        // NativeControlHost has completed its arrange and HWND synchronization
+        // by this post-render callback. Reapply the exact OLE bounds before
+        // invalidating the complete child hierarchy so the retained RDP frame
+        // is presented.
+        session.ResizeSurface(pixelSize.Width, pixelSize.Height);
+        lastSurfaceSize = pixelSize;
+        RedrawWindow(
+            HostWindowHandle,
+            0,
+            0,
+            RdwInvalidate | RdwErase | RdwAllChildren | RdwUpdateNow | RdwFrame);
     }
 
     private void StartSession(nint hostWindow)
