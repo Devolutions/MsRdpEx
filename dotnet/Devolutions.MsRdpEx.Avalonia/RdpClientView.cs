@@ -105,6 +105,8 @@ public class RdpClientView : NativeControlHost, IDisposable
 
     internal bool IsSurfaceRefreshQueuedForTesting => surfaceRefreshQueued;
 
+    internal Action<Action>? SurfaceRefreshPostForTesting { get; set; }
+
     internal void RequestSurfaceRefreshForTesting() => RequestSurfaceRefresh();
 
     internal void RunSurfaceRefreshForTesting() => RefreshSurfaceAfterRender();
@@ -741,7 +743,10 @@ public class RdpClientView : NativeControlHost, IDisposable
         surfaceRefreshQueued = true;
         // Avalonia 12 has no AfterRender priority. Background runs after the
         // render/layout queue, including NativeControlHost HWND synchronization.
-        Dispatcher.UIThread.Post(RefreshSurfaceAfterRender, DispatcherPriority.Background);
+        if (SurfaceRefreshPostForTesting is { } post)
+            post(RefreshSurfaceAfterRender);
+        else
+            Dispatcher.UIThread.Post(RefreshSurfaceAfterRender, DispatcherPriority.Background);
     }
 
     private void RefreshSurfaceAfterRender()

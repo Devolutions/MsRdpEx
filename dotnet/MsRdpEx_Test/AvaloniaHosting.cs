@@ -148,11 +148,14 @@ namespace MsRdpEx.Tests
         public void RdpClientViewCoalescesSurfaceRefreshRequests()
         {
             using TestableRdpClientView view = new();
+            int postCount = 0;
+            view.SurfaceRefreshPostForTesting = _ => postCount++;
 
             view.RequestSurfaceRefreshForTesting();
             view.RequestSurfaceRefreshForTesting();
 
             Assert.True(view.IsSurfaceRefreshQueuedForTesting);
+            Assert.Equal(1, postCount);
 
             view.RunSurfaceRefreshForTesting();
 
