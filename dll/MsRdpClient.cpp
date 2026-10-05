@@ -2,6 +2,8 @@
 #include "MsRdpClient.h"
 #include "D3D11Capture.h"
 
+#include <new>
+
 #include <MsRdpEx/MsRdpEx.h>
 
 #include <MsRdpEx/RdpFile.h>
@@ -89,6 +91,92 @@ struct _ITSCoreApi
 using namespace MSTSCLib;
 
 class CMsRdpClient;
+
+static const DISPID MsRdpEx_OnLoginCompleteDispId = 3;
+
+class CMsRdpClientEventSink : public IDispatch
+{
+public:
+    explicit CMsRdpClientEventSink(CMsRdpExtendedSettings* extendedSettings) :
+        m_extendedSettings(extendedSettings)
+    {
+        m_extendedSettings->AddRef();
+    }
+
+    ~CMsRdpClientEventSink()
+    {
+        m_extendedSettings->Release();
+    }
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** object) override
+    {
+        if (!object)
+            return E_POINTER;
+
+        *object = NULL;
+        if (riid != IID_IUnknown && riid != IID_IDispatch &&
+            riid != __uuidof(IMsTscAxEvents))
+        {
+            return E_NOINTERFACE;
+        }
+
+        *object = static_cast<IDispatch*>(this);
+        AddRef();
+        return S_OK;
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG refCount = InterlockedDecrement(&m_refCount);
+        if (refCount == 0)
+            delete this;
+        return refCount;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT* count) override
+    {
+        if (count)
+            *count = 0;
+        return S_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetTypeInfo(
+        UINT, LCID, ITypeInfo**) override
+    {
+        return E_NOTIMPL;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetIDsOfNames(
+        REFIID, LPOLESTR*, UINT, LCID, DISPID*) override
+    {
+        return E_NOTIMPL;
+    }
+
+    HRESULT STDMETHODCALLTYPE Invoke(
+        DISPID dispIdMember,
+        REFIID,
+        LCID,
+        WORD,
+        DISPPARAMS*,
+        VARIANT*,
+        EXCEPINFO*,
+        UINT*) override
+    {
+        if (dispIdMember == MsRdpEx_OnLoginCompleteDispId)
+            m_extendedSettings->ReapplyHardwareZoomLevel();
+
+        return S_OK;
+    }
+
+private:
+    LONG m_refCount = 1;
+    CMsRdpExtendedSettings* m_extendedSettings;
+};
 
 static VOID WriteCLSID(REFCLSID rclsid)
 {
@@ -178,6 +266,7 @@ public:
 
         m_pMsRdpExtendedSettings = CMsRdpExtendedSettings_New(pUnknown, (IUnknown*)m_pMsTscAx, &m_sessionId);
         pMsRdpExInstance->AttachExtendedSettings(m_pMsRdpExtendedSettings);
+        SubscribeToEvents();
 
         void* pCorePropsRaw = NULL;
         m_pMsRdpExtendedSettings->GetCorePropsRawPtr(&pCorePropsRaw);
@@ -189,6 +278,7 @@ public:
         EndSspiSessionScope("destroy");
         MsRdpEx_D3D11Capture_ReleaseInstance(
             (IMsRdpExInstance*)m_pMsRdpExInstance);
+        UnsubscribeFromEvents();
 
         // Release our wrapper objects before the control's interfaces:
         // they hold references to control-internal objects (TS property
@@ -219,6 +309,74 @@ public:
         if (m_pMsRdpClient8) m_pMsRdpClient8->Release();
         if (m_pMsRdpClient9) m_pMsRdpClient9->Release();
         if (m_pMsRdpClient10) m_pMsRdpClient10->Release();
+    }
+
+private:
+    void SubscribeToEvents()
+    {
+        IConnectionPointContainer* connectionPointContainer = NULL;
+        HRESULT hr = m_pUnknown->QueryInterface(
+            IID_IConnectionPointContainer,
+            (void**)&connectionPointContainer);
+        if (FAILED(hr))
+        {
+            MsRdpEx_LogPrint(WARN,
+                "Could not query RDP event connection points: 0x%08X", hr);
+            return;
+        }
+
+        hr = connectionPointContainer->FindConnectionPoint(
+            __uuidof(IMsTscAxEvents), &m_eventConnectionPoint);
+        connectionPointContainer->Release();
+        if (FAILED(hr))
+        {
+            MsRdpEx_LogPrint(WARN,
+                "Could not find the RDP event connection point: 0x%08X", hr);
+            m_eventConnectionPoint = NULL;
+            return;
+        }
+
+        m_eventSink = new (std::nothrow)
+            CMsRdpClientEventSink(m_pMsRdpExtendedSettings);
+        if (!m_eventSink)
+        {
+            MsRdpEx_LogPrint(ERROR, "Could not allocate the RDP event sink");
+            m_eventConnectionPoint->Release();
+            m_eventConnectionPoint = NULL;
+            return;
+        }
+
+        hr = m_eventConnectionPoint->Advise(
+            static_cast<IUnknown*>(m_eventSink), &m_eventCookie);
+        if (FAILED(hr))
+        {
+            MsRdpEx_LogPrint(WARN,
+                "Could not subscribe to RDP events: 0x%08X", hr);
+            m_eventSink->Release();
+            m_eventSink = NULL;
+            m_eventConnectionPoint->Release();
+            m_eventConnectionPoint = NULL;
+            m_eventCookie = 0;
+        }
+    }
+
+    void UnsubscribeFromEvents()
+    {
+        if (m_eventConnectionPoint && m_eventCookie)
+            m_eventConnectionPoint->Unadvise(m_eventCookie);
+        m_eventCookie = 0;
+
+        if (m_eventSink)
+        {
+            m_eventSink->Release();
+            m_eventSink = NULL;
+        }
+
+        if (m_eventConnectionPoint)
+        {
+            m_eventConnectionPoint->Release();
+            m_eventConnectionPoint = NULL;
+        }
     }
 
     // IUnknown interface
@@ -794,6 +952,9 @@ private:
     CMsRdpExInstance* m_pMsRdpExInstance = NULL;
     bool m_instanceRegistered = false;
     CMsRdpExtendedSettings* m_pMsRdpExtendedSettings = NULL;
+    IConnectionPoint* m_eventConnectionPoint = NULL;
+    CMsRdpClientEventSink* m_eventSink = NULL;
+    DWORD m_eventCookie = 0;
     bool m_sspiSessionActive = false;
 };
 
