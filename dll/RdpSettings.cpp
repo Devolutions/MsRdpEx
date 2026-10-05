@@ -1024,6 +1024,13 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         hr = m_pMsRdpExtendedSettings->put_Property(bstrPropertyName, pValue);
 
         if (SUCCEEDED(hr) &&
+            MsRdpEx_StringEquals(propName, "ZoomLevel") &&
+            pValue->vt == VT_UI4)
+        {
+            ReapplyHardwareZoomLevel();
+        }
+
+        if (SUCCEEDED(hr) &&
             MsRdpEx_StringEquals(propName, "EnableHardwareMode") &&
             pValue->vt == VT_BOOL &&
             pValue->boolVal == VARIANT_TRUE &&
@@ -1041,12 +1048,18 @@ end:
     return hr;
 }
 
+void CMsRdpExtendedSettings::SetLoginComplete()
+{
+    m_LoginComplete = true;
+}
+
 HRESULT CMsRdpExtendedSettings::ReapplyHardwareZoomLevel()
 {
     if (!m_pMsRdpExtendedSettings ||
         !m_OutputMirrorEnabled ||
         !m_HardwareModeEnabled ||
         !m_NewOutputPresenterRequested ||
+        !m_LoginComplete ||
         !m_ZoomLevelSet ||
         m_ZoomLevel == 100)
     {
@@ -1063,13 +1076,13 @@ HRESULT CMsRdpExtendedSettings::ReapplyHardwareZoomLevel()
     if (FAILED(hr))
     {
         MsRdpEx_LogPrint(ERROR,
-            "ReapplyHardwareZoomLevel(%u) after login completion failed: 0x%08X",
+            "ReapplyHardwareZoomLevel(%u) failed: 0x%08X",
             m_ZoomLevel, hr);
     }
     else
     {
         MsRdpEx_LogPrint(DEBUG,
-            "ReapplyHardwareZoomLevel(%u) after login completion succeeded",
+            "ReapplyHardwareZoomLevel(%u) succeeded",
             m_ZoomLevel);
     }
 

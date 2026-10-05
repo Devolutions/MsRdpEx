@@ -168,7 +168,10 @@ public:
         UINT*) override
     {
         if (dispIdMember == MsRdpEx_OnLoginCompleteDispId)
+        {
+            m_extendedSettings->SetLoginComplete();
             m_extendedSettings->ReapplyHardwareZoomLevel();
+        }
 
         return S_OK;
     }

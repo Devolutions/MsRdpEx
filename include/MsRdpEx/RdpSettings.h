@@ -52,6 +52,7 @@ public:
     HRESULT __stdcall PrepareMouseJiggler();
     HRESULT __stdcall PrepareVideoRecorder();
     HRESULT __stdcall PrepareExtraSystemMenu();
+    void SetLoginComplete();
     HRESULT __stdcall ReapplyHardwareZoomLevel();
     char* __stdcall GetKdcProxyUrl();
     char* __stdcall GetKdcProxyName();
@@ -104,6 +105,7 @@ private:
     bool m_OutputMirrorEnabled = false;
     bool m_HardwareModeEnabled = false;
     bool m_NewOutputPresenterRequested = false;
+    bool m_LoginComplete = false;
     bool m_ZoomLevelSet = false;
     uint32_t m_ZoomLevel = 100;
     bool m_VideoRecordingEnabled = false;
