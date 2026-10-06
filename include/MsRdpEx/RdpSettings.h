@@ -52,6 +52,8 @@ public:
     HRESULT __stdcall PrepareMouseJiggler();
     HRESULT __stdcall PrepareVideoRecorder();
     HRESULT __stdcall PrepareExtraSystemMenu();
+    void SetLoginComplete();
+    HRESULT __stdcall ReapplyHardwareZoomLevel();
     char* __stdcall GetKdcProxyUrl();
     char* __stdcall GetKdcProxyName();
     bool GetKerbCertificateLogonEnabled();
@@ -101,6 +103,11 @@ private:
     uint32_t m_MouseJigglerInterval = 60;
     uint32_t m_MouseJigglerMethod = 0;
     bool m_OutputMirrorEnabled = false;
+    bool m_HardwareModeEnabled = false;
+    bool m_NewOutputPresenterRequested = false;
+    bool m_LoginComplete = false;
+    bool m_ZoomLevelSet = false;
+    uint32_t m_ZoomLevel = 100;
     bool m_VideoRecordingEnabled = false;
     uint32_t m_VideoRecordingQuality = 5;
     uint32_t m_VideoRecordingFrameRate = 0;

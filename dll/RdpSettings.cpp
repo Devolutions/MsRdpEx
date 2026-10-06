@@ -998,6 +998,23 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
     }
     else
     {
+        if (MsRdpEx_StringEquals(propName, "EnableHardwareMode") &&
+            pValue->vt == VT_BOOL)
+        {
+            m_HardwareModeEnabled = pValue->boolVal == VARIANT_TRUE;
+        }
+        else if (MsRdpEx_StringEquals(propName, "RequestUseNewOutputPresenter") &&
+            pValue->vt == VT_BOOL)
+        {
+            m_NewOutputPresenterRequested = pValue->boolVal == VARIANT_TRUE;
+        }
+        else if (MsRdpEx_StringEquals(propName, "ZoomLevel") &&
+            pValue->vt == VT_UI4)
+        {
+            m_ZoomLevel = pValue->ulVal;
+            m_ZoomLevelSet = true;
+        }
+
         if (pValue->vt == VT_BSTR) {
             char* propValueA = _com_util::ConvertBSTRToString((BSTR)pValue->bstrVal);
             MsRdpEx_LogPrint(TRACE, "CMsRdpExtendedSettings::put_Property(%s, \"%s\")", propName, propValueA);
@@ -1005,6 +1022,13 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         }
 
         hr = m_pMsRdpExtendedSettings->put_Property(bstrPropertyName, pValue);
+
+        if (SUCCEEDED(hr) &&
+            MsRdpEx_StringEquals(propName, "ZoomLevel") &&
+            pValue->vt == VT_UI4)
+        {
+            ReapplyHardwareZoomLevel();
+        }
 
         if (SUCCEEDED(hr) &&
             MsRdpEx_StringEquals(propName, "EnableHardwareMode") &&
@@ -1021,6 +1045,71 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
 
 end:
     delete[] propName;
+    return hr;
+}
+
+void CMsRdpExtendedSettings::SetLoginComplete()
+{
+    m_LoginComplete = true;
+}
+
+HRESULT CMsRdpExtendedSettings::ReapplyHardwareZoomLevel()
+{
+    if (!m_pMsRdpExtendedSettings ||
+        !m_OutputMirrorEnabled ||
+        !m_HardwareModeEnabled ||
+        !m_NewOutputPresenterRequested ||
+        !m_LoginComplete ||
+        !m_ZoomLevelSet ||
+        m_ZoomLevel == 100)
+    {
+        return S_FALSE;
+    }
+
+    bstr_t zoomLevelName = _com_util::ConvertStringToBSTR("ZoomLevel");
+    VARIANT zoomLevel;
+    VariantInit(&zoomLevel);
+    zoomLevel.vt = VT_UI4;
+    zoomLevel.ulVal = m_ZoomLevel;
+
+    HRESULT hr = m_pMsRdpExtendedSettings->put_Property(zoomLevelName, &zoomLevel);
+    if (FAILED(hr))
+    {
+        MsRdpEx_LogPrint(ERROR,
+            "ReapplyHardwareZoomLevel(%u) failed: 0x%08X",
+            m_ZoomLevel, hr);
+    }
+    else
+    {
+        MsRdpEx_LogPrint(DEBUG,
+            "ReapplyHardwareZoomLevel(%u) succeeded",
+            m_ZoomLevel);
+    }
+
+    if (SUCCEEDED(hr))
+    {
+        VARIANT appliedZoomLevel;
+        VariantInit(&appliedZoomLevel);
+        HRESULT getHr = m_pMsRdpExtendedSettings->get_Property(
+            zoomLevelName, &appliedZoomLevel);
+
+        if (SUCCEEDED(getHr) && appliedZoomLevel.vt == VT_UI4)
+        {
+            MsRdpEx_LogPrint(DEBUG,
+                "ReapplyHardwareZoomLevel read-back: %u",
+                appliedZoomLevel.ulVal);
+        }
+        else
+        {
+            MsRdpEx_LogPrint(WARN,
+                "ReapplyHardwareZoomLevel read-back failed: 0x%08X, vt=%u",
+                getHr, appliedZoomLevel.vt);
+        }
+
+        VariantClear(&appliedZoomLevel);
+    }
+
+    VariantClear(&zoomLevel);
     return hr;
 }
 
