@@ -54,13 +54,17 @@ public class RdpClientView : NativeControlHost, IDisposable
     private const string StaticWindowClass = "STATIC";
     private const uint WsChild = 0x40000000;
     private const uint WsVisible = 0x10000000;
+    private const uint WsClipChildren = 0x02000000;
     private const uint WsClipSiblings = 0x04000000;
     private const uint WsTabStop = 0x00010000;
-    private const uint RdwInvalidate = 0x0001;
-    private const uint RdwErase = 0x0004;
-    private const uint RdwAllChildren = 0x0080;
-    private const uint RdwUpdateNow = 0x0100;
-    private const uint RdwFrame = 0x0400;
+    private const uint GwChild = 5;
+    private const uint WmSize = 0x0005;
+    private const int SizeRestored = 0;
+    // A surface refresh posted while NativeControlHost has not yet shown the host window is
+    // retried a few frames; past this the view is treated as staying hidden.
+    private const int MaxSurfaceRefreshRetries = 20;
+
+    private static readonly TimeSpan SurfaceRefreshRetryInterval = TimeSpan.FromMilliseconds(32);
 
     private static readonly TimeSpan ResizeDebounceInterval = TimeSpan.FromMilliseconds(250);
 
@@ -84,6 +88,7 @@ public class RdpClientView : NativeControlHost, IDisposable
     private IPlatformHandle? detachedNativeControl;
     private bool surfaceRefreshQueued;
     private bool surfaceRefreshRequested;
+    private int surfaceRefreshRetries;
     private bool wasEffectivelyVisible;
     private readonly List<IDisposable> visibilitySubscriptions = [];
 
@@ -576,6 +581,12 @@ public class RdpClientView : NativeControlHost, IDisposable
         if (topLevel is Window attachedWindow)
             session?.SetFrameActive(attachedWindow.IsActive);
 
+        // A move to another top level (docking, undocking) keeps the native
+        // attachment and the view's visibility, so neither CreateNativeControlCore
+        // nor the visibility observer runs: the retained frame must be
+        // re-presented from here as well.
+        RequestSurfaceRefresh();
+
         if (pendingFullScreen)
         {
             pendingFullScreen = false;
@@ -625,11 +636,14 @@ public class RdpClientView : NativeControlHost, IDisposable
             return control;
         }
 
+        // WS_CLIPCHILDREN: the control covers the whole host, so the STATIC must
+        // never erase its background underneath it on a move or show. Without
+        // it every resize paints a white frame before mstscax redraws.
         nint window = CreateWindowExW(
             0,
             StaticWindowClass,
             null,
-            WsChild | WsVisible | WsClipSiblings | WsTabStop,
+            WsChild | WsVisible | WsClipChildren | WsClipSiblings | WsTabStop,
             0,
             0,
             640,
@@ -737,6 +751,12 @@ public class RdpClientView : NativeControlHost, IDisposable
             return;
 
         surfaceRefreshRequested = true;
+        surfaceRefreshRetries = 0;
+        QueueSurfaceRefresh(retry: false);
+    }
+
+    private void QueueSurfaceRefresh(bool retry)
+    {
         if (surfaceRefreshQueued)
             return;
 
@@ -745,10 +765,23 @@ public class RdpClientView : NativeControlHost, IDisposable
         // render/layout queue, including NativeControlHost HWND synchronization.
         if (SurfaceRefreshPostForTesting is { } post)
             post(RefreshSurfaceAfterRender);
+        else if (retry)
+            // The host is shown by a later layout/render pass; give it a frame
+            // instead of burning the retries within the same idle slot.
+            DispatcherTimer.RunOnce(RefreshSurfaceAfterRender, SurfaceRefreshRetryInterval, DispatcherPriority.Background);
         else
             Dispatcher.UIThread.Post(RefreshSurfaceAfterRender, DispatcherPriority.Background);
     }
 
+    /// <summary>
+    /// Re-presents the retained RDP frame after the hosted window was hidden or
+    /// moved between top-level windows (tab switch, docking, reparenting).
+    /// mstscax does not repaint from its back buffer on WM_PAINT alone in that
+    /// state, and ignores an in-place rectangle update that only changes by a
+    /// pixel, but it does re-lay out and redraw on WM_SIZE. The control's
+    /// in-place window is the host window's child, so it is sent WM_SIZE for
+    /// its current size.
+    /// </summary>
     private void RefreshSurfaceAfterRender()
     {
         surfaceRefreshQueued = false;
@@ -761,30 +794,43 @@ public class RdpClientView : NativeControlHost, IDisposable
             return;
         }
 
-        if (!IsEffectivelyVisible || session is null || HostWindowHandle == 0)
+        nint hostWindow = HostWindowHandle;
+        if (!IsEffectivelyVisible || session is null || hostWindow == 0)
             return;
+
+        // NativeControlHost shows the holder window at AfterRender on a later
+        // frame when the bounds were not final at attach time; a nudge issued
+        // while the host is still hidden paints nothing, so wait for it.
+        nint controlWindow = GetWindow(hostWindow, GwChild);
+        if (!IsWindowVisible(hostWindow) || controlWindow == 0)
+        {
+            if (surfaceRefreshRetries++ < MaxSurfaceRefreshRetries)
+                QueueSurfaceRefresh(retry: true);
+            return;
+        }
 
         PixelSize pixelSize = GetViewportPixelSize();
         if (pixelSize.Width <= 0 || pixelSize.Height <= 0)
             return;
 
-        // NativeControlHost has completed its arrange and HWND synchronization
-        // by this post-render callback. Reapply the exact OLE bounds before
-        // invalidating the complete child hierarchy so the retained RDP frame
-        // is presented.
-        if (!session.ResizeSurface(pixelSize.Width, pixelSize.Height))
+        // A reattach to a top level at another DPI changes the pixel size without
+        // a new arrange; apply the OLE bounds first so the cache below stays true.
+        if (pixelSize != lastSurfaceSize && !session.ResizeSurface(pixelSize.Width, pixelSize.Height))
         {
             lastSurfaceSize = default;
             return;
         }
 
         surfaceRefreshRequested = false;
+        // One WM_SIZE for the current size is what the control reacts to; this
+        // matches the exe host (RdpAxHostWnd) and avoids the two re-layouts a
+        // resize-and-restore nudge costs.
+        SendMessageW(
+            controlWindow,
+            WmSize,
+            (nint)SizeRestored,
+            (nint)((pixelSize.Height << 16) | (pixelSize.Width & 0xFFFF)));
         lastSurfaceSize = pixelSize;
-        RedrawWindow(
-            HostWindowHandle,
-            0,
-            0,
-            RdwInvalidate | RdwErase | RdwAllChildren | RdwUpdateNow | RdwFrame);
     }
 
     private void StartSession(nint hostWindow)
@@ -1040,9 +1086,11 @@ public class RdpClientView : NativeControlHost, IDisposable
 
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RedrawWindow(
-        nint window,
-        nint updateRectangle,
-        nint updateRegion,
-        uint flags);
+    private static extern bool IsWindowVisible(nint window);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern nint GetWindow(nint window, uint command);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern nint SendMessageW(nint window, uint message, nint wParam, nint lParam);
 }
