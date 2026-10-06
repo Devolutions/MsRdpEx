@@ -813,6 +813,14 @@ public class RdpClientView : NativeControlHost, IDisposable
         if (pixelSize.Width <= 0 || pixelSize.Height <= 0)
             return;
 
+        // A reattach to a top level at another DPI changes the pixel size without
+        // a new arrange; apply the OLE bounds first so the cache below stays true.
+        if (pixelSize != lastSurfaceSize && !session.ResizeSurface(pixelSize.Width, pixelSize.Height))
+        {
+            lastSurfaceSize = default;
+            return;
+        }
+
         surfaceRefreshRequested = false;
         // One WM_SIZE for the current size is what the control reacts to; this
         // matches the exe host (RdpAxHostWnd) and avoids the two re-layouts a
