@@ -780,7 +780,12 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             instance->GetExtendedSettings(&pExtendedSettings);
     }
 
-    if (isOOBClient) {
+    // mstscax injects reserved virtual key 0xFF on WM_SETFOCUS. It can surface
+    // as an unwanted character in a remote Windows Server 2022 console.
+    if ((uMsg == WM_KEYDOWN || uMsg == WM_KEYUP ||
+         uMsg == WM_SYSKEYDOWN || uMsg == WM_SYSKEYUP) && wParam == 0xFF) {
+        result = 0;
+    } else if (isOOBClient) {
         result = Real_IHWndProc_rdclientax(hWnd, uMsg, wParam, lParam);
     } else {
         result = Real_IHWndProc_mstscax(hWnd, uMsg, wParam, lParam);
