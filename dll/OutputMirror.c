@@ -7,6 +7,8 @@
 #include <MsRdpEx/RecordingManifest.h>
 #include <MsRdpEx/OutputMirror.h>
 
+#define MSRDPEX_STREAMING_MIN_FRAME_RATE 30
+
 struct _MsRdpEx_OutputMirror
 {
 	uint8_t* bitmapData;
@@ -35,9 +37,52 @@ struct _MsRdpEx_OutputMirror
 	FILE* frameMetadataFile;
 
 	uint32_t videoFrameRate;
+	HANDLE heartbeatStopEvent;
+	HANDLE heartbeatThread;
 
     CRITICAL_SECTION lock;
 };
+
+static DWORD WINAPI MsRdpEx_OutputMirror_HeartbeatThread(LPVOID parameter)
+{
+	MsRdpEx_OutputMirror* ctx = (MsRdpEx_OutputMirror*) parameter;
+	uint32_t interval = 1000 / ctx->videoFrameRate;
+
+	while (WaitForSingleObject(ctx->heartbeatStopEvent, interval) == WAIT_TIMEOUT)
+	{
+		if (!TryEnterCriticalSection(&ctx->lock))
+			continue;
+
+		if (ctx->videoRecordingEnabled && ctx->videoRecorder && ctx->bitmapData)
+		{
+			MsRdpEx_VideoRecorder_UpdateFrame(ctx->videoRecorder, ctx->bitmapData,
+				0, 0, ctx->bitmapWidth, ctx->bitmapHeight, ctx->bitmapStep);
+		}
+
+		LeaveCriticalSection(&ctx->lock);
+	}
+
+	return 0;
+}
+
+static void MsRdpEx_OutputMirror_StopHeartbeat(MsRdpEx_OutputMirror* ctx)
+{
+	if (ctx->heartbeatStopEvent)
+		SetEvent(ctx->heartbeatStopEvent);
+
+	if (ctx->heartbeatThread)
+	{
+		WaitForSingleObject(ctx->heartbeatThread, INFINITE);
+		CloseHandle(ctx->heartbeatThread);
+		ctx->heartbeatThread = NULL;
+	}
+
+	if (ctx->heartbeatStopEvent)
+	{
+		CloseHandle(ctx->heartbeatStopEvent);
+		ctx->heartbeatStopEvent = NULL;
+	}
+}
 
 void MsRdpEx_OutputMirror_Lock(MsRdpEx_OutputMirror* ctx)
 {
@@ -237,6 +282,10 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 		ctx->videoRecorder = MsRdpEx_VideoRecorder_New();
 
 		if (ctx->videoRecorder) {
+			bool streaming = !MsRdpEx_StringIsNullOrEmpty(ctx->recordingPipeName);
+			uint32_t frameRate = streaming
+				? max(ctx->videoFrameRate, MSRDPEX_STREAMING_MIN_FRAME_RATE)
+				: ctx->videoFrameRate;
 			int64_t startTime = (ctx->videoRecordingCount < 1) ? ctx->startTime : MsRdpEx_GetUnixTime();
 			sprintf_s(filename, MSRDPEX_MAX_PATH, "%s\\recording-%d.webm", ctx->outputPath, ctx->videoRecordingCount);
 			MsRdpEx_RecordingManifest_FinalizeFile(ctx->manifest, 0);
@@ -246,15 +295,28 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 			MsRdpEx_VideoRecorder_SetFileName(ctx->videoRecorder, filename);
 			MsRdpEx_VideoRecorder_SetVideoQuality(ctx->videoRecorder, ctx->videoQualityLevel);
 
-			if (ctx->videoFrameRate > 0) {
-				MsRdpEx_VideoRecorder_SetFrameRate(ctx->videoRecorder, ctx->videoFrameRate);
+			if (frameRate > 0) {
+				MsRdpEx_VideoRecorder_SetFrameRate(ctx->videoRecorder, frameRate);
 			}
 
 			if (!MsRdpEx_StringIsNullOrEmpty(ctx->recordingPipeName)) {
 				MsRdpEx_VideoRecorder_SetPipeName(ctx->videoRecorder, ctx->recordingPipeName);
 			}
 
-			MsRdpEx_VideoRecorder_Init(ctx->videoRecorder);
+			bool initialized = MsRdpEx_VideoRecorder_Init(ctx->videoRecorder);
+			if (streaming && initialized) {
+				ctx->videoFrameRate = frameRate;
+				ctx->heartbeatStopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+				if (ctx->heartbeatStopEvent) {
+					ctx->heartbeatThread = CreateThread(NULL, 0,
+						MsRdpEx_OutputMirror_HeartbeatThread, ctx, 0, NULL);
+				}
+
+				if (!ctx->heartbeatStopEvent || !ctx->heartbeatThread) {
+					MsRdpEx_LogPrint(WARN, "failed to start video recording heartbeat");
+					MsRdpEx_OutputMirror_StopHeartbeat(ctx);
+				}
+			}
 		}
 
 		if (ctx->dumpBitmapUpdates) {
@@ -271,6 +333,8 @@ bool MsRdpEx_OutputMirror_Init(MsRdpEx_OutputMirror* ctx)
 
 bool MsRdpEx_OutputMirror_Uninit(MsRdpEx_OutputMirror* ctx)
 {
+	MsRdpEx_OutputMirror_StopHeartbeat(ctx);
+
 	if (ctx->hShadowDC)
 	{
 		SelectObject(ctx->hShadowDC, ctx->hShadowObject);
