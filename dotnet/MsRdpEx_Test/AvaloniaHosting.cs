@@ -1,5 +1,6 @@
 using Devolutions.MsRdpEx.Avalonia;
 
+using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Platform;
 
@@ -173,6 +174,38 @@ namespace MsRdpEx.Tests
             view.RunSurfaceRefreshForTesting();
 
             Assert.False(view.IsSurfaceRefreshQueuedForTesting);
+        }
+
+        [Fact]
+        public void RdpClientViewRequestsSurfaceRefreshOnWindowActivated()
+        {
+            using TestableRdpClientView view = new();
+            int postCount = 0;
+            view.SurfaceRefreshPostForTesting = _ => postCount++;
+
+            view.RaiseWindowActivatedForTesting();
+
+            Assert.True(view.IsSurfaceRefreshQueuedForTesting);
+            Assert.Equal(1, postCount);
+        }
+
+        [Fact]
+        public void RdpClientViewRequestsSurfaceRefreshOnRestoreFromMinimized()
+        {
+            using TestableRdpClientView view = new();
+            int postCount = 0;
+            view.SurfaceRefreshPostForTesting = _ => postCount++;
+
+            view.RaiseWindowStateChangedForTesting(WindowState.Normal, WindowState.Minimized);
+            view.RaiseWindowStateChangedForTesting(WindowState.Normal, WindowState.Maximized);
+
+            Assert.False(view.IsSurfaceRefreshQueuedForTesting);
+            Assert.Equal(0, postCount);
+
+            view.RaiseWindowStateChangedForTesting(WindowState.Minimized, WindowState.Normal);
+
+            Assert.True(view.IsSurfaceRefreshQueuedForTesting);
+            Assert.Equal(1, postCount);
         }
 
         private sealed class TestableRdpClientView : RdpClientView
