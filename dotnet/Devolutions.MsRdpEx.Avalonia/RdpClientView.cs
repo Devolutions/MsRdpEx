@@ -58,8 +58,15 @@ public class RdpClientView : NativeControlHost, IDisposable
     private const uint WsClipSiblings = 0x04000000;
     private const uint WsTabStop = 0x00010000;
     private const uint GwChild = 5;
+    private const uint GaRoot = 2;
     private const uint WmSize = 0x0005;
     private const int SizeRestored = 0;
+    private const uint RdwInvalidate = 0x0001;
+    private const uint RdwAllChildren = 0x0080;
+    private const uint RdwUpdateNow = 0x0100;
+    private const uint EventSystemForeground = 0x0003;
+    private const uint EventSystemMinimizeEnd = 0x0017;
+    private const uint WinEventOutOfContext = 0x0000;
     // A surface refresh posted while NativeControlHost has not yet shown the host window is
     // retried a few frames; past this the view is treated as staying hidden.
     private const int MaxSurfaceRefreshRetries = 20;
@@ -90,6 +97,8 @@ public class RdpClientView : NativeControlHost, IDisposable
     private bool surfaceRefreshRequested;
     private int surfaceRefreshRetries;
     private bool wasEffectivelyVisible;
+    private nint hostRootEventHook;
+    private WinEventProc? hostRootEventProc;
     private readonly List<IDisposable> visibilitySubscriptions = [];
 
     public RdpClientView()
@@ -115,6 +124,11 @@ public class RdpClientView : NativeControlHost, IDisposable
     internal void RequestSurfaceRefreshForTesting() => RequestSurfaceRefresh();
 
     internal void RunSurfaceRefreshForTesting() => RefreshSurfaceAfterRender();
+
+    internal void RaiseWindowActivatedForTesting() => OnWindowActivated(this, EventArgs.Empty);
+
+    internal void RaiseWindowStateChangedForTesting(WindowState oldState, WindowState newState)
+        => OnWindowStateChanged(oldState, newState);
 
     /// <summary>
     /// Gets or sets the RDP ActiveX class identifier. Set this before the view is attached.
@@ -469,10 +483,23 @@ public class RdpClientView : NativeControlHost, IDisposable
     // OS-driven transitions).
     private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if (syncingWindowState || e.Property != Window.WindowStateProperty)
+        if (e.Property != Window.WindowStateProperty)
             return;
 
-        if (e.GetNewValue<WindowState>() == WindowState.FullScreen)
+        OnWindowStateChanged(e.GetOldValue<WindowState>(), e.GetNewValue<WindowState>());
+    }
+
+    private void OnWindowStateChanged(WindowState oldState, WindowState newState)
+    {
+        // Minimizing keeps the view effectively visible, so the visibility
+        // observer never runs; the frame is re-presented on the way back.
+        if (oldState == WindowState.Minimized && newState != WindowState.Minimized)
+            RequestSurfaceRefresh();
+
+        if (syncingWindowState)
+            return;
+
+        if (newState == WindowState.FullScreen)
         {
             if (!isFullScreen)
             {
@@ -540,6 +567,7 @@ public class RdpClientView : NativeControlHost, IDisposable
         disposed = true;
         resizeTimer.Stop();
         ClearVisibilitySubscriptions();
+        RemoveHostRootEventHook();
         // Restore the window before tearing down so a closing session never
         // leaves a fullscreen shell behind.
         ExitFullScreen();
@@ -573,6 +601,7 @@ public class RdpClientView : NativeControlHost, IDisposable
 
         base.OnAttachedToVisualTree(e);
         SubscribeToVisibilityChanges();
+        InstallHostRootEventHook();
 
         // Reparenting to a new top level reuses the live session without
         // re-running StartSession, so re-apply the frame window and the
@@ -617,6 +646,7 @@ public class RdpClientView : NativeControlHost, IDisposable
 
         topLevel = null;
         ClearVisibilitySubscriptions();
+        RemoveHostRootEventHook();
 
         // NativeControlHost keeps the native control alive across reparenting
         // and destroys it (via DestroyNativeControlCore) only when the view is
@@ -732,6 +762,55 @@ public class RdpClientView : NativeControlHost, IDisposable
         wasEffectivelyVisible = isEffectivelyVisible;
     }
 
+    // The top level is not always an Avalonia Window (RDM hosts the view through
+    // WinFormsAvaloniaControlHost, whose root is an EmbeddableControlRoot), so
+    // Window.Activated and WindowState cannot be relied on to see the owning
+    // native window come back from minimized or from behind another application.
+    // An in-process, this-thread WinEvent hook sees both for whatever HWND roots
+    // the host window.
+    private void InstallHostRootEventHook()
+    {
+        if (hostRootEventHook != 0)
+            return;
+
+        hostRootEventProc ??= OnHostRootEvent;
+        hostRootEventHook = SetWinEventHook(
+            EventSystemForeground,
+            EventSystemMinimizeEnd,
+            0,
+            hostRootEventProc,
+            GetCurrentProcessId(),
+            GetCurrentThreadId(),
+            WinEventOutOfContext);
+    }
+
+    private void RemoveHostRootEventHook()
+    {
+        if (hostRootEventHook == 0)
+            return;
+
+        UnhookWinEvent(hostRootEventHook);
+        hostRootEventHook = 0;
+    }
+
+    private void OnHostRootEvent(nint hook, uint eventType, nint window, int objectId, int childId, uint eventThread, uint eventTime)
+    {
+        if (eventType is not (EventSystemForeground or EventSystemMinimizeEnd) || disposed)
+            return;
+
+        nint hostWindow = HostWindowHandle;
+        if (hostWindow == 0 || window == 0 || GetAncestor(hostWindow, GaRoot) != window)
+            return;
+
+        // While the root was minimized every blit mstscax made from its shadow
+        // bitmap was clipped away, and the desktop manager restores the window
+        // from its retained surface without a WM_PAINT. In software mode the
+        // control only paints the rectangles it is told are dirty, so what the
+        // server drew in the meantime (a session lock, typically) stays in the
+        // shadow bitmap and shows up only under the moving mouse.
+        RequestSurfaceRefresh();
+    }
+
     private sealed class ActionObserver<T>(Action<T> onNext) : IObserver<T>
     {
         public void OnCompleted()
@@ -798,6 +877,11 @@ public class RdpClientView : NativeControlHost, IDisposable
         if (!IsEffectivelyVisible || session is null || hostWindow == 0)
             return;
 
+        // Nothing is presented while the root is minimized (WS_VISIBLE stays set,
+        // so IsWindowVisible cannot tell); the restore event re-requests it.
+        if (IsIconic(GetAncestor(hostWindow, GaRoot)))
+            return;
+
         // NativeControlHost shows the holder window at AfterRender on a later
         // frame when the bounds were not final at attach time; a nudge issued
         // while the host is still hidden paints nothing, so wait for it.
@@ -830,6 +914,10 @@ public class RdpClientView : NativeControlHost, IDisposable
             WmSize,
             (nint)SizeRestored,
             (nint)((pixelSize.Height << 16) | (pixelSize.Width & 0xFFFF)));
+        // A WM_SIZE for an unchanged size re-lays out the control but does not
+        // by itself repaint a surface whose on-screen copy went stale while the
+        // root was minimized; a real WM_PAINT down to the output window does.
+        RedrawWindow(hostWindow, 0, 0, RdwInvalidate | RdwAllChildren | RdwUpdateNow);
         lastSurfaceSize = pixelSize;
     }
 
@@ -958,6 +1046,14 @@ public class RdpClientView : NativeControlHost, IDisposable
     private void OnWindowActivated(object? sender, EventArgs e)
     {
         session?.SetFrameActive(true);
+
+        // Another window covering RDM, or a minimize, leaves the view effectively
+        // visible, so neither the attach nor the visibility path re-presents the
+        // frame. In software mode mstscax blits only the rectangles invalidated
+        // since its last paint: anything the server drew while the window was
+        // away (a session lock, typically) sits in the shadow bitmap and shows up
+        // only under the moving mouse. Re-present it on the way back.
+        RequestSurfaceRefresh();
     }
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
@@ -1093,4 +1189,30 @@ public class RdpClientView : NativeControlHost, IDisposable
 
     [DllImport("user32.dll", ExactSpelling = true)]
     private static extern nint SendMessageW(nint window, uint message, nint wParam, nint lParam);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern nint GetAncestor(nint window, uint flags);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(nint window);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RedrawWindow(nint window, nint updateRect, nint updateRegion, uint flags);
+
+    private delegate void WinEventProc(nint hook, uint eventType, nint window, int objectId, int childId, uint eventThread, uint eventTime);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern nint SetWinEventHook(uint eventMin, uint eventMax, nint module, WinEventProc callback, uint processId, uint threadId, uint flags);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnhookWinEvent(nint hook);
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern uint GetCurrentProcessId();
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern uint GetCurrentThreadId();
 }
