@@ -14,7 +14,10 @@ This repository also contains a C# [nuget package](https://www.nuget.org/package
 
 ### COM interop selection
 
-The package selects legacy COM interop by default, preserving the original `Interop.MSTSCLib.dll` and `AxInterop.MSTSCLib.dll` APIs for both .NET Framework 4.8 and `net8.0-windows` consumers:
+The package targets .NET Framework 4.8 and .NET 10 on Windows (`net10.0-windows`).
+It selects legacy COM interop by default, preserving the original
+`Interop.MSTSCLib.dll` and `AxInterop.MSTSCLib.dll` APIs for both targets.
+Generated COM interop and Avalonia hosting require .NET 10 or later:
 
 ```xml
 <PackageReference Include="Devolutions.MsRdpEx" Version="..." />
@@ -41,6 +44,11 @@ For a WinForms ActiveX host alongside the standalone generated projection, set `
 This adds `Interop.MSTSCLib.Generated.WinForms.dll`, whose `MsRdpEx.WinForms.GeneratedRdpClientHost` hosts a generated RDP proxy with a configurable CLSID, ActiveX DLL name, and optional MsRdpEx DLL path; call `GetClient<T>()` after the control is created. It is a WinForms-only feature and is not NativeAOT-compatible.
 
 `GeneratedWinForms` remains available for applications moving to the generated projection that require its `AxMSTSCLib` wrapper types. Existing legacy `AxMSTSCLib` consumers remain on the default `Legacy` mode. Set `MsRdpExComInterop` to `None` when an application needs neither interop assembly.
+
+The core package does not require the Windows Forms framework. Applications using
+`Legacy`, `GeneratedWinForms`, or `MsRdpExGeneratedWinForms=true` must enable
+`UseWindowsForms=true` themselves; generated COM-only and Avalonia consumers do not
+need it.
 
 Packages that ship generated assets expose `MsRdpExGeneratedInteropSupported=true`, `MsRdpExGeneratedWinFormsInteropSupported=true`, and `MsRdpExGeneratedWinFormsHostSupported=true` after the package targets are imported. Selecting a generated mode or host validates that its assembly is present and fails with a clear package capability error otherwise.
 

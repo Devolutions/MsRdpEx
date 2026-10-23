@@ -10,8 +10,7 @@
     <Company>Devolutions</Company>
     <Description>Microsoft RDP Extensions</Description>
     <OutputType>Library</OutputType>
-    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
-    <UseWindowsForms>true</UseWindowsForms>
+    <TargetFrameworks>net48;net10.0-windows</TargetFrameworks>
     <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
@@ -37,11 +36,11 @@
   <ItemGroup>
     <Content Include="../Interop.MSTSCLib/Interop.MSTSCLib.dll" PackagePath="interop/legacy/Interop.MSTSCLib.dll" Pack="true" Visible="false" />
     <Content Include="$(CMakeOutputPath)\legacy\net48\AxInterop.MSTSCLib.dll" PackagePath="interop/legacy/net48/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
-    <Content Include="$(CMakeOutputPath)\legacy\net8.0-windows\AxInterop.MSTSCLib.dll" PackagePath="interop/legacy/net8.0-windows/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
+    <Content Include="$(CMakeOutputPath)\legacy\net10.0-windows\AxInterop.MSTSCLib.dll" PackagePath="interop/legacy/net10.0-windows/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
     <Content Include="$(CMakeOutputPath)\Interop.MSTSCLib.Generated.dll" PackagePath="interop/generated/Interop.MSTSCLib.Generated.dll" Pack="true" Visible="false" />
     <Content Include="$(CMakeOutputPath)\AxInterop.MSTSCLib.dll" PackagePath="interop/generated-winforms/AxInterop.MSTSCLib.dll" Pack="true" Visible="false" />
     <Content Include="$(CMakeOutputPath)\Interop.MSTSCLib.Generated.WinForms.dll" PackagePath="interop/generated-winforms/Interop.MSTSCLib.Generated.WinForms.dll" Pack="true" Visible="false" />
-    <Content Include="$(CMakeOutputPath)\Devolutions.MsRdpEx.Avalonia.dll" PackagePath="avalonia/net8.0-windows/Devolutions.MsRdpEx.Avalonia.dll" Pack="true" Visible="false" />
+    <Content Include="$(CMakeOutputPath)\Devolutions.MsRdpEx.Avalonia.dll" PackagePath="avalonia/net10.0-windows/Devolutions.MsRdpEx.Avalonia.dll" Pack="true" Visible="false" />
     <Content Include="../../dependencies/MsRdpEx/x86/MsRdpEx.dll" PackagePath="runtimes/win-x86/native/MsRdpEx.dll" Pack="true" Visible="false" Condition="Exists('../../dependencies/MsRdpEx/x86/MsRdpEx.dll')" />
     <Content Include="../../dependencies/MsRdpEx/x64/MsRdpEx.dll" PackagePath="runtimes/win-x64/native/MsRdpEx.dll" Pack="true" Visible="false" Condition="Exists('../../dependencies/MsRdpEx/x64/MsRdpEx.dll')" />
     <Content Include="../../dependencies/MsRdpEx/arm64/MsRdpEx.dll" PackagePath="runtimes/win-arm64/native/MsRdpEx.dll" Pack="true" Visible="false" Condition="Exists('../../dependencies/MsRdpEx/arm64/MsRdpEx.dll')" />

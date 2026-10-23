@@ -124,9 +124,9 @@ namespace MsRdpEx.Tests
             var native = ComVariantMarshaller.ConvertToUnmanaged(value);
             try
             {
-                Assert.Equal(expectedType, native.VarType);
+                Assert.Equal((VarEnum)expectedType, native.VarType);
 
-                if (IsLargeVariant(native.VarType))
+                if (IsLargeVariant(expectedType))
                 {
                     var contentSpan = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref native, 1))[sizeof(VariantType)..];
                     Assert.True(expectedData.Length <= contentSpan.Length);

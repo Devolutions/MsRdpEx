@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <AssemblyName>Devolutions.MsRdpEx.Avalonia</AssemblyName>
     <RootNamespace>Devolutions.MsRdpEx.Avalonia</RootNamespace>
     <Description>An Avalonia RDP client view hosting the Microsoft RDP ActiveX control in a native Win32 window.</Description>

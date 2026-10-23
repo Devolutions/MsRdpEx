@@ -6,7 +6,7 @@
     <AssemblyName>Interop.MSTSCLib.Generated.WinForms</AssemblyName>
     <PackageId>Interop.MSTSCLib.Generated.WinForms</PackageId>
     <Version>1.0.0.0</Version>
-    <TargetFrameworks>net8.0-windows</TargetFrameworks>
+    <TargetFrameworks>net10.0-windows</TargetFrameworks>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
