@@ -39,7 +39,7 @@ Typical local prerequisites:
 - Visual Studio 2022 (MSVC v143) or newer with “Desktop development with C++”
 - CMake (Visual Studio generator)
 - PowerShell 7 (`pwsh`) for scripts
-- For managed builds: .NET SDK 8.x (and .NET Framework targeting packs if building `net48`)
+- For managed builds: .NET SDK 10.x or later (and .NET Framework targeting packs if building `net48`)
 
 ## Build: native (DLL + EXEs)
 

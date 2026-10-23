@@ -4,7 +4,7 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <OutputType>WinExe</OutputType>
     <Platforms>Win32;x64;ARM64</Platforms>
-    <TargetFrameworks>net8.0-windows</TargetFrameworks>
+    <TargetFrameworks>net10.0-windows</TargetFrameworks>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>disable</ImplicitUsings>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>

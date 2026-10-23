@@ -17,8 +17,8 @@ Run each mode in a fresh process with an absolute path to the chosen native DLL:
 ./tests/gateway-managed/bin/Release/net48/GatewaySettingsTest.exe C:/absolute/path/x64/MsRdpEx.dll off
 
 # Match the native DLL architecture to the dotnet host (e.g. ARM64 on an ARM64 host).
-dotnet tests/gateway-managed/bin/Release/net8.0-windows/GatewaySettingsTest.dll C:/absolute/path/arm64/MsRdpEx.dll default
-dotnet tests/gateway-managed/bin/Release/net8.0-windows/GatewaySettingsTest.dll C:/absolute/path/arm64/MsRdpEx.dll off
+dotnet tests/gateway-managed/bin/Release/net10.0-windows/GatewaySettingsTest.dll C:/absolute/path/arm64/MsRdpEx.dll default
+dotnet tests/gateway-managed/bin/Release/net10.0-windows/GatewaySettingsTest.dll C:/absolute/path/arm64/MsRdpEx.dll off
 ```
 
 For each framework also run `older` with a pre-change native DLL of matching

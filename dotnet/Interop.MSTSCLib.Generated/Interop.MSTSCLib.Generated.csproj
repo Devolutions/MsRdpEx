@@ -6,7 +6,7 @@
     <AssemblyName>Interop.MSTSCLib.Generated</AssemblyName>
     <PackageId>Interop.MSTSCLib.Generated</PackageId>
     <Version>1.0.0.0</Version>
-    <TargetFrameworks>net8.0</TargetFrameworks>
+    <TargetFrameworks>net10.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <OutputPath>$(CMakeOutputPath)</OutputPath>
