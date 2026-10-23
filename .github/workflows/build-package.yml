@@ -184,6 +184,11 @@ jobs:
       - name: Check out ${{ github.repository }}
         uses: actions/checkout@v6
 
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
       - name: Configure runner
         shell: pwsh
         run: |
@@ -275,17 +280,15 @@ jobs:
         shell: pwsh
         run: |
           Set-PSDebug -Trace 1
-          $BuildDir = "build-dotnet"
-          cmake -G "Visual Studio 17 2022" -A x64 -DWITH_DOTNET=ON -DWITH_NATIVE=OFF -B $BuildDir
-          cmake --build $BuildDir --config Release
-          & dotnet pack .\dotnet\Devolutions.MsRdpEx -o package
+          $ManagedOutput = Join-Path $PWD 'build-dotnet\Release'
+          dotnet pack .\dotnet\Devolutions.MsRdpEx -c Release -p:CMakeOutputPath="$ManagedOutput" -o package
 
       - name: Test NuGet package consumers
         shell: pwsh
         run: |
           $PackageVersion = '${{ needs.preflight.outputs.package-version }}'
           $PackageSource = (Resolve-Path .\package).Path
-          $BuildDir = "build-dotnet"
+          $ManagedOutput = Join-Path $PWD 'build-dotnet\Release'
           $NuGetPackage = (Get-Item .\package\*.nupkg | Select-Object -First 1).FullName
           $ValidationDirectory = Join-Path $env:RUNNER_TEMP 'MsRdpEx-package-validation'
           Expand-Archive $NuGetPackage $ValidationDirectory -Force
@@ -318,7 +321,7 @@ jobs:
             }
           }
 
-          dotnet test .\dotnet\MsRdpEx_Test\MsRdpEx_Test.csproj -c Release -p:CMakeOutputPath="$BuildDir\Release" -v:minimal
+          dotnet test .\dotnet\MsRdpEx_Test\MsRdpEx_Test.csproj -c Release -p:CMakeOutputPath="$ManagedOutput" -v:minimal
           dotnet run --project .\dotnet\MsRdpEx_LegacyInterop_Test\MsRdpEx_LegacyInterop_Test.csproj -c Release -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" --no-launch-profile
           dotnet run --project .\dotnet\MsRdpEx_GeneratedWinFormsInterop_Test\MsRdpEx_GeneratedWinFormsInterop_Test.csproj -c Release -p:MsRdpExTestPackageSource="$PackageSource" -p:MsRdpExPackageVersion="$PackageVersion" --no-launch-profile
           if ($LASTEXITCODE -ne 0) {

@@ -81,14 +81,16 @@ Notes:
 
 ## Build: managed (NuGet package)
 
-The .NET build is wired through CMake as *external MSBuild projects*.
+Use the .NET 10 SDK's MSBuild for managed builds, not Visual Studio 2022's
+MSBuild (which does not support .NET 10). CMake's Visual Studio generator
+registers managed projects as external MSBuild projects and uses that Visual
+Studio installation's toolchain.
 
-Managed-only CMake build (used by CI):
+Managed build and pack (used by CI; `dotnet pack` builds project references):
 
 ```powershell
-cmake -G "Visual Studio 17 2022" -A x64 -DWITH_DOTNET=ON -DWITH_NATIVE=OFF -B build-dotnet
-cmake --build build-dotnet --config Release
-dotnet pack .\dotnet\Devolutions.MsRdpEx -o package
+$ManagedOutput = Join-Path $PWD 'build-dotnet\Release'
+dotnet pack .\dotnet\Devolutions.MsRdpEx -c Release -p:CMakeOutputPath="$ManagedOutput" -o package
 ```
 
 Packaging note:
