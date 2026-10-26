@@ -780,10 +780,9 @@ LRESULT CALLBACK Hook_IHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
             instance->GetExtendedSettings(&pExtendedSettings);
     }
 
-    // mstscax injects reserved virtual key 0xFF on WM_SETFOCUS. It can surface
-    // as an unwanted character in a remote Windows Server 2022 console.
-    if ((uMsg == WM_KEYDOWN || uMsg == WM_KEYUP ||
-         uMsg == WM_SYSKEYDOWN || uMsg == WM_SYSKEYUP) && wParam == 0xFF) {
+    // Block the reserved key press that can insert a character on focus return.
+    // Let its release reach mstscax's keyboard-state handling after local Alt+Tab.
+    if ((uMsg == WM_KEYDOWN || uMsg == WM_SYSKEYDOWN) && wParam == 0xFF) {
         result = 0;
     } else if (isOOBClient) {
         result = Real_IHWndProc_rdclientax(hWnd, uMsg, wParam, lParam);

@@ -1,7 +1,7 @@
 # Native regression tests
 
 These tests exercise runtime diagnostic logging, gateway behavior, and plugin
-reference ownership without making an RDP connection.
+reference ownership and RDP input filtering without making an RDP connection.
 They are opt-in and do not change normal builds or release packaging.
 
 ## Build and run
@@ -46,6 +46,22 @@ The runner clears inherited logging settings before selecting each scenario.
 
 The configuration sequence matches RoyalApps.Community.Rdp.WinForms 1.4.3:
 disable logging, select level and path, then enable logging.
+
+## RDP focus input
+
+The four `input.*` cases register an RDP input class through the production
+DLL's actual API hook and record what reaches its original window procedure.
+They verify that reserved `0xFF` key presses remain blocked (RDMW-24578),
+their releases are forwarded (RDMW-24735), ordinary keys and message payloads
+are unchanged, and both behaviors survive 250 focus-switch sequences.
+The tests do not create an RDP connection or exercise the remote PowerShell
+reproduction; that check still requires a connected Windows session.
+
+```powershell
+ctest --test-dir build-logging-x64 -C Release -R '^input\.' --output-on-failure
+./build-logging-x64/Release/MsRdpEx_InputFocusTest.exe $dll focus-presses
+./build-logging-x64/Release/MsRdpEx_InputFocusTest.exe $dll focus-releases
+```
 
 ## Runtime behavior
 

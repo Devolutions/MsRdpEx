@@ -91,3 +91,14 @@ add_dependencies(MsRdpEx_DetachedInstanceTest MsRdpEx_GatewayShutdownTestDll)
 add_test(NAME logging.detached-instance.lifetime
     COMMAND MsRdpEx_DetachedInstanceTest "$<TARGET_FILE:MsRdpEx_GatewayShutdownTestDll>")
 set_tests_properties(logging.detached-instance.lifetime PROPERTIES TIMEOUT 45)
+
+add_executable(MsRdpEx_InputFocusTest InputFocusTest.cpp)
+target_compile_features(MsRdpEx_InputFocusTest PRIVATE cxx_std_17)
+target_compile_options(MsRdpEx_InputFocusTest PRIVATE /W4 /EHsc)
+target_link_libraries(MsRdpEx_InputFocusTest PRIVATE user32.lib)
+add_dependencies(MsRdpEx_InputFocusTest MsRdpEx_Dll)
+foreach(scenario focus-presses focus-releases ordinary-keys repeated-focus)
+    add_test(NAME input.${scenario}
+        COMMAND MsRdpEx_InputFocusTest "$<TARGET_FILE:MsRdpEx_Dll>" ${scenario})
+    set_tests_properties(input.${scenario} PROPERTIES TIMEOUT 45)
+endforeach()
