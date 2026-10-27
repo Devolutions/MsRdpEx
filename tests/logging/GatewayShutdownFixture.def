@@ -10,3 +10,6 @@
     RegisterDetachedOutputWindowClass
     AcquireDetachedOutputInstance
     ReleaseDetachedInstanceManager
+    RunSmartCardSspiTest
+    RunSmartCardSettingsTest
+    RunSmartCardContextTest

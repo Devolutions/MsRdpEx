@@ -512,6 +512,8 @@ public:
             m_pMsRdpExtendedSettings->LoadRdpFileFromNamedPipe(NULL);
             m_pMsRdpExtendedSettings->PrepareSspiSessionIdHack();
             m_pMsRdpExtendedSettings->DiscardCapturedPinIfNotCertLogon();
+            if (!m_sspiSessionActive)
+                m_pMsRdpExtendedSettings->PrepareSmartCardContext();
             m_pMsRdpExtendedSettings->PrepareMouseJiggler();
             m_pMsRdpExtendedSettings->PrepareVideoRecorder();
             m_pMsRdpExtendedSettings->PrepareExtraSystemMenu();
@@ -554,6 +556,8 @@ public:
     }
 
     void EndSspiSessionScope(const char* reason) {
+        if (m_pMsRdpExtendedSettings)
+            m_pMsRdpExtendedSettings->ClearSmartCardContext();
         if (!m_sspiSessionActive)
             return;
 

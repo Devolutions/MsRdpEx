@@ -33,7 +33,7 @@ endforeach()
 # a completion signal after DllMain returns. No test exports enter the shipped DLL.
 get_target_property(gateway_shutdown_sources MsRdpEx_Dll SOURCES)
 list(FILTER gateway_shutdown_sources INCLUDE REGEX "\\.(c|cpp)$")
-list(FILTER gateway_shutdown_sources EXCLUDE REGEX "(^|/)(GatewayIsolation|MsRdpEx|RdpInstance)[.]cpp$")
+list(FILTER gateway_shutdown_sources EXCLUDE REGEX "(^|/)(GatewayIsolation|MsRdpEx|RdpInstance|Sspi|RdpSettings|SmartCardContext)[.]cpp$")
 set(gateway_shutdown_absolute_sources)
 foreach(source IN LISTS gateway_shutdown_sources)
     if(NOT IS_ABSOLUTE "${source}")
@@ -44,7 +44,9 @@ endforeach()
 get_target_property(gateway_shutdown_libraries MsRdpEx_Dll LINK_LIBRARIES)
 add_library(MsRdpEx_GatewayShutdownTestDll SHARED ${gateway_shutdown_absolute_sources}
     GatewayShutdownFixture.cpp GatewayShutdownDllMain.cpp GatewayShutdownFixture.def
-    PluginReferenceFixture.cpp)
+    PluginReferenceFixture.cpp SmartCardSspiFixture.cpp SmartCardSettingsFixture.cpp SmartCardContextFixture.cpp)
+set_source_files_properties(SmartCardSspiFixture.cpp SmartCardSettingsFixture.cpp SmartCardContextFixture.cpp
+    PROPERTIES COMPILE_FLAGS "/EHsc")
 target_include_directories(MsRdpEx_GatewayShutdownTestDll PRIVATE "${PROJECT_SOURCE_DIR}/dll")
 target_link_libraries(MsRdpEx_GatewayShutdownTestDll PRIVATE ${gateway_shutdown_libraries})
 target_compile_options(MsRdpEx_GatewayShutdownTestDll PRIVATE /W4)
@@ -91,3 +93,18 @@ add_dependencies(MsRdpEx_DetachedInstanceTest MsRdpEx_GatewayShutdownTestDll)
 add_test(NAME logging.detached-instance.lifetime
     COMMAND MsRdpEx_DetachedInstanceTest "$<TARGET_FILE:MsRdpEx_GatewayShutdownTestDll>")
 set_tests_properties(logging.detached-instance.lifetime PROPERTIES TIMEOUT 45)
+
+add_executable(MsRdpEx_SmartCardTest SmartCardTest.cpp)
+target_compile_features(MsRdpEx_SmartCardTest PRIVATE cxx_std_17)
+target_compile_options(MsRdpEx_SmartCardTest PRIVATE /W4 /EHsc)
+add_dependencies(MsRdpEx_SmartCardTest MsRdpEx_GatewayShutdownTestDll)
+add_dependencies(MsRdpEx_SmartCardTest MsRdpEx_Dll)
+add_test(NAME smartcard.context-default-load
+    COMMAND MsRdpEx_SmartCardTest "$<TARGET_FILE:MsRdpEx_Dll>" context-default-load)
+set_tests_properties(smartcard.context-default-load PROPERTIES TIMEOUT 45)
+foreach(scenario preservation unsupported rewrite eligibility packing acquisition legacy-wrapper sessions settings
+        context-resolver context-modes context-settings context-packing)
+    add_test(NAME smartcard.${scenario}
+        COMMAND MsRdpEx_SmartCardTest "$<TARGET_FILE:MsRdpEx_GatewayShutdownTestDll>" ${scenario})
+    set_tests_properties(smartcard.${scenario} PROPERTIES TIMEOUT 45)
+endforeach()

@@ -789,6 +789,40 @@ ULONG STDMETHODCALLTYPE CMsRdpExtendedSettings::Release()
     return refCount;
 }
 
+static HRESULT RdpSettings_SetPasswordContainsSCardPin(IMsRdpExtendedSettings* coreProps,
+    const VARIANT* value, bool* appliedValue)
+{
+    VARIANT normalized;
+    VariantInit(&normalized);
+    normalized.vt = VT_BOOL;
+
+    if (value && value->vt == VT_BOOL)
+        normalized.boolVal = value->boolVal ? VARIANT_TRUE : VARIANT_FALSE;
+    else if (value && value->vt == VT_I4)
+        normalized.boolVal = value->lVal ? VARIANT_TRUE : VARIANT_FALSE;
+    else if (value && value->vt == VT_UI4)
+        normalized.boolVal = value->ulVal ? VARIANT_TRUE : VARIANT_FALSE;
+    else
+    {
+        MsRdpEx_LogPrint(WARN, "PasswordContainsSCardPin requires a Boolean or integer value");
+        return E_INVALIDARG;
+    }
+
+    bstr_t propertyName(L"PasswordContainsSCardPin");
+    HRESULT hr = coreProps ? coreProps->put_Property(propertyName, &normalized) : E_UNEXPECTED;
+
+    if (FAILED(hr))
+    {
+        MsRdpEx_LogPrint(WARN, "PasswordContainsSCardPin write failed: requested=%d coreAvailable=%d hr=0x%08X",
+            normalized.boolVal != VARIANT_FALSE, coreProps != NULL, hr);
+        return hr;
+    }
+
+    *appliedValue = normalized.boolVal != VARIANT_FALSE;
+    MsRdpEx_LogPrint(DEBUG, "PasswordContainsSCardPin applied: %d", *appliedValue);
+    return hr;
+}
+
 HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VARIANT* pValue) {
     HRESULT hr = E_INVALIDARG;
     char* propName = _com_util::ConvertBSTRToString(bstrPropertyName);
@@ -821,24 +855,13 @@ HRESULT __stdcall CMsRdpExtendedSettings::put_Property(BSTR bstrPropertyName, VA
         else
             m_KerbCertificateLogonEnabled = pValue->uintVal ? true : false;
 
+        if (!m_KerbCertificateLogonEnabled)
+            ClearSmartCardContext();
         hr = S_OK;
     }
     else if (MsRdpEx_StringEquals(propName, "PasswordContainsSCardPin"))
     {
-        if ((pValue->vt != VT_BOOL) && (pValue->vt != VT_I4) && (pValue->vt != VT_UI4))
-            goto end;
-
-        if (pValue->vt == VT_BOOL)
-            m_PasswordContainsSCardPin = pValue->boolVal ? true : false;
-        else if (pValue->vt == VT_I4)
-            m_PasswordContainsSCardPin = pValue->intVal ? true : false;
-        else
-            m_PasswordContainsSCardPin = pValue->uintVal ? true : false;
-
-        if (m_CoreProps)
-            hr = m_CoreProps->put_Property(bstrPropertyName, pValue);
-        else
-            hr = S_OK;
+        hr = RdpSettings_SetPasswordContainsSCardPin(m_CoreProps, pValue, &m_PasswordContainsSCardPin);
     }
     else if (MsRdpEx_StringEquals(propName, "EnableMouseJiggler"))
     {
@@ -1312,6 +1335,7 @@ HRESULT CMsRdpExtendedSettings::AttachRdpClient(IMsTscAx* pMsTscAx)
 
 HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
 {
+    HRESULT result = S_OK;
     MsRdpEx_ArrayListIt* it = NULL;
     MsRdpEx_RdpFileEntry* entry = NULL;
     CMsRdpExtendedSettings* pMsRdpExtendedSettings = this;
@@ -1475,9 +1499,10 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
         }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 'i', "PasswordContainsSCardPin")) {
             if (MsRdpEx_RdpFileEntry_GetVBoolValue(entry, &value)) {
-                m_PasswordContainsSCardPin = value.boolVal ? true : false;
                 bstr_t propName = _com_util::ConvertStringToBSTR(entry->name);
-                pMsRdpExtendedSettings->put_CoreProperty(propName, &value);
+                HRESULT hr = pMsRdpExtendedSettings->put_Property(propName, &value);
+                if (FAILED(hr) && SUCCEEDED(result))
+                    result = hr;
             }
         }
         else if (MsRdpEx_RdpFileEntry_IsMatch(entry, 's', "GatewayUserName")) {
@@ -1574,11 +1599,12 @@ HRESULT CMsRdpExtendedSettings::ApplyRdpFile(void* rdpFilePtr)
 
     MsRdpEx_ArrayListIt_Finish(it);
 
-    return S_OK;
+    return result;
 }
 
 HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
 {
+    HRESULT result = S_OK;
     char* filename;
 
     if (rdpFileName)
@@ -1594,16 +1620,17 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFile(const char* rdpFileName)
 
     if (MsRdpEx_RdpFile_Load(rdpFile, filename))
     {
-        this->ApplyRdpFile(rdpFile);
+        result = this->ApplyRdpFile(rdpFile);
     }
 
     MsRdpEx_RdpFile_Free(rdpFile);
     free(filename);
-    return S_OK;
+    return result;
 }
 
 HRESULT CMsRdpExtendedSettings::LoadRdpFileFromNamedPipe(const char* pipeName)
 {
+    HRESULT result = S_OK;
     char* pipeNameEnv = MsRdpEx_GetEnv("MSRDPEX_SECURE_PIPE_NAME");
 
     if (pipeNameEnv)
@@ -1619,7 +1646,7 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFileFromNamedPipe(const char* pipeName)
 
     if (pipeText && MsRdpEx_RdpFile_LoadText(rdpFile, pipeText))
     {
-        this->ApplyRdpFile(rdpFile);
+        result = this->ApplyRdpFile(rdpFile);
     }
 
     MsRdpEx_RdpFile_Free(rdpFile);
@@ -1631,7 +1658,7 @@ HRESULT CMsRdpExtendedSettings::LoadRdpFileFromNamedPipe(const char* pipeName)
         free(pipeText);
     }
 
-    return S_OK;
+    return result;
 }
 
 HRESULT CMsRdpExtendedSettings::GetCorePropsRawPtr(LPVOID* ppCorePropsRaw)
@@ -1673,6 +1700,55 @@ HRESULT CMsRdpExtendedSettings::DiscardCapturedPinIfNotCertLogon()
         this->ClearCapturedPin();
 
     return S_OK;
+}
+
+void CMsRdpExtendedSettings::ClearSmartCardContext()
+{
+    AcquireSRWLockExclusive(&m_SmartCardContextLock);
+    const bool active = m_SmartCardContext.mode != MsRdpEx_SmartCardContextMode::Off;
+    m_SmartCardContext = MsRdpEx_SmartCardContext();
+    ++m_SmartCardContextGeneration;
+    ReleaseSRWLockExclusive(&m_SmartCardContextLock);
+    if (active)
+        MsRdpEx_LogPrint(DEBUG, "Smart-card context: snapshot invalidated; no candidate available for subsequent synthesis");
+}
+
+MsRdpEx_SmartCardContext CMsRdpExtendedSettings::GetSmartCardContext()
+{
+    AcquireSRWLockShared(&m_SmartCardContextLock);
+    const auto context = m_SmartCardContext;
+    ReleaseSRWLockShared(&m_SmartCardContextLock);
+    return context;
+}
+
+void CMsRdpExtendedSettings::PrepareSmartCardContext()
+{
+    ClearSmartCardContext();
+    MsRdpEx_SmartCardContext context;
+    context.mode = MsRdpEx_GetSmartCardContextMode();
+    if (context.mode == MsRdpEx_SmartCardContextMode::Off)
+        return;
+
+    AcquireSRWLockShared(&m_SmartCardContextLock);
+    const ULONG generation = m_SmartCardContextGeneration;
+    ReleaseSRWLockShared(&m_SmartCardContextLock);
+    if (m_KerbCertificateLogonEnabled && m_ProtectedPin && m_ProtectedPinSize) {
+        WCHAR* userName = GetCredentialUserName();
+        MsRdpEx_ResolveSmartCardContext(userName, &context);
+        free(userName);
+    } else {
+        context.stage = "requires-opt-in-and-captured-pin";
+    }
+
+    AcquireSRWLockExclusive(&m_SmartCardContextLock);
+    const bool current = generation == m_SmartCardContextGeneration;
+    if (current)
+        m_SmartCardContext = context;
+    ReleaseSRWLockExclusive(&m_SmartCardContextLock);
+    if (current)
+        MsRdpEx_LogSmartCardContext(context);
+    else
+        MsRdpEx_LogPrint(WARN, "Smart-card context: credentials changed during preparation; candidate not applied");
 }
 
 HRESULT CMsRdpExtendedSettings::PrepareMouseJiggler()
@@ -1780,8 +1856,7 @@ bool CMsRdpExtendedSettings::GetPasswordContainsSCardPin()
     return m_PasswordContainsSCardPin;
 }
 
-// The embedded in-process ActiveX control never hands the smart card credential to AcquireCredentialsHandleW;
-// expose the marshaled certificate UserName and the PIN so the SSPI hook can synthesize a KERB_CERTIFICATE_LOGON.
+// Expose credentials for synthesis when the ActiveX did not supply a certificate logon in-band.
 WCHAR* CMsRdpExtendedSettings::GetCredentialUserName()
 {
     BSTR value = NULL;
@@ -1859,6 +1934,7 @@ void CMsRdpExtendedSettings::SetCapturedPin(const WCHAR* pin)
 
 void CMsRdpExtendedSettings::ClearCapturedPin()
 {
+    ClearSmartCardContext();
     if (m_ProtectedPin)
     {
         SecureZeroMemory(m_ProtectedPin, m_ProtectedPinSize);

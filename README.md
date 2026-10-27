@@ -119,34 +119,152 @@ affected, because it packs the credential as a `KERB_CERTIFICATE_LOGON` structur
 handles on a different path.
 
 Setting `KerbCertificateLogon:i:1` opts the session in to a client-side workaround: MsRdpEx hooks
-`AcquireCredentialsHandleW` and, for the matching session, hands LSASS a `KERB_CERTIFICATE_LOGON`
-credential (`CredsspCertificateCreds`). It obtains it either by:
+`AcquireCredentialsHandleW` and, for the matching session, supplies a `KERB_CERTIFICATE_LOGON`
+in the caller's CredSSP wrapper. Windows-supplied certificate logons are preserved before either
+builder is considered, including those in `CredsspSubmitBufferBoth` and extended wrappers.
+Repacking an existing credential could lose its selected reader, provider, account hints, or
+provider-specific data.
+
+When a replacement is needed, MsRdpEx obtains it either by:
 
 - **synthesizing** it from the session's marshaled certificate user name and PIN — used when the
-  host does not pass the credential in-band, such as the in-process RDP ActiveX control; or
+  host supplies a supported wrapper without the certificate credential in-band; or
 - **rewriting** a marshaled smart card credential that is already present in the
   `AcquireCredentialsHandleW` auth data — such as the out-of-process `mstsc.exe` case.
 
-The workaround is strictly opt-in and stays inert unless a PIN is available: with no PIN the
+The replacement uses `CredsspSubmitBufferBoth` (type 50), including when the unattended caller
+supplies `CredsspSubmitBufferBothOld` (type 51), preserving the caller's Schannel credential and
+extended-wrapper fields. Missing (`pAuthData == NULL`), unreadable, or unsupported wrappers are
+passed to Windows unchanged, with the reason logged. MsRdpEx does not construct a certificate-only
+wrapper when there is no supported wrapper to inherit.
+
+The workaround is strictly opt-in and stays inert unless a nonempty PIN is available: with no PIN the
 credential is left untouched so the normal Windows prompt path is used. It only activates for a
 marshaled certificate credential; any other credential is passed through unchanged.
 
-The credential is passed on exactly as `CredPackAuthenticationBufferW` produced it. The provider and
-container names it records come from the certificate, and the server resolves them through the redirected
-reader — so the same smart card middleware has to be installed on the remote host as on the client. A
-mismatch surfaces as *"the key container does not exist on the smart card"*.
+By default, newly packed credentials are passed on without changing the provider or container selected by
+`CredPackAuthenticationBufferW`. The remote host must be able to resolve and use those names through
+smart card redirection. Middleware requirements depend on the card/provider; for example,
+[ActivClient requires server-side installation for server-based authentication](https://docs.hidglobal.com/activid-activclient-v8.4/activid-activclient/ac-with-terminal-service/microsoft-remote-desktop-sessions.htm).
+A provider/container mismatch can surface as *"the key container does not exist on the smart card"*.
+Successful client authentication alone does not prove this remote operation will succeed.
 
-`KerbCertificateLogon` is independent of `PasswordContainsSCardPin`. The latter is the stock RDP
-setting that tells the client the password field holds a smart card PIN, so that a smart card
-credential is delegated to the remote and no prompt is shown; a connection manager doing an
-unattended certificate + PIN logon typically sets both.
+`KerbCertificateLogon` is independent of the private RDP core property `PasswordContainsSCardPin`.
+The latter identifies the password field as a smart card PIN; a connection manager doing an
+unattended certificate + PIN logon typically sets both. MsRdpEx accepts Boolean or integer variants
+for this property, normalizes them to the core Boolean setter, and reports write failures. It does
+not force the property on or override the caller's credential-delegation choices. Setting the
+property is not, by itself, proof of successful delegation or automatic remote logon.
 
 The captured PIN is kept only for the lifetime of the connection, encrypted in memory with DPAPI
 (`CryptProtectMemory`), decrypted only transiently while the credential is built, and zeroed
 before it is released. No PINs, passwords, or certificate bytes are logged.
 
+#### Experimental card-context enrichment
+
+`MSRDPEX_SSPI_SMARTCARD_CONTEXT` enables a **developer-controlled experiment**, not a proven fix
+for remote Winlogon prompts. It is read before each new `Connect` in the private ActiveX backend:
+
+| Value | Behavior |
+|---|---|
+| Unset, empty, or `off` | Existing synthesis. No additional certificate-store, reader, or key access. |
+| `observe` | Resolve and verify card context before connecting, but leave the packed credential unchanged. |
+| `apply` | Perform the same resolution, then add the verified card/reader context to newly synthesized credentials. |
+
+Other values log a warning and disable the experiment. No .RDP option or additional COM property
+is introduced. It still requires `KerbCertificateLogon` and a captured, nonempty PIN before
+`Connect`; ordinary passwords and Windows-built incoming certificate logons remain unchanged.
+
+The initial resolver is intentionally conservative. It requires the selected certificate in the
+current user's `MY` store, an existing **Microsoft Base Smart Card Crypto Provider** or
+**Microsoft Smart Card Key Storage Provider** binding, exactly **one present card** across the
+reader list, and one registered card name for its ATR. It opens that existing container **scoped to
+that reader**, silently, and compares the key's public certificate byte-for-byte with the selected
+certificate. It checks reader/card insertion state again before publishing the snapshot.
+It does not supply or verify a PIN, sign, decrypt, create keys, heal certificate-store bindings,
+switch providers, or retry with UI enabled.
+
+This tests **reader/card context**, not a general KSP-to-CSP migration. The provider, container and
+key specification must also match the freshly packed credential. The experiment preserves its PIN
+bytes (including any protected representation), account hints, flags, and CredSSP/Schannel wrapper.
+Unknown provider-specific data and incompatible layouts are not replaced.
+
+Multiple present cards, ambiguous registration/bindings, absent cards, unsupported middleware,
+emulated WinSCard configurations, certificate mismatches and API errors retain existing synthesis
+and log **`candidate not applied`**, with a stage and error code. This is not a successful candidate
+test. `snapshot prepared (not yet applied)` only confirms resolution; look for
+**`candidate applied to synthesized credential`** to confirm the intervention. `observe` performs
+the same resolver work to help distinguish provider/cache side effects from the buffer change.
+Snapshots are connection-specific and invalidated on PIN changes, explicit disconnect, connection
+failure and destruction; a new connection prepares a fresh snapshot. A card can still move or be
+removed after preparation; this is not a live reader-monitoring service.
+
+**Operational limitation:** opted-in resolution is synchronous on the connecting thread, before
+entering the SSPI acquisition hook. Silent flags suppress provider UI but do not impose a timeout.
+Slow or blocked middleware can delay `Connect`; use this only in an approved test environment.
+There is no background worker to abandon, forced thread termination, or automatic connection retry.
+
+For an approved test build, fully exit the connection manager, set the mode in its launching
+PowerShell window, and launch the same installed/test executable normally. Enable the host's
+MsRdpEx DEBUG logging to distinguish a prepared snapshot, an applied candidate and a skipped test:
+
+```powershell
+$Env:MSRDPEX_SSPI_SMARTCARD_CONTEXT = "observe" # Repeat separately with "apply"
+```
+
+Keep the certificate, correct PIN, connection and target unchanged. Record desktop versus
+Winlogon/Other user for observe, apply, then observe again; also retain the unchanged `off` baseline.
+Process restart does not necessarily clear per-session PIN caches. An apply success alone does not
+isolate causality. Do not test incorrect PINs or enable raw credential dumps. Remove the variable
+or use `off` to restore the previous path. Hardware-free tests cannot establish the affected
+customer's remote-logon result.
+
 Set the `MSRDPEX_SSPI_SMARTCARD_DEBUG=1` environment variable to emit additional (secret-free)
 CredSSP credential metadata to the log while diagnosing smart card logon issues.
+
+### Diagnosing NLA success without desktop logon
+
+NLA authentication, CredSSP credential delegation, and remote interactive logon are separate stages.
+A successful SSPI call or an RDP connection ending at "Other user" does not prove that the remote
+host received and could use the intended smart card logon. Compare a pre-supplied-PIN failure with
+a successful Windows-prompted-PIN connection using the same card, account, client, and target.
+
+Builds containing the diagnostics from #177/#178 already log credential metadata at DEBUG; a new
+DLL is not needed for an initial paired capture. Confirm the **loaded** MsRdpEx and ActiveX DLL
+versions and process architecture, not just the connection manager version. Before starting a fresh
+connection-manager process, set:
+
+```powershell
+$Env:MSRDPEX_LOG_ENABLED = "1"
+$Env:MSRDPEX_LOG_LEVEL = "DEBUG"
+$Env:MSRDPEX_SSPI_SMARTCARD_DEBUG = "1"
+$Env:MSRDPEX_SSPI_DUMP = "0"
+$Env:MSRDPEX_PCAP_DUMP = "0"
+```
+
+Use one connection per capture and a separate `MSRDPEX_LOG_FILE_PATH` for each attempt. Verify that
+the host has not overridden logging or enabled packet capture. Record the failure before manually
+logging on, and note any existing session or PIN-cache reuse.
+
+Compare `CredSSP auth metadata`, `KerbCertificateLogon(incoming)`, `KerbCertificateLogon(credpack)`,
+the selected builder/session resolution, and subsequent SSPI status records. Provider, container,
+reader, card, key specification, and account-field lengths can distinguish the paths. If an incoming
+allocation's size is unknown, variable-length CSP data is deliberately not parsed: missing fields
+in that diagnostic are not evidence that the credential itself omitted them.
+
+Correlate the attempt with session-host Security events 4624/4625 (including logon type and
+status/substatus), RemoteConnectionManager/LocalSessionManager events, and DC events 4768/4771.
+A 4624 **type 10** for the intended user indicates remote interactive logon; 1149, a type 3 logon,
+or a client-origin PKINIT alone does not. Verify audit configuration and account for caching and
+proxies before treating absent events as meaningful. Inspect effective smart card redirection,
+delegation, and prompt policies without changing them.
+
+If the paired logs are insufficient, use approved
+[Windows smart card diagnostics](https://learn.microsoft.com/en-us/windows/security/identity-protection/smart-cards/smart-card-debugging-information)
+to locate provider/key-access or server-logon failure. Card enumeration alone does not prove private-key
+use, and a server-console test is not equivalent to redirected logon. Keep raw SSPI and plaintext
+packet dumps off; do not collect PINs, auth buffers, or LSASS/process dumps. Logs and traces can
+still identify users, certificates, containers, and infrastructure and require sensitive-data handling.
 
 ## Extended RDP client logs
 

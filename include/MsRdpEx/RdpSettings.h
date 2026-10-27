@@ -2,6 +2,7 @@
 #define MSRDPEX_SETTINGS_H
 
 #include <MsRdpEx/MsRdpEx.h>
+#include <MsRdpEx/SmartCardContext.h>
 
 #include "TSObjects.h"
 
@@ -49,6 +50,9 @@ public:
     HRESULT __stdcall GetCorePropsRawPtr(LPVOID* ppCorePropsRaw);
     HRESULT __stdcall PrepareSspiSessionIdHack();
     HRESULT __stdcall DiscardCapturedPinIfNotCertLogon();
+    void PrepareSmartCardContext();
+    void ClearSmartCardContext();
+    MsRdpEx_SmartCardContext GetSmartCardContext();
     HRESULT __stdcall PrepareMouseJiggler();
     HRESULT __stdcall PrepareVideoRecorder();
     HRESULT __stdcall PrepareExtraSystemMenu();
@@ -97,6 +101,9 @@ private:
     BYTE* m_ProtectedPin = NULL;
     DWORD m_ProtectedPinSize = 0;
     WCHAR* m_CapturedCertUserName = NULL;
+    SRWLOCK m_SmartCardContextLock = SRWLOCK_INIT;
+    ULONG m_SmartCardContextGeneration = 0;
+    MsRdpEx_SmartCardContext m_SmartCardContext;
     bool m_MouseJigglerEnabled = false;
     uint32_t m_MouseJigglerInterval = 60;
     uint32_t m_MouseJigglerMethod = 0;

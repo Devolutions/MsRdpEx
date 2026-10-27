@@ -1,7 +1,7 @@
 # Native regression tests
 
-These tests exercise runtime diagnostic logging, gateway behavior, and plugin
-reference ownership without making an RDP connection.
+These tests exercise runtime diagnostic logging, gateway behavior, plugin
+reference ownership, and smart-card credential handling without making an RDP connection.
 They are opt-in and do not change normal builds or release packaging.
 
 ## Build and run
@@ -94,6 +94,48 @@ caller's reference untouched on failure, including same-pointer replacement.
 During instance destruction, reentrant getters observe an empty slot and
 setters reject new registrations without consuming their input reference.
 The fixture-only exports and allocator override are not included in the DLL.
+
+## Smart-card credential handling
+
+The `smartcard.*` cases compile the production SSPI, settings and card-context code
+into the existing private fixture DLL. The packing/unpacking/allocation boundary
+and the context resolver's certificate-store, WinSCard and CSP/KSP APIs are
+substituted; no test exports or API substitutions enter the shipped DLL. The tests
+use a synthetic certificate reference, not a real card, certificate private key,
+or user PIN.
+
+```powershell
+ctest --test-dir build-logging-x64 -C Release -R "^smartcard\." --output-on-failure
+```
+
+Coverage includes preservation of Windows certificate-logon buffers and wrappers,
+unsupported/NULL/guarded inputs, inherited Schannel and extended fields, protected
+credential unpacking, opt-in and empty-PIN behavior, ordinary-password pass-through,
+packed-buffer scrubbing (including partial failures and changed output sizes),
+session scope/worker binding, and Boolean normalization/error propagation for
+`PasswordContainsSCardPin`.
+
+The `smartcard.legacy-wrapper` case covers RDM's observed type-51 input wrapper:
+it remains eligible for synthesis, and a replacement uses type 50 while keeping
+Schannel, extended-wrapper fields, caller memory, and acquisition return status intact.
+
+The `smartcard.context-*` cases cover:
+
+- Mode parsing (including invalid values), no I/O when off/ineligible, and identical
+  resolution in observe/apply. A production-DLL load check ensures the experiment
+  does not preload WinSCard/NCrypt ahead of the emulated-reader hooks.
+- Reader-scoped silent CAPI/CNG opens, exact public-certificate matching, handle
+  cleanup, absent/duplicate certificates, multiple cards/card names, card changes,
+  silent-context failures, unsupported providers and emulated-reader exclusion.
+- Per-connection snapshot invalidation, no-PIN/disabled-workaround gating, and
+  rejection of a snapshot invalidated during preparation.
+- Context application preserving the original PIN/account-field bytes, offsets,
+  provider/container/key selection and original payload; observe/failure paths
+  preserve the original allocation. Both allocations are scrubbed when replaced.
+
+These are local regression checks, not proof of successful CredSSP delegation or
+ActivClient remote logon. Hardware validation must reach the intended user's
+desktop without a second prompt, rather than stopping at NLA success.
 
 ## Detached output-window lifetime
 

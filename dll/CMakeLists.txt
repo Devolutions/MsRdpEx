@@ -16,6 +16,7 @@ source_group("Resources" FILES ${MSRDPEX_RESOURCES})
 
 set(MSRDPEX_HEADERS
     "${MSRDPEX_INCLUDE_DIR}/Sspi.h"
+    "${MSRDPEX_INCLUDE_DIR}/SmartCardContext.h"
     "${MSRDPEX_INCLUDE_DIR}/Stopwatch.h"
     "${MSRDPEX_INCLUDE_DIR}/Stream.h"
     "${MSRDPEX_INCLUDE_DIR}/Detours.h"
@@ -48,6 +49,7 @@ set(MSRDPEX_SOURCES
     DpiHelper.cpp
     DpiHelper.h
     Sspi.cpp
+    SmartCardContext.cpp
     GatewayIsolation.cpp
     GatewayIsolation.h
     Stream.cpp
@@ -120,13 +122,20 @@ set(MSRDPEX_LIBS
     credui.lib
     advapi32.lib
     crypt32.lib
+    ncrypt.lib
+    winscard.lib
+    delayimp.lib
     comctl32.lib
     ole32.lib
     d3d11.lib
     dxgi.lib)
 
 target_compile_options(MsRdpEx_Dll PRIVATE /W4)
+set_source_files_properties(SmartCardContext.cpp PROPERTIES COMPILE_FLAGS "/EHsc")
 
 target_link_libraries(MsRdpEx_Dll ${MSRDPEX_LIBS})
+# Do not preload WinSCard ahead of the emulated-reader hooks when the experiment is off.
+set_property(TARGET MsRdpEx_Dll APPEND_STRING PROPERTY LINK_FLAGS
+    " /DELAYLOAD:WinSCard.dll /DELAYLOAD:ncrypt.dll")
 
 set_target_properties(MsRdpEx_Dll PROPERTIES OUTPUT_NAME "MsRdpEx")

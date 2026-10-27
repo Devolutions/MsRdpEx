@@ -1280,11 +1280,146 @@ static bool sspi_IsCertificateMarshaledUserName(WCHAR* userName)
 	return result;
 }
 
+static bool sspi_PackedStringInAllocation(const UNICODE_STRING& value, DWORD size)
+{
+	if (!value.Buffer)
+		return !value.Length && !value.MaximumLength;
+	const ULONG_PTR offset = (ULONG_PTR)value.Buffer;
+	return !(offset % sizeof(WCHAR)) && !(value.Length % sizeof(WCHAR)) &&
+		!(value.MaximumLength % sizeof(WCHAR)) && offset >= sizeof(KERB_CERTIFICATE_LOGON) &&
+		offset <= size && value.Length <= value.MaximumLength && value.MaximumLength <= size - offset;
+}
+
+static bool sspi_ApplySmartCardContext(const MsRdpEx_SmartCardContext& context, const WCHAR* userName,
+	HLOCAL* packed, DWORD* size)
+{
+	if (context.mode == MsRdpEx_SmartCardContextMode::Off)
+		return false;
+	if (context.status != MsRdpEx_SmartCardContextStatus::Ready) {
+		MsRdpEx_LogSmartCardContext(context);
+		return false;
+	}
+	if (context.mode == MsRdpEx_SmartCardContextMode::Observe) {
+		MsRdpEx_LogPrint(DEBUG, "Smart-card context: observe; synthesized credential unchanged");
+		return false;
+	}
+
+	const char* reason = "invalid-packed-layout";
+	DWORD error = ERROR_INVALID_DATA;
+	BYTE hash[20] = {};
+	auto* logon = static_cast<KERB_CERTIFICATE_LOGON*>(*packed);
+	const WCHAR* names[] = { context.card, context.reader, context.container, context.provider };
+	DWORD lengths[4] = {};
+	ULONG oldOffsets[4] = {};
+	DWORD oldLengths[4] = {};
+	const WCHAR* oldNames[4] = {};
+	DWORD newCspSize = MSRDPEX_CSP_INFO_HEADER_SIZE + sizeof(DWORD);
+	DWORD total = 0;
+	DWORD cspOffset = 0;
+	HLOCAL replacement = NULL;
+	MsRdpEx_KerbSmartCardCspInfo* oldCsp = NULL;
+	MsRdpEx_KerbSmartCardCspInfo* csp = NULL;
+
+	if (!MsRdpEx_GetSmartCardCertificateHash(userName, hash) ||
+		memcmp(hash, context.certificateHash, sizeof(hash)) != 0) {
+		reason = "certificate-reference-changed";
+		goto skipped;
+	}
+	// Only the freshly packed, bounded allocation is eligible. Never accept absolute pointers
+	// here: appending a replacement CspData must leave all account/PIN offsets valid.
+	if (!logon || *size < sizeof(*logon) || *size >= 0x10000 || logon->MessageType != KerbCertificateLogon ||
+		logon->Flags || !logon->Pin.Length ||
+		!sspi_PackedStringInAllocation(logon->DomainName, *size) ||
+		!sspi_PackedStringInAllocation(logon->UserName, *size) ||
+		!sspi_PackedStringInAllocation(logon->Pin, *size) ||
+		(ULONG_PTR)logon->CspData < sizeof(*logon) || (ULONG_PTR)logon->CspData > *size ||
+		((ULONG_PTR)logon->CspData % sizeof(WCHAR)) ||
+		logon->CspDataLength > *size - (ULONG_PTR)logon->CspData ||
+		logon->CspDataLength < MSRDPEX_CSP_INFO_HEADER_SIZE)
+		goto skipped;
+
+	oldCsp = reinterpret_cast<MsRdpEx_KerbSmartCardCspInfo*>((BYTE*)logon + (ULONG_PTR)logon->CspData);
+	if (oldCsp->dwCspInfoLen != logon->CspDataLength || oldCsp->MessageType != 1 ||
+		oldCsp->SpaceHolderForWow64 || oldCsp->flags || oldCsp->KeySpec != context.keySpec)
+		goto skipped;
+	oldOffsets[0] = oldCsp->nCardNameOffset;
+	oldOffsets[1] = oldCsp->nReaderNameOffset;
+	oldOffsets[2] = oldCsp->nContainerNameOffset;
+	oldOffsets[3] = oldCsp->nCSPNameOffset;
+	for (int i = 0; i < 4; ++i) {
+		if (!sspi_GetCspInfoName(oldCsp, logon->CspDataLength, oldOffsets[i], &oldNames[i], &oldLengths[i]) ||
+			oldLengths[i] >= (logon->CspDataLength - MSRDPEX_CSP_INFO_HEADER_SIZE) / sizeof(WCHAR) - oldOffsets[i])
+			goto skipped;
+		const size_t chars = wcsnlen(names[i], ARRAYSIZE(context.reader));
+		if (!chars || chars == ARRAYSIZE(context.reader))
+			goto skipped;
+		lengths[i] = (DWORD)((chars + 1) * sizeof(WCHAR));
+		newCspSize += lengths[i];
+		if ((i >= 2 || oldLengths[i]) && wcscmp(oldNames[i], names[i]) != 0) {
+			reason = "packed-provider-container-or-reader-mismatch";
+			goto skipped;
+		}
+	}
+	// Do not discard vendor extensions. Only the known strings and zero padding may be replaced.
+	for (DWORD offset = MSRDPEX_CSP_INFO_HEADER_SIZE; offset < logon->CspDataLength; ++offset) {
+		bool inName = false;
+		for (int i = 0; i < 4; ++i) {
+			const DWORD start = MSRDPEX_CSP_INFO_HEADER_SIZE + oldOffsets[i] * sizeof(WCHAR);
+			inName = inName || (offset >= start && offset - start < (oldLengths[i] + 1) * sizeof(WCHAR));
+		}
+		if (!inName && ((BYTE*)oldCsp)[offset]) {
+			reason = "provider-extension-data";
+			goto skipped;
+		}
+	}
+	cspOffset = (*size + 7) & ~7UL;
+	total = cspOffset + newCspSize;
+	if (total >= 0x10000)
+		goto skipped;
+	replacement = LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, total);
+	if (!replacement) {
+		reason = "allocation";
+		error = ERROR_NOT_ENOUGH_MEMORY;
+		goto skipped;
+	}
+	CopyMemory(replacement, *packed, *size);
+	csp = reinterpret_cast<MsRdpEx_KerbSmartCardCspInfo*>((BYTE*)replacement + cspOffset);
+	csp->dwCspInfoLen = newCspSize;
+	csp->MessageType = 1;
+	csp->KeySpec = context.keySpec;
+	{
+		ULONG* offsets[] = { &csp->nCardNameOffset, &csp->nReaderNameOffset,
+			&csp->nContainerNameOffset, &csp->nCSPNameOffset };
+		DWORD offset = sizeof(DWORD);
+		for (int i = 0; i < 4; ++i) {
+			*offsets[i] = offset / sizeof(WCHAR);
+			CopyMemory((BYTE*)&csp->bBuffer + offset, names[i], lengths[i]);
+			offset += lengths[i];
+		}
+	}
+	static_cast<KERB_CERTIFICATE_LOGON*>(replacement)->CspData = (PUCHAR)(ULONG_PTR)cspOffset;
+	static_cast<KERB_CERTIFICATE_LOGON*>(replacement)->CspDataLength = newCspSize;
+	SecureZeroMemory(*packed, *size);
+	LocalFree(*packed);
+	*packed = replacement;
+	*size = total;
+	MsRdpEx_LogPrint(DEBUG, "Smart-card context: candidate applied to synthesized credential (keySpec=%u size=%u)",
+		context.keySpec, total);
+	return true;
+
+skipped:
+	MsRdpEx_LogPrint(WARN, "Smart-card context: candidate not applied; stage=%s error=0x%08X; using original synthesis",
+		reason, error);
+	return false;
+}
+
 static bool sspi_CreatePackedCertificateLogon(WCHAR* marshaledCertificateUserName,
-	WCHAR* pin, HLOCAL* phPackedCredentials, DWORD* pcbPackedCredentials)
+	WCHAR* pin, HLOCAL* phPackedCredentials, DWORD* pcbPackedCredentials,
+	const MsRdpEx_SmartCardContext* context = NULL)
 {
 	BOOL success;
 	DWORD cbPackedCredentials = 0;
+	DWORD cbAllocated = 0;
 	HLOCAL hPackedCredentials = NULL;
 	bool readMessageType = false;
 	DWORD messageType = 0;
@@ -1292,7 +1427,7 @@ static bool sspi_CreatePackedCertificateLogon(WCHAR* marshaledCertificateUserNam
 	*phPackedCredentials = NULL;
 	*pcbPackedCredentials = 0;
 
-	if (!marshaledCertificateUserName || !pin)
+	if (!marshaledCertificateUserName || !pin || !pin[0])
 		return false;
 
 	success = CredPackAuthenticationBufferW(0, marshaledCertificateUserName, pin,
@@ -1304,13 +1439,21 @@ static bool sspi_CreatePackedCertificateLogon(WCHAR* marshaledCertificateUserNam
 		return false;
 	}
 
-	if (cbPackedCredentials < sizeof(DWORD))
+	if (cbPackedCredentials < sizeof(KERB_CERTIFICATE_LOGON))
+	{
+		MsRdpEx_LogPrint(WARN, "CredPackAuthenticationBufferW certificate probe returned an invalid size: %u",
+			cbPackedCredentials);
 		return false;
+	}
 
+	cbAllocated = cbPackedCredentials;
 	hPackedCredentials = LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, cbPackedCredentials);
 
 	if (!hPackedCredentials)
+	{
+		MsRdpEx_LogPrint(WARN, "Cannot allocate packed smart card credential: error=%u", GetLastError());
 		return false;
+	}
 
 	success = CredPackAuthenticationBufferW(0, marshaledCertificateUserName, pin,
 		(PBYTE)hPackedCredentials, &cbPackedCredentials);
@@ -1318,6 +1461,16 @@ static bool sspi_CreatePackedCertificateLogon(WCHAR* marshaledCertificateUserNam
 	if (!success)
 	{
 		MsRdpEx_LogPrint(WARN, "CredPackAuthenticationBufferW certificate pack failed: error=%u", GetLastError());
+		SecureZeroMemory(hPackedCredentials, cbAllocated);
+		LocalFree(hPackedCredentials);
+		return false;
+	}
+
+	if ((cbPackedCredentials < sizeof(KERB_CERTIFICATE_LOGON)) || (cbPackedCredentials > cbAllocated))
+	{
+		MsRdpEx_LogPrint(WARN, "CredPackAuthenticationBufferW certificate pack returned an invalid size: %u",
+			cbPackedCredentials);
+		SecureZeroMemory(hPackedCredentials, cbAllocated);
 		LocalFree(hPackedCredentials);
 		return false;
 	}
@@ -1327,52 +1480,131 @@ static bool sspi_CreatePackedCertificateLogon(WCHAR* marshaledCertificateUserNam
 	if (!readMessageType || (messageType != KerbCertificateLogon))
 	{
 		MsRdpEx_LogPrint(WARN, "CredPackAuthenticationBufferW did not produce KerbCertificateLogon: firstDword=%u", messageType);
-		SecureZeroMemory(hPackedCredentials, cbPackedCredentials);
+		SecureZeroMemory(hPackedCredentials, cbAllocated);
 		LocalFree(hPackedCredentials);
 		return false;
 	}
 
 	sspi_LogKerbCertificateLogon("credpack", hPackedCredentials, cbPackedCredentials);
+	if (context && sspi_ApplySmartCardContext(*context, marshaledCertificateUserName,
+		&hPackedCredentials, &cbAllocated))
+		sspi_LogKerbCertificateLogon("card-context", hPackedCredentials, cbAllocated);
 
 	*phPackedCredentials = hPackedCredentials;
-	*pcbPackedCredentials = cbPackedCredentials;
+	*pcbPackedCredentials = cbAllocated;
 	return true;
 }
 
-static bool sspi_TryBuildCertificateLogonRewrite(void* pAuthData,
-	CMsRdpExtendedSettings* extendedSettings, SspiCertificateLogonRewrite* rewrite)
+static bool sspi_GetCertificateLogonRewriteInput(void* pAuthData,
+	CREDSSP_CRED** ppCred, CREDSSP_CRED_EX** ppCredEx)
 {
 	CREDSSP_CRED* pCred = NULL;
 	CREDSSP_CRED_EX* pCredEx = NULL;
-	DWORD cbSpnegoCred = 0;
 	bool readMessageType = false;
 	DWORD messageType = 0;
+
+	*ppCred = NULL;
+	*ppCredEx = NULL;
+
+	if (!sspi_TryGetCredSspCredential(pAuthData, &pCred, &pCredEx))
+	{
+		MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: incoming wrapper unavailable");
+		return false;
+	}
+
+	if (pCredEx && (pCredEx->Version != CREDSSP_CRED_EX_VERSION))
+	{
+		MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: unsupported wrapper version=%u", pCredEx->Version);
+		return false;
+	}
+
+	switch (pCred->Type)
+	{
+		case CredsspPasswordCreds:
+		case CredsspSchannelCreds:
+		case CredsspCertificateCreds:
+		case CredsspSubmitBufferBoth:
+		case CredsspSubmitBufferBothOld:
+			break;
+		default:
+			MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: unsupported submit type=%u", pCred->Type);
+			return false;
+	}
+
+	if (pCred->pSpnegoCred)
+	{
+		messageType = sspi_ReadAuthDataMessageType(pCred->pSpnegoCred, &readMessageType);
+
+		if (!readMessageType)
+		{
+			MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: incoming credential unreadable");
+			return false;
+		}
+
+		// Windows' selected credential is authoritative. Do not reconstruct its reader, provider,
+		// account hints or vendor data from a certificate hash, even when settings have a PIN.
+		if (messageType == KerbCertificateLogon)
+		{
+			if (((pCred->Type == CredsspCertificateCreds) ||
+				(pCred->Type == CredsspSubmitBufferBoth) || (pCred->Type == CredsspSubmitBufferBothOld)) &&
+				MsRdpEx_CanReadUnsafePtr(pCred->pSpnegoCred, sizeof(KERB_CERTIFICATE_LOGON)))
+				MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card credential already supplied; preserving original auth data");
+			else
+				MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: uncertain certificate credential shape");
+
+			return false;
+		}
+	}
+
+	if (pCred->Type == CredsspCertificateCreds)
+	{
+		MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: unsupported credential shape for type=%u", pCred->Type);
+		return false;
+	}
+
+	*ppCred = pCred;
+	*ppCredEx = pCredEx;
+	return true;
+}
+
+static void sspi_SetCertificateLogonRewrite(CREDSSP_CRED* pCred, CREDSSP_CRED_EX* pCredEx,
+	HLOCAL packedCredentials, DWORD cbPackedCredentials, SspiCertificateLogonRewrite* rewrite)
+{
+	rewrite->cred = *pCred;
+	// The unattended RDM path can supply type 51. A replacement certificate uses type 50,
+	// as in mstscax's certificate prompt, keeping Schannel and all extended-wrapper fields.
+	rewrite->cred.Type = CredsspSubmitBufferBoth;
+	rewrite->cred.pSpnegoCred = packedCredentials;
+	rewrite->packedCredentials = packedCredentials;
+	rewrite->cbPackedCredentials = cbPackedCredentials;
+
+	if (pCredEx)
+	{
+		rewrite->credEx = *pCredEx;
+		rewrite->credEx.Cred = rewrite->cred;
+		rewrite->pAuthData = &rewrite->credEx;
+	}
+	else
+	{
+		rewrite->pAuthData = &rewrite->cred;
+	}
+
+	rewrite->active = true;
+}
+
+static bool sspi_TryBuildCertificateLogonRewrite(CREDSSP_CRED* pCred,
+	CREDSSP_CRED_EX* pCredEx, SspiCertificateLogonRewrite* rewrite,
+	const MsRdpEx_SmartCardContext& context)
+{
+	DWORD cbSpnegoCred = 0;
 	WCHAR* userName = NULL;
 	WCHAR* domainName = NULL;
 	WCHAR* password = NULL;
 	HLOCAL hPackedCredentials = NULL;
 	DWORD cbPackedCredentials = 0;
 
-	ZeroMemory(rewrite, sizeof(SspiCertificateLogonRewrite));
-
-	if (!extendedSettings || !extendedSettings->GetKerbCertificateLogonEnabled())
-		return false;
-
-	if (!sspi_TryGetCredSspCredential(pAuthData, &pCred, &pCredEx))
-		return false;
-
 	if (!pCred->pSpnegoCred)
 		return false;
-
-	messageType = sspi_ReadAuthDataMessageType(pCred->pSpnegoCred, &readMessageType);
-
-	if ((pCred->Type == CredsspCertificateCreds) && readMessageType &&
-		(messageType == KerbCertificateLogon))
-	{
-		MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card credential is already KerbCertificateLogon");
-
-		return false;
-	}
 
 	cbSpnegoCred = sspi_GetLocalAllocSizeAsDword(pCred->pSpnegoCred);
 
@@ -1391,6 +1623,13 @@ static bool sspi_TryBuildCertificateLogonRewrite(void* pAuthData,
 		return false;
 	}
 
+	if (!password || !password[0])
+	{
+		MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card rewrite skipped: no PIN supplied");
+		sspi_FreeUnpackedCredentials(userName, domainName, password);
+		return false;
+	}
+
 	if (!sspi_IsCertificateMarshaledUserName(userName))
 	{
 		MsRdpEx_LogPrint(WARN, "CredSSP smart-card rewrite skipped: username is not a marshaled certificate credential");
@@ -1399,32 +1638,13 @@ static bool sspi_TryBuildCertificateLogonRewrite(void* pAuthData,
 		return false;
 	}
 
-	if (!sspi_CreatePackedCertificateLogon(userName, password, &hPackedCredentials, &cbPackedCredentials))
+	if (!sspi_CreatePackedCertificateLogon(userName, password, &hPackedCredentials, &cbPackedCredentials, &context))
 	{
 		sspi_FreeUnpackedCredentials(userName, domainName, password);
 		return false;
 	}
 
-	rewrite->cred = *pCred;
-	// See sspi_TryBuildCertificateLogonFromSettings: CredsspCertificateCreds with the caller's pSchannelCred
-	// still attached is rejected with SEC_E_INVALID_TOKEN.
-	rewrite->cred.Type = CredsspSubmitBufferBoth;
-	rewrite->cred.pSpnegoCred = hPackedCredentials;
-	rewrite->packedCredentials = hPackedCredentials;
-	rewrite->cbPackedCredentials = cbPackedCredentials;
-
-	if (pCredEx)
-	{
-		rewrite->credEx = *pCredEx;
-		rewrite->credEx.Cred = rewrite->cred;
-		rewrite->pAuthData = &rewrite->credEx;
-	}
-	else
-	{
-		rewrite->pAuthData = &rewrite->cred;
-	}
-
-	rewrite->active = true;
+	sspi_SetCertificateLogonRewrite(pCred, pCredEx, hPackedCredentials, cbPackedCredentials, rewrite);
 
 	MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card credential replaced with KerbCertificateLogon (size=%u)", cbPackedCredentials);
 
@@ -1432,36 +1652,24 @@ static bool sspi_TryBuildCertificateLogonRewrite(void* pAuthData,
 	return true;
 }
 
-// The embedded in-process ActiveX control does not pass the smart card credential through AcquireCredentialsHandleW
-// (pAuthData is NULL), so there is nothing to reshape. Instead synthesize the KERB_CERTIFICATE_LOGON directly from the
-// session's marshaled certificate UserName + PIN, which are available on the extended settings core property set.
-//
-// pAuthData is still taken because the caller may in fact have supplied one (RDM does). Discarding it throws away
-// the caller's pSchannelCred, which the credential mstscax itself builds for a certificate logon keeps.
-static bool sspi_TryBuildCertificateLogonFromSettings(void* pAuthData,
+// The ActiveX can supply a CredSSP wrapper without the certificate credential in-band.
+// Build the SPNEGO payload from settings, but retain the caller's wrapper.
+static bool sspi_TryBuildCertificateLogonFromSettings(CREDSSP_CRED* pCred, CREDSSP_CRED_EX* pCredEx,
 	CMsRdpExtendedSettings* extendedSettings, SspiCertificateLogonRewrite* rewrite)
 {
 	WCHAR* userName = NULL;
 	WCHAR* pin = NULL;
 	HLOCAL hPackedCredentials = NULL;
 	DWORD cbPackedCredentials = 0;
-	CREDSSP_CRED* pCred = NULL;
-	CREDSSP_CRED_EX* pCredEx = NULL;
-	bool inherited = false;
 	bool result = false;
-
-	ZeroMemory(rewrite, sizeof(SspiCertificateLogonRewrite));
-
-	if (!extendedSettings || !extendedSettings->GetKerbCertificateLogonEnabled())
-		return false;
+	const auto context = extendedSettings->GetSmartCardContext();
 
 	userName = extendedSettings->GetCredentialUserName();
 	pin = extendedSettings->GetCredentialPin();
 
-	if (!userName || !pin)
+	if (!userName || !pin || !pin[0])
 	{
-		MsRdpEx_LogPrint(WARN, "CredSSP smart-card synth skipped: UserName or PIN unavailable (userName=%p pin=%p)",
-				userName, pin);
+		MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card synth skipped: UserName or PIN unavailable");
 
 		goto cleanup;
 	}
@@ -1473,53 +1681,15 @@ static bool sspi_TryBuildCertificateLogonFromSettings(void* pAuthData,
 		goto cleanup;
 	}
 
-	if (!sspi_CreatePackedCertificateLogon(userName, pin, &hPackedCredentials, &cbPackedCredentials))
+	if (!sspi_CreatePackedCertificateLogon(userName, pin, &hPackedCredentials, &cbPackedCredentials, &context))
 		goto cleanup;
 
-	// Keep the caller's CREDSSP_CRED (notably pSchannelCred, and the CredEx wrapper) and swap only the
-	// SPNEGO credential. Building the struct from nothing is what broke this: with pSchannelCred NULL the
-	// server never attempts a logon, and the connection is refused as "user not authorized for remote logon".
-	// The pairing matters — CredsspCertificateCreds alongside a preserved pSchannelCred is rejected outright
-	// with SEC_E_INVALID_TOKEN. CredsspSubmitBufferBoth is what mstscax's own certificate logon uses.
-	if (pAuthData && sspi_TryGetCredSspCredential(pAuthData, &pCred, &pCredEx))
-	{
-		rewrite->cred = *pCred;
-		rewrite->cred.Type = CredsspSubmitBufferBoth;
-		inherited = true;
-	}
-	else
-	{
-		// No incoming credential to inherit from, so there is no schannel credential to keep and the pairing
-		// above does not apply. Untested in practice: every observed caller supplies pAuthData.
-		MsRdpEx_LogPrint(WARN, "CredSSP smart-card synth has no incoming credential to inherit from; "
-			"falling back to a certificate-only CREDSSP_CRED");
-
-		ZeroMemory(&rewrite->cred, sizeof(CREDSSP_CRED));
-		rewrite->cred.Type = CredsspCertificateCreds;
-		rewrite->cred.pSchannelCred = NULL;
-	}
-
-	rewrite->cred.pSpnegoCred = hPackedCredentials;
-	rewrite->packedCredentials = hPackedCredentials;
-	rewrite->cbPackedCredentials = cbPackedCredentials;
-
-	if (inherited && pCredEx)
-	{
-		rewrite->credEx = *pCredEx;
-		rewrite->credEx.Cred = rewrite->cred;
-		rewrite->pAuthData = &rewrite->credEx;
-	}
-	else
-	{
-		rewrite->pAuthData = &rewrite->cred;
-	}
-
-	rewrite->active = true;
+	sspi_SetCertificateLogonRewrite(pCred, pCredEx, hPackedCredentials, cbPackedCredentials, rewrite);
 	result = true;
 
 	MsRdpEx_LogPrint(DEBUG, "CredSSP smart-card credential synthesized as KerbCertificateLogon from settings "
-		"(size=%u type=%u schannel=%p inherited=%d)",
-		cbPackedCredentials, (unsigned) rewrite->cred.Type, rewrite->cred.pSchannelCred, inherited ? 1 : 0);
+		"(size=%u type=%u schannel=%p)",
+		cbPackedCredentials, (unsigned) rewrite->cred.Type, rewrite->cred.pSchannelCred);
 
 cleanup:
 	if (userName)
@@ -1532,6 +1702,29 @@ cleanup:
 	}
 
 	return result;
+}
+
+static bool sspi_TryBuildCertificateLogon(void* pAuthData, CMsRdpExtendedSettings* extendedSettings,
+	SspiCertificateLogonRewrite* rewrite, const char** builderName)
+{
+	CREDSSP_CRED* pCred = NULL;
+	CREDSSP_CRED_EX* pCredEx = NULL;
+
+	ZeroMemory(rewrite, sizeof(*rewrite));
+	*builderName = "";
+
+	if (!extendedSettings || !extendedSettings->GetKerbCertificateLogonEnabled())
+		return false;
+
+	if (!sspi_GetCertificateLogonRewriteInput(pAuthData, &pCred, &pCredEx))
+		return false;
+
+	if (sspi_TryBuildCertificateLogonFromSettings(pCred, pCredEx, extendedSettings, rewrite))
+		*builderName = "settings";
+	else if (sspi_TryBuildCertificateLogonRewrite(pCred, pCredEx, rewrite, extendedSettings->GetSmartCardContext()))
+		*builderName = "incoming-auth-data";
+
+	return rewrite->active;
 }
 
 static bool sspi_SetKdcProxySettings(PCredHandle phCredential, const char* proxyServer)
@@ -1607,24 +1800,11 @@ static SECURITY_STATUS SEC_ENTRY sspi_AcquireCredentialsHandleW(
 		CMsRdpExtendedSettings* extendedSettings = sspi_GetCurrentExtendedSettings(&resolution);
 
 		if (extendedSettings && extendedSettings->GetKerbCertificateLogonEnabled()) {
-			bool built = false;
 			const char* builderName = "";
 
-			// Preferred: synthesize from the session's marshaled certificate UserName + captured PIN. This is the
-			// embedded in-process ActiveX path and does not touch the incoming pAuthData/pSpnegoCred at all.
-			built = sspi_TryBuildCertificateLogonFromSettings(pAuthData, extendedSettings, &rewrite) && rewrite.active;
-			builderName = built ? "settings" : "";
-
-			// Fallback: out-of-process mstsc.exe passes a marshaled certificate credential in-band; reshape it.
-			if (!built && pAuthData)
-			{
-				built = sspi_TryBuildCertificateLogonRewrite(pAuthData, extendedSettings, &rewrite) && rewrite.active;
-				builderName = built ? "incoming-auth-data" : "";
-			}
-
-			if (built) {
-					MsRdpEx_LogPrint(DEBUG, "CredSSP KerbCertificateLogon rewrite using %s builder and %s session resolution",
-						builderName, sspi_GetSessionResolutionName(resolution));
+			if (sspi_TryBuildCertificateLogon(pAuthData, extendedSettings, &rewrite, &builderName)) {
+				MsRdpEx_LogPrint(DEBUG, "CredSSP KerbCertificateLogon rewrite using %s builder and %s session resolution",
+					builderName, sspi_GetSessionResolutionName(resolution));
 
 				pEffectiveAuthData = rewrite.pAuthData;
 			}
