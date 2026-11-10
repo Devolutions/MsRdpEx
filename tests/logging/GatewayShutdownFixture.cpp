@@ -1,6 +1,15 @@
 ﻿// Use the production gateway implementation in the shutdown test DLL so the
 // fixture can hold its private lock without adding any production test exports.
 #include "../../dll/GatewayIsolation.cpp"
+#include <MsRdpEx/RdpSettings.h>
+
+extern "C" bool CheckKdcProxyUrlToName(const char* url, const char* expected)
+{
+    char* actual = MsRdpEx_KdcProxyUrlToName(url);
+    bool matches = expected ? actual && strcmp(actual, expected) == 0 : actual == NULL;
+    free(actual);
+    return matches;
+}
 
 static DWORD WINAPI HoldGatewayLock(LPVOID ready)
 {

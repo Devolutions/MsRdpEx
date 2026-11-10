@@ -2101,7 +2101,7 @@ char* MsRdpEx_KdcProxyUrlToName(const char* kdcProxyUrl)
     char* kdcProxyName = NULL;
 
     // https://<host>[:<port>][/path]
-    // <host>:[:<port>][:<path>]
+    // <host>[:<port>][:<path>]
 
     if (!kdcProxyUrl)
         return NULL;
@@ -2112,6 +2112,43 @@ char* MsRdpEx_KdcProxyUrlToName(const char* kdcProxyUrl)
         return NULL;
 
     host = &host[3];
+
+    const char* authorityPath = strchr(host, '/');
+    const char* defaultPort = NULL;
+
+    if (_strnicmp(kdcProxyUrl, "https://", 8) == 0)
+        defaultPort = ":443";
+    else if (_strnicmp(kdcProxyUrl, "http://", 7) == 0)
+        defaultPort = ":80";
+
+    if (authorityPath && defaultPort)
+    {
+        const char* portStart = host;
+
+        // Colons inside a bracketed IPv6 address are not a port separator.
+        if (*host == '[')
+        {
+            const char* bracket = strchr(host, ']');
+            if (bracket && bracket < authorityPath)
+                portStart = bracket + 1;
+        }
+
+        if (!memchr(portStart, ':', authorityPath - portStart))
+        {
+            size_t authorityLength = authorityPath - host;
+            size_t portLength = strlen(defaultPort);
+            kdcProxyName = (char*)malloc(strlen(host) + portLength + 1);
+
+            if (!kdcProxyName)
+                return NULL;
+
+            memcpy(kdcProxyName, host, authorityLength);
+            memcpy(&kdcProxyName[authorityLength], defaultPort, portLength);
+            strcpy(&kdcProxyName[authorityLength + portLength], authorityPath);
+            kdcProxyName[authorityLength + portLength] = ':';
+            return kdcProxyName;
+        }
+    }
 
     kdcProxyName = _strdup(host);
 

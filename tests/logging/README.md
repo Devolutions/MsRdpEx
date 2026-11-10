@@ -1,7 +1,7 @@
 # Native regression tests
 
-These tests exercise runtime diagnostic logging, gateway behavior, and plugin
-reference ownership and RDP input filtering without making an RDP connection.
+These tests exercise runtime diagnostic logging, gateway behavior, plugin
+reference ownership, RDP input filtering, and KDC proxy settings without making an RDP connection.
 They are opt-in and do not change normal builds or release packaging.
 
 ## Build and run
@@ -61,6 +61,18 @@ reproduction; that check still requires a connected Windows session.
 ctest --test-dir build-logging-x64 -C Release -R '^input\.' --output-on-failure
 ./build-logging-x64/Release/MsRdpEx_InputFocusTest.exe $dll focus-presses
 ./build-logging-x64/Release/MsRdpEx_InputFocusTest.exe $dll focus-releases
+```
+
+## KDC proxy settings
+
+The `settings.kdc-proxy` test checks URL-to-KDC-name conversion through the
+production settings implementation in the test-only fixture DLL. HTTP(S) URLs
+with a path use `host:port:path`, including the scheme's default port (443 or
+80) when omitted. Cases cover explicit ports, IPv6, case-insensitive schemes,
+empty paths, and unchanged pathless, scheme-less, and other-scheme behavior.
+
+```powershell
+ctest --test-dir build-logging-x64 -C Release -R '^settings\.kdc-proxy$' --output-on-failure
 ```
 
 ## Runtime behavior
