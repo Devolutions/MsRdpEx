@@ -1,4 +1,5 @@
 ﻿EXPORTS
+    CheckKdcProxyUrlToName
     PrepareGatewayShutdown
     CreatePluginReferenceInstance
     RegisterPluginReferenceInstance

@@ -70,6 +70,14 @@ foreach(scenario replacement same-pointer clearing destruction)
     set_tests_properties(logging.plugin-reference.${scenario} PROPERTIES TIMEOUT 45)
 endforeach()
 
+add_executable(MsRdpEx_KdcProxyTest KdcProxyTest.cpp)
+target_compile_features(MsRdpEx_KdcProxyTest PRIVATE cxx_std_17)
+target_compile_options(MsRdpEx_KdcProxyTest PRIVATE /W4 /EHsc)
+add_dependencies(MsRdpEx_KdcProxyTest MsRdpEx_GatewayShutdownTestDll)
+add_test(NAME settings.kdc-proxy
+    COMMAND MsRdpEx_KdcProxyTest "$<TARGET_FILE:MsRdpEx_GatewayShutdownTestDll>")
+set_tests_properties(settings.kdc-proxy PROPERTIES TIMEOUT 45)
+
 add_executable(MsRdpEx_DvcFactoryLifetimeTest DvcFactoryLifetimeTest.cpp)
 target_include_directories(MsRdpEx_DvcFactoryLifetimeTest PRIVATE "${PROJECT_SOURCE_DIR}/dll")
 target_compile_features(MsRdpEx_DvcFactoryLifetimeTest PRIVATE cxx_std_17)
