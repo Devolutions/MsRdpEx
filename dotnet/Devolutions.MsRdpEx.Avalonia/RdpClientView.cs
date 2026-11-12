@@ -121,6 +121,8 @@ public class RdpClientView : NativeControlHost, IDisposable
 
     internal Action<Action>? SurfaceRefreshPostForTesting { get; set; }
 
+    internal Func<PixelSize, bool>? NativeSurfaceResizeForTesting { get; set; }
+
     internal void RequestSurfaceRefreshForTesting() => RequestSurfaceRefresh();
 
     internal void RunSurfaceRefreshForTesting() => RefreshSurfaceAfterRender();
@@ -409,13 +411,17 @@ public class RdpClientView : NativeControlHost, IDisposable
     public bool TryResizeNativeSurface(PixelSize pixelSize)
     {
         VerifyAccess();
-        if (disposed || pixelSize.Width <= 0 || pixelSize.Height <= 0 || session is null)
+        if (disposed || pixelSize.Width <= 0 || pixelSize.Height <= 0
+            || (session is null && NativeSurfaceResizeForTesting is null))
             return false;
 
         if (pixelSize == lastSurfaceSize)
             return true;
 
-        if (!session.ResizeSurface(pixelSize.Width, pixelSize.Height))
+        bool resized = NativeSurfaceResizeForTesting is { } resizeForTesting
+            ? resizeForTesting(pixelSize)
+            : session!.ResizeSurface(pixelSize.Width, pixelSize.Height);
+        if (!resized)
             return false;
 
         lastSurfaceSize = pixelSize;
