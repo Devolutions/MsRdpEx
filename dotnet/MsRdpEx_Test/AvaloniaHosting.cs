@@ -1,5 +1,6 @@
 using Devolutions.MsRdpEx.Avalonia;
 
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Platform;
@@ -206,6 +207,108 @@ namespace MsRdpEx.Tests
 
             Assert.True(view.IsSurfaceRefreshQueuedForTesting);
             Assert.Equal(1, postCount);
+        }
+
+        [Theory]
+        [InlineData(0, 0)]
+        [InlineData(0, 600)]
+        [InlineData(800, 0)]
+        [InlineData(-1, 600)]
+        [InlineData(800, -1)]
+        public void RdpClientViewRejectsInvalidNativeSurfaceSizes(int width, int height)
+        {
+            using TestableRdpClientView view = new();
+            int attempts = 0;
+            view.NativeSurfaceResizeForTesting = _ => { attempts++; return true; };
+
+            Assert.False(view.TryResizeNativeSurface(new PixelSize(width, height)));
+            Assert.Equal(0, attempts);
+        }
+
+        [Fact]
+        public void RdpClientViewDoesNotCacheAnUnavailableNativeResize()
+        {
+            using TestableRdpClientView view = new();
+            PixelSize size = new(1500, 1050);
+
+            Assert.False(view.TryResizeNativeSurface(size));
+
+            int attempts = 0;
+            view.NativeSurfaceResizeForTesting = _ => { attempts++; return true; };
+            Assert.True(view.TryResizeNativeSurface(size));
+            Assert.True(view.TryResizeNativeSurface(size));
+            Assert.Equal(1, attempts);
+        }
+
+        [Fact]
+        public void RdpClientViewRejectsNativeResizesAfterDisposeEvenForACachedSize()
+        {
+            using TestableRdpClientView view = new();
+            PixelSize size = new(1500, 1050);
+            int attempts = 0;
+            view.NativeSurfaceResizeForTesting = _ => { attempts++; return true; };
+            Assert.True(view.TryResizeNativeSurface(size));
+
+            view.Dispose();
+
+            Assert.False(view.TryResizeNativeSurface(size));
+            Assert.False(view.TryResizeNativeSurface(new PixelSize(1800, 1200)));
+            Assert.Equal(1, attempts);
+        }
+
+        [Fact]
+        public void RdpClientViewSkipsOnlyTheCurrentSuccessfulNativeSurfaceSize()
+        {
+            using TestableRdpClientView view = new();
+            PixelSize first = new(1500, 1050);
+            PixelSize second = new(1800, 1200);
+            List<PixelSize> attempts = [];
+            view.NativeSurfaceResizeForTesting = size => { attempts.Add(size); return true; };
+
+            Assert.True(view.TryResizeNativeSurface(first));
+            Assert.True(view.TryResizeNativeSurface(first));
+            Assert.True(view.TryResizeNativeSurface(second));
+            Assert.True(view.TryResizeNativeSurface(second));
+            Assert.True(view.TryResizeNativeSurface(first));
+            Assert.Equal(new[] { first, second, first }, attempts);
+        }
+
+        [Fact]
+        public void RdpClientViewRetriesTheSameSizeAfterAFailedNativeResize()
+        {
+            using TestableRdpClientView view = new();
+            PixelSize size = new(1500, 1050);
+            List<PixelSize> attempts = [];
+            view.NativeSurfaceResizeForTesting = requested =>
+            {
+                attempts.Add(requested);
+                return attempts.Count > 1;
+            };
+
+            Assert.False(view.TryResizeNativeSurface(size));
+            Assert.True(view.TryResizeNativeSurface(size));
+            Assert.True(view.TryResizeNativeSurface(size));
+            Assert.Equal(new[] { size, size }, attempts);
+        }
+
+        [Fact]
+        public void RdpClientViewKeepsItsLastSuccessfulSizeAfterAFailedNativeResize()
+        {
+            using TestableRdpClientView view = new();
+            PixelSize first = new(1500, 1050);
+            PixelSize second = new(1800, 1200);
+            List<PixelSize> attempts = [];
+            view.NativeSurfaceResizeForTesting = requested =>
+            {
+                attempts.Add(requested);
+                return attempts.Count != 2;
+            };
+
+            Assert.True(view.TryResizeNativeSurface(first));
+            Assert.False(view.TryResizeNativeSurface(second));
+            Assert.True(view.TryResizeNativeSurface(first));
+            Assert.True(view.TryResizeNativeSurface(second));
+            Assert.Equal(new[] { first, second, second }, attempts);
         }
 
         private sealed class TestableRdpClientView : RdpClientView
