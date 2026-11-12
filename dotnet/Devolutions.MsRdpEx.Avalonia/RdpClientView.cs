@@ -402,6 +402,26 @@ public class RdpClientView : NativeControlHost, IDisposable
             deviceScaleFactor) == true;
     }
 
+    /// <summary>
+    /// Resizes the native ActiveX surface in physical pixels, including before
+    /// a background view is arranged. Does not change the remote desktop resolution.
+    /// </summary>
+    public bool TryResizeNativeSurface(PixelSize pixelSize)
+    {
+        VerifyAccess();
+        if (disposed || pixelSize.Width <= 0 || pixelSize.Height <= 0 || session is null)
+            return false;
+
+        if (pixelSize == lastSurfaceSize)
+            return true;
+
+        if (!session.ResizeSurface(pixelSize.Width, pixelSize.Height))
+            return false;
+
+        lastSurfaceSize = pixelSize;
+        return true;
+    }
+
     public void Disconnect()
     {
         VerifyAccess();
